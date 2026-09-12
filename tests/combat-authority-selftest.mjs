@@ -3,6 +3,7 @@ import { createBlueprintLedger } from '../src/sim/blueprint-ledger.mjs';
 import { createCivilizationCombatAuthority, createAuthoritativeCombatEncounter } from '../src/sim/combat-authority.mjs';
 import { createCombatEquipmentLedger } from '../src/sim/combat-equipment.mjs';
 import { createCivilizationLogistics } from '../src/sim/civilization-logistics.mjs';
+import { createCivilizationLogisticsCycle } from '../src/sim/civilization-logistics-cycle.mjs';
 import { createCivilizationManpower } from '../src/sim/civilization-manpower.mjs';
 import { createCivilizationProduction } from '../src/sim/civilization-production.mjs';
 import { createCivilizationStockpile } from '../src/sim/civilization-stockpile.mjs';
@@ -64,11 +65,13 @@ const logistics = createCivilizationLogistics({
   stockpile: side.stockpile,
   manpower: side.manpower,
   construction,
-  production
+  production,
+  carryPerWorkerTrip: 0.01
 });
+const logisticsCycle = createCivilizationLogisticsCycle({ production, logistics, stockpile: side.stockpile });
 assert.equal(production.setWorkers('bridge:farm', [casualtyId]).accepted, true);
-const produced = production.advance(200, { foodModifiers: { gather: 1, production: 1 } });
-assert.ok(produced.produced.food > 0);
+const cycleResult = logisticsCycle.advance(200, { foodModifiers: { gather: 1, production: 1 } });
+assert.ok(cycleResult.production.produced.food > 0);
 let route = logistics.snapshot().routes.find(entry => entry.originBuildingId === 'bridge:farm');
 assert.ok(route, 'production should create an aggregate haul route');
 assert.equal(route.workerCount, 1);

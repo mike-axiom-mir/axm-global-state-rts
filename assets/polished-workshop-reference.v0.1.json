@@ -1,0 +1,35 @@
+{
+  "schema": "axm.global-state-rts.external-asset-reference/v0.1",
+  "assetId": "building-improvised-workshop-polished-reference",
+  "status": "REFERENCE_ACCEPTED_RUNTIME_NOT_ACCEPTED",
+  "source": {
+    "kind": "conversation-upload",
+    "packageName": "axm-workshop-polished.zip",
+    "sha256": "d96dc8c8ad181ea719c1d72ca1cde23fe935981aa204a5d8345f6f5704cc122a"
+  },
+  "models": {
+    "hero": {
+      "file": "improvised-workshop.glb",
+      "sha256": "d89381854d9f6adad84b44980677d16d021a91ed6dd87ab98295e24f4eccdc9e",
+      "triangles": 176043,
+      "vertices": 265043,
+      "materialBatches": 18,
+      "embeddedImages": 47
+    },
+    "lod1": {
+      "file": "improvised-workshop-lod1.glb",
+      "sha256": "bcc56d2e217e3f35958cde5ab9370d572e4df7fbacc763817e5c9097409b8c26",
+      "triangles": 63349,
+      "vertices": 102645,
+      "materialBatches": 18,
+      "embeddedImages": 47
+    }
+  },
+  "boundsMetersYUp": {
+    "approxWidth": 5.65,
+    "approxDepth": 4.59,
+    "approxHeight": 4.79
+  },
+  "referenceUse": "Primary visual target for future Improvised Workshop derivatives. Do not treat current binaries as mass-RTS performance-certified.",
+  "reviewDoc": "docs/WORKSHOP_POLISHED_ASSET_REVIEW_V0.md"
+}

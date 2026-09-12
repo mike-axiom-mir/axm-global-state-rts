@@ -91,12 +91,12 @@ export class AsteroidFieldRuntime {
     const extractedUnits = finiteNonNegative(raw.extractedUnits, `${eventId}.extractedUnits`);
     if (extractedUnits > event.resourceUnits + 1e-9) throw new RangeError(`mutation extracts more than asteroid contains: ${eventId}`);
     const harvestCount = Number(raw.harvestCount ?? 0);
-    const revision = Number(raw.revision ?? 0);
+    const revision = Number(raw.revision ?? harvestCount);
     if (!Number.isInteger(harvestCount) || harvestCount < 0) throw new RangeError(`${eventId}.harvestCount must be a non-negative integer`);
     if (!Number.isInteger(revision) || revision < 0) throw new RangeError(`${eventId}.revision must be a non-negative integer`);
     if (extractedUnits <= 1e-9 && harvestCount === 0) return;
     this.mutations.set(eventId, { extractedUnits, harvestCount, revision });
-    this.revision = Math.max(this.revision, revision);
+    this.revision += harvestCount;
   }
 
   hourIndex(nowMs) {

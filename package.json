@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "npm run test:spatial && npm run test:presentation",
+    "test": "npm run test:spatial && npm run test:presentation && npm run test:multiseat",
     "test:spatial": "node tests/spatial-selftest.mjs",
-    "test:presentation": "node tests/presentation-selftest.mjs"
+    "test:presentation": "node tests/presentation-selftest.mjs",
+    "test:multiseat": "node tests/multiseat-input-selftest.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -11,7 +11,7 @@
     "test:multiseat": "node tests/multiseat-input-selftest.mjs",
     "test:region": "node tests/local-region-selftest.mjs",
     "test:crew-loop": "node tests/local-crew-loop-selftest.mjs",
-    "test:shell": "node --check game/app.mjs && node --check src/presentation/planet-renderer.mjs && node --check src/presentation/local-region-scene.mjs && node --check src/world/starter-region.mjs && node --check src/sim/local-region-sim.mjs && node --check scripts/serve.mjs"
+    "test:shell": "node --check game/app.mjs && node --check src/presentation/planet-renderer.mjs && node --check src/presentation/local-region-scene.mjs && node --check src/world/starter-region.mjs && node --check src/sim/local-region-sim.mjs && node --check tests/browser/planet-shell-controller.spec.js && node --check scripts/serve.mjs"
   },
   "engines": {
     "node": ">=20"

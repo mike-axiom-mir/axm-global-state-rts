@@ -1,0 +1,32 @@
+name: Workshop crew avoidance
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/sim/workshop-avoidance.mjs'
+      - 'tests/workshop-avoidance-selftest.mjs'
+      - '.github/workflows/workshop-avoidance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  workshop-avoidance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out target game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify avoidance module syntax
+        run: node --check src/sim/workshop-avoidance.mjs
+      - name: Prove crew can detour around every starter workshop rotation
+        run: node tests/workshop-avoidance-selftest.mjs

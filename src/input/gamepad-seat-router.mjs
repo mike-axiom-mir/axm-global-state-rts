@@ -1,5 +1,18 @@
 import { gamepadFrameToSeatInput } from './gamepad-profile.mjs';
 
+function snapshotGamepad(gamepad) {
+  return Object.freeze({
+    id: String(gamepad.id || 'gamepad'),
+    index: Number.isInteger(gamepad.index) ? gamepad.index : 0,
+    connected: gamepad.connected !== false,
+    axes: Object.freeze(Array.from(gamepad.axes || [], value => Number(value) || 0)),
+    buttons: Object.freeze(Array.from(gamepad.buttons || [], button => Object.freeze({
+      pressed: Boolean(button?.pressed || Number(button?.value || 0) > 0.55),
+      value: Number(button?.value || 0)
+    })))
+  });
+}
+
 export class GamepadSeatRouter {
   constructor(localSeatRuntime) {
     if (!localSeatRuntime) throw new TypeError('localSeatRuntime is required');
@@ -18,12 +31,13 @@ export class GamepadSeatRouter {
       const binding = this.runtime.bindingFor(seat.id, 'gamepad');
       if (!binding) continue;
 
-      const current = byIndex.get(binding.deviceId);
-      if (!current || current.connected === false) {
+      const liveCurrent = byIndex.get(binding.deviceId);
+      if (!liveCurrent || liveCurrent.connected === false) {
         this.previousByIndex.delete(binding.deviceId);
         continue;
       }
 
+      const current = snapshotGamepad(liveCurrent);
       const previous = this.previousByIndex.get(binding.deviceId) || null;
       const frame = gamepadFrameToSeatInput(current, previous);
       this.previousByIndex.set(binding.deviceId, current);

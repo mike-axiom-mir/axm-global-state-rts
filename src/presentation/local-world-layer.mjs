@@ -64,7 +64,7 @@ function ruinVisual(feature) {
   return group;
 }
 
-function foodVisual(feature) {
+function foodVisual() {
   const group = new THREE.Group();
   const leaf = standardMaterial(0x55704e);
   const soil = standardMaterial(0x5d4c3a);
@@ -145,6 +145,9 @@ export function createLocalWorldLayer(region, terrain, {
   maxFogInstances = 1200
 } = {}) {
   if (!region?.frame || !terrain?.heightAt) throw new TypeError('region and terrain required');
+  const heightAt = typeof terrain.peekHeightAt === 'function'
+    ? terrain.peekHeightAt.bind(terrain)
+    : terrain.heightAt.bind(terrain);
   const root = new THREE.Group();
   root.name = `local-world-layer:${region.id}`;
   const fogRoot = new THREE.Group();
@@ -188,7 +191,7 @@ export function createLocalWorldLayer(region, terrain, {
       const target = cell.status === 'unexplored' ? unexploredFog : memoryFog;
       const index = cell.status === 'unexplored' ? unknownCount++ : memoryCount++;
       if (index >= maxFogInstances) continue;
-      dummy.position.set(cell.xM, terrain.heightAt(cell.xM, cell.zM) + 1.25, cell.zM);
+      dummy.position.set(cell.xM, heightAt(cell.xM, cell.zM) + 1.25, cell.zM);
       dummy.rotation.set(-Math.PI / 2, 0, 0);
       dummy.scale.set(1, 1, 1);
       dummy.updateMatrix();
@@ -229,7 +232,7 @@ export function createLocalWorldLayer(region, terrain, {
       visual.visible = true;
       visual.position.set(
         feature.local.xM,
-        terrain.heightAt(feature.local.xM, feature.local.zM) + 0.12,
+        heightAt(feature.local.xM, feature.local.zM) + 0.12,
         feature.local.zM
       );
     }

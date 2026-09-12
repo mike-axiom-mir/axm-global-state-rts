@@ -1,0 +1,9 @@
+{
+  "schema": "axm.global-state-rts.upstream-planet/v0.1",
+  "source_repository": "mike-axiom-mir/foundation-planet-experiments",
+  "source_commit": "7d39f5105e8cf2084720ecbb0213167acfa31b52",
+  "submodule_path": "planet-upstream",
+  "source_status": "EXPERIMENTAL",
+  "import_purpose": "Use the existing Foundation Planet as the world body for the global-state mass-macro RTS without rewriting the source repository.",
+  "source_mutated_by_import": false
+}

@@ -1,4 +1,5 @@
 import * as THREE from '../../planet-upstream/shared/vendor/three-r160/three.module.js';
+import { buildStaticGlbScene } from '../assets/static-glb-runtime.mjs';
 import { STARTER_REGION_SCHEMA } from '../world/starter-region.mjs';
 import { createChunkedLocalTerrain } from './chunked-local-terrain.mjs';
 import { createLocalWorldLayer } from './local-world-layer.mjs';
@@ -28,6 +29,25 @@ function placeAtTerrain(group, terrain, xM, zM, yawDeg = 0, yOffset = 0, { track
   return group;
 }
 
+function disposeVisual(root) {
+  const geometries = new Set();
+  const materials = new Set();
+  const textures = new Set();
+  root?.traverse?.(object => {
+    if (object.geometry) geometries.add(object.geometry);
+    const list = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
+    for (const material of list) {
+      materials.add(material);
+      for (const key of ['map', 'metalnessMap', 'roughnessMap', 'normalMap', 'emissiveMap', 'aoMap']) {
+        if (material?.[key]) textures.add(material[key]);
+      }
+    }
+  });
+  textures.forEach(texture => texture.dispose?.());
+  materials.forEach(material => material.dispose?.());
+  geometries.forEach(geometry => geometry.dispose?.());
+}
+
 function makeCoreBuilding(assetId) {
   const group = new THREE.Group();
   const base = shadow(new THREE.Mesh(new THREE.BoxGeometry(18, 7.5, 13), standardMaterial(0x6f604d)));
@@ -45,6 +65,26 @@ function makeCoreBuilding(assetId) {
   brace.rotation.z = -0.18;
   group.add(base, roof, patch, tank, brace);
   group.userData.assetId = assetId;
+  return group;
+}
+
+function makeWorkshopBuilding(assetId) {
+  const group = new THREE.Group();
+  const body = shadow(new THREE.Mesh(new THREE.BoxGeometry(5.4, 3.0, 4.2), standardMaterial(0x496466, { metalness: 0.15 })));
+  body.position.y = 1.5;
+  const openBay = new THREE.Mesh(new THREE.BoxGeometry(2.3, 2.2, 0.18), standardMaterial(0x1d2526));
+  openBay.position.set(1.15, 1.45, -2.12);
+  const roof = shadow(new THREE.Mesh(new THREE.BoxGeometry(5.9, 0.24, 4.7), standardMaterial(0x536f78, { metalness: 0.05 })));
+  roof.position.set(0.25, 3.25, 0.05);
+  roof.rotation.z = -0.07;
+  const chimney = shadow(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.21, 2.0, 10), standardMaterial(0x444b4b, { metalness: 0.35 })));
+  chimney.position.set(1.65, 4.05, 1.3);
+  const wheel = shadow(new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.08, 6, 16), standardMaterial(0x8d4e35, { metalness: 0.28 })));
+  wheel.position.set(-1.0, 3.75, 0.5);
+  wheel.rotation.x = Math.PI / 2;
+  group.add(body, openBay, roof, chimney, wheel);
+  group.userData.assetId = assetId;
+  group.userData.runtimeFallback = true;
   return group;
 }
 
@@ -154,6 +194,7 @@ function buildPreviewFixtures(scene, region, terrain) {
   for (const fixture of region.previewFixtures) {
     let visual;
     if (fixture.assetId === 'building-settlement-core-a') visual = makeCoreBuilding(fixture.assetId);
+    else if (fixture.assetId === 'building-workshop-a') visual = makeWorkshopBuilding(fixture.assetId);
     else if (fixture.assetId === 'building-storage-depot-a') visual = makeStorageBuilding(fixture.assetId);
     else if (fixture.assetId === 'resource-scrap-collector-a') visual = makeScrapCollector(fixture.assetId);
     else if (fixture.assetId === 'defense-light-tower-a') visual = makeLightTower(fixture.assetId);
@@ -225,6 +266,7 @@ export function createLocalRegionScene(region) {
   const lights = { hemi, sun, rim };
 
   const fixtures = buildPreviewFixtures(scene, region, terrain);
+  const externalAssetReceipts = new Map();
   const worldLayer = createLocalWorldLayer(region, terrain);
   scene.add(worldLayer.root);
   const cursor = makeCursor();
@@ -261,6 +303,43 @@ export function createLocalRegionScene(region) {
     return worldLayer.sync({ simulationSnapshot: snapshot, centerXM, centerZM });
   }
 
+  async function installExternalStaticAsset({ assetId, arrayBuffer, expectedSha256, uniformScale = 1 } = {}) {
+    if (typeof assetId !== 'string' || !assetId) throw new TypeError('assetId required');
+    if (!Number.isFinite(uniformScale) || uniformScale <= 0 || uniformScale > 100) throw new RangeError('uniformScale must be >0 and <=100');
+    const fixture = region.previewFixtures.find(candidate => candidate.assetId === assetId);
+    if (!fixture) throw new Error(`no preview fixture registered for ${assetId}`);
+    const loaded = await buildStaticGlbScene(arrayBuffer, { expectedSha256 });
+    const object = loaded.object;
+    object.userData.assetId = assetId;
+    object.userData.previewFixtureId = fixture.id;
+    object.userData.externalRuntimeAsset = true;
+    object.scale.setScalar(uniformScale);
+    placeAtTerrain(object, terrain, fixture.xM, fixture.zM, fixture.yawDeg, 0.05, { trackFocus: false });
+
+    const previous = fixtures.visualsById.get(fixture.id);
+    fixtures.root.add(object);
+    fixtures.visualsById.set(fixture.id, object);
+    if (previous) {
+      fixtures.root.remove(previous);
+      disposeVisual(previous);
+    }
+
+    const receipt = Object.freeze({
+      ...loaded.receipt,
+      status: 'RUNTIME_IMPORTED_NOT_VISUALLY_ACCEPTED',
+      assetId,
+      fixtureId: fixture.id,
+      regionId: region.id,
+      placement: Object.freeze({ xM: fixture.xM, zM: fixture.zM, yawDeg: fixture.yawDeg, uniformScale }),
+      collision: 'NOT_TESTED',
+      navigation: 'NOT_TESTED',
+      splitScreenReadability: 'NOT_TESTED',
+      targetDeviceFps: 'NOT_TESTED'
+    });
+    externalAssetReceipts.set(assetId, receipt);
+    return receipt;
+  }
+
   return {
     region,
     scene,
@@ -272,17 +351,18 @@ export function createLocalRegionScene(region) {
       return terrain.updateFocusPoints(focusPoints);
     },
     syncSimulationSnapshot,
+    installExternalStaticAsset,
+    externalAssetStatus(assetId = null) {
+      if (assetId) return externalAssetReceipts.get(assetId) || null;
+      return [...externalAssetReceipts.values()];
+    },
     worldStats() {
       return worldLayer.stats();
     },
     dispose() {
       worldLayer.dispose();
       terrain.dispose();
-      scene.traverse(object => {
-        object.geometry?.dispose?.();
-        if (Array.isArray(object.material)) object.material.forEach(material => material?.dispose?.());
-        else object.material?.dispose?.();
-      });
+      disposeVisual(scene);
     }
   };
 }

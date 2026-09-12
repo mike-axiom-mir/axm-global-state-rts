@@ -92,6 +92,33 @@ assert.ok(routed.actionResults.every(result => result.accepted));
 const routedHeld = router.poll([pad0, pad1], 2_001);
 assert.equal(routedHeld.actionResults.length, 0, 'router must edge-trigger held buttons');
 
+// Browser Gamepad objects expose live getters; previous-frame state must be copied,
+// not retained by reference, or an edge disappears when the same Gamepad object mutates.
+const liveRoster = createLocalRoster({ seatKinds: ['human'] });
+const liveRuntime = new LocalSeatRuntime({ roster: liveRoster });
+liveRuntime.bindInput({ seatId: 'seat-1', sourceKind: 'gamepad', deviceId: 0 });
+const liveRouter = new GamepadSeatRouter(liveRuntime);
+const mutablePadState = { axes: [0, 0, 0, 0], buttons: Array(16).fill(0) };
+const livePad = {
+  id: 'live-pad',
+  index: 0,
+  connected: true,
+  get axes() { return [...mutablePadState.axes]; },
+  get buttons() {
+    return mutablePadState.buttons.map(value => ({ pressed: value > .5, value }));
+  }
+};
+assert.equal(liveRouter.poll([livePad], 3_000).actionResults.length, 0);
+mutablePadState.buttons[0] = 1;
+const livePressed = liveRouter.poll([livePad], 3_016);
+assert.equal(livePressed.actionResults.length, 1);
+assert.equal(livePressed.actionResults[0].event.actionId, 'confirm');
+assert.equal(liveRouter.poll([livePad], 3_032).actionResults.length, 0, 'live held button must stay held, not retrigger');
+mutablePadState.buttons[0] = 0;
+assert.equal(liveRouter.poll([livePad], 3_048).actionResults.length, 0);
+mutablePadState.buttons[0] = 1;
+assert.equal(liveRouter.poll([livePad], 3_064).actionResults.length, 1, 'release then press must create a new edge');
+
 for (let seatCount = 1; seatCount <= 4; seatCount++) {
   const layout = normalizedSplitLayout(seatCount, { orientation: 'landscape' });
   assert.equal(layout.length, seatCount);

@@ -1,0 +1,57 @@
+{
+  "schema": "axm.global-state-rts.specialist-workshop-semantic-reference/v0.1",
+  "status": "SOURCE_AND_HERO_SEMANTICS_REVIEWED_RAW_GLB_BYTES_NOT_REPRODUCIBLE",
+  "producer": {
+    "repository": "mike-axiom-mir/axm-universal-creation",
+    "source_commit": "d761090dd6477db9b8dd33edac905ff924c4c6ee",
+    "source_runtime": "4.3.0",
+    "source_sha256": {
+      "axm_rts_workshop.py": "2b0a7fc72ef215fd950cc8f30402aa01a2fc0a74ade97be9a27ade1847f264b1",
+      "axm_salvage_construction.py": "6cd19b7c651f32fe1f2fe1432ae01f3d0875f86375ca1576a10a86516dbd0858",
+      "axm_salvage_personality.py": "e655ba7d413a9a7470ffb422a0678784bf0e558d609793d0f074496cbd87488d",
+      "axm_salvage_surfaces.py": "8012d00d7f1ff70ec48f7311868ff4ba04f0ef34a911490372e0db2ba9b41422"
+    }
+  },
+  "reviewed_build": {
+    "workflow_run": 34716936155,
+    "detailed_raw_sha256": "579c14c3bf422c203e9a2d5132fd98339c8eef4499a305cb6941f90ee1aae8f9",
+    "lod1_raw_sha256": "c872ca7a5844518176ea3cd2f670651f174f2318b488d53e17492378709d27ee"
+  },
+  "independent_rebuild_observation": {
+    "workflow_run": 34719304864,
+    "detailed_raw_sha256": "d238b2192b1e656bd3c611f9b3d41210c79dcaecb0a7fb40fef48d1c755c449b",
+    "lod1_raw_sha256": "aa787949e34e6878d29a071ecd1a569aabad0de8b5d2423bccc80c2ffe3ece71",
+    "finding": "The same pinned source/runtime rebuilt successfully but did not reproduce the prior whole-GLB byte hashes. Cause is not isolated. Cross-run continuity must therefore use source identity plus inspected semantic invariants, while each concrete generated binary is bound to its own producer-issued SHA-256."
+  },
+  "detailed_semantic_contract": {
+    "triangles": 190431,
+    "vertices": 278292,
+    "degenerate_triangles_under_1e-10": 1,
+    "material_batches": 19,
+    "embedded_images": 47,
+    "bounds_y_up": {
+      "min": [-2.910788059234619, 0.0, -2.3190720622904504],
+      "max": [2.744092301249278, 4.78499972820282, 2.2659785747528076]
+    },
+    "embedded_image_descriptor_sha256": "9fa0f6eb11560614933a9b26d7c5a9da0099c54b148af454e99cb4a27a4d7e8d"
+  },
+  "lod1_semantic_contract": {
+    "triangles": 68534,
+    "observed_vertex_range": [107564, 107565],
+    "degenerate_triangles_under_1e-10": 0,
+    "material_batches": 19,
+    "embedded_images": 47,
+    "bounds_y_up": {
+      "min": [-2.9100191593170166, 0.00633692741394043, -2.3174914794928148],
+      "max": [2.742599924778397, 4.7850083112716675, 2.265200614929199]
+    },
+    "embedded_image_descriptor_sha256": "9fa0f6eb11560614933a9b26d7c5a9da0099c54b148af454e99cb4a27a4d7e8d"
+  },
+  "consumer_rule": "For a fresh rebuild, validate this semantic/source contract first, then use the fresh producer verification SHA-256 as the exact binary identity supplied to the target runtime. Never substitute a historical raw SHA-256 merely because the source commit is unchanged.",
+  "nonclaims": [
+    "Semantic continuity is not byte identity.",
+    "The observed raw-byte drift cause has not been isolated.",
+    "The narrow LOD1 one-vertex variation does not by itself establish perceptual equivalence.",
+    "Collision, navigation, target-device FPS and mass-RTS performance remain separate evidence."
+  ]
+}

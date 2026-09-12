@@ -1,0 +1,131 @@
+name: Real UC workshop in Global State RTS browser
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'assets/specialist-workshop-semantic-reference.v0.1.json'
+      - 'scripts/verify-specialist-workshop-semantic.py'
+      - 'tests/browser/workshop-real-glb.spec.js'
+      - '.github/workflows/polished-workshop-real-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-workshop-browser-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      UC_SOURCE_COMMIT: d761090dd6477db9b8dd33edac905ff924c4c6ee
+    steps:
+      - name: Check out exact Global State RTS candidate and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Fetch exact Universal Creation specialist source
+        run: |
+          rm -rf /tmp/axm-universal-creation
+          git init /tmp/axm-universal-creation
+          git -C /tmp/axm-universal-creation remote add origin https://github.com/mike-axiom-mir/axm-universal-creation.git
+          git -C /tmp/axm-universal-creation fetch --depth=1 origin "$UC_SOURCE_COMMIT"
+          git -C /tmp/axm-universal-creation checkout --detach FETCH_HEAD
+          test "$(git -C /tmp/axm-universal-creation rev-parse HEAD)" = "$UC_SOURCE_COMMIT"
+
+      - name: Provision the same explicit Blender Python route used by Universal Creation
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'numpy==1.26.4' 'Pillow>=10,<12' 'bpy==4.3.0'
+          python - <<'PY'
+          import bpy, numpy, PIL
+          print('bpy', bpy.app.version_string)
+          print('numpy', numpy.__version__)
+          print('Pillow', PIL.__version__)
+          assert bpy.app.version[:2] == (4, 3)
+          PY
+
+      - name: Rebuild specialist workshop from exact Universal Creation source
+        run: |
+          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+          rm -rf "$GITHUB_WORKSPACE/runtime-assets/workshop-specialist"
+          mkdir -p "$GITHUB_WORKSPACE/runtime-assets"
+          cd /tmp/axm-universal-creation
+          PYTHONPATH=src python -m axm_uc rts-workshop-polish "$GITHUB_WORKSPACE/runtime-assets/workshop-specialist" \
+            --python "$(command -v python)" \
+            --font /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf \
+            --resolution 768 \
+            --samples 16
+
+      - name: Verify semantic continuity and bind this fresh binary identity
+        run: |
+          PYTHONPATH=/tmp/axm-universal-creation/tools/blender \
+            python /tmp/axm-universal-creation/tools/blender/verify_rts_workshop.py "$GITHUB_WORKSPACE/runtime-assets/workshop-specialist"
+          python scripts/verify-specialist-workshop-semantic.py \
+            --reference assets/specialist-workshop-semantic-reference.v0.1.json \
+            --verification runtime-assets/workshop-specialist/verification.json \
+            --inspection runtime-assets/workshop-specialist/glb-inspection.json \
+            --write runtime-assets/workshop-specialist/semantic-continuity-receipt.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('runtime-assets/workshop-specialist')
+          gates=json.loads((root/'game-readiness-gates.json').read_text())
+          continuity=json.loads((root/'semantic-continuity-receipt.json').read_text())
+          assert gates['gates']['geometry_structure']=='TESTED'
+          assert gates['gates']['target_rts_integration']=='NOT_TESTED'
+          assert continuity['status']=='SEMANTIC_CONTINUITY_TESTED_BINARY_IDENTITY_FRESH'
+          assert continuity['historical_raw_identity_reused'] is False
+          print(json.dumps(continuity, indent=2))
+          print(json.dumps(gates, indent=2))
+          PY
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install pinned Playwright browser test route
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start actual Global State RTS shell with rebuilt UC artifact in its static root
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-real-workshop.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/improvised-workshop.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/verification.json > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-real-workshop.log
+          exit 1
+
+      - name: Render fresh real workshop through the target browser/runtime seam
+        run: npx playwright test tests/browser/workshop-real-glb.spec.js --reporter=line
+
+      - name: Preserve cross-machine evidence without publishing the large binaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-real-workshop-runtime-evidence
+          path: |
+            test-results/global-state-rts-real-workshop.png
+            test-results/global-state-rts-real-workshop-receipt.json
+            runtime-assets/workshop-specialist/verification.json
+            runtime-assets/workshop-specialist/glb-inspection.json
+            runtime-assets/workshop-specialist/game-readiness-gates.json
+            runtime-assets/workshop-specialist/semantic-continuity-receipt.json
+            /tmp/axm-global-state-rts-real-workshop.log
+          if-no-files-found: warn
+          retention-days: 14

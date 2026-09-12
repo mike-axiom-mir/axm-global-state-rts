@@ -1,6 +1,7 @@
 import { createStrategicParty } from '../sim/strategic-party.mjs';
 import { generateAsteroidEventsForHour } from './asteroid-events.mjs';
 import { createSparseWorldState } from './sparse-world-state.mjs';
+import { createTerritoryLedger } from './territory-ledger.mjs';
 import { buildWorldLandmarks } from './world-landmarks.mjs';
 import { createWorldLodGrid } from './world-lod-grid.mjs';
 import { buildWorldMapIndex } from './world-map-index.mjs';
@@ -26,6 +27,7 @@ export class GlobalWorldRuntime {
     this.grid = createWorldLodGrid();
     this.streamProfile = streamProfile || createWorldStreamProfile(this.grid);
     this.state = createSparseWorldState(this.grid, { worldSeed: this.worldSeed });
+    this.territory = createTerritoryLedger(this.grid);
     this.landmarks = buildWorldLandmarks({ worldSeed: this.worldSeed, majorCityCount, regionalCityCount });
     this.transportNetwork = buildWorldTransportNetwork(this.landmarks, { extraLinksPerCity: extraTransportLinksPerCity });
     this.mapIndex = buildWorldMapIndex(this.grid, this.landmarks, this.transportNetwork);
@@ -57,6 +59,16 @@ export class GlobalWorldRuntime {
     const snapshot = party.startTravel(destination, nowMs, options);
     this.revision += 1;
     return snapshot;
+  }
+
+  claimTerritoryCoordinate(latDeg, lonDeg, ownerId) {
+    const result = this.territory.claimCoordinate(latDeg, lonDeg, ownerId);
+    this.revision += 1;
+    return result;
+  }
+
+  territoryPercent(ownerId) {
+    return this.territory.controlPercent(ownerId);
   }
 
   routeBetweenLandmarks(fromId, toId, options = {}) {
@@ -97,6 +109,11 @@ export class GlobalWorldRuntime {
         nodes: this.transportNetwork.nodeCount,
         edges: this.transportNetwork.edgeCount,
         indexedSectors: this.mapIndex.occupiedSectorCount
+      }),
+      territory: Object.freeze({
+        revision: this.territory.revision,
+        compressedNodes: this.territory.compressedNodeCount(),
+        totalFinestCells: this.territory.totalFinestCells
       }),
       sparseMutationCount: this.state.mutatedCellCount,
       parties: Object.freeze(parties)

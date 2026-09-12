@@ -1,4 +1,4 @@
-const PNG_1X1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZCMsAAAAASUVORK5CYII=';
+const PNG_1X1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z/D/PwAG/gL+DHWJ3gAAAABJRU5ErkJggg==';
 
 function base64Bytes(value) {
   if (typeof Buffer !== 'undefined') return new Uint8Array(Buffer.from(value, 'base64'));

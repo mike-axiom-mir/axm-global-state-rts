@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { sampleLocalSurface } from '../src/world/surface-sampler.mjs';
 import {
   STARTER_REGION_HALF_SIZE_M,
+  STARTER_REGION_OPERATION_RADIUS_M,
   STARTER_REGION_SCHEMA,
   createStarterRegion,
   fixtureGlobalCoordinate,
@@ -17,6 +18,10 @@ assert.ok(regions.every(region => region.previewFixtures.some(item => item.asset
 assert.ok(regions.every(region => region.previewFixtures.some(item => item.assetId === 'resource-scrap-collector-a')));
 assert.ok(regions.every(region => region.previewFixtures.some(item => item.assetId === 'defense-light-tower-a')));
 
+assert.equal(STARTER_REGION_HALF_SIZE_M * 2, 10_800, 'local operational square is 10.8 km edge-to-edge');
+assert.equal((STARTER_REGION_HALF_SIZE_M * 2) / 6 / 60, 30, 'at the current 6 m/s Crew tuning, a straight side-to-side crossing is 30 minutes');
+assert.equal(STARTER_REGION_OPERATION_RADIUS_M, 10_000, 'surface frame leaves headroom for streamed chunks near operational corners');
+
 for (const region of regions) {
   const anchor = starterDropAnchor(region.seatId);
   assert.equal(region.origin.latDeg, anchor.latDeg);
@@ -24,6 +29,13 @@ for (const region of regions) {
   const center = sampleLocalSurface(region.frame, 0, 0, { enforceOperationalRadius: true });
   assert.ok(Number.isFinite(center.planet.elevationM));
   assert.ok(typeof center.planet.biome === 'string' && center.planet.biome.length > 0);
+  const nearOperationalCorner = sampleLocalSurface(
+    region.frame,
+    STARTER_REGION_HALF_SIZE_M * 0.96,
+    STARTER_REGION_HALF_SIZE_M * 0.96,
+    { enforceOperationalRadius: true }
+  );
+  assert.ok(Number.isFinite(nearOperationalCorner.planet.elevationM), 'streamed terrain remains sampleable near a playable corner');
   for (const fixture of [...region.previewFixtures, ...region.previewCrew]) {
     const coordinate = fixtureGlobalCoordinate(region, fixture);
     assert.ok(coordinate.latDeg >= -90 && coordinate.latDeg <= 90);

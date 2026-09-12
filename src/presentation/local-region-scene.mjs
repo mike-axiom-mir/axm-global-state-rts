@@ -1,23 +1,6 @@
 import * as THREE from '../../planet-upstream/shared/vendor/three-r160/three.module.js';
-import { sampleLocalBatch, sampleLocalSurface } from '../world/surface-sampler.mjs';
 import { STARTER_REGION_SCHEMA } from '../world/starter-region.mjs';
-
-const BIOME_COLORS = Object.freeze({
-  deep_ocean: '#101e2b',
-  ocean: '#17374a',
-  coast: '#8e8668',
-  desert: '#9d7e55',
-  savanna: '#767849',
-  grassland: '#536d45',
-  temperate_forest: '#324c38',
-  rainforest: '#273f34',
-  taiga: '#3b4b42',
-  tundra: '#696d63',
-  alpine: '#777772',
-  ice: '#b7c6c5'
-});
-
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+import { createChunkedLocalTerrain } from './chunked-local-terrain.mjs';
 
 function standardMaterial(color, options = {}) {
   return new THREE.MeshStandardMaterial({
@@ -33,95 +16,6 @@ function shadow(mesh) {
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   return mesh;
-}
-
-function buildTerrain(region, resolution = 33) {
-  const half = region.halfSizeM;
-  const step = (half * 2) / (resolution - 1);
-  const points = [];
-  for (let row = 0; row < resolution; row++) {
-    const zM = -half + row * step;
-    for (let col = 0; col < resolution; col++) {
-      const xM = -half + col * step;
-      points.push({ xM, zM });
-    }
-  }
-
-  const samples = sampleLocalBatch(region.frame, points, { enforceOperationalRadius: true });
-  const centerElevationM = sampleLocalSurface(region.frame, 0, 0, { enforceOperationalRadius: true }).planet.elevationM;
-  const positions = new Float32Array(samples.length * 3);
-  const colors = new Float32Array(samples.length * 3);
-  const heights = new Float64Array(samples.length);
-  const color = new THREE.Color();
-
-  for (let index = 0; index < samples.length; index++) {
-    const sample = samples[index];
-    const yM = sample.planet.elevationM - centerElevationM;
-    heights[index] = yM;
-    positions[index * 3] = sample.local.xM;
-    positions[index * 3 + 1] = yM;
-    positions[index * 3 + 2] = sample.local.zM;
-    color.set(BIOME_COLORS[sample.planet.biome] || '#666666');
-    if (sample.planet.elevationM > 2200) color.multiplyScalar(1.06);
-    if (sample.planet.elevationM < 0) color.multiplyScalar(0.92);
-    colors[index * 3] = color.r;
-    colors[index * 3 + 1] = color.g;
-    colors[index * 3 + 2] = color.b;
-  }
-
-  const indices = [];
-  for (let row = 0; row < resolution - 1; row++) {
-    for (let col = 0; col < resolution - 1; col++) {
-      const a = row * resolution + col;
-      const b = a + 1;
-      const c = a + resolution;
-      const d = c + 1;
-      indices.push(a, c, b, b, c, d);
-    }
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-
-  const material = new THREE.MeshStandardMaterial({
-    vertexColors: true,
-    roughness: 0.96,
-    metalness: 0.01,
-    flatShading: false
-  });
-  const mesh = new THREE.Mesh(geometry, material);
-  mesh.receiveShadow = true;
-  mesh.name = `local-terrain:${region.id}`;
-
-  function heightAt(xM, zM) {
-    const x = clamp(Number(xM) || 0, -half, half);
-    const z = clamp(Number(zM) || 0, -half, half);
-    const fx = (x + half) / step;
-    const fz = (z + half) / step;
-    const x0 = Math.min(resolution - 2, Math.max(0, Math.floor(fx)));
-    const z0 = Math.min(resolution - 2, Math.max(0, Math.floor(fz)));
-    const tx = fx - x0;
-    const tz = fz - z0;
-    const a = heights[z0 * resolution + x0];
-    const b = heights[z0 * resolution + x0 + 1];
-    const c = heights[(z0 + 1) * resolution + x0];
-    const d = heights[(z0 + 1) * resolution + x0 + 1];
-    const top = a + (b - a) * tx;
-    const bottom = c + (d - c) * tx;
-    return top + (bottom - top) * tz;
-  }
-
-  return Object.freeze({
-    mesh,
-    resolution,
-    halfSizeM: half,
-    stepM: step,
-    centerElevationM,
-    heightAt
-  });
 }
 
 function placeAtTerrain(group, terrain, xM, zM, yawDeg = 0, yOffset = 0) {
@@ -202,7 +96,10 @@ function makeScrapNode(assetId, seed = 0) {
   const colors = [0x625b51, 0x4d5454, 0x76513f, 0x4c4943];
   for (let i = 0; i < 7; i++) {
     const radius = 1.2 + ((seed + i * 7) % 5) * 0.35;
-    const piece = shadow(new THREE.Mesh(new THREE.DodecahedronGeometry(radius, 0), standardMaterial(colors[(seed + i) % colors.length], { metalness: 0.12 })));
+    const piece = shadow(new THREE.Mesh(
+      new THREE.DodecahedronGeometry(radius, 0),
+      standardMaterial(colors[(seed + i) % colors.length], { metalness: 0.12 })
+    ));
     const angle = (i / 7) * Math.PI * 2 + seed * 0.23;
     piece.position.set(Math.cos(angle) * (2 + (i % 2) * 1.7), radius * 0.55, Math.sin(angle) * (2 + ((i + 1) % 2) * 1.5));
     piece.scale.y = 0.55 + (i % 3) * 0.12;
@@ -216,7 +113,10 @@ function makeCrew(assetId, index = 0) {
   const group = new THREE.Group();
   const military = assetId.includes('rifle');
   const worker = assetId.includes('worker');
-  const body = shadow(new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 1.15, 6), standardMaterial(military ? 0x5f6657 : worker ? 0x78694f : 0x6b685d)));
+  const body = shadow(new THREE.Mesh(
+    new THREE.CylinderGeometry(0.28, 0.34, 1.15, 6),
+    standardMaterial(military ? 0x5f6657 : worker ? 0x78694f : 0x6b685d)
+  ));
   body.position.y = 0.78;
   const head = shadow(new THREE.Mesh(new THREE.SphereGeometry(0.27, 7, 5), standardMaterial(0xc79c75)));
   head.position.y = 1.56;
@@ -273,7 +173,10 @@ function makeCursor() {
     new THREE.MeshBasicMaterial({ color: 0x8be7d0, transparent: true, opacity: 0.92, side: THREE.DoubleSide, depthWrite: false })
   );
   ring.rotation.x = -Math.PI / 2;
-  const crossA = new THREE.Mesh(new THREE.BoxGeometry(9, 0.12, 0.55), new THREE.MeshBasicMaterial({ color: 0x8be7d0, transparent: true, opacity: 0.72 }));
+  const crossA = new THREE.Mesh(
+    new THREE.BoxGeometry(9, 0.12, 0.55),
+    new THREE.MeshBasicMaterial({ color: 0x8be7d0, transparent: true, opacity: 0.72 })
+  );
   const crossB = crossA.clone();
   crossB.rotation.y = Math.PI / 2;
   group.add(ring, crossA, crossB);
@@ -287,7 +190,8 @@ export function createLocalRegionScene(region) {
   scene.background = new THREE.Color(0x48535a);
   scene.fog = new THREE.FogExp2(0x536068, 0.00024);
 
-  const terrain = buildTerrain(region);
+  const terrain = createChunkedLocalTerrain(region);
+  terrain.updateFocusPoints([{ xM: 0, zM: 0 }]);
   scene.add(terrain.mesh);
 
   const hemi = new THREE.HemisphereLight(0xb8c3c0, 0x39362d, 1.55);
@@ -311,7 +215,11 @@ export function createLocalRegionScene(region) {
     terrain,
     fixtureRoot,
     cursor,
+    updateTerrainFocus(focusPoints) {
+      return terrain.updateFocusPoints(focusPoints);
+    },
     dispose() {
+      terrain.dispose();
       scene.traverse(object => {
         object.geometry?.dispose?.();
         if (Array.isArray(object.material)) object.material.forEach(material => material?.dispose?.());

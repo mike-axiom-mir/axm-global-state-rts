@@ -1,6 +1,7 @@
 import * as THREE from '../../planet-upstream/shared/vendor/three-r160/three.module.js';
 import { STARTER_REGION_SCHEMA } from '../world/starter-region.mjs';
 import { createChunkedLocalTerrain } from './chunked-local-terrain.mjs';
+import { createLocalWorldLayer } from './local-world-layer.mjs';
 
 function standardMaterial(color, options = {}) {
   return new THREE.MeshStandardMaterial({
@@ -18,8 +19,11 @@ function shadow(mesh) {
   return mesh;
 }
 
-function placeAtTerrain(group, terrain, xM, zM, yawDeg = 0, yOffset = 0) {
-  group.position.set(xM, terrain.heightAt(xM, zM) + yOffset, zM);
+function placeAtTerrain(group, terrain, xM, zM, yawDeg = 0, yOffset = 0, { trackFocus = true } = {}) {
+  const heightAt = !trackFocus && typeof terrain.peekHeightAt === 'function'
+    ? terrain.peekHeightAt.bind(terrain)
+    : terrain.heightAt.bind(terrain);
+  group.position.set(xM, heightAt(xM, zM) + yOffset, zM);
   group.rotation.y = THREE.MathUtils.degToRad(yawDeg || 0);
   return group;
 }
@@ -88,6 +92,8 @@ function makeLightTower(assetId) {
   light.position.y = 13.7;
   group.add(base, mast, lamp, light);
   group.userData.assetId = assetId;
+  group.userData.lamp = lamp;
+  group.userData.pointLight = light;
   return group;
 }
 
@@ -143,6 +149,7 @@ function makeCrew(assetId, index = 0) {
 
 function buildPreviewFixtures(scene, region, terrain) {
   const root = new THREE.Group();
+  const visualsById = new Map();
   root.name = `preview-fixtures:${region.seatId}`;
   for (const fixture of region.previewFixtures) {
     let visual;
@@ -152,18 +159,20 @@ function buildPreviewFixtures(scene, region, terrain) {
     else if (fixture.assetId === 'defense-light-tower-a') visual = makeLightTower(fixture.assetId);
     else visual = makeScrapNode(fixture.assetId, fixture.id.length);
     visual.userData.previewFixtureId = fixture.id;
-    placeAtTerrain(visual, terrain, fixture.xM, fixture.zM, fixture.yawDeg, 0.05);
+    placeAtTerrain(visual, terrain, fixture.xM, fixture.zM, fixture.yawDeg, 0.05, { trackFocus: false });
     root.add(visual);
+    visualsById.set(fixture.id, visual);
   }
 
   region.previewCrew.forEach((crew, index) => {
     const visual = makeCrew(crew.assetId, index);
     visual.userData.previewFixtureId = crew.id;
-    placeAtTerrain(visual, terrain, crew.xM, crew.zM, crew.yawDeg, 0.03);
+    placeAtTerrain(visual, terrain, crew.xM, crew.zM, crew.yawDeg, 0.03, { trackFocus: false });
     root.add(visual);
+    visualsById.set(crew.id, visual);
   });
   scene.add(root);
-  return root;
+  return { root, visualsById };
 }
 
 function makeCursor() {
@@ -182,6 +191,16 @@ function makeCursor() {
   group.add(ring, crossA, crossB);
   group.name = 'seat-local-cursor';
   return group;
+}
+
+function applyLighting(scene, lights, snapshot) {
+  const night = snapshot?.environment?.lightingPhase === 'night';
+  scene.background.set(night ? 0x091118 : 0x48535a);
+  scene.fog.color.set(night ? 0x111a21 : 0x536068);
+  scene.fog.density = night ? 0.00042 : 0.00024;
+  lights.hemi.intensity = night ? 0.46 : 1.55;
+  lights.sun.intensity = night ? 0.28 : 2.6;
+  lights.rim.intensity = night ? 0.78 : 0.45;
 }
 
 export function createLocalRegionScene(region) {
@@ -203,22 +222,61 @@ export function createLocalRegionScene(region) {
   const rim = new THREE.DirectionalLight(0x7797a7, 0.45);
   rim.position.set(900, 450, -1200);
   scene.add(rim);
+  const lights = { hemi, sun, rim };
 
-  const fixtureRoot = buildPreviewFixtures(scene, region, terrain);
+  const fixtures = buildPreviewFixtures(scene, region, terrain);
+  const worldLayer = createLocalWorldLayer(region, terrain);
+  scene.add(worldLayer.root);
   const cursor = makeCursor();
   cursor.position.set(0, terrain.heightAt(0, 0) + 0.4, 0);
   scene.add(cursor);
+  let lastSimulationRevision = -1;
+
+  function syncSimulationSnapshot(snapshot, { centerXM = 0, centerZM = 0 } = {}) {
+    if (!snapshot || snapshot.regionId !== region.id) return worldLayer.stats();
+    if (snapshot.revision !== lastSimulationRevision) {
+      lastSimulationRevision = snapshot.revision;
+      for (const crew of snapshot.crew || []) {
+        const visual = fixtures.visualsById.get(crew.id);
+        if (!visual) continue;
+        visual.visible = true;
+        placeAtTerrain(visual, terrain, crew.xM, crew.zM, visual.rotation.y * 180 / Math.PI, 0.03, { trackFocus: false });
+      }
+
+      const knownResourceIds = new Set((snapshot.resources || []).map(resource => resource.id));
+      for (const fixture of region.previewFixtures) {
+        if (fixture.kind !== 'resource-node') continue;
+        const visual = fixtures.visualsById.get(fixture.id);
+        if (visual) visual.visible = knownResourceIds.has(fixture.id);
+      }
+
+      const lightVisual = fixtures.visualsById.get(snapshot.lightTower?.id);
+      if (lightVisual) {
+        const active = Boolean(snapshot.lightTower?.active);
+        if (lightVisual.userData.pointLight) lightVisual.userData.pointLight.intensity = active ? (snapshot.environment?.lightingPhase === 'night' ? 30 : 14) : 0;
+        if (lightVisual.userData.lamp) lightVisual.userData.lamp.visible = active;
+      }
+      applyLighting(scene, lights, snapshot);
+    }
+    return worldLayer.sync({ simulationSnapshot: snapshot, centerXM, centerZM });
+  }
 
   return {
     region,
     scene,
     terrain,
-    fixtureRoot,
+    fixtureRoot: fixtures.root,
     cursor,
+    worldLayer,
     updateTerrainFocus(focusPoints) {
       return terrain.updateFocusPoints(focusPoints);
     },
+    syncSimulationSnapshot,
+    worldStats() {
+      return worldLayer.stats();
+    },
     dispose() {
+      worldLayer.dispose();
       terrain.dispose();
       scene.traverse(object => {
         object.geometry?.dispose?.();

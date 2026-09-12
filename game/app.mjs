@@ -72,7 +72,9 @@ function simulationLabel(seatId) {
   if (renderer.getSeatMode(seatId) !== 'local-rts') return '';
   const snapshot = simulationForSeat(seatId).snapshot();
   const order = snapshot.order?.type || 'idle';
-  return ` · core ${Math.round(snapshot.core.integrity)}% · scrap ${Math.floor(snapshot.storage.scrap)} · ${order}`;
+  const world = renderer.describeSeatView(seatId)?.local?.world;
+  const worldLabel = world ? ` · vision ${world.visibleCells} · features ${world.visibleFeatures}` : '';
+  return ` · core ${Math.round(snapshot.core.integrity)}% · scrap ${Math.floor(snapshot.storage.scrap)} · ${order}${worldLabel}`;
 }
 
 function rebuildSeatLabels() {
@@ -172,6 +174,7 @@ function rebuildRuntime() {
   bindAvailableInputs();
   gamepadRouter = new GamepadSeatRouter(runtime);
   renderer.setSeatIds(activeSeats(roster).map(seat => seat.id));
+  for (const seat of activeSeats(roster)) renderer.syncSeatSimulation(seat.id, simulationForSeat(seat.id).snapshot());
   renderSeatSetup();
   rebuildSeatLabels();
   setStatus(`${count} seat${count === 1 ? '' : 's'} · ${connectedGamepads().length} controller${connectedGamepads().length === 1 ? '' : 's'} detected`);
@@ -251,7 +254,11 @@ function frame(now) {
   previousTime = now;
   updateKeyboardCamera(dt);
 
-  for (const seat of activeSeats(roster || [])) simulationForSeat(seat.id).advance(dt * 1000);
+  for (const seat of activeSeats(roster || [])) {
+    const simulation = simulationForSeat(seat.id);
+    simulation.advance(dt * 1000);
+    renderer.syncSeatSimulation(seat.id, simulation.snapshot());
+  }
 
   const pads = connectedGamepads();
   const routed = gamepadRouter?.poll(pads, now);

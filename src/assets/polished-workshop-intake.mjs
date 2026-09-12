@@ -17,6 +17,12 @@ function assertString(value, label) {
   return value;
 }
 
+function assertGitSha(value, label) {
+  assertString(value, label);
+  if (!/^[0-9a-f]{40}$/.test(value)) throw new Error(`${label} must be a 40-character lowercase git sha`);
+  return value;
+}
+
 function verifyHash(path, expected, label) {
   const actual = sha256File(path);
   if (actual !== expected) throw new Error(`${label} sha256 mismatch: expected ${expected}, got ${actual}`);
@@ -47,8 +53,10 @@ function verifyReference(reference) {
 function verifyProducerEvidence(extractedDir, reference) {
   const verificationPath = join(extractedDir, 'verification.json');
   const inspectionPath = join(extractedDir, 'glb-inspection.json');
+  const integrationReceiptPath = join(extractedDir, 'integration-receipt.json');
   const verification = readJson(verificationPath);
   const inspection = readJson(inspectionPath);
+  const integrationReceipt = readJson(integrationReceiptPath);
 
   if (verification.schema !== 'axm.rts-workshop-polish/v0.1') {
     throw new Error(`unexpected producer verification schema: ${verification.schema}`);
@@ -56,6 +64,10 @@ function verifyProducerEvidence(extractedDir, reference) {
   if (verification.units !== 'meters' || verification.glb_up !== 'Y' || verification.glb_forward !== '+Z') {
     throw new Error('producer axis/unit contract does not match Global State RTS asset intake requirements');
   }
+
+  const sourceCommit = assertGitSha(integrationReceipt.source_commit, 'integration-receipt.source_commit');
+  const mergeCommit = assertGitSha(integrationReceipt.merge_commit, 'integration-receipt.merge_commit');
+  const testedTree = assertGitSha(integrationReceipt.tested_tree, 'integration-receipt.tested_tree');
 
   for (const slot of ['hero', 'lod1']) {
     const model = reference.models[slot];
@@ -74,6 +86,9 @@ function verifyProducerEvidence(extractedDir, reference) {
   if (!(lod1.triangles < hero.triangles)) throw new Error('LOD1 must contain fewer triangles than hero GLB');
 
   return Object.freeze({
+    sourceCommit,
+    mergeCommit,
+    testedTree,
     verificationSchema: verification.schema,
     units: verification.units,
     glbUp: verification.glb_up,

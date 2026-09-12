@@ -1,7 +1,7 @@
 import { WORLD_TRANSPORT_NETWORK_SCHEMA } from './world-transport-network.mjs';
 import { WORLD_SCALE_SCHEMA } from './world-scale.mjs';
 
-export const WORLD_ROUTE_PLAN_SCHEMA = 'axm.global-state-rts.world-route-plan/v0.1';
+export const WORLD_ROUTE_PLAN_SCHEMA = 'axm.global-state-rts.world-route-plan/v0.2';
 
 const MODES = Object.freeze(['foot', 'wheeled', 'tracked', 'rail']);
 
@@ -15,17 +15,37 @@ function otherEnd(edge, nodeId) {
   throw new Error(`edge ${edge.id} does not touch ${nodeId}`);
 }
 
-function edgeWeight(edge, mode) {
+function baseEdgeWeight(edge, mode) {
   const multiplier = edge.travelMultipliers[mode];
   return multiplier === null || multiplier === undefined ? Infinity : edge.angularDistanceRad * multiplier;
 }
 
+function normalizePolicyResult(result) {
+  if (result == null) return Object.freeze({ passable: true, multiplier: 1, reason: null });
+  if (typeof result !== 'object') throw new TypeError('edgePolicy must return an object, null, or undefined');
+  const passable = result.passable !== false;
+  const multiplier = result.multiplier == null ? 1 : Number(result.multiplier);
+  if (!passable) return Object.freeze({ ...result, passable: false, multiplier: Infinity });
+  if (!Number.isFinite(multiplier) || multiplier <= 0) throw new RangeError('edgePolicy multiplier must be finite and > 0 for passable edges');
+  return Object.freeze({ ...result, passable: true, multiplier });
+}
+
+function effectiveEdgeWeight(edge, mode, edgePolicy) {
+  const base = baseEdgeWeight(edge, mode);
+  if (!Number.isFinite(base)) return Object.freeze({ weight: Infinity, policy: Object.freeze({ passable: false, multiplier: Infinity, reason: 'mode-not-supported' }) });
+  const policy = edgePolicy ? normalizePolicyResult(edgePolicy(edge, mode)) : Object.freeze({ passable: true, multiplier: 1, reason: null });
+  if (!policy.passable) return Object.freeze({ weight: Infinity, policy });
+  return Object.freeze({ weight: base * policy.multiplier, policy });
+}
+
 export function planLandmarkRoute(network, worldScale, fromId, toId, {
-  mode = 'foot'
+  mode = 'foot',
+  edgePolicy = null
 } = {}) {
   if (!network || network.schema !== WORLD_TRANSPORT_NETWORK_SCHEMA) throw new TypeError('valid transport network required');
   if (!worldScale || worldScale.schema !== WORLD_SCALE_SCHEMA) throw new TypeError('valid world scale required');
   if (!MODES.includes(mode)) throw new RangeError(`unsupported route mode: ${mode}`);
+  if (edgePolicy !== null && typeof edgePolicy !== 'function') throw new TypeError('edgePolicy must be a function or null');
   if (!network.nodeIds.includes(fromId)) throw new RangeError(`unknown fromId: ${fromId}`);
   if (!network.nodeIds.includes(toId)) throw new RangeError(`unknown toId: ${toId}`);
 
@@ -35,15 +55,24 @@ export function planLandmarkRoute(network, worldScale, fromId, toId, {
       mode,
       fromId,
       toId,
+      reachable: true,
       nodeIds: Object.freeze([fromId]),
       edgeIds: Object.freeze([]),
       totalAngularDistanceRad: 0,
       weightedAngularDistanceRad: 0,
-      travelSeconds: 0
+      travelSeconds: 0,
+      edgePolicyApplied: Boolean(edgePolicy),
+      edgePolicies: Object.freeze([])
     });
   }
 
   const edges = edgeById(network);
+  const evaluated = new Map();
+  const evaluate = edge => {
+    const key = `${edge.id}|${mode}`;
+    if (!evaluated.has(key)) evaluated.set(key, effectiveEdgeWeight(edge, mode, edgePolicy));
+    return evaluated.get(key);
+  };
   const distances = new Map(network.nodeIds.map(id => [id, Infinity]));
   const previous = new Map();
   const remaining = new Set(network.nodeIds);
@@ -65,11 +94,11 @@ export function planLandmarkRoute(network, worldScale, fromId, toId, {
 
     for (const edgeId of network.adjacency[current] || []) {
       const edge = edges.get(edgeId);
-      const weight = edgeWeight(edge, mode);
-      if (!Number.isFinite(weight)) continue;
+      const evaluation = evaluate(edge);
+      if (!Number.isFinite(evaluation.weight)) continue;
       const neighbor = otherEnd(edge, current);
       if (!remaining.has(neighbor)) continue;
-      const candidate = bestDistance + weight;
+      const candidate = bestDistance + evaluation.weight;
       if (candidate < distances.get(neighbor)) {
         distances.set(neighbor, candidate);
         previous.set(neighbor, { nodeId: current, edgeId });
@@ -88,7 +117,9 @@ export function planLandmarkRoute(network, worldScale, fromId, toId, {
       edgeIds: Object.freeze([]),
       totalAngularDistanceRad: Infinity,
       weightedAngularDistanceRad: Infinity,
-      travelSeconds: Infinity
+      travelSeconds: Infinity,
+      edgePolicyApplied: Boolean(edgePolicy),
+      edgePolicies: Object.freeze([])
     });
   }
 
@@ -106,9 +137,11 @@ export function planLandmarkRoute(network, worldScale, fromId, toId, {
   const nodeIds = reversedNodes.reverse();
   const edgeIds = reversedEdges.reverse();
   const selectedEdges = edgeIds.map(id => edges.get(id));
+  const selectedEvaluations = selectedEdges.map(edge => evaluate(edge));
   const totalAngularDistanceRad = selectedEdges.reduce((sum, edge) => sum + edge.angularDistanceRad, 0);
-  const weightedAngularDistanceRad = selectedEdges.reduce((sum, edge) => sum + edgeWeight(edge, mode), 0);
+  const weightedAngularDistanceRad = selectedEvaluations.reduce((sum, item) => sum + item.weight, 0);
   const travelSeconds = weightedAngularDistanceRad / worldScale.footAngularRateRadPerSecond;
+  const edgePolicies = edgeIds.map((edgeId, index) => Object.freeze({ edgeId, ...selectedEvaluations[index].policy }));
 
   return Object.freeze({
     schema: WORLD_ROUTE_PLAN_SCHEMA,
@@ -120,6 +153,8 @@ export function planLandmarkRoute(network, worldScale, fromId, toId, {
     edgeIds: Object.freeze(edgeIds),
     totalAngularDistanceRad,
     weightedAngularDistanceRad,
-    travelSeconds
+    travelSeconds,
+    edgePolicyApplied: Boolean(edgePolicy),
+    edgePolicies: Object.freeze(edgePolicies)
   });
 }

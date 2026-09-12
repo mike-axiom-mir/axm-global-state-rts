@@ -1,0 +1,1 @@
+The workshop's authored detail is intentionally preserved as source quality. Optimization must derive lower runtime realizations; it must not silently rewrite the high-detail source into the only canonical asset.

@@ -26,6 +26,16 @@ function validateWeather(weather) {
   return weather;
 }
 
+function validateEffects(effects) {
+  if (!effects || effects.schema !== WEATHER_GAMEPLAY_AUTHORITY_SCHEMA) throw new TypeError('weather gameplay effects required');
+  return effects;
+}
+
+function validateMode(mode) {
+  if (!MODES.includes(mode)) throw new RangeError(`unsupported weather movement mode: ${mode}`);
+  return mode;
+}
+
 function movementFor(weather, mode) {
   const wetness = clamp(weather.wetness, 0, 1);
   const intensity = clamp(weather.intensity, 0, 1);
@@ -65,12 +75,17 @@ export function describeWeatherGameplayEffects(weather) {
     lightVisionMultiplier,
     movementMultipliers,
     roadTractionMultipliers,
+    gameplayVisionApplied: true,
+    affected: Object.freeze(['crew-vision', 'light-vision', 'foot-movement', 'wheeled-traction', 'tracked-traction']),
     unaffected: Object.freeze(['food-production', 'combat-damage', 'ballistics', 'building-integrity', 'research']),
     bounds: Object.freeze({
       crewVisionMultiplier: Object.freeze([0.30, 1]),
+      lightVisionMultiplier: Object.freeze([0.78, 1]),
       footMovementMultiplier: Object.freeze([0.76, 1]),
       wheeledMovementMultiplier: Object.freeze([0.52, 1]),
-      trackedMovementMultiplier: Object.freeze([0.72, 1])
+      trackedMovementMultiplier: Object.freeze([0.72, 1]),
+      wheeledTractionMultiplier: Object.freeze([0.48, 1]),
+      trackedTractionMultiplier: Object.freeze([0.68, 1])
     }),
     authority: 'explicit-gameplay-weather-adapter-v0'
   });
@@ -87,9 +102,46 @@ export function neutralWeatherGameplayEffects() {
     lightVisionMultiplier: 1,
     movementMultipliers: Object.freeze({ foot: 1, wheeled: 1, tracked: 1 }),
     roadTractionMultipliers: Object.freeze({ foot: 1, wheeled: 1, tracked: 1 }),
+    gameplayVisionApplied: false,
+    affected: Object.freeze([]),
     unaffected: Object.freeze(['food-production', 'combat-damage', 'ballistics', 'building-integrity', 'research']),
     bounds: Object.freeze({}),
     authority: 'neutral-no-weather-gameplay-effect'
+  });
+}
+
+export function weatherAdjustedVisionRadius(baseRadiusM, effects, { source = 'crew' } = {}) {
+  const base = finite(baseRadiusM, 'baseRadiusM');
+  if (base < 0) throw new RangeError('baseRadiusM must be non-negative');
+  validateEffects(effects);
+  if (!['crew', 'light'].includes(source)) throw new RangeError('vision source must be crew or light');
+  const multiplier = source === 'light' ? effects.lightVisionMultiplier : effects.crewVisionMultiplier;
+  return base * multiplier;
+}
+
+export function weatherAdjustedMovementSpeed(baseSpeedMps, effects, mode, { traction = false } = {}) {
+  const base = finite(baseSpeedMps, 'baseSpeedMps');
+  if (base < 0) throw new RangeError('baseSpeedMps must be non-negative');
+  validateEffects(effects);
+  validateMode(mode);
+  const multiplier = traction ? effects.roadTractionMultipliers[mode] : effects.movementMultipliers[mode];
+  return base * multiplier;
+}
+
+export function weatherAdjustedRouteCost(baseCost, effects, mode, { traction = false } = {}) {
+  const base = finite(baseCost, 'baseCost');
+  if (base < 0) throw new RangeError('baseCost must be non-negative');
+  validateEffects(effects);
+  validateMode(mode);
+  const multiplier = traction ? effects.roadTractionMultipliers[mode] : effects.movementMultipliers[mode];
+  return Object.freeze({
+    baseCost: base,
+    movementMultiplier: multiplier,
+    adjustedCost: multiplier <= 0 ? Infinity : base / multiplier,
+    mode,
+    traction: Boolean(traction),
+    weatherType: effects.weatherType,
+    weatherEpoch: effects.weatherEpoch
   });
 }
 
@@ -127,8 +179,20 @@ export class WeatherGameplayAuthority {
   }
 
   multiplierForMode(mode, { traction = false } = {}) {
-    if (!MODES.includes(mode)) throw new RangeError(`unsupported weather movement mode: ${mode}`);
+    validateMode(mode);
     return traction ? this.effects.roadTractionMultipliers[mode] : this.effects.movementMultipliers[mode];
+  }
+
+  visionRadius(baseRadiusM, options = {}) {
+    return weatherAdjustedVisionRadius(baseRadiusM, this.effects, options);
+  }
+
+  movementSpeed(baseSpeedMps, mode, options = {}) {
+    return weatherAdjustedMovementSpeed(baseSpeedMps, this.effects, mode, options);
+  }
+
+  routeCost(baseCost, mode, options = {}) {
+    return weatherAdjustedRouteCost(baseCost, this.effects, mode, options);
   }
 
   snapshot() {

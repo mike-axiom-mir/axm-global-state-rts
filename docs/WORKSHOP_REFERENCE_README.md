@@ -1,0 +1,1 @@
+This repository records the polished workshop as reference evidence only. The binary remains outside the repo until a runtime derivative is proven. Preserve the source and use generated LODs for mass browser scenes.

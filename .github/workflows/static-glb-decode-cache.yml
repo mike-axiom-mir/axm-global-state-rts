@@ -1,0 +1,47 @@
+name: Static GLB decoded template cache
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/assets/cached-static-glb-runtime.mjs'
+      - 'tests/browser/static-glb-decode-cache.spec.js'
+      - '.github/workflows/static-glb-decode-cache.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  decoded-template-cache:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out target game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify cache module syntax
+        run: node --check src/assets/cached-static-glb-runtime.mjs
+      - name: Install pinned Playwright route
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start local RTS shell
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-static-glb-cache.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-static-glb-cache.log
+          exit 1
+      - name: Prove four instances use one decoded template
+        run: npx playwright test tests/browser/static-glb-decode-cache.spec.js --reporter=line

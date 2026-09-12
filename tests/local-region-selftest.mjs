@@ -32,7 +32,7 @@ for (const region of regions) {
   assert.ok(typeof center.planet.biome === 'string' && center.planet.biome.length > 0);
   assert.ok(center.planet.elevationM >= STARTER_DROP_MIN_ELEVATION_M, 'preview drop center must resolve onto dry land');
   assert.equal(region.originTerrain.biome, center.planet.biome);
-  assert.equal(region.originTerrain.elevationM, center.planet.elevationM);
+  assert.ok(Math.abs(region.originTerrain.elevationM - center.planet.elevationM) < 1e-9, 'origin terrain evidence should survive frame round-trip within floating-point tolerance');
   const nearOperationalCorner = sampleLocalSurface(
     region.frame,
     STARTER_REGION_HALF_SIZE_M * 0.96,

@@ -1,7 +1,7 @@
 import { projectLatLonToLocal } from './spatial-frame.mjs';
 
-export const WORLD_CITY_LAYOUT_SCHEMA = 'axm.global-state-rts.world-city-layout/v0.1';
-export const WORLD_CITY_SURFACE_SCHEMA = 'axm.global-state-rts.world-city-surface/v0.1';
+export const WORLD_CITY_LAYOUT_SCHEMA = 'axm.global-state-rts.world-city-layout/v0.2';
+export const WORLD_CITY_SURFACE_SCHEMA = 'axm.global-state-rts.world-city-surface/v0.2';
 
 export const CITY_LAYOUT_TUNING = Object.freeze({
   'major-city': Object.freeze({ radiusM: 3200, blockSizeM: 180, roadEvery: 4, wallBandM: 210, gateCount: 6 }),
@@ -45,6 +45,21 @@ function districtFor(radiusFraction) {
   if (radiusFraction < 0.52) return 'industry';
   if (radiusFraction < 0.78) return 'habitation';
   return 'outer';
+}
+
+function wrappedAngleDistance(a, b) {
+  const diff = Math.abs(a - b) % (Math.PI * 2);
+  return Math.min(diff, Math.PI * 2 - diff);
+}
+
+function gateAtAngle(plan, seed, angleRad) {
+  const offset = unit(seed, 'gate-offset') * Math.PI * 2;
+  const gateHalfWidth = Math.max(0.055, plan.blockSizeM * 1.15 / plan.radiusM);
+  for (let index = 0; index < plan.gateCount; index++) {
+    const gateAngle = offset + index / plan.gateCount * Math.PI * 2;
+    if (wrappedAngleDistance(angleRad, gateAngle) <= gateHalfWidth) return index;
+  }
+  return -1;
 }
 
 export function describeWorldCityLayout(landmark, { worldSeed = 'axm-global-state-rts-v0' } = {}) {
@@ -137,26 +152,43 @@ export function queryWorldCitySurface(region, landmark, {
       const key = `${gx}:${gz}`;
       const radiusFraction = radial / plan.radiusM;
       const nearWall = plan.radiusM - radial <= plan.wallBandM;
-      const road = gx % plan.roadEvery === 0 || gz % plan.roadEvery === 0;
+      const roadX = gx % plan.roadEvery === 0;
+      const roadZ = gz % plan.roadEvery === 0;
+      const road = roadX || roadZ;
       let kind;
       let assetId;
-      let district = districtFor(radiusFraction);
+      const district = districtFor(radiusFraction);
       let heightScale = 1;
+      let yawDeg;
+      let gateIndex = null;
 
       if (nearWall) {
-        kind = 'city-wall';
-        assetId = landmark.tier === 'major-city' ? 'city-wall-major-a' : 'city-wall-regional-a';
-        heightScale = landmark.tier === 'major-city' ? 1.4 : 1;
+        const radialAngle = Math.atan2(cityZ, cityX);
+        const candidateGate = gateAtAngle(plan, seed, radialAngle);
+        if (candidateGate >= 0) {
+          kind = 'city-gate';
+          gateIndex = candidateGate;
+          assetId = landmark.tier === 'major-city' ? 'city-gate-major-a' : 'city-gate-regional-a';
+          heightScale = landmark.tier === 'major-city' ? 1.55 : 1.15;
+        } else {
+          kind = 'city-wall';
+          assetId = landmark.tier === 'major-city' ? 'city-wall-major-a' : 'city-wall-regional-a';
+          heightScale = landmark.tier === 'major-city' ? 1.4 : 1;
+        }
+        yawDeg = Math.atan2(cityX, cityZ) * 180 / Math.PI + 90;
       } else if (road) {
         kind = 'city-road';
         assetId = 'city-road-broken-a';
         heightScale = 0.1;
+        if (roadX && roadZ) yawDeg = plan.rotationDeg + ((hash(`${seed}|junction:${key}`) & 1) ? 90 : 0);
+        else yawDeg = plan.rotationDeg + (roadX ? 90 : 0);
       } else {
         kind = 'city-block';
         assetId = choose(DISTRICT_ASSETS[district], seed, `asset:${key}`);
         heightScale = district === 'core'
           ? 1.25 + unit(seed, `height:${key}`) * 1.75
           : 0.65 + unit(seed, `height:${key}`) * 0.85;
+        yawDeg = plan.rotationDeg + (unit(seed, `yaw:${key}`) - 0.5) * 8;
       }
 
       elements.push(Object.freeze({
@@ -166,10 +198,11 @@ export function queryWorldCitySurface(region, landmark, {
         district,
         kind,
         assetId,
+        gateIndex,
         xM,
         zM,
-        yawDeg: plan.rotationDeg + (unit(seed, `yaw:${key}`) - 0.5) * 8,
-        footprintM: block * (kind === 'city-road' ? 0.72 : 0.82),
+        yawDeg,
+        footprintM: block * (kind === 'city-road' ? 0.72 : kind === 'city-gate' ? 0.96 : 0.82),
         heightScale
       }));
       if (elements.length >= maxElements) break outer;

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { createStrategicParty } from '../src/sim/strategic-party.mjs';
+import { generateAsteroidEventsForHour } from '../src/world/asteroid-events.mjs';
+import { createGlobalWorldRuntime } from '../src/world/global-world-runtime.mjs';
 import { createSparseWorldState } from '../src/world/sparse-world-state.mjs';
 import { buildWorldLandmarks } from '../src/world/world-landmarks.mjs';
 import {
@@ -76,5 +78,20 @@ assert.deepEqual(landmarksB, landmarksA, 'same world seed must reproduce landmar
 assert.equal(landmarksA.majorCities.length, 3);
 assert.equal(landmarksA.regionalCities.length, 8);
 for (const city of landmarksA.all) assert.ok(city.terrain.elevationM >= 20, 'cities must be placed on land');
+
+const asteroidHourA = generateAsteroidEventsForHour({ worldSeed: 'selftest', hourIndex: 144 });
+const asteroidHourB = generateAsteroidEventsForHour({ worldSeed: 'selftest', hourIndex: 144 });
+assert.deepEqual(asteroidHourB, asteroidHourA, 'asteroid opportunities must be deterministic for a world hour');
+assert.ok(asteroidHourA.length <= 3);
+for (const event of asteroidHourA) assert.equal(event.visibility, 'undiscovered-until-legitimate-vision');
+
+const runtime = createGlobalWorldRuntime({ worldSeed: 'runtime-selftest', majorCityCount: 3, regionalCityCount: 8 });
+runtime.createParty({ id: 'large-force', location: { lat: 10, lon: 20 }, memberCount: 50_000 });
+runtime.startPartyTravel('large-force', { lat: 10, lon: 80 }, 0);
+const runtimeSnapshot = runtime.snapshot(10_000);
+assert.equal(runtimeSnapshot.parties.length, 1);
+assert.equal(runtimeSnapshot.parties[0].memberCount, 50_000);
+assert.equal(runtimeSnapshot.landmarkCounts.majorCities, 3);
+assert.deepEqual(runtime.asteroidEventsForHour(12), runtime.asteroidEventsForHour(12));
 
 console.log('global world scale/LOD/streaming/strategic travel selftest: PASS');

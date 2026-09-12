@@ -9,6 +9,10 @@ import { planLandmarkRoute } from './world-route-planner.mjs';
 import { buildWorldStreamPlan, createWorldStreamProfile } from './world-stream-plan.mjs';
 import { createWorldScale } from './world-scale.mjs';
 import { buildWorldTransportNetwork } from './world-transport-network.mjs';
+import {
+  describeWorldFeatureCell,
+  featureCellForCoordinate
+} from './world-feature-cells.mjs';
 
 export const GLOBAL_WORLD_RUNTIME_SCHEMA = 'axm.global-state-rts.global-world-runtime/v0.1';
 
@@ -73,6 +77,11 @@ export class GlobalWorldRuntime {
 
   routeBetweenLandmarks(fromId, toId, options = {}) {
     return planLandmarkRoute(this.transportNetwork, this.scale, fromId, toId, options);
+  }
+
+  featureCellAtCoordinate(latDeg, lonDeg) {
+    const cell = featureCellForCoordinate(latDeg, lonDeg);
+    return describeWorldFeatureCell(cell.key, { worldSeed: this.worldSeed });
   }
 
   advanceTo(nowMs) {

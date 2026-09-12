@@ -3,6 +3,8 @@ import { normalizedSplitLayout } from '../src/presentation/split-screen-layout.m
 import { SplitScreenPlanetRenderer } from '../src/presentation/planet-renderer.mjs';
 import { createLocalRoster, activeSeats } from '../src/session/seat-contract.mjs';
 import { LocalSeatRuntime } from '../src/session/local-seat-runtime.mjs';
+import { createLocalRegionSimulation } from '../src/sim/local-region-sim.mjs';
+import { createStarterRegion } from '../src/world/starter-region.mjs';
 
 const viewport = document.getElementById('viewport');
 const seatCountSelect = document.getElementById('seatCount');
@@ -23,8 +25,10 @@ let runtime = null;
 let gamepadRouter = null;
 let renderer = new SplitScreenPlanetRenderer(viewport, { seatIds: ['seat-1'] });
 let previousTime = performance.now();
+let nextHudRefreshAt = 0;
 let drag = null;
 const keys = new Set();
+const simulations = new Map();
 
 const KEYBOARD_ACTIONS = new Map([
   ['Enter', 'confirm'],
@@ -50,8 +54,24 @@ function currentSeatCount() {
   return Math.max(1, Math.min(4, Number(seatCountSelect.value) || 1));
 }
 
+function simulationForSeat(seatId) {
+  let simulation = simulations.get(seatId);
+  if (!simulation) {
+    simulation = createLocalRegionSimulation(createStarterRegion(seatId));
+    simulations.set(seatId, simulation);
+  }
+  return simulation;
+}
+
 function modeLabel(seatId) {
   return renderer.getSeatMode(seatId) === 'local-rts' ? 'LOCAL RTS' : 'GLOBE';
+}
+
+function simulationLabel(seatId) {
+  if (renderer.getSeatMode(seatId) !== 'local-rts') return '';
+  const snapshot = simulationForSeat(seatId).snapshot();
+  const order = snapshot.order?.type || 'idle';
+  return ` · core ${Math.round(snapshot.core.integrity)}% · scrap ${Math.floor(snapshot.storage.scrap)} · ${order}`;
 }
 
 function rebuildSeatLabels() {
@@ -64,7 +84,7 @@ function rebuildSeatLabels() {
     const label = document.createElement('div');
     label.className = 'seat-label';
     label.dataset.seatId = seat.id;
-    label.textContent = `${seat.displayName} · ${seat.kind} · ${seat.teamId} · ${modeLabel(seat.id)}`;
+    label.textContent = `${seat.displayName} · ${seat.kind} · ${seat.teamId} · ${modeLabel(seat.id)}${simulationLabel(seat.id)}`;
     label.style.left = `calc(${rect.x * 100}% + 8px)`;
     label.style.top = `calc(${rect.y * 100}% + 8px)`;
     seatLabels.appendChild(label);
@@ -129,6 +149,7 @@ function bindAvailableInputs() {
   let padCursor = 0;
 
   for (const seat of seats) {
+    simulationForSeat(seat.id);
     if (seat.kind === 'machine') {
       runtime.bindInput({ seatId: seat.id, sourceKind: 'machine' });
       continue;
@@ -155,6 +176,22 @@ function rebuildRuntime() {
   setStatus(`${count} seat${count === 1 ? '' : 's'} · ${connectedGamepads().length} controller${connectedGamepads().length === 1 ? '' : 's'} detected`);
 }
 
+function issueLocalSimulationAction(event) {
+  if (renderer.getSeatMode(event.seatId) !== 'local-rts') return null;
+  const simulation = simulationForSeat(event.seatId);
+  const view = renderer.describeSeatView(event.seatId);
+  const command = simulation.issueLocalAction(event.actionId, {
+    cursorXM: view?.local?.cursorXM ?? 0,
+    cursorZM: view?.local?.cursorZM ?? 0
+  });
+  if (!command.accepted && command.reason !== 'not-a-local-sim-action') {
+    setStatus(`${event.seatId} · ${command.reason}`);
+  } else if (command.accepted) {
+    setStatus(`${event.seatId} · ${command.order.type} · local macro order admitted`);
+  }
+  return command;
+}
+
 function handleActionResult(result) {
   if (!result) return result;
   if (!result.accepted) {
@@ -169,7 +206,11 @@ function handleActionResult(result) {
     return result;
   }
 
-  setStatus(`${result.event.seatId} · ${result.event.actionId} · ${result.rate.remaining} actions left in rolling minute`);
+  const localCommand = issueLocalSimulationAction(result.event);
+  if (localCommand && !localCommand.accepted && localCommand.reason !== 'not-a-local-sim-action') return result;
+  if (!localCommand || !localCommand.accepted) {
+    setStatus(`${result.event.seatId} · ${result.event.actionId} · ${result.rate.remaining} actions left in rolling minute`);
+  }
   return result;
 }
 
@@ -209,11 +250,17 @@ function frame(now) {
   previousTime = now;
   updateKeyboardCamera(dt);
 
+  for (const seat of activeSeats(roster || [])) simulationForSeat(seat.id).advance(dt * 1000);
+
   const pads = connectedGamepads();
   const routed = gamepadRouter?.poll(pads, now);
   for (const input of routed?.continuous || []) renderer.applyContinuousInput(input.seatId, input, dt);
   for (const result of routed?.actionResults || []) handleActionResult(result);
 
+  if (now >= nextHudRefreshAt) {
+    rebuildSeatLabels();
+    nextHudRefreshAt = now + 250;
+  }
   renderer.render();
   requestAnimationFrame(frame);
 }

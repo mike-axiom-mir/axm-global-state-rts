@@ -105,13 +105,6 @@ export class CivilizationProduction {
     this.totalProduced = {};
     this.revision = 0;
     this.lastAdvanceWorkUnits = 0;
-    this.deliverySink = null;
-  }
-
-  setDeliverySink(sink) {
-    if (sink !== null && !sink?.acceptProduction) throw new TypeError('delivery sink must expose acceptProduction');
-    this.deliverySink = sink;
-    return this.deliverySink;
   }
 
   #productionBuilding(buildingId) {
@@ -276,17 +269,9 @@ export class CivilizationProduction {
       job.revision += 1;
       produced[resourceId] = (produced[resourceId] || 0) + amount;
       this.totalProduced[resourceId] = (this.totalProduced[resourceId] || 0) + amount;
-      if (this.deliverySink) {
-        this.deliverySink.acceptProduction({
-          buildingId: job.buildingId,
-          resourceId,
-          amount,
-          workerCount: job.workerIds.size
-        });
-      }
     }
 
-    if (Object.keys(produced).length && !this.deliverySink) {
+    if (Object.keys(produced).length) {
       this.stockpile.credit(produced, {
         reason: 'aggregate-production',
         eventId: eventId || `production:${this.revision + 1}:${Math.round(this.elapsedSeconds + seconds)}`

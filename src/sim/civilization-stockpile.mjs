@@ -6,6 +6,9 @@ export const STOCKPILE_RESOURCE_IDS = Object.freeze([
   'stone',
   'timber',
   'industrial-metal',
+  'iron-rich',
+  'copper-rich',
+  'fuel-bearing',
   'rare-alloy',
   'strange-mineral',
   'gold'

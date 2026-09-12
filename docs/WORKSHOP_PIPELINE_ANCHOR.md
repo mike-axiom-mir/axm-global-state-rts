@@ -1,0 +1,1 @@
+Source-quality workshop remains immutable input to the LOD pipeline; runtime derivatives may change topology/material packing while retaining recognizable silhouette, practical-light positions, open work face and personality cues.

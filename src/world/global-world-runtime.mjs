@@ -1,6 +1,6 @@
 import { createStrategicParty } from '../sim/strategic-party.mjs';
 import { createWorldCityFabric } from '../sim/world-city-fabric.mjs';
-import { generateAsteroidEventsForHour } from './asteroid-events.mjs';
+import { createAsteroidFieldRuntime } from './asteroid-field.mjs';
 import { createSparseWorldState } from './sparse-world-state.mjs';
 import { createTerritoryLedger } from './territory-ledger.mjs';
 import { buildWorldLandmarks } from './world-landmarks.mjs';
@@ -15,7 +15,7 @@ import {
   featureCellForCoordinate
 } from './world-feature-cells.mjs';
 
-export const GLOBAL_WORLD_RUNTIME_SCHEMA = 'axm.global-state-rts.global-world-runtime/v0.1';
+export const GLOBAL_WORLD_RUNTIME_SCHEMA = 'axm.global-state-rts.global-world-runtime/v0.2';
 
 export class GlobalWorldRuntime {
   constructor({
@@ -24,7 +24,10 @@ export class GlobalWorldRuntime {
     streamProfile = null,
     majorCityCount = 3,
     regionalCityCount = 24,
-    extraTransportLinksPerCity = 2
+    extraTransportLinksPerCity = 2,
+    asteroidActiveWindowHours,
+    asteroidMaxEventsPerHour = 3,
+    asteroidMutations = []
   } = {}) {
     this.schema = GLOBAL_WORLD_RUNTIME_SCHEMA;
     this.worldSeed = String(worldSeed);
@@ -37,6 +40,12 @@ export class GlobalWorldRuntime {
     this.transportNetwork = buildWorldTransportNetwork(this.landmarks, { extraLinksPerCity: extraTransportLinksPerCity });
     this.mapIndex = buildWorldMapIndex(this.grid, this.landmarks, this.transportNetwork);
     this.cityFabric = createWorldCityFabric(this.landmarks, { worldSeed: this.worldSeed });
+    this.asteroidField = createAsteroidFieldRuntime({
+      worldSeed: this.worldSeed,
+      ...(asteroidActiveWindowHours === undefined ? {} : { activeWindowHours: asteroidActiveWindowHours }),
+      maxEventsPerHour: asteroidMaxEventsPerHour,
+      mutations: asteroidMutations
+    });
     this.parties = new Map();
     this.lastAdvanceMs = null;
     this.revision = 0;
@@ -113,12 +122,22 @@ export class GlobalWorldRuntime {
     return buildWorldStreamPlan(this.grid, focusPoints, this.streamProfile);
   }
 
-  asteroidEventsForHour(hourIndex, options = {}) {
-    return generateAsteroidEventsForHour({
-      worldSeed: this.worldSeed,
-      hourIndex,
-      ...options
-    });
+  asteroidEventsForHour(hourIndex) {
+    return this.asteroidField.rawEventsForHour(hourIndex);
+  }
+
+  visibleAsteroids(nowMs, isVisible) {
+    return this.asteroidField.visibleEvents(nowMs, { isVisible });
+  }
+
+  harvestAsteroid(eventId, requestedUnits, nowMs, options = {}) {
+    const result = this.asteroidField.harvest(eventId, requestedUnits, nowMs, options);
+    if (result.accepted) this.revision += 1;
+    return result;
+  }
+
+  asteroidFieldSummary(nowMs = null) {
+    return this.asteroidField.summary(nowMs);
   }
 
   snapshot(nowMs = null) {
@@ -153,6 +172,7 @@ export class GlobalWorldRuntime {
         compressedNodes: this.territory.compressedNodeCount(),
         totalFinestCells: this.territory.totalFinestCells
       }),
+      asteroidField: this.asteroidField.summary(nowMs),
       sparseMutationCount: this.state.mutatedCellCount,
       parties: Object.freeze(parties)
     });

@@ -377,7 +377,7 @@ export class LocalRegionSimulation {
     if (current) return current;
     const candidates = this.knownResources();
     if (!candidates.length) return null;
-    return [...candidates].sort((a, b) => distance(crew, a) - distance(b, a) || a.id.localeCompare(b.id))[0];
+    return [...candidates].sort((a, b) => distance(crew, a) - distance(crew, b) || a.id.localeCompare(b.id))[0];
   }
 
   #stepExplore(dtSeconds) {

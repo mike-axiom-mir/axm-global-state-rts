@@ -1,4 +1,4 @@
-export const CIVILIZATION_MANPOWER_SCHEMA = 'axm.global-state-rts.civilization-manpower/v0.1';
+export const CIVILIZATION_MANPOWER_SCHEMA = 'axm.global-state-rts.civilization-manpower/v0.2';
 
 export const ROLE_DEFINITIONS = Object.freeze({
   crew: Object.freeze({
@@ -121,6 +121,7 @@ export class CivilizationManpower {
     this.nextUnitSerial = 1;
     this.revision = 0;
     this.trainingReceipts = [];
+    this.casualtyReceipts = [];
     this.addCrew(crewCount);
     this.revision = 0;
     this.trainingReceipts.length = 0;
@@ -248,6 +249,39 @@ export class CivilizationManpower {
     return Object.freeze({ accepted: true, unit: unitSnapshot(unit) });
   }
 
+  removeUnits(unitIds, { reason = 'combat-casualty', eventId = null } = {}) {
+    if (!Array.isArray(unitIds)) throw new TypeError('unitIds must be an array');
+    const ids = [...new Set(unitIds.map(String))].filter(Boolean).sort();
+    const removed = [];
+    const missing = [];
+    for (const id of ids) {
+      const unit = this.units.get(id);
+      if (!unit) {
+        missing.push(id);
+        continue;
+      }
+      removed.push(unitSnapshot(unit));
+      this.units.delete(id);
+    }
+    if (removed.length) {
+      this.revision += 1;
+      this.casualtyReceipts.push(Object.freeze({
+        type: 'units-removed',
+        unitIds: Object.freeze(removed.map(unit => unit.id)),
+        reason: String(reason),
+        eventId: eventId ? String(eventId) : null,
+        revision: this.revision
+      }));
+    }
+    return Object.freeze({
+      accepted: true,
+      removed: Object.freeze(removed),
+      removedCount: removed.length,
+      missingUnitIds: Object.freeze(missing),
+      population: this.units.size
+    });
+  }
+
   roleCounts() {
     const counts = Object.fromEntries(Object.keys(ROLE_DEFINITIONS).map(role => [role, 0]));
     for (const unit of this.units.values()) counts[unit.role] += 1;
@@ -273,7 +307,8 @@ export class CivilizationManpower {
       roleCounts: this.roleCounts(),
       aggregateRoleFactors: this.aggregateRoleFactors(),
       units: Object.freeze([...this.units.values()].map(unitSnapshot).sort((a, b) => a.id.localeCompare(b.id))),
-      trainingReceipts: Object.freeze([...this.trainingReceipts])
+      trainingReceipts: Object.freeze([...this.trainingReceipts]),
+      casualtyReceipts: Object.freeze([...this.casualtyReceipts])
     });
   }
 }

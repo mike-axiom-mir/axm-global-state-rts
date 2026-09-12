@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { queryLocalInfrastructure } from '../src/world/local-infrastructure.mjs';
 import { createSurfaceFrame } from '../src/world/spatial-frame.mjs';
-import { queryWorldCitySurface } from '../src/world/world-city-layout.mjs';
+import { describeWorldCityLayout, queryWorldCitySurface } from '../src/world/world-city-layout.mjs';
 import { buildWorldLandmarks } from '../src/world/world-landmarks.mjs';
 import { buildWorldTransportNetwork } from '../src/world/world-transport-network.mjs';
 
@@ -57,18 +57,35 @@ if (railEdge.rail) {
   assert.ok(first.railSegments > 0, 'rail-eligible world edge should descend to local rail expression at its endpoint');
 }
 
-const citySurface = queryWorldCitySurface(region, anchorCity, {
+const centralCitySurface = queryWorldCitySurface(region, anchorCity, {
   centerXM: 0,
   centerZM: 0,
   radiusM: 3000,
   worldSeed,
   maxElements: 5000
 });
-assert.equal(citySurface.intersects, true);
-assert.ok(citySurface.elements.some(element => element.kind === 'city-road'), 'city grid has physical roads');
-assert.ok(citySurface.elements.some(element => element.kind === 'city-wall'), 'city perimeter has physical walls');
-assert.ok(citySurface.elements.some(element => element.kind === 'city-gate'), 'city perimeter has actual deterministic gates instead of an unbroken wall ring');
-assert.ok(citySurface.elements.filter(element => element.kind === 'city-gate').every(element => Number.isInteger(element.gateIndex)));
+assert.equal(centralCitySurface.intersects, true);
+assert.ok(centralCitySurface.elements.some(element => element.kind === 'city-road'), 'city grid has physical roads');
+
+// Walls and gates are streamed when the camera approaches the actual perimeter rather than
+// being forced into a center-only 3 km query (major cities are 3.2 km radius).
+const cityPlan = describeWorldCityLayout(anchorCity, { worldSeed });
+const perimeterKinds = [];
+for (let index = 0; index < 12; index++) {
+  const angle = index / 12 * Math.PI * 2;
+  const focusDistance = cityPlan.radiusM * 0.88;
+  const surface = queryWorldCitySurface(region, anchorCity, {
+    centerXM: Math.cos(angle) * focusDistance,
+    centerZM: Math.sin(angle) * focusDistance,
+    radiusM: 950,
+    worldSeed,
+    maxElements: 1800
+  });
+  perimeterKinds.push(...surface.elements);
+}
+assert.ok(perimeterKinds.some(element => element.kind === 'city-wall'), 'city perimeter has physical walls');
+assert.ok(perimeterKinds.some(element => element.kind === 'city-gate'), 'city perimeter has actual deterministic gates instead of an unbroken wall ring');
+assert.ok(perimeterKinds.filter(element => element.kind === 'city-gate').every(element => Number.isInteger(element.gateIndex)));
 
 const moved = queryLocalInfrastructure(region, {
   centerXM: 2500,

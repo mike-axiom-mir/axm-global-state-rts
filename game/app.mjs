@@ -26,6 +26,17 @@ let previousTime = performance.now();
 let drag = null;
 const keys = new Set();
 
+const KEYBOARD_ACTIONS = new Map([
+  ['Enter', 'confirm'],
+  [' ', 'confirm'],
+  ['Escape', 'cancel'],
+  ['Tab', 'party-menu'],
+  ['q', 'party-prev'],
+  ['e', 'party-next'],
+  ['x', 'context'],
+  ['m', 'map-toggle']
+]);
+
 function connectedGamepads() {
   if (typeof navigator.getGamepads !== 'function') return [];
   return Array.from(navigator.getGamepads()).filter(gamepad => gamepad?.connected);
@@ -39,6 +50,10 @@ function currentSeatCount() {
   return Math.max(1, Math.min(4, Number(seatCountSelect.value) || 1));
 }
 
+function modeLabel(seatId) {
+  return renderer.getSeatMode(seatId) === 'local-rts' ? 'LOCAL RTS' : 'GLOBE';
+}
+
 function rebuildSeatLabels() {
   seatLabels.replaceChildren();
   const seats = activeSeats(roster);
@@ -48,7 +63,8 @@ function rebuildSeatLabels() {
     const seat = seats[index];
     const label = document.createElement('div');
     label.className = 'seat-label';
-    label.textContent = `${seat.displayName} · ${seat.kind} · ${seat.teamId}`;
+    label.dataset.seatId = seat.id;
+    label.textContent = `${seat.displayName} · ${seat.kind} · ${seat.teamId} · ${modeLabel(seat.id)}`;
     label.style.left = `calc(${rect.x * 100}% + 8px)`;
     label.style.top = `calc(${rect.y * 100}% + 8px)`;
     seatLabels.appendChild(label);
@@ -140,25 +156,52 @@ function rebuildRuntime() {
 }
 
 function handleActionResult(result) {
-  if (!result) return;
+  if (!result) return result;
   if (!result.accepted) {
     setStatus(`${result.rate.seatId} · 100 APM cap reached · retry in ${Math.ceil(result.rate.retryAfterMs / 1000)}s`);
-    return;
+    return result;
   }
+
+  if (result.event.actionId === 'map-toggle') {
+    const mode = renderer.toggleSeatMode(result.event.seatId);
+    rebuildSeatLabels();
+    setStatus(`${result.event.seatId} · ${mode === 'local-rts' ? 'descending to LOCAL RTS' : 'returning to GLOBE'} · ${result.rate.remaining} actions left`);
+    return result;
+  }
+
   setStatus(`${result.event.seatId} · ${result.event.actionId} · ${result.rate.remaining} actions left in rolling minute`);
+  return result;
+}
+
+function submitKeyboardAction(actionId, timestampMs) {
+  const seat = roster?.[0];
+  if (!seat?.active || seat.kind !== 'human') return null;
+  return handleActionResult(runtime.submitAction({
+    seatId: seat.id,
+    sourceKind: 'keyboard-pointer',
+    actionId,
+    timestampMs
+  }));
 }
 
 function updateKeyboardCamera(dt) {
   const seat = roster?.[0];
   if (!seat?.active || seat.kind !== 'human') return;
+  let horizontal = 0;
+  let vertical = 0;
+  if (keys.has('ArrowLeft') || keys.has('a')) horizontal -= 1;
+  if (keys.has('ArrowRight') || keys.has('d')) horizontal += 1;
+  if (keys.has('ArrowUp') || keys.has('w')) vertical += 1;
+  if (keys.has('ArrowDown') || keys.has('s')) vertical -= 1;
+  if (!horizontal && !vertical) return;
+
+  if (renderer.getSeatMode('seat-1') === 'local-rts') {
+    renderer.panSeat('seat-1', horizontal, vertical, dt);
+    return;
+  }
+
   const speed = dt * 1.35;
-  let yaw = 0;
-  let pitch = 0;
-  if (keys.has('ArrowLeft') || keys.has('a')) yaw += speed;
-  if (keys.has('ArrowRight') || keys.has('d')) yaw -= speed;
-  if (keys.has('ArrowUp') || keys.has('w')) pitch += speed;
-  if (keys.has('ArrowDown') || keys.has('s')) pitch -= speed;
-  if (yaw || pitch) renderer.orbitSeat('seat-1', yaw, pitch);
+  renderer.orbitSeat('seat-1', -horizontal * speed, vertical * speed);
 }
 
 function frame(now) {
@@ -188,7 +231,13 @@ document.addEventListener('keydown', event => {
   if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'w', 'a', 's', 'd'].includes(key)) {
     event.preventDefault();
     keys.add(key);
+    return;
   }
+  if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+  const actionId = KEYBOARD_ACTIONS.get(key);
+  if (!actionId) return;
+  event.preventDefault();
+  submitKeyboardAction(actionId, performance.now());
 });
 document.addEventListener('keyup', event => {
   const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
@@ -218,6 +267,36 @@ viewport.addEventListener('pointerup', event => {
   if (drag?.id === event.pointerId) drag = null;
 });
 viewport.addEventListener('pointercancel', () => { drag = null; });
+
+const publicBridge = {
+  describeSeatView(seatId) {
+    return renderer.describeSeatView(seatId);
+  },
+  listSeats() {
+    return activeSeats(roster).map(seat => ({
+      id: seat.id,
+      index: seat.index,
+      kind: seat.kind,
+      teamId: seat.teamId,
+      apmCap: seat.apmCap,
+      observationPolicy: seat.observationPolicy,
+      commandSurface: seat.commandSurface,
+      visualOptions: seat.visualOptions
+    }));
+  },
+  submitMachineAction({ seatId, actionId, payload = null, timestampMs = performance.now() } = {}) {
+    const seat = activeSeats(roster).find(candidate => candidate.id === seatId);
+    if (!seat || seat.kind !== 'machine') throw new Error(`${seatId || 'seat'} is not an active machine user seat`);
+    return handleActionResult(runtime.submitAction({
+      seatId,
+      sourceKind: 'machine',
+      actionId,
+      payload,
+      timestampMs
+    }));
+  }
+};
+Object.defineProperty(window, '__AXM_GLOBAL_STATE_RTS__', { value: Object.freeze(publicBridge), configurable: false });
 
 rebuildRuntime();
 requestAnimationFrame(frame);

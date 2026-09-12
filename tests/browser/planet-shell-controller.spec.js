@@ -71,7 +71,7 @@ async function pulse(page, gamepadIndex, buttonIndex, holdMs = 65) {
   await page.waitForTimeout(holdMs);
 }
 
-test('four local controller seats get independent equal Planet views and one command gate each', async ({ page }) => {
+test('four local controller seats get independent globe/local views and one command gate each', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   await installVirtualGamepads(page, 4);
 
@@ -101,13 +101,24 @@ test('four local controller seats get independent equal Planet views and one com
   await expect(page.locator('#inputStatus')).toContainText('seat-3 · party-next');
 
   await pulse(page, 3, 8); // Seat 4 map toggle.
-  await expect(page.locator('#inputStatus')).toContainText('seat-4 · map-toggle');
+  await expect(page.locator('#inputStatus')).toContainText('seat-4 · descending to LOCAL RTS');
+  await expect(page.locator('[data-seat-id="seat-4"]')).toContainText('LOCAL RTS');
+  await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('GLOBE');
+  await page.waitForTimeout(800);
+
+  const cursorBefore = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatView('seat-4').local.cursorXM);
+  await page.evaluate(() => window.__AXM_TEST_GAMEPADS__.axis(3, 0, 0.85));
+  await page.waitForTimeout(180);
+  await page.evaluate(() => window.__AXM_TEST_GAMEPADS__.axis(3, 0, 0));
+  await page.waitForTimeout(80);
+  const cursorAfter = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatView('seat-4').local.cursorXM);
+  expect(Math.abs(cursorAfter - cursorBefore)).toBeGreaterThan(1);
 
   await page.screenshot({ path: 'test-results/global-state-rts-four-seat-controller.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);
 });
 
-test('machine user seat receives the same visible seat surface without a controller binding', async ({ page }) => {
+test('machine user seat receives the same visible view surface and can use the same map-toggle action', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   await installVirtualGamepads(page, 2);
 
@@ -122,6 +133,41 @@ test('machine user seat receives the same visible seat surface without a control
   const seatTypeValues = await page.locator('[data-seat-kind]').evaluateAll(selects => selects.map(select => select.value));
   expect(seatTypeValues).toEqual(['human', 'human', 'machine']);
 
+  const machineResult = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitMachineAction({
+    seatId: 'seat-3',
+    actionId: 'map-toggle',
+    timestampMs: 5000
+  }));
+  expect(machineResult.accepted).toBe(true);
+  await expect(page.locator('[data-seat-id="seat-3"]')).toContainText('LOCAL RTS');
+  await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('GLOBE');
+  await page.waitForTimeout(800);
+  const machineView = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatView('seat-3'));
+  expect(machineView.mode).toBe('local-rts');
+  expect(machineView.local.regionId).toContain('seat-3');
+
   await page.screenshot({ path: 'test-results/global-state-rts-machine-seat.png', fullPage: true });
+  expect(failures, failures.join('\n')).toEqual([]);
+});
+
+test('single-player keyboard path can enter local RTS and pan without bypassing the seat action surface', async ({ page }) => {
+  const failures = captureRuntimeFailures(page);
+  const response = await page.goto('http://127.0.0.1:4174/game/?players=1', { waitUntil: 'networkidle' });
+  expect(response?.ok()).toBe(true);
+
+  await page.keyboard.press('m');
+  await expect(page.locator('#inputStatus')).toContainText('seat-1 · descending to LOCAL RTS');
+  await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
+  await page.waitForTimeout(800);
+
+  const before = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatView('seat-1').local.targetXM);
+  await page.keyboard.down('d');
+  await page.waitForTimeout(190);
+  await page.keyboard.up('d');
+  const after = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatView('seat-1').local.targetXM);
+  expect(Math.abs(after - before)).toBeGreaterThan(1);
+
+  await page.keyboard.press('m');
+  await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('GLOBE');
   expect(failures, failures.join('\n')).toEqual([]);
 });

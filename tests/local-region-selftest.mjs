@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { sampleLocalSurface } from '../src/world/surface-sampler.mjs';
 import {
+  STARTER_DROP_MIN_ELEVATION_M,
   STARTER_REGION_HALF_SIZE_M,
   STARTER_REGION_OPERATION_RADIUS_M,
   STARTER_REGION_SCHEMA,
@@ -29,6 +30,9 @@ for (const region of regions) {
   const center = sampleLocalSurface(region.frame, 0, 0, { enforceOperationalRadius: true });
   assert.ok(Number.isFinite(center.planet.elevationM));
   assert.ok(typeof center.planet.biome === 'string' && center.planet.biome.length > 0);
+  assert.ok(center.planet.elevationM >= STARTER_DROP_MIN_ELEVATION_M, 'preview drop center must resolve onto dry land');
+  assert.equal(region.originTerrain.biome, center.planet.biome);
+  assert.equal(region.originTerrain.elevationM, center.planet.elevationM);
   const nearOperationalCorner = sampleLocalSurface(
     region.frame,
     STARTER_REGION_HALF_SIZE_M * 0.96,
@@ -45,9 +49,10 @@ for (const region of regions) {
 
 const repeated = createStarterRegion('seat-2');
 assert.deepEqual(repeated.origin, regions[1].origin);
+assert.deepEqual(repeated.originTerrain, regions[1].originTerrain);
 assert.deepEqual(
   repeated.previewFixtures.map(item => [item.id, item.assetId, item.xM, item.zM, item.yawDeg]),
   regions[1].previewFixtures.map(item => [item.id, item.assetId, item.xM, item.zM, item.yawDeg])
 );
 
-console.log('starter local-region selftest: PASS');
+console.log('starter local-region land-safe selftest: PASS');

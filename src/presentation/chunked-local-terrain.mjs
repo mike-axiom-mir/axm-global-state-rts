@@ -87,7 +87,7 @@ export function createChunkedLocalTerrain(region, {
   const cache = new Map();
   let lastPlanSignature = null;
   let lastStats = Object.freeze({ activeChunks: 0, warmChunks: 0, vertices: 0, residentChunks: 0 });
-  let autoFocusEnabled = false;
+  let autoFocusEnabled = true;
   const recentHeightQueries = [];
 
   function removeEntry(key) {

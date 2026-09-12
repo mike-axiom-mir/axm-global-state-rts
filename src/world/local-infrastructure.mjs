@@ -1,13 +1,23 @@
+import { sampleLocalSurface } from './surface-sampler.mjs';
 import { localToLatLon, projectLatLonToLocal } from './spatial-frame.mjs';
 import { queryWorldCitySurface } from './world-city-layout.mjs';
 import { buildWorldLandmarks } from './world-landmarks.mjs';
 import { buildWorldTransportNetwork } from './world-transport-network.mjs';
 import { greatCircleAngleRad, interpolateGreatCircle } from './world-scale.mjs';
 
-export const LOCAL_INFRASTRUCTURE_SCHEMA = 'axm.global-state-rts.local-infrastructure/v0.1';
+export const LOCAL_INFRASTRUCTURE_SCHEMA = 'axm.global-state-rts.local-infrastructure/v0.2';
 export const DEFAULT_LOCAL_INFRASTRUCTURE_RADIUS_M = 2200;
 export const DEFAULT_MAX_CORRIDOR_SEGMENTS = 640;
 export const DEFAULT_MAX_CITY_ELEMENTS = 1400;
+export const CORRIDOR_TERRAIN_SAMPLE_COUNT = 5;
+
+export const CORRIDOR_SURFACE_CLASSES = Object.freeze([
+  'land-road',
+  'steep-cut',
+  'causeway',
+  'bridge-span',
+  'broken-water-gap'
+]);
 
 const graphCache = new Map();
 
@@ -66,11 +76,97 @@ function roadWidth(roadClass) {
   return 7;
 }
 
+function sampleSegmentTerrain(region, segment) {
+  const samples = [];
+  for (let index = 0; index < CORRIDOR_TERRAIN_SAMPLE_COUNT; index++) {
+    const t = index / (CORRIDOR_TERRAIN_SAMPLE_COUNT - 1);
+    const xM = segment.a.xM + (segment.b.xM - segment.a.xM) * t;
+    const zM = segment.a.zM + (segment.b.zM - segment.a.zM) * t;
+    const sampled = sampleLocalSurface(region.frame, xM, zM, { enforceOperationalRadius: true });
+    samples.push(Object.freeze({
+      t,
+      xM,
+      zM,
+      elevationM: sampled.planet.elevationM,
+      biome: sampled.planet.biome
+    }));
+  }
+  return samples;
+}
+
+export function classifyLocalCorridorTerrain(region, segment) {
+  if (!region?.frame) throw new TypeError('region with surface frame required');
+  if (!segment?.a || !segment?.b || !Number.isFinite(segment.lengthM) || !segment.roadClass) {
+    throw new TypeError('corridor segment with endpoints, lengthM and roadClass required');
+  }
+
+  const samples = sampleSegmentTerrain(region, segment);
+  const elevations = samples.map(sample => sample.elevationM);
+  const waterSamples = samples.filter(sample => sample.elevationM < 0);
+  const landSamples = samples.filter(sample => sample.elevationM >= 0);
+  const waterCount = waterSamples.length;
+  const landCount = landSamples.length;
+  const maxDepthM = Math.max(0, ...waterSamples.map(sample => -sample.elevationM));
+  const reliefM = Math.max(...elevations) - Math.min(...elevations);
+  const sampleStepM = Math.max(1, segment.lengthM / (CORRIDOR_TERRAIN_SAMPLE_COUNT - 1));
+  let maxGrade = 0;
+  for (let index = 1; index < samples.length; index++) {
+    maxGrade = Math.max(maxGrade, Math.abs(samples[index].elevationM - samples[index - 1].elevationM) / sampleStepM);
+  }
+
+  let surfaceClass = 'land-road';
+  let assetId = `transport-${segment.roadClass}-surface-a`;
+  let deckElevationM = null;
+  let continuityHint = 'land-continuous';
+
+  if (waterCount === 0) {
+    if (maxGrade >= 0.22 || reliefM >= 75) {
+      surfaceClass = 'steep-cut';
+      assetId = 'transport-steep-cut-a';
+      continuityHint = 'engineered-land-cut';
+    }
+  } else if (landCount === 0) {
+    surfaceClass = 'broken-water-gap';
+    assetId = 'transport-broken-water-gap-a';
+    continuityHint = 'disconnected-until-crossing-built-or-repaired';
+  } else if (maxDepthM <= 14 && waterCount <= 3) {
+    surfaceClass = 'causeway';
+    assetId = 'transport-causeway-a';
+    deckElevationM = Math.max(0.6, ...landSamples.map(sample => sample.elevationM * 0.35 + 0.6));
+    continuityHint = 'engineered-shallow-crossing';
+  } else if ((segment.rail || segment.roadClass !== 'survivor-road') && waterCount <= 3) {
+    surfaceClass = 'bridge-span';
+    assetId = segment.rail ? 'transport-rail-road-bridge-a' : 'transport-road-bridge-a';
+    deckElevationM = Math.max(3.5, ...landSamples.map(sample => sample.elevationM + 2.2));
+    continuityHint = 'engineered-bridge-span';
+  } else {
+    surfaceClass = 'broken-water-gap';
+    assetId = 'transport-broken-water-gap-a';
+    continuityHint = 'disconnected-until-crossing-built-or-repaired';
+  }
+
+  return Object.freeze({
+    surfaceClass,
+    assetId,
+    continuityHint,
+    terrainSampleCount: samples.length,
+    waterSamples: waterCount,
+    landSamples: landCount,
+    maxDepthM,
+    reliefM,
+    maxGrade,
+    deckElevationM,
+    biomes: Object.freeze([...new Set(samples.map(sample => sample.biome))].sort()),
+    samples: Object.freeze(samples)
+  });
+}
+
 function projectCorridors(region, graph, targetCoordinate, centerXM, centerZM, radiusM, maxSegments) {
   const result = [];
   const planetRadiusM = region.frame.radiusM;
   let edgesConsidered = 0;
   let edgesIntersecting = 0;
+  let terrainSamples = 0;
 
   outer:
   for (const edge of graph.network.edges) {
@@ -104,7 +200,7 @@ function projectCorridors(region, graph, targetCoordinate, centerXM, centerZM, r
         Math.abs(midX) <= region.halfSizeM + 300 &&
         Math.abs(midZ) <= region.halfSizeM + 300
       ) {
-        result.push(Object.freeze({
+        const baseSegment = Object.freeze({
           id: `local-corridor:${edge.id}:${Math.round(((start + (end - start) * (index - 0.5) / steps) * 1_000_000))}`,
           edgeId: edge.id,
           roadClass: edge.roadClass,
@@ -113,7 +209,10 @@ function projectCorridors(region, graph, targetCoordinate, centerXM, centerZM, r
           a: Object.freeze({ xM: previousLocal.xM, zM: previousLocal.zM }),
           b: Object.freeze({ xM: local.xM, zM: local.zM }),
           lengthM: segmentLengthM
-        }));
+        });
+        const terrain = classifyLocalCorridorTerrain(region, baseSegment);
+        terrainSamples += terrain.terrainSampleCount;
+        result.push(Object.freeze({ ...baseSegment, terrain }));
         if (result.length >= maxSegments) break outer;
       }
       previousCoordinate = coordinate;
@@ -125,7 +224,8 @@ function projectCorridors(region, graph, targetCoordinate, centerXM, centerZM, r
   return Object.freeze({
     segments: Object.freeze(result),
     edgesConsidered,
-    edgesIntersecting
+    edgesIntersecting,
+    terrainSamples
   });
 }
 
@@ -187,6 +287,8 @@ export function queryLocalInfrastructure(region, {
   const cities = projectCities(region, graph, centerX, centerZ, radius, seed, maxCityElements);
   const roadSegments = corridors.segments.length;
   const railSegments = corridors.segments.filter(segment => segment.rail).length;
+  const surfaceCounts = Object.fromEntries(CORRIDOR_SURFACE_CLASSES.map(surfaceClass => [surfaceClass, 0]));
+  for (const segment of corridors.segments) surfaceCounts[segment.terrain.surfaceClass] += 1;
 
   return Object.freeze({
     schema: LOCAL_INFRASTRUCTURE_SCHEMA,
@@ -197,6 +299,11 @@ export function queryLocalInfrastructure(region, {
     graph: Object.freeze({ cityCount: graph.landmarks.all.length, edgeCount: graph.network.edgeCount }),
     roadSegments,
     railSegments,
+    bridgeSegments: surfaceCounts['bridge-span'],
+    causewaySegments: surfaceCounts.causeway,
+    brokenWaterGapSegments: surfaceCounts['broken-water-gap'],
+    steepCutSegments: surfaceCounts['steep-cut'],
+    surfaceCounts: Object.freeze(surfaceCounts),
     corridorEdgesIntersecting: corridors.edgesIntersecting,
     cityIds: cities.cityIds,
     cityElementCount: cities.elements.length,
@@ -204,6 +311,7 @@ export function queryLocalInfrastructure(region, {
     cityElements: cities.elements,
     workUnits: Object.freeze({
       edgesConsidered: corridors.edgesConsidered,
+      terrainSamples: corridors.terrainSamples,
       cityQueries: cities.cityQueries,
       citySurfaceCells: cities.cityWorkUnits,
       outputElements: roadSegments + cities.elements.length

@@ -1,4 +1,4 @@
-export const AGGREGATE_CITY_SCHEMA = 'axm.global-state-rts.aggregate-city/v0.1';
+export const AGGREGATE_CITY_SCHEMA = 'axm.global-state-rts.aggregate-city/v0.2';
 
 function finite(value, label) {
   if (!Number.isFinite(value)) throw new TypeError(`${label} must be finite`);
@@ -42,7 +42,11 @@ function tierTuning(tier) {
       repairMaterialPerIntegrity: 280,
       trainingMaterialPerUnit: 4.5,
       trainingFoodPerUnit: 2.0,
-      maxTrainingPerSecond: 0.55
+      maxTrainingPerSecond: 0.55,
+      minimumHomeDefenseRatio: 0.04,
+      maxRaidFraction: 0.35,
+      raidFoodPerUnit: 1.25,
+      raidMaterialPerUnit: 1.10
     });
   }
   return Object.freeze({
@@ -57,7 +61,22 @@ function tierTuning(tier) {
     repairMaterialPerIntegrity: 110,
     trainingMaterialPerUnit: 3.4,
     trainingFoodPerUnit: 1.6,
-    maxTrainingPerSecond: 0.18
+    maxTrainingPerSecond: 0.18,
+    minimumHomeDefenseRatio: 0.025,
+    maxRaidFraction: 0.28,
+    raidFoodPerUnit: 1.0,
+    raidMaterialPerUnit: 0.80
+  });
+}
+
+function raidSnapshot(raid) {
+  return Object.freeze({
+    raidId: raid.raidId,
+    targetId: raid.targetId,
+    units: raid.units,
+    foodCost: raid.foodCost,
+    materialCost: raid.materialCost,
+    dispatchedAtSeconds: raid.dispatchedAtSeconds
   });
 }
 
@@ -99,6 +118,10 @@ export class AggregateCity {
     this.readiness = 1;
     this.starvationPressure = 0;
     this.expansionIntent = 0;
+    this.activeRaids = new Map();
+    this.totalRaidUnitsDispatched = 0;
+    this.totalRaidUnitsReturned = 0;
+    this.totalRaidUnitsLost = 0;
   }
 
   provoke(attackerId) {
@@ -112,7 +135,7 @@ export class AggregateCity {
 
   clearProvocation() {
     this.provokedBy = null;
-    this.responseState = 'dormant-defense';
+    this.responseState = this.activeRaids.size ? 'mobilized-expedition' : 'dormant-defense';
     this.revision += 1;
   }
 
@@ -122,6 +145,85 @@ export class AggregateCity {
     this.infrastructureIntegrity = clamp(this.infrastructureIntegrity - infrastructure, 0, 100);
     this.defenseUnits = Math.max(0, this.defenseUnits - defenseUnits);
     this.revision += 1;
+  }
+
+  raidCapacity() {
+    const minimumHomeDefense = Math.floor(this.population * this.tuning.minimumHomeDefenseRatio);
+    const availableAboveHome = Math.max(0, this.defenseUnits - minimumHomeDefense);
+    const fractionCap = Math.floor(this.defenseUnits * this.tuning.maxRaidFraction * this.readiness);
+    const byFood = Math.floor(this.food / this.tuning.raidFoodPerUnit);
+    const byMaterials = Math.floor(this.materials / this.tuning.raidMaterialPerUnit);
+    return Object.freeze({
+      minimumHomeDefense,
+      availableAboveHome,
+      fractionCap,
+      byFood,
+      byMaterials,
+      dispatchableUnits: Math.max(0, Math.min(availableAboveHome, fractionCap, byFood, byMaterials))
+    });
+  }
+
+  dispatchRaid({ raidId, targetId, requestedUnits } = {}) {
+    const id = String(raidId || '');
+    const target = String(targetId || '');
+    if (!id) throw new TypeError('raidId required');
+    if (!target) throw new TypeError('targetId required');
+    if (!Number.isInteger(requestedUnits) || requestedUnits < 1) throw new RangeError('requestedUnits must be a positive integer');
+    if (this.activeRaids.has(id)) return Object.freeze({ accepted: false, reason: 'raid-id-already-active', raid: raidSnapshot(this.activeRaids.get(id)) });
+    if (this.infrastructureIntegrity <= 0) return Object.freeze({ accepted: false, reason: 'city-infrastructure-destroyed' });
+    if (this.starvationPressure >= 0.35) return Object.freeze({ accepted: false, reason: 'city-too-starved-to-expedition' });
+
+    const capacity = this.raidCapacity();
+    const committed = Math.min(requestedUnits, capacity.dispatchableUnits);
+    if (committed < 1) return Object.freeze({ accepted: false, reason: 'city-cannot-afford-raid', capacity });
+
+    const foodCost = committed * this.tuning.raidFoodPerUnit;
+    const materialCost = committed * this.tuning.raidMaterialPerUnit;
+    this.food -= foodCost;
+    this.materials -= materialCost;
+    this.defenseUnits -= committed;
+    const raid = {
+      raidId: id,
+      targetId: target,
+      units: committed,
+      foodCost,
+      materialCost,
+      dispatchedAtSeconds: this.elapsedSeconds
+    };
+    this.activeRaids.set(id, raid);
+    this.totalRaidUnitsDispatched += committed;
+    this.responseState = 'mobilized-expedition';
+    this.revision += 1;
+    return Object.freeze({ accepted: true, raid: raidSnapshot(raid), capacityBefore: capacity, city: this.snapshot() });
+  }
+
+  resolveRaid(raidId, { survivingUnits = 0 } = {}) {
+    const id = String(raidId || '');
+    if (!id) throw new TypeError('raidId required');
+    const raid = this.activeRaids.get(id);
+    if (!raid) return Object.freeze({ accepted: false, reason: 'unknown-active-raid' });
+    if (!Number.isInteger(survivingUnits) || survivingUnits < 0 || survivingUnits > raid.units) {
+      throw new RangeError('survivingUnits must be an integer from 0 through the dispatched raid size');
+    }
+
+    this.activeRaids.delete(id);
+    const room = Math.max(0, this.authorizedDefenseCap - this.defenseUnits);
+    const returned = Math.min(survivingUnits, room);
+    const lost = raid.units - survivingUnits;
+    this.defenseUnits += returned;
+    this.totalRaidUnitsReturned += returned;
+    this.totalRaidUnitsLost += lost + Math.max(0, survivingUnits - returned);
+    this.responseState = this.activeRaids.size ? 'mobilized-expedition' : (this.provokedBy ? 'mobilized-defense' : 'dormant-defense');
+    this.revision += 1;
+    return Object.freeze({
+      accepted: true,
+      raidId: id,
+      dispatchedUnits: raid.units,
+      survivingUnits,
+      returnedUnits: returned,
+      lostUnits: lost + Math.max(0, survivingUnits - returned),
+      city: this.snapshot()
+    });
   }
 
   advance(deltaSeconds) {
@@ -170,6 +272,7 @@ export class AggregateCity {
   }
 
   snapshot() {
+    const activeRaids = [...this.activeRaids.values()].sort((a, b) => a.raidId.localeCompare(b.raidId)).map(raidSnapshot);
     return Object.freeze({
       schema: AGGREGATE_CITY_SCHEMA,
       id: this.id,
@@ -188,7 +291,13 @@ export class AggregateCity {
       starvationPressure: this.starvationPressure,
       responseState: this.responseState,
       provokedBy: this.provokedBy,
-      expansionIntent: this.expansionIntent
+      expansionIntent: this.expansionIntent,
+      activeRaidCount: activeRaids.length,
+      activeRaidUnits: activeRaids.reduce((sum, raid) => sum + raid.units, 0),
+      activeRaids: Object.freeze(activeRaids),
+      totalRaidUnitsDispatched: this.totalRaidUnitsDispatched,
+      totalRaidUnitsReturned: this.totalRaidUnitsReturned,
+      totalRaidUnitsLost: this.totalRaidUnitsLost
     });
   }
 }

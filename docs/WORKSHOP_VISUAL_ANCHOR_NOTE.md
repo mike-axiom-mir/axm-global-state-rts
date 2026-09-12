@@ -1,0 +1,1 @@
+The polished workshop pack is now the visual anchor for the workshop family: miniature, layered, repaired, practical, warm-light/cold-world contrast, and personality-bearing rather than generic post-apocalypse. Future asset generation should match this level of authored detail while producing cheaper RTS derivatives.

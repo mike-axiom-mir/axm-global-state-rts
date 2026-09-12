@@ -1,3 +1,4 @@
+import { writeFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 const WORKSHOP_SHA256 = '579c14c3bf422c203e9a2d5132fd98339c8eef4499a305cb6941f90ee1aae8f9';
@@ -53,6 +54,7 @@ test('real Universal Creation workshop renders through Global State RTS static G
   const retained = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.externalAssetStatus({ assetId: 'building-workshop-a' }));
   expect(retained.sha256).toBe(WORKSHOP_SHA256);
   expect(retained.placement.uniformScale).toBe(1);
+  writeFileSync('test-results/global-state-rts-real-workshop-receipt.json', `${JSON.stringify(receipt, null, 2)}\n`);
 
   await page.mouse.move(640, 360);
   await page.mouse.wheel(0, -1000);

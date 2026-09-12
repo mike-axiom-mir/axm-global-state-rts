@@ -76,7 +76,7 @@ assert.equal(run.accepted, true);
 assert.equal(authority.meta().revision, 2);
 assert.equal(authority.meta().recordedRuns, 1);
 assert.equal(authority.leaderboard('dominance', 1)[0].runId, 'alpha-run-001');
-assert.equal(authority.leaderboard('dominance', 1)[0].dominanceScore, 1_003_100);
+assert.ok(Math.abs(authority.leaderboard('dominance', 1)[0].dominanceScore - 1_003_100) < 1e-6);
 assert.equal(authority.verifyPersistedJournal().matchesLive, true);
 
 // A new authority over the same store must reconstruct the exact state from the append-only journal.

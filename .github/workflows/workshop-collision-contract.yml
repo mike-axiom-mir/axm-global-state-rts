@@ -1,0 +1,32 @@
+name: Workshop collision footprint contract
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/assets/workshop-collision-contract.mjs'
+      - 'tests/workshop-collision-contract-selftest.mjs'
+      - '.github/workflows/workshop-collision-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  collision-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out target game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify collision module syntax
+        run: node --check src/assets/workshop-collision-contract.mjs
+      - name: Exercise real workshop fixture collision contract
+        run: node tests/workshop-collision-contract-selftest.mjs

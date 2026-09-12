@@ -1,6 +1,6 @@
 import { createAggregateCity, AGGREGATE_CITY_SCHEMA } from './aggregate-city.mjs';
 
-export const WORLD_CITY_FABRIC_SCHEMA = 'axm.global-state-rts.world-city-fabric/v0.1';
+export const WORLD_CITY_FABRIC_SCHEMA = 'axm.global-state-rts.world-city-fabric/v0.2';
 
 export class WorldCityFabric {
   constructor(landmarks, {
@@ -27,6 +27,22 @@ export class WorldCityFabric {
     if (!city) throw new RangeError(`unknown city: ${cityId}`);
     const result = city.provoke(attackerId);
     this.revision += 1;
+    return result;
+  }
+
+  dispatchRaid(cityId, options = {}) {
+    const city = this.city(cityId);
+    if (!city) throw new RangeError(`unknown city: ${cityId}`);
+    const result = city.dispatchRaid(options);
+    if (result.accepted) this.revision += 1;
+    return result;
+  }
+
+  resolveRaid(cityId, raidId, options = {}) {
+    const city = this.city(cityId);
+    if (!city) throw new RangeError(`unknown city: ${cityId}`);
+    const result = city.resolveRaid(raidId, options);
+    if (result.accepted) this.revision += 1;
     return result;
   }
 
@@ -62,7 +78,9 @@ export class WorldCityFabric {
       revision: this.revision,
       cityCount: cities.length,
       majorCityCount: cities.filter(city => city.tier === 'major-city').length,
-      mobilizedCityCount: cities.filter(city => city.responseState === 'mobilized-defense').length,
+      mobilizedCityCount: cities.filter(city => city.responseState !== 'dormant-defense').length,
+      activeRaidCount: cities.reduce((sum, city) => sum + (city.activeRaidCount || 0), 0),
+      activeRaidUnits: cities.reduce((sum, city) => sum + (city.activeRaidUnits || 0), 0),
       cities: Object.freeze(cities)
     });
   }

@@ -207,8 +207,8 @@ function handleActionResult(result) {
   }
 
   const localCommand = issueLocalSimulationAction(result.event);
-  if (!localCommand?.accepted && localCommand?.reason !== 'not-a-local-sim-action') return result;
-  if (!localCommand?.accepted) {
+  if (localCommand && !localCommand.accepted && localCommand.reason !== 'not-a-local-sim-action') return result;
+  if (!localCommand || !localCommand.accepted) {
     setStatus(`${result.event.seatId} · ${result.event.actionId} · ${result.rate.remaining} actions left in rolling minute`);
   }
   return result;

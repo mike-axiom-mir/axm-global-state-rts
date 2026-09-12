@@ -1,0 +1,75 @@
+{
+  "schema": "axm.global-state-rts.asset-requests/v0.1",
+  "status": "EXPERIMENTAL",
+  "source": "ASSET_LIST.md",
+  "world_scale": "1 local simulation unit = 1 meter",
+  "art_direction": "miniature post-apocalyptic diorama RTS; low-cost browser geometry; strong silhouettes; believable scrap construction; material-swappable modular parts; close zoom pleasant but mass-macro first",
+  "delivery_defaults": {
+    "preferred_format": "glb",
+    "axis": "+Y up",
+    "pivot": "ground-contact center unless component semantics require otherwise",
+    "faction_color": "tintable material slots or masks; do not bake faction duplicates",
+    "collision": "render mesh is not authoritative collision",
+    "provenance_required": true,
+    "acceptance": "file existence is CREATED only; runtime testing required before TESTED/ACCEPTED"
+  },
+  "requests": [
+    {"id":"crew-base-a","category":"crew","priority":0,"status":"READY","kind":"shared humanoid base","requirements":["shared skeleton","neutral survivor clothes","strong top-down silhouette","no baked faction identity"]},
+    {"id":"crew-worker-kit-a","category":"crew-kit","priority":0,"status":"READY","kind":"worker/gatherer attachment kit","requirements":["fits crew-base skeleton","backpack","hand tools","carry attachment points"]},
+    {"id":"crew-rifle-kit-a","category":"crew-kit","priority":0,"status":"READY","kind":"basic combat kit","requirements":["fits crew-base skeleton","simple rifle","helmet/chest silhouette"]},
+    {"id":"crew-driver-kit-a","category":"crew-kit","priority":0,"status":"READY","kind":"vehicle crew role kit","requirements":["fits crew-base skeleton","subtle licensed-driver cue"]},
+    {"id":"crew-citizen-kit-a","category":"crew-kit","priority":0,"status":"READY","kind":"economic specialist kit","requirements":["fits crew-base skeleton","workwear","nonmilitary silhouette"]},
+
+    {"id":"building-settlement-core-a","category":"continuity-building","priority":0,"status":"READY","kind":"small settlement continuity anchor","requirements":["substantial improvised construction","clear doors/working area","readable from RTS camera"]},
+    {"id":"building-workshop-a","category":"continuity-building","priority":0,"status":"READY","kind":"general fabrication workshop","requirements":["industrial silhouette","large access opening","material-swappable shell"]},
+    {"id":"building-training-hall-a","category":"continuity-building","priority":0,"status":"READY","kind":"training/licensing building","requirements":["yard or instructional silhouette","not military-faction specific"]},
+    {"id":"building-housing-a","category":"continuity-building","priority":0,"status":"READY","kind":"compact habitation module","requirements":["clusterable","variant-friendly"]},
+    {"id":"building-storage-depot-a","category":"logistics-building","priority":0,"status":"READY","kind":"general storage depot","requirements":["visually distinct from continuity anchors","stack/cargo cues"]},
+
+    {"id":"resource-farm-field-kit-a","category":"food-building","priority":0,"status":"READY","kind":"open farm kit","requirements":["large vulnerable footprint","field rows","small shed/markers"]},
+    {"id":"resource-greenhouse-scrap-a","category":"food-building","priority":0,"status":"READY","kind":"scrap greenhouse","requirements":["improvised frame","dirty glass/poly panels","compact dense food silhouette"]},
+    {"id":"resource-scrap-collector-a","category":"resource-building","priority":0,"status":"READY","kind":"surface scrap sorting point","requirements":["cheap-looking","non-continuity","sorting tables/bins"]},
+    {"id":"resource-mine-head-a","category":"resource-building","priority":0,"status":"READY","kind":"shallow mine head","requirements":["compact","non-continuity","winch/shaft cue"]},
+    {"id":"resource-deep-mine-rig-a","category":"resource-building","priority":0,"status":"READY","kind":"expensive deep mine rig","requirements":["large machinery","power/cable cues","visibly high investment"]},
+
+    {"id":"defense-wall-scrap-kit-a","category":"defense","priority":0,"status":"READY","kind":"modular wall kit","requirements":["straight","corner","end","gate","material-swappable"]},
+    {"id":"defense-light-tower-a","category":"defense","priority":0,"status":"READY","kind":"night vision/light tower","requirements":["separate emissive lamp node","clear light direction","thin readable silhouette"]},
+    {"id":"defense-watch-post-a","category":"defense","priority":0,"status":"READY","kind":"small observation post","requirements":["cheap construction","non-continuity"]},
+    {"id":"defense-turret-base-a","category":"defense","priority":0,"status":"READY","kind":"universal turret base","requirements":["named weapon hardpoint","works with multiple weapon modules"]},
+
+    {"id":"vehicle-scrap-truck-a","category":"vehicle","priority":0,"status":"READY","kind":"basic cargo truck","requirements":["separate wheel nodes","cargo hardpoint","simple rugged cab"]},
+    {"id":"vehicle-scout-buggy-a","category":"vehicle","priority":0,"status":"READY","kind":"light scout buggy","requirements":["open frame","strong small silhouette","separate wheel nodes"]},
+    {"id":"vehicle-cargo-trailer-a","category":"vehicle-module","priority":0,"status":"READY","kind":"towable cargo trailer","requirements":["universal hitch","cargo volume readable"]},
+
+    {"id":"weapon-rifle-a","category":"weapon","priority":0,"status":"READY","kind":"basic crew rifle","requirements":["simple silhouette","shared crew grip compatibility"]},
+    {"id":"weapon-machinegun-module-a","category":"weapon-module","priority":0,"status":"READY","kind":"mounted machine gun","requirements":["fits turret/vehicle hardpoint"]},
+    {"id":"weapon-mortar-a","category":"weapon","priority":0,"status":"READY","kind":"light indirect-fire weapon","requirements":["crew-served or emplacement-compatible"]},
+
+    {"id":"resource-node-scrap-a","category":"resource-visual","priority":0,"status":"READY","kind":"scrap pile family","requirements":["4-6 variants","deterministic scatter friendly","cheap geometry"]},
+    {"id":"resource-node-stone-a","category":"resource-visual","priority":0,"status":"READY","kind":"stone/ore outcrop family","requirements":["4-6 variants","cheap geometry"]},
+    {"id":"resource-node-timber-a","category":"resource-visual","priority":0,"status":"READY","kind":"harvestable timber family","requirements":["standing/fallen variants","Foundation Planet biome compatible"]},
+    {"id":"impact-asteroid-common-a","category":"world-event-visual","priority":0,"status":"READY","kind":"small asteroid and crater kit","requirements":["rock variants","shallow crater or decal insert","no persistent debris requirement"]},
+    {"id":"impact-asteroid-rare-a","category":"world-event-visual","priority":0,"status":"READY","kind":"rare asteroid family","requirements":["3 variants","visually unusual but grounded","material slot separated from rock shell"]},
+    {"id":"environment-road-scrap-a","category":"environment","priority":0,"status":"READY","kind":"rough road/path kit","requirements":["straight/curve/junction or tiling surface","cheap repetition"]},
+    {"id":"environment-ruin-small-a","category":"environment","priority":0,"status":"READY","kind":"small modular old-world ruin kit","requirements":["broken wall","slab","doorway","column","scatterable"]},
+
+    {"id":"mat-scrap-steel","category":"material","priority":0,"status":"READY","kind":"mixed scrap steel","requirements":["dents","mismatched panels","repair welds","tileable/atlas-friendly"]},
+    {"id":"mat-rusted-steel","category":"material","priority":0,"status":"READY","kind":"weathered steel","requirements":["readable rust","not visual noise"]},
+    {"id":"mat-painted-metal","category":"material","priority":0,"status":"READY","kind":"old painted metal","requirements":["chipped","tint-friendly"]},
+    {"id":"mat-aluminum-salvage","category":"material","priority":0,"status":"READY","kind":"salvaged light alloy","requirements":["bright worn metal","distinct from steel"]},
+    {"id":"mat-concrete-broken","category":"material","priority":0,"status":"READY","kind":"broken concrete","requirements":["aggregate/chips","building/wall reuse"]},
+    {"id":"mat-brick-ruined","category":"material","priority":0,"status":"READY","kind":"ruined brick","requirements":["old-world city use"]},
+    {"id":"mat-wood-reclaimed","category":"material","priority":0,"status":"READY","kind":"reclaimed wood","requirements":["mixed boards","repair character"]},
+    {"id":"mat-rubber-worn","category":"material","priority":0,"status":"READY","kind":"worn rubber","requirements":["tire/wall reuse"]},
+    {"id":"mat-glass-dirty","category":"material","priority":0,"status":"READY","kind":"dirty damaged glass","requirements":["greenhouse/urban reuse","transparent pipeline friendly"]},
+    {"id":"mat-tarp-fabric","category":"material","priority":0,"status":"READY","kind":"tarp/canvas","requirements":["patch roofs","cargo covers","tint-friendly"]}
+  ],
+  "deferred_families": [
+    "tracked and heavy vehicle chassis",
+    "advanced weapon modules",
+    "major-city block kits",
+    "rare-material futuristic modules",
+    "comedy construction family including comic wall / fridge barricade / bathtub turret / shopping cart / sofa armor",
+    "rail and large bridge infrastructure"
+  ]
+}

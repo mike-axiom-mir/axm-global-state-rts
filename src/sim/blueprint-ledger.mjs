@@ -1,4 +1,4 @@
-export const BLUEPRINT_LEDGER_SCHEMA = 'axm.global-state-rts.blueprint-ledger/v0.2';
+export const BLUEPRINT_LEDGER_SCHEMA = 'axm.global-state-rts.blueprint-ledger/v0.3';
 
 export const BLUEPRINT_UNLOCK_SOURCES = Object.freeze([
   'research',
@@ -12,6 +12,7 @@ export const DEFAULT_BLUEPRINT_CATALOG = Object.freeze([
   Object.freeze({ id: 'building:bus-window-greenhouse', category: 'food', tier: 1 }),
   Object.freeze({ id: 'building:improvised-workshop', category: 'industry', tier: 0 }),
   Object.freeze({ id: 'building:deep-mine', category: 'industry', tier: 2 }),
+  Object.freeze({ id: 'building:asteroid-extraction-rig', category: 'industry', tier: 2 }),
   Object.freeze({ id: 'building:light-tower', category: 'vision', tier: 0 }),
   Object.freeze({ id: 'defense:comic-book-wall', category: 'defense', tier: 0 }),
   Object.freeze({ id: 'defense:bathtub-turret', category: 'defense', tier: 1 }),

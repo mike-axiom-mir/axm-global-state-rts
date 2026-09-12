@@ -104,7 +104,7 @@ function makeSeatCameraState(seatId) {
     localTargetZ: 0,
     localYaw: -0.62,
     localPitch: 0.92,
-    localDistance: 850,
+    localDistance: 360,
     cursorX: 0,
     cursorZ: 0
   };
@@ -231,10 +231,9 @@ export class SplitScreenPlanetRenderer {
 
   #panLocal(state, rightInput, forwardInput, dtSeconds, scale = 1) {
     const dt = clamp(Number(dtSeconds) || 0, 0, 0.1);
-    const magnitude = Math.hypot(rightInput, forwardInput);
-    if (!magnitude) return;
+    if (!rightInput && !forwardInput) return;
     const axes = localAxes(state.localYaw);
-    const speed = clamp(state.localDistance * 0.95, 350, 1800) * scale;
+    const speed = clamp(state.localDistance * 1.15, 180, 1400) * scale;
     const dx = (axes.rightX * rightInput + axes.forwardX * forwardInput) * speed * dt;
     const dz = (axes.rightZ * rightInput + axes.forwardZ * forwardInput) * speed * dt;
     const limit = state.localRegion.halfSizeM * 0.88;
@@ -246,7 +245,7 @@ export class SplitScreenPlanetRenderer {
     const dt = clamp(Number(dtSeconds) || 0, 0, 0.1);
     if (!rightInput && !forwardInput) return;
     const axes = localAxes(state.localYaw);
-    const speed = clamp(state.localDistance * 0.72, 240, 1000);
+    const speed = clamp(state.localDistance * 0.85, 130, 800);
     const dx = (axes.rightX * rightInput + axes.forwardX * forwardInput) * speed * dt;
     const dz = (axes.rightZ * rightInput + axes.forwardZ * forwardInput) * speed * dt;
     const limit = state.localRegion.halfSizeM * 0.96;
@@ -264,9 +263,9 @@ export class SplitScreenPlanetRenderer {
       this.#panLocal(state, Number(input.cameraX) || 0, -(Number(input.cameraY) || 0), dt);
       this.#moveLocalCursor(state, Number(input.cursorX) || 0, -(Number(input.cursorY) || 0), dt);
       state.localDistance = clamp(
-        state.localDistance + ((Number(input.zoomOut) || 0) - (Number(input.zoomIn) || 0)) * dt * 1800,
-        140,
-        3600
+        state.localDistance + ((Number(input.zoomOut) || 0) - (Number(input.zoomIn) || 0)) * dt * 1200,
+        90,
+        2600
       );
       return;
     }
@@ -304,7 +303,7 @@ export class SplitScreenPlanetRenderer {
     const state = this.seatStates.get(seatId);
     if (!state) return;
     if (state.mode === 'local-rts') {
-      state.localDistance = clamp(state.localDistance + (Number(delta) || 0) * 45, 140, 3600);
+      state.localDistance = clamp(state.localDistance + (Number(delta) || 0) * 30, 90, 2600);
       return;
     }
     state.distance = clamp(
@@ -315,7 +314,8 @@ export class SplitScreenPlanetRenderer {
   }
 
   #updateGlobeCamera(state, aspect, distanceOverride = null) {
-    const distance = distanceOverride ?? state.distance;
+    const framingScale = aspect < 1 ? Math.min(1.8, 1 / Math.max(0.1, aspect)) : 1;
+    const distance = (distanceOverride ?? state.distance) * framingScale;
     const horizontal = Math.cos(state.pitch);
     state.camera.position.set(
       Math.sin(state.yaw) * horizontal * distance,
@@ -329,7 +329,8 @@ export class SplitScreenPlanetRenderer {
 
   #updateLocalCamera(state, aspect, distanceOverride = null) {
     const bundle = this.#ensureLocalRegion(state);
-    const distance = distanceOverride ?? state.localDistance;
+    const framingScale = aspect < 0.85 ? Math.min(1.45, 0.85 / Math.max(0.1, aspect)) : 1;
+    const distance = (distanceOverride ?? state.localDistance) * framingScale;
     const targetY = bundle.terrain.heightAt(state.localTargetX, state.localTargetZ);
     const horizontal = Math.cos(state.localPitch) * distance;
     state.localCamera.position.set(
@@ -357,7 +358,7 @@ export class SplitScreenPlanetRenderer {
     }
 
     const globeClose = PLANET_PRESENTATION.globeExpression.previewRadiusSceneUnits * 1.20;
-    const localWide = Math.max(2600, state.localDistance * 2.8);
+    const localWide = Math.max(1400, state.localDistance * 3.4);
     if (transition.to === 'local-rts') {
       if (t < 0.48) return { mode: 'globe', distanceOverride: lerp(state.distance, globeClose, t / 0.48) };
       return { mode: 'local-rts', distanceOverride: lerp(localWide, state.localDistance, (t - 0.48) / 0.52) };

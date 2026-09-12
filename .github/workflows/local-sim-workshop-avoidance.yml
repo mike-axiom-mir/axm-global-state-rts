@@ -1,0 +1,32 @@
+name: Local simulation workshop avoidance
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/sim/local-region-sim.mjs'
+      - 'tests/local-region-workshop-avoidance-selftest.mjs'
+      - '.github/workflows/local-sim-workshop-avoidance.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-workshop-avoidance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out target game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify live simulation syntax
+        run: node --check src/sim/local-region-sim.mjs
+      - name: Prove actual LocalRegionSimulation crew detours around workshop
+        run: node tests/local-region-workshop-avoidance-selftest.mjs

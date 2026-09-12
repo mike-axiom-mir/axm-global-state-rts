@@ -1,10 +1,17 @@
 import { STARTER_REGION_SCHEMA } from '../world/starter-region.mjs';
+import {
+  WORKSHOP_COLLISION_ASSET_ID,
+  pointInsideWorkshopFootprint,
+  workshopCollisionForFixture
+} from '../assets/workshop-collision-contract.mjs';
+import { moveTowardAvoidingWorkshop } from './workshop-avoidance.mjs';
 
 export const LOCAL_REGION_SIM_SCHEMA = 'axm.global-state-rts.local-region-sim/v0.2';
 export const LOCAL_REGION_SNAPSHOT_SCHEMA = 'axm.global-state-rts.local-region-snapshot/v0.2';
 export const LOCAL_REGION_DEFAULT_STEP_MS = 250;
 
 const EPSILON = 1e-9;
+const WORKSHOP_CREW_CLEARANCE_M = 0.45;
 const LIGHTING_PHASES = Object.freeze(['day', 'night']);
 
 function finite(value, label) {
@@ -128,6 +135,8 @@ export class LocalRegionSimulation {
     const lightFixture = fixture(region, 'light');
     const knownScrap = fixture(region, 'scrap-a');
     const hiddenScrap = fixture(region, 'scrap-b');
+    const workshopFixture = region.previewFixtures.find(item => item.assetId === WORKSHOP_COLLISION_ASSET_ID) || null;
+    this.workshopCollision = workshopFixture ? workshopCollisionForFixture(workshopFixture) : null;
 
     this.core = {
       id: coreFixture.id,
@@ -257,6 +266,14 @@ export class LocalRegionSimulation {
     if (Math.abs(xM) > this.region.halfSizeM || Math.abs(zM) > this.region.halfSizeM) {
       return Object.freeze({ accepted: false, reason: 'explore-target-outside-local-region' });
     }
+    if (this.workshopCollision && pointInsideWorkshopFootprint(
+      this.workshopCollision,
+      xM,
+      zM,
+      { paddingM: WORKSHOP_CREW_CLEARANCE_M }
+    )) {
+      return Object.freeze({ accepted: false, reason: 'explore-target-blocked-by-workshop' });
+    }
     this.orderSequence += 1;
     this.order = {
       id: `order-${this.orderSequence}`,
@@ -344,6 +361,17 @@ export class LocalRegionSimulation {
     this.revision += 1;
   }
 
+  #moveCrewToward(crew, target, maxDistanceM) {
+    if (!this.workshopCollision) return moveToward(crew, target, maxDistanceM);
+    return moveTowardAvoidingWorkshop(
+      crew,
+      target,
+      maxDistanceM,
+      this.workshopCollision,
+      { clearanceM: WORKSHOP_CREW_CLEARANCE_M }
+    ).arrived;
+  }
+
   #resourceForCrew(crew) {
     const current = this.resources.find(resource => resource.id === crew.targetId && resource.known && resource.amount > EPSILON);
     if (current) return current;
@@ -359,7 +387,7 @@ export class LocalRegionSimulation {
     for (const crew of this.crew) {
       crew.phase = 'to-explore';
       crew.targetId = this.order.id;
-      if (moveToward(crew, target, maxMove)) {
+      if (this.#moveCrewToward(crew, target, maxMove)) {
         crew.phase = 'idle';
         crew.targetId = null;
         arrived += 1;
@@ -376,7 +404,7 @@ export class LocalRegionSimulation {
       if (crew.phase === 'deliver' || crew.carrying >= this.tuning.carryCapacity - EPSILON) {
         crew.phase = 'deliver';
         crew.targetId = this.storage.id;
-        if (!moveToward(crew, this.storage, maxMove)) continue;
+        if (!this.#moveCrewToward(crew, this.storage, maxMove)) continue;
         const availableCapacity = Math.max(0, this.storage.capacity - this.storage.scrap);
         const delivered = Math.min(crew.carrying, availableCapacity);
         this.storage.scrap += delivered;
@@ -410,7 +438,7 @@ export class LocalRegionSimulation {
 
       crew.targetId = resource.id;
       if (crew.phase !== 'gather') crew.phase = 'to-resource';
-      if (!moveToward(crew, resource, maxMove)) continue;
+      if (!this.#moveCrewToward(crew, resource, maxMove)) continue;
       crew.phase = 'gather';
       const carryRoom = Math.max(0, this.tuning.carryCapacity - crew.carrying);
       const gathered = Math.min(gatherPerStep, carryRoom, resource.amount);
@@ -437,7 +465,7 @@ export class LocalRegionSimulation {
     for (const crew of this.crew) {
       crew.targetId = this.core.id;
       if (crew.phase !== 'repair') crew.phase = 'to-core';
-      if (!moveToward(crew, this.core, maxMove)) continue;
+      if (!this.#moveCrewToward(crew, this.core, maxMove)) continue;
       crew.phase = 'repair';
       if (this.storage.scrap <= EPSILON) continue;
       const wantedIntegrity = this.tuning.repairIntegrityPerSecond * dtSeconds;

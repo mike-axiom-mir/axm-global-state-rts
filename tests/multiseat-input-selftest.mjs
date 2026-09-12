@@ -51,11 +51,13 @@ assert.equal(rateGate.snapshot('seat-human', 60_000).maxActions, rateGate.snapsh
 
 const runtime = new LocalSeatRuntime({ roster });
 runtime.bindInput({ seatId: 'seat-1', sourceKind: 'keyboard-pointer' });
+runtime.bindInput({ seatId: 'seat-1', sourceKind: 'gamepad', deviceId: 2 });
 runtime.bindInput({ seatId: 'seat-2', sourceKind: 'gamepad', deviceId: 0 });
 runtime.bindInput({ seatId: 'seat-3', sourceKind: 'machine' });
 runtime.bindInput({ seatId: 'seat-4', sourceKind: 'gamepad', deviceId: 1 });
+assert.equal(runtime.bindingsForSeat('seat-1').length, 2, 'Seat 1 keeps keyboard and controller paths together');
 assert.throws(() => runtime.bindInput({ seatId: 'seat-2', sourceKind: 'keyboard-pointer' }), /seat-1/);
-assert.throws(() => runtime.bindInput({ seatId: 'seat-3', sourceKind: 'gamepad', deviceId: 2 }), /machine seat/);
+assert.throws(() => runtime.bindInput({ seatId: 'seat-3', sourceKind: 'gamepad', deviceId: 3 }), /machine seat/);
 assert.throws(() => runtime.bindInput({ seatId: 'seat-4', sourceKind: 'gamepad', deviceId: 0 }), /already bound/);
 
 const machineAction = runtime.submitAction({

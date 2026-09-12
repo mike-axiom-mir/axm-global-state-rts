@@ -5,13 +5,14 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/serve.mjs",
-    "test": "npm run test:spatial && npm run test:presentation && npm run test:multiseat && npm run test:region && npm run test:crew-loop && npm run test:shell",
+    "test": "npm run test:spatial && npm run test:presentation && npm run test:multiseat && npm run test:region && npm run test:crew-loop && npm run test:world && npm run test:shell",
     "test:spatial": "node tests/spatial-selftest.mjs",
     "test:presentation": "node tests/presentation-selftest.mjs",
     "test:multiseat": "node tests/multiseat-input-selftest.mjs",
     "test:region": "node tests/local-region-selftest.mjs",
     "test:crew-loop": "node tests/local-crew-loop-selftest.mjs",
-    "test:shell": "node --check game/app.mjs && node --check src/presentation/planet-renderer.mjs && node --check src/presentation/local-region-scene.mjs && node --check src/world/starter-region.mjs && node --check src/sim/local-region-sim.mjs && node --check tests/browser/planet-shell-controller.spec.js && node --check scripts/serve.mjs"
+    "test:world": "node tests/world-stream-selftest.mjs",
+    "test:shell": "node --check game/app.mjs && node --check src/presentation/planet-renderer.mjs && node --check src/presentation/local-region-scene.mjs && node --check src/world/starter-region.mjs && node --check src/world/world-scale.mjs && node --check src/world/world-lod-grid.mjs && node --check src/world/world-stream-plan.mjs && node --check src/world/procedural-cell.mjs && node --check src/world/sparse-world-state.mjs && node --check src/world/world-landmarks.mjs && node --check src/sim/local-region-sim.mjs && node --check src/sim/strategic-party.mjs && node --check tests/browser/planet-shell-controller.spec.js && node --check scripts/serve.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -2,6 +2,7 @@ import * as THREE from '../../planet-upstream/shared/vendor/three-r160/three.mod
 import { buildStaticGlbScene } from '../assets/static-glb-runtime.mjs';
 import { STARTER_REGION_SCHEMA } from '../world/starter-region.mjs';
 import { createChunkedLocalTerrain } from './chunked-local-terrain.mjs';
+import { createLocalInfrastructureLayer } from './local-infrastructure-layer.mjs';
 import { createLocalWorldLayer } from './local-world-layer.mjs';
 
 function standardMaterial(color, options = {}) {
@@ -267,6 +268,8 @@ export function createLocalRegionScene(region) {
 
   const fixtures = buildPreviewFixtures(scene, region, terrain);
   const externalAssetReceipts = new Map();
+  const infrastructureLayer = createLocalInfrastructureLayer(region, terrain);
+  scene.add(infrastructureLayer.root);
   const worldLayer = createLocalWorldLayer(region, terrain);
   scene.add(worldLayer.root);
   const cursor = makeCursor();
@@ -274,8 +277,16 @@ export function createLocalRegionScene(region) {
   scene.add(cursor);
   let lastSimulationRevision = -1;
 
+  function combinedWorldStats() {
+    return Object.freeze({
+      ...worldLayer.stats(),
+      infrastructure: infrastructureLayer.stats()
+    });
+  }
+
   function syncSimulationSnapshot(snapshot, { centerXM = 0, centerZM = 0 } = {}) {
-    if (!snapshot || snapshot.regionId !== region.id) return worldLayer.stats();
+    infrastructureLayer.sync(centerXM, centerZM);
+    if (!snapshot || snapshot.regionId !== region.id) return combinedWorldStats();
     if (snapshot.revision !== lastSimulationRevision) {
       lastSimulationRevision = snapshot.revision;
       for (const crew of snapshot.crew || []) {
@@ -300,7 +311,8 @@ export function createLocalRegionScene(region) {
       }
       applyLighting(scene, lights, snapshot);
     }
-    return worldLayer.sync({ simulationSnapshot: snapshot, centerXM, centerZM });
+    worldLayer.sync({ simulationSnapshot: snapshot, centerXM, centerZM });
+    return combinedWorldStats();
   }
 
   async function installExternalStaticAsset({ assetId, arrayBuffer, expectedSha256, uniformScale = 1 } = {}) {
@@ -347,6 +359,7 @@ export function createLocalRegionScene(region) {
     fixtureRoot: fixtures.root,
     cursor,
     worldLayer,
+    infrastructureLayer,
     updateTerrainFocus(focusPoints) {
       return terrain.updateFocusPoints(focusPoints);
     },
@@ -357,9 +370,10 @@ export function createLocalRegionScene(region) {
       return [...externalAssetReceipts.values()];
     },
     worldStats() {
-      return worldLayer.stats();
+      return combinedWorldStats();
     },
     dispose() {
+      infrastructureLayer.dispose();
       worldLayer.dispose();
       terrain.dispose();
       disposeVisual(scene);

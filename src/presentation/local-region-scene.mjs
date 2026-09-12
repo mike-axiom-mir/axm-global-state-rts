@@ -2,6 +2,7 @@ import * as THREE from '../../planet-upstream/shared/vendor/three-r160/three.mod
 import { buildStaticGlbScene } from '../assets/static-glb-runtime.mjs';
 import { STARTER_REGION_SCHEMA } from '../world/starter-region.mjs';
 import { createChunkedLocalTerrain } from './chunked-local-terrain.mjs';
+import { createLocalEnvironmentLayer } from './local-environment-layer.mjs';
 import { createLocalInfrastructureLayer } from './local-infrastructure-layer.mjs';
 import { createLocalWorldLayer } from './local-world-layer.mjs';
 
@@ -268,6 +269,8 @@ export function createLocalRegionScene(region) {
 
   const fixtures = buildPreviewFixtures(scene, region, terrain);
   const externalAssetReceipts = new Map();
+  const environmentLayer = createLocalEnvironmentLayer(region, terrain);
+  scene.add(environmentLayer.root);
   const infrastructureLayer = createLocalInfrastructureLayer(region, terrain);
   scene.add(infrastructureLayer.root);
   const worldLayer = createLocalWorldLayer(region, terrain);
@@ -280,11 +283,13 @@ export function createLocalRegionScene(region) {
   function combinedWorldStats() {
     return Object.freeze({
       ...worldLayer.stats(),
+      environment: environmentLayer.stats(),
       infrastructure: infrastructureLayer.stats()
     });
   }
 
   function syncSimulationSnapshot(snapshot, { centerXM = 0, centerZM = 0 } = {}) {
+    environmentLayer.sync(centerXM, centerZM);
     infrastructureLayer.sync(centerXM, centerZM);
     if (!snapshot || snapshot.regionId !== region.id) return combinedWorldStats();
     if (snapshot.revision !== lastSimulationRevision) {
@@ -359,6 +364,7 @@ export function createLocalRegionScene(region) {
     fixtureRoot: fixtures.root,
     cursor,
     worldLayer,
+    environmentLayer,
     infrastructureLayer,
     updateTerrainFocus(focusPoints) {
       return terrain.updateFocusPoints(focusPoints);
@@ -373,6 +379,7 @@ export function createLocalRegionScene(region) {
       return combinedWorldStats();
     },
     dispose() {
+      environmentLayer.dispose();
       infrastructureLayer.dispose();
       worldLayer.dispose();
       terrain.dispose();

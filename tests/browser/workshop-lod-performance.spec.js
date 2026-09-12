@@ -47,7 +47,7 @@ async function enterLocalRts(page, seatCount) {
   expect(modes.every(entry => entry.mode === 'local-rts')).toBe(true);
 }
 
-async function sampleRaf(page, sampleCount = 120) {
+async function sampleRaf(page, sampleCount = 90) {
   return page.evaluate(count => new Promise(resolve => {
     const intervals = [];
     let previous = null;
@@ -84,18 +84,29 @@ async function runVariant(page, { seatCount, variant, verification }) {
     if (!response.ok) throw new Error(`asset fetch failed: ${response.status}`);
     const bytes = await response.arrayBuffer();
     const started = performance.now();
-    const receipts = [];
-    for (let index = 1; index <= seatCount; index++) {
-      receipts.push(await window.__AXM_GLOBAL_STATE_RTS__.installExternalStaticAsset({
-        seatId: `seat-${index}`,
+    const seatResults = await Promise.all(Array.from({ length: seatCount }, async (_, offset) => {
+      const seatId = `seat-${offset + 1}`;
+      const seatStarted = performance.now();
+      const receipt = await window.__AXM_GLOBAL_STATE_RTS__.installExternalStaticAsset({
+        seatId,
         assetId: 'building-workshop-a',
         bytes,
         expectedSha256,
         uniformScale: 1,
         focus: true
-      }));
-    }
-    return { receipts, installMs: performance.now() - started };
+      });
+      return {
+        seatId,
+        installMs: performance.now() - seatStarted,
+        receipt
+      };
+    }));
+    return {
+      receipts: seatResults.map(entry => entry.receipt),
+      perSeatInstallMs: seatResults.map(entry => ({ seatId: entry.seatId, installMs: entry.installMs })),
+      installMs: performance.now() - started,
+      strategy: 'parallel-per-seat-decode-current-runtime'
+    };
   }, { seatCount, url: `${BASE}/${config.file}`, expectedSha256 });
 
   expect(install.receipts).toHaveLength(seatCount);
@@ -129,16 +140,18 @@ async function runVariant(page, { seatCount, variant, verification }) {
       materialInstances: first.materials * seatCount,
       embeddedImageDescriptors: first.embeddedImages * seatCount
     },
+    installStrategy: install.strategy,
     installMs: install.installMs,
+    perSeatInstallMs: install.perSeatInstallMs,
     frameIntervals: summarizeIntervals(raf.intervals),
     jsHeap: raf.memory,
     screenshot: screenshotPath,
-    truthBoundary: 'CI/headless relative observation only; not target-device FPS certification.'
+    truthBoundary: 'CI/headless relative observation only; current runtime still decodes one full asset instance per seat and this is not target-device FPS certification.'
   };
 }
 
 test('real workshop detailed vs LOD1 cost/readability evidence across one and four seats', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(420_000);
   const verificationResponse = await page.request.get(VERIFICATION_URL);
   expect(verificationResponse.ok()).toBe(true);
   const verification = await verificationResponse.json();
@@ -162,9 +175,10 @@ test('real workshop detailed vs LOD1 cost/readability evidence across one and fo
       triangleReductionFraction: 1 - (lod1.aggregateDecodedAssetSurface.triangles / detailed.aggregateDecodedAssetSurface.triangles),
       materialInstanceReduction: detailed.aggregateDecodedAssetSurface.materialInstances - lod1.aggregateDecodedAssetSurface.materialInstances,
       embeddedImageDescriptorReduction: detailed.aggregateDecodedAssetSurface.embeddedImageDescriptors - lod1.aggregateDecodedAssetSurface.embeddedImageDescriptors,
+      observedInstallDeltaMs: lod1.installMs - detailed.installMs,
       observedFrameMedianDeltaMs: lod1.frameIntervals.medianMs - detailed.frameIntervals.medianMs,
       observedFrameP95DeltaMs: lod1.frameIntervals.p95Ms - detailed.frameIntervals.p95Ms,
-      nonclaim: 'Frame timing delta is descriptive for this CI run; no FPS acceptance threshold is inferred.'
+      nonclaim: 'Install/frame timing deltas are descriptive for this CI run; no FPS or latency acceptance threshold is inferred.'
     });
   }
 
@@ -177,6 +191,7 @@ test('real workshop detailed vs LOD1 cost/readability evidence across one and fo
     nonclaims: [
       'GitHub-hosted headless Chromium is not a target-device performance certification.',
       'Same material/image counts mean geometry LOD does not reduce the current material/texture surface.',
+      'The four-seat path still decodes one complete GLB/material/texture instance per seat; this run measures that current cost rather than claiming an optimized shared-asset cache.',
       'Screenshots require separate visual inspection before LOD perceptual-equivalence or split-screen-readability claims.',
       'Collision and navigation are outside this experiment.'
     ]

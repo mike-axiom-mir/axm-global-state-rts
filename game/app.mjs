@@ -38,6 +38,7 @@ const KEYBOARD_ACTIONS = new Map([
   ['q', 'party-prev'],
   ['e', 'party-next'],
   ['x', 'context'],
+  ['f', 'explore'],
   ['m', 'map-toggle']
 ]);
 
@@ -318,6 +319,11 @@ viewport.addEventListener('pointercancel', () => { drag = null; });
 const publicBridge = {
   describeSeatView(seatId) {
     return renderer.describeSeatView(seatId);
+  },
+  describeSeatSimulation(seatId) {
+    const seat = activeSeats(roster).find(candidate => candidate.id === seatId);
+    if (!seat) throw new Error(`${seatId || 'seat'} is not active`);
+    return simulationForSeat(seatId).snapshot();
   },
   listSeats() {
     return activeSeats(roster).map(seat => ({

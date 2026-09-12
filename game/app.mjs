@@ -344,6 +344,39 @@ const publicBridge = {
       visualOptions: seat.visualOptions
     }));
   },
+  async installExternalStaticAsset({
+    seatId = 'seat-1',
+    assetId = 'building-workshop-a',
+    bytes,
+    expectedSha256,
+    uniformScale = 1,
+    focus = false
+  } = {}) {
+    const state = renderer.seatStates.get(seatId);
+    if (!state) throw new Error(`${seatId || 'seat'} is not active`);
+    if (renderer.getSeatMode(seatId) !== 'local-rts' || !state.localBundle) {
+      throw new Error(`${seatId} must be in local-rts mode before external asset installation`);
+    }
+    const receipt = await state.localBundle.installExternalStaticAsset({
+      assetId,
+      arrayBuffer: bytes,
+      expectedSha256,
+      uniformScale
+    });
+    if (focus) {
+      state.localTargetX = receipt.placement.xM;
+      state.localTargetZ = receipt.placement.zM;
+      state.cursorX = receipt.placement.xM;
+      state.cursorZ = receipt.placement.zM;
+      state.localDistance = Math.min(state.localDistance, 120);
+    }
+    return receipt;
+  },
+  externalAssetStatus({ seatId = 'seat-1', assetId = null } = {}) {
+    const state = renderer.seatStates.get(seatId);
+    if (!state?.localBundle) return assetId ? null : [];
+    return state.localBundle.externalAssetStatus(assetId);
+  },
   submitMachineAction({ seatId, actionId, payload = null, timestampMs = performance.now() } = {}) {
     const seat = activeSeats(roster).find(candidate => candidate.id === seatId);
     if (!seat || seat.kind !== 'machine') throw new Error(`${seatId || 'seat'} is not an active machine user seat`);

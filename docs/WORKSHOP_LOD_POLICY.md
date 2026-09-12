@@ -1,0 +1,1 @@
+Workshop LOD policy: retain high-detail source; never measure runtime suitability from source quality alone; derive lighter tactical and far models; validate under split-screen and mass-building stress before acceptance.

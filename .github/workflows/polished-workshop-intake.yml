@@ -1,0 +1,33 @@
+name: Polished workshop exact-byte intake
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'assets/polished-workshop-intake-receipt.v0.1.json'
+      - 'assets/polished-workshop-reference.v0.1.json'
+      - 'docs/POLISHED_WORKSHOP_INTAKE_V0.md'
+      - 'scripts/verify-polished-workshop-intake.mjs'
+      - 'src/assets/polished-workshop-intake.mjs'
+      - 'tests/polished-workshop-intake-selftest.mjs'
+      - '.github/workflows/polished-workshop-intake.yml'
+  workflow_dispatch:
+
+jobs:
+  verify-intake-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@v4
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax-check intake boundary
+        run: |
+          node --check src/assets/polished-workshop-intake.mjs
+          node --check scripts/verify-polished-workshop-intake.mjs
+          node --check tests/polished-workshop-intake-selftest.mjs
+      - name: Verify exact-byte/provenance contract and runtime HOLD
+        run: node tests/polished-workshop-intake-selftest.mjs

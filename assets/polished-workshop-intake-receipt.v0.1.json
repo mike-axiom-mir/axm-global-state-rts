@@ -1,0 +1,78 @@
+{
+  "schema": "axm.global-state-rts.external-asset-intake-receipt/v0.1",
+  "assetId": "building-improvised-workshop-polished-reference",
+  "candidateFor": "building-workshop-a",
+  "status": "BYTES_ACCEPTED_RUNTIME_NOT_RENDERED",
+  "exactReferenceMatches": {
+    "archive": {
+      "file": "axm-workshop-polished.zip",
+      "bytes": 66014688,
+      "sha256": "d96dc8c8ad181ea719c1d72ca1cde23fe935981aa204a5d8345f6f5704cc122a",
+      "exactMatch": true
+    },
+    "hero": {
+      "file": "improvised-workshop.glb",
+      "bytes": 28112472,
+      "sha256": "d89381854d9f6adad84b44980677d16d021a91ed6dd87ab98295e24f4eccdc9e",
+      "exactMatch": true
+    },
+    "lod1": {
+      "file": "improvised-workshop-lod1.glb",
+      "bytes": 22239508,
+      "sha256": "bcc56d2e217e3f35958cde5ab9370d572e4df7fbacc763817e5c9097409b8c26",
+      "exactMatch": true
+    }
+  },
+  "producerEvidence": {
+    "sourceCommit": "2d9128ecb0eb08a21ea9e8f283fe4fb613d2983a",
+    "mergeCommit": "fb1f645cffcac1e05f07462b20316b51d270492b",
+    "testedTree": "54bb1fec77c0315f00b4751181ba09bf9a8f0e1a",
+    "verificationSchema": "axm.rts-workshop-polish/v0.1",
+    "units": "meters",
+    "glbUp": "Y",
+    "glbForward": "+Z",
+    "heroInspection": {
+      "triangles": 176043,
+      "vertices": 265043,
+      "materialBatches": 18,
+      "embeddedImages": 47,
+      "boundsYUp": {
+        "min": [-2.910788059234619, 0.0, -2.3190720622904504],
+        "max": [2.744092301249278, 4.78499972820282, 2.2659785747528076]
+      }
+    },
+    "lod1Inspection": {
+      "triangles": 63349,
+      "vertices": 102645,
+      "materialBatches": 18,
+      "embeddedImages": 47,
+      "boundsYUp": {
+        "min": [-2.9100191593170166, 0.00633692741394043, -2.3174914794928148],
+        "max": [2.742599924778397, 4.7850083112716675, 2.265200614929199]
+      }
+    },
+    "producerScope": "Reference-led authored 3D interpretation. Fresh GLB import with Cycles CPU render. No target RTS integration or performance certification. Review ground, camera and studio lighting are not asset geometry."
+  },
+  "consumerEvidence": {
+    "packageBytes": "TESTED",
+    "glbBytes": "TESTED",
+    "declaredUnitsAndAxis": "TESTED",
+    "runtimeImport": "NOT_TESTED",
+    "browserRender": "NOT_TESTED",
+    "localRtsPlacement": "NOT_TESTED",
+    "splitScreenReadability": "NOT_TESTED",
+    "collision": "NOT_TESTED",
+    "navigation": "NOT_TESTED",
+    "drawCallPerformance": "NOT_TESTED",
+    "targetDeviceFps": "NOT_TESTED"
+  },
+  "fallback": {
+    "preserveProceduralPlaceholder": true,
+    "reason": "Exact external bytes are accepted for intake, but browser/runtime acceptance has not occurred."
+  },
+  "nonclaims": [
+    "Exact package bytes do not prove browser import or rendering.",
+    "Producer geometry inspection does not prove Global State RTS scale, collision, navigation, draw-call cost, split-screen readability or FPS.",
+    "The procedural workshop placeholder remains the runtime fallback until separate target-side evidence exists."
+  ]
+}

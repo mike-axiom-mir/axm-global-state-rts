@@ -66,6 +66,51 @@ Offline means resistance, not immunity. A sufficiently strong attacker can still
 - A party can be selected/commanded with one action.
 - This is a major scale-control abstraction and should make large armies practical on desktop and potentially mobile without removing finer control where useful.
 
+## 1–4 local seats / split screen
+
+- Build around **1–4 active seats from the start** rather than retrofitting multiplayer after a one-camera game exists.
+- Local seats can be configured for co-op, teams, opponents, human players or machine players as later rules allow.
+- Each active seat owns an independent camera/view/UI surface while sharing one authoritative world state.
+- Split-screen is presentation, not a separate simulation.
+- Default local layouts use equal information area: one full screen, two equal halves, three equal columns/rows, or four equal quadrants.
+- The seat/view boundary should later allow the same seat to render onto another physical screen without changing its authority or command model.
+
+### Controller-first path
+
+Most practical testing is expected to happen with controllers.
+
+- Up to four gamepads can be bound to four local human seats.
+- Held buttons must edge-trigger into semantic actions rather than producing one action every render frame.
+- Analog cursor/camera/zoom state remains continuous presentation/input state.
+- Keyboard + pointer remain available for normal one-player PC play and belong to Seat 1 only in local multiplayer.
+- Exact button mappings are tunable; the architecture must not hard-code one input device into game authority.
+
+### Human / machine equality
+
+A machine intelligence may occupy a normal user seat.
+
+- same fog/vision-limited observation policy;
+- same command surface;
+- same visual-option vocabulary and user-facing view capability;
+- same seat privileges;
+- same APM cap;
+- no hidden world-state feed;
+- no direct canonical-state mutation path;
+- no faster/private command lane.
+
+Human and machine seats may differ in input source, but not in player authority. World/city simulation AI can later be a different world role; an AI joining as a player uses the same player-seat contract.
+
+### 100 APM cap
+
+Every active user seat, human or machine, is capped at **100 accepted discrete gameplay actions in a rolling 60-second window**.
+
+- Action 101 is rejected until an earlier accepted action leaves the rolling window.
+- Rejected actions do not mutate authoritative state.
+- The same deterministic admission gate is used for human and machine commands.
+- Continuous stick/cursor/camera values are not separate APM actions on every frame; when input becomes a discrete gameplay command, that command is counted.
+
+Implementation contract: `docs/MULTISEAT_CONTROLLER_ARCHITECTURE.md`.
+
 ## Fog / night
 
 - Strong fog of war is fundamental.

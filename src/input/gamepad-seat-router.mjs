@@ -15,8 +15,8 @@ export class GamepadSeatRouter {
 
     for (const seat of this.runtime.roster) {
       if (!seat.active || seat.kind !== 'human') continue;
-      const binding = this.runtime.bindingFor(seat.id);
-      if (!binding || binding.sourceKind !== 'gamepad') continue;
+      const binding = this.runtime.bindingFor(seat.id, 'gamepad');
+      if (!binding) continue;
 
       const current = byIndex.get(binding.deviceId);
       if (!current || current.connected === false) {

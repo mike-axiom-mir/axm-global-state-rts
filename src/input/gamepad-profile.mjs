@@ -35,8 +35,8 @@ function buttonDown(button) {
 
 export function normalizeGamepadSnapshot(snapshot = {}, profile = STANDARD_GAMEPAD_PROFILE) {
   const deadzone = Number(profile.deadzone) || 0.18;
-  const axes = Array.isArray(snapshot.axes) ? snapshot.axes : [];
-  const buttons = Array.isArray(snapshot.buttons) ? snapshot.buttons : [];
+  const axes = Array.from(snapshot.axes || []);
+  const buttons = Array.from(snapshot.buttons || []);
   const discrete = {};
   for (const [indexText, action] of Object.entries(profile.buttons)) {
     discrete[action] = buttonDown(buttons[Number(indexText)]);

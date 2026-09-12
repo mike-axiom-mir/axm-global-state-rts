@@ -86,7 +86,9 @@ export function createChunkedLocalTerrain(region, {
   });
   const cache = new Map();
   let lastPlanSignature = null;
-  let lastStats = Object.freeze({ activeChunks: 0, warmChunks: 0, vertices: 0 });
+  let lastStats = Object.freeze({ activeChunks: 0, warmChunks: 0, vertices: 0, residentChunks: 0 });
+  let autoFocusEnabled = false;
+  const recentHeightQueries = [];
 
   function removeEntry(key) {
     const entry = cache.get(key);
@@ -141,12 +143,34 @@ export function createChunkedLocalTerrain(region, {
     return lastStats;
   }
 
+  function rememberHeightQuery(xM, zM) {
+    if (!autoFocusEnabled) return;
+    const cx = Math.floor(xM / profile.chunkSizeM);
+    const cz = Math.floor(zM / profile.chunkSizeM);
+    const key = `${cx}:${cz}`;
+    const existingIndex = recentHeightQueries.findIndex(item => item.key === key);
+    if (existingIndex >= 0) recentHeightQueries.splice(existingIndex, 1);
+    recentHeightQueries.push({ key, xM, zM });
+    while (recentHeightQueries.length > 2) recentHeightQueries.shift();
+    updateFocusPoints(recentHeightQueries.map(({ xM: focusX, zM: focusZ }) => ({ xM: focusX, zM: focusZ })));
+  }
+
+  function enableAutoFocus() {
+    autoFocusEnabled = true;
+    recentHeightQueries.length = 0;
+  }
+
   function heightAt(xM, zM) {
-    const sample = sampleLocalSurface(region.frame, Number(xM) || 0, Number(zM) || 0, { enforceOperationalRadius: true });
+    const x = Number(xM) || 0;
+    const z = Number(zM) || 0;
+    rememberHeightQuery(x, z);
+    const sample = sampleLocalSurface(region.frame, x, z, { enforceOperationalRadius: true });
     return sample.planet.elevationM - centerElevationM;
   }
 
   function dispose() {
+    autoFocusEnabled = false;
+    recentHeightQueries.length = 0;
     for (const key of [...cache.keys()]) removeEntry(key);
     material.dispose();
   }
@@ -157,6 +181,7 @@ export function createChunkedLocalTerrain(region, {
     profile,
     centerElevationM,
     updateFocusPoints,
+    enableAutoFocus,
     heightAt,
     residentChunkCount: () => cache.size,
     stats: () => lastStats,

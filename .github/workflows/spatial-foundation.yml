@@ -1,0 +1,24 @@
+name: Global State RTS spatial foundation
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  spatial-foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Verify spatial foundation
+        run: npm test

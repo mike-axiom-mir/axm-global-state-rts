@@ -1,0 +1,3 @@
+[submodule "planet-upstream"]
+	path = planet-upstream
+	url = https://github.com/mike-axiom-mir/foundation-planet-experiments.git

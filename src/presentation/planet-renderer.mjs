@@ -1,6 +1,7 @@
 import * as THREE from '../../planet-upstream/shared/vendor/three-r160/three.module.js';
 import { sampleVector } from '../../planet-upstream/worlds/foundation-planet/core/planet-model.mjs';
 import { createStarterRegion } from '../world/starter-region.mjs';
+import { createGlobeWorldOverlay } from './globe-world-overlay.mjs';
 import { createLocalRegionScene } from './local-region-scene.mjs';
 import { PLANET_PRESENTATION } from './planet-style.mjs';
 import { pixelSplitLayout } from './split-screen-layout.mjs';
@@ -121,13 +122,14 @@ function localAxes(yaw) {
 }
 
 export class SplitScreenPlanetRenderer {
-  constructor(container, { seatIds = ['seat-1'] } = {}) {
+  constructor(container, { seatIds = ['seat-1'], worldSeed = 'axm-global-state-rts-v0' } = {}) {
     if (!container) throw new TypeError('container is required');
     if (!Array.isArray(seatIds) || seatIds.length < 1 || seatIds.length > 4) {
       throw new RangeError('seatIds must contain 1-4 entries');
     }
 
     this.container = container;
+    this.worldSeed = String(worldSeed);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 1.5));
@@ -142,7 +144,8 @@ export class SplitScreenPlanetRenderer {
     this.scene.add(this.planetRoot);
     this.planet = makePlanetMesh();
     this.atmosphere = makeAtmosphere();
-    this.planetRoot.add(this.planet, this.atmosphere);
+    this.worldOverlay = createGlobeWorldOverlay({ worldSeed: this.worldSeed });
+    this.planetRoot.add(this.planet, this.worldOverlay.root, this.atmosphere);
 
     const hemi = new THREE.HemisphereLight(0xa9c1ce, 0x171713, 1.18);
     this.scene.add(hemi);
@@ -228,7 +231,12 @@ export class SplitScreenPlanetRenderer {
       seatId,
       mode: state.mode,
       transition: state.transition ? Object.freeze({ from: state.transition.from, to: state.transition.to }) : null,
-      globe: Object.freeze({ yaw: state.yaw, pitch: state.pitch, distance: state.distance }),
+      globe: Object.freeze({
+        yaw: state.yaw,
+        pitch: state.pitch,
+        distance: state.distance,
+        worldOverlay: this.worldOverlay.stats
+      }),
       local: Object.freeze({
         regionId: state.localRegion.id,
         origin: state.localRegion.origin,

@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import { createStrategicParty } from '../src/sim/strategic-party.mjs';
 import { generateAsteroidEventsForHour } from '../src/world/asteroid-events.mjs';
 import { createGlobalWorldRuntime } from '../src/world/global-world-runtime.mjs';
+import {
+  createLocalTerrainStreamProfile,
+  planLocalTerrainChunks
+} from '../src/world/local-terrain-stream.mjs';
 import { createSparseWorldState } from '../src/world/sparse-world-state.mjs';
 import { buildWorldLandmarks } from '../src/world/world-landmarks.mjs';
 import {
@@ -46,6 +50,17 @@ assert.ok(plan.warm.length <= 256);
 assert.ok(plan.summary.length <= 256);
 assert.equal(plan.persistenceMode, 'procedural-base-plus-sparse-mutations');
 assert.equal(plan.distantSimulationMode, 'aggregate-only');
+
+const localTerrainProfile = createLocalTerrainStreamProfile();
+const localTerrainPlan = planLocalTerrainChunks([
+  { xM: 0, zM: 0 },
+  { xM: 5000, zM: 0 },
+  { xM: 0, zM: 5000 },
+  { xM: 5000, zM: 5000 }
+], localTerrainProfile);
+assert.ok(localTerrainPlan.active.length <= 128);
+assert.ok(localTerrainPlan.warm.length <= 384);
+assert.ok(localTerrainPlan.estimatedTerrainVertices < 50_000, 'four separated local views stay under the initial terrain-vertex target');
 
 const world = createSparseWorldState(grid, { worldSeed: 'selftest' });
 const sampleKeys = plan.active.slice(0, 12).map(cell => cell.key);

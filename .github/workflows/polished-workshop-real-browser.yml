@@ -5,6 +5,8 @@ on:
     branches:
       - main
     paths:
+      - 'assets/specialist-workshop-semantic-reference.v0.1.json'
+      - 'scripts/verify-specialist-workshop-semantic.py'
       - 'tests/browser/workshop-real-glb.spec.js'
       - '.github/workflows/polished-workshop-real-browser.yml'
   workflow_dispatch:
@@ -18,8 +20,6 @@ jobs:
     timeout-minutes: 50
     env:
       UC_SOURCE_COMMIT: d761090dd6477db9b8dd33edac905ff924c4c6ee
-      WORKSHOP_SHA256: 579c14c3bf422c203e9a2d5132fd98339c8eef4499a305cb6941f90ee1aae8f9
-      WORKSHOP_LOD1_SHA256: c872ca7a5844518176ea3cd2f670651f174f2318b488d53e17492378709d27ee
     steps:
       - name: Check out exact Global State RTS candidate and pinned Planet
         uses: actions/checkout@v4
@@ -52,7 +52,7 @@ jobs:
           assert bpy.app.version[:2] == (4, 3)
           PY
 
-      - name: Rebuild exact specialist workshop from Universal Creation source
+      - name: Rebuild specialist workshop from exact Universal Creation source
         run: |
           test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
           rm -rf "$GITHUB_WORKSPACE/runtime-assets/workshop-specialist"
@@ -64,24 +64,26 @@ jobs:
             --resolution 768 \
             --samples 16
 
-      - name: Bind the rebuilt GLBs to the previously reviewed specialist evidence
+      - name: Verify semantic continuity and bind this fresh binary identity
         run: |
-          echo "$WORKSHOP_SHA256  runtime-assets/workshop-specialist/improvised-workshop.glb" | sha256sum -c -
-          echo "$WORKSHOP_LOD1_SHA256  runtime-assets/workshop-specialist/improvised-workshop-lod1.glb" | sha256sum -c -
           PYTHONPATH=/tmp/axm-universal-creation/tools/blender \
             python /tmp/axm-universal-creation/tools/blender/verify_rts_workshop.py "$GITHUB_WORKSPACE/runtime-assets/workshop-specialist"
+          python scripts/verify-specialist-workshop-semantic.py \
+            --reference assets/specialist-workshop-semantic-reference.v0.1.json \
+            --verification runtime-assets/workshop-specialist/verification.json \
+            --inspection runtime-assets/workshop-specialist/glb-inspection.json \
+            --write runtime-assets/workshop-specialist/semantic-continuity-receipt.json
           python - <<'PY'
           import json
           from pathlib import Path
           root=Path('runtime-assets/workshop-specialist')
-          inspection=json.loads((root/'glb-inspection.json').read_text())
           gates=json.loads((root/'game-readiness-gates.json').read_text())
-          hero=inspection['improvised-workshop.glb']
-          assert hero['triangles']==190431
-          assert hero['material_batches']==19
-          assert hero['embedded_images']==47
+          continuity=json.loads((root/'semantic-continuity-receipt.json').read_text())
           assert gates['gates']['geometry_structure']=='TESTED'
           assert gates['gates']['target_rts_integration']=='NOT_TESTED'
+          assert continuity['status']=='SEMANTIC_CONTINUITY_TESTED_BINARY_IDENTITY_FRESH'
+          assert continuity['historical_raw_identity_reused'] is False
+          print(json.dumps(continuity, indent=2))
           print(json.dumps(gates, indent=2))
           PY
 
@@ -100,7 +102,8 @@ jobs:
         run: |
           node scripts/serve.mjs > /tmp/axm-global-state-rts-real-workshop.log 2>&1 &
           for i in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/improvised-workshop.glb > /dev/null; then
+            if curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/improvised-workshop.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/verification.json > /dev/null; then
               exit 0
             fi
             sleep 1
@@ -108,7 +111,7 @@ jobs:
           cat /tmp/axm-global-state-rts-real-workshop.log
           exit 1
 
-      - name: Render exact real workshop through the target browser/runtime seam
+      - name: Render fresh real workshop through the target browser/runtime seam
         run: npx playwright test tests/browser/workshop-real-glb.spec.js --reporter=line
 
       - name: Preserve cross-machine evidence without publishing the large binaries
@@ -122,6 +125,7 @@ jobs:
             runtime-assets/workshop-specialist/verification.json
             runtime-assets/workshop-specialist/glb-inspection.json
             runtime-assets/workshop-specialist/game-readiness-gates.json
+            runtime-assets/workshop-specialist/semantic-continuity-receipt.json
             /tmp/axm-global-state-rts-real-workshop.log
           if-no-files-found: warn
           retention-days: 14

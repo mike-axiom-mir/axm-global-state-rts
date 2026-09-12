@@ -71,8 +71,8 @@ guardian.applyDamage({
   defenseLosses: 70,
   buildingDamage: {
     core: 30,
-    farm-a: 100,
-    turret-a: 45
+    'farm-a': 100,
+    'turret-a': 45
   }
 });
 const damagedOffline = guardian.snapshot();

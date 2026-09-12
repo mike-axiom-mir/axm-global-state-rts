@@ -1,0 +1,67 @@
+name: Polished workshop browser GLB runtime
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'game/app.mjs'
+      - 'src/assets/static-glb-runtime.mjs'
+      - 'src/presentation/local-region-scene.mjs'
+      - 'src/world/starter-region.mjs'
+      - 'tests/helpers/static-glb-fixture.mjs'
+      - 'tests/static-glb-runtime-selftest.mjs'
+      - 'tests/browser/workshop-static-glb.spec.js'
+      - '.github/workflows/polished-workshop-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-static-glb-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntax and bounded GLB contract
+        run: |
+          node --check game/app.mjs
+          node --check src/assets/static-glb-runtime.mjs
+          node --check src/presentation/local-region-scene.mjs
+          node --check src/world/starter-region.mjs
+          node tests/static-glb-runtime-selftest.mjs
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start local RTS shell
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-workshop-runtime.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-workshop-runtime.log
+          exit 1
+      - name: Exercise hash-checked GLB replacement in Chromium
+        run: npx playwright test tests/browser/workshop-static-glb.spec.js --reporter=line
+      - name: Preserve runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-static-glb-runtime
+          path: |
+            test-results/global-state-rts-static-glb-workshop-seam.png
+            /tmp/axm-global-state-rts-workshop-runtime.log
+          if-no-files-found: warn
+          retention-days: 14

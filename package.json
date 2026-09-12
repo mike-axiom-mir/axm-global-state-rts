@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/spatial-selftest.mjs"
+    "test": "npm run test:spatial && npm run test:presentation",
+    "test:spatial": "node tests/spatial-selftest.mjs",
+    "test:presentation": "node tests/presentation-selftest.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -7,6 +7,9 @@ import { verifyPolishedWorkshopIntake } from '../src/assets/polished-workshop-in
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const temp = mkdtempSync(join(tmpdir(), 'axm-workshop-intake-'));
+const SOURCE_COMMIT = '1111111111111111111111111111111111111111';
+const MERGE_COMMIT = '2222222222222222222222222222222222222222';
+const TESTED_TREE = '3333333333333333333333333333333333333333';
 
 try {
   const archivePath = join(temp, 'axm-workshop-polished.zip');
@@ -59,8 +62,15 @@ try {
       bounds_y_up: { min: [-1, 0, -1], max: [1, 2, 1] }
     }
   };
+  const integrationReceipt = {
+    source_commit: SOURCE_COMMIT,
+    merge_commit: MERGE_COMMIT,
+    tested_tree: TESTED_TREE,
+    asset_validation: 'fixture validation'
+  };
   writeFileSync(join(temp, 'verification.json'), `${JSON.stringify(verification)}\n`);
   writeFileSync(join(temp, 'glb-inspection.json'), `${JSON.stringify(inspection)}\n`);
+  writeFileSync(join(temp, 'integration-receipt.json'), `${JSON.stringify(integrationReceipt)}\n`);
 
   const receipt = verifyPolishedWorkshopIntake({
     reference,
@@ -72,6 +82,9 @@ try {
   assert.equal(receipt.exactReferenceMatches.archive.exactMatch, true);
   assert.equal(receipt.exactReferenceMatches.hero.exactMatch, true);
   assert.equal(receipt.exactReferenceMatches.lod1.exactMatch, true);
+  assert.equal(receipt.producerEvidence.sourceCommit, SOURCE_COMMIT);
+  assert.equal(receipt.producerEvidence.mergeCommit, MERGE_COMMIT);
+  assert.equal(receipt.producerEvidence.testedTree, TESTED_TREE);
   assert.equal(receipt.producerEvidence.units, 'meters');
   assert.equal(receipt.producerEvidence.glbUp, 'Y');
   assert.equal(receipt.producerEvidence.glbForward, '+Z');
@@ -97,8 +110,18 @@ try {
     /axis\/unit contract/,
     'producer coordinate mismatch must not be silently adapted'
   );
+  verification.glb_up = 'Y';
+  writeFileSync(join(temp, 'verification.json'), `${JSON.stringify(verification)}\n`);
 
-  console.log('polished workshop exact-byte intake / runtime-hold selftest: PASS');
+  integrationReceipt.tested_tree = 'not-a-git-sha';
+  writeFileSync(join(temp, 'integration-receipt.json'), `${JSON.stringify(integrationReceipt)}\n`);
+  assert.throws(
+    () => verifyPolishedWorkshopIntake({ reference, archivePath, extractedDir: temp }),
+    /tested_tree must be a 40-character lowercase git sha/,
+    'producer commit provenance must fail closed when malformed'
+  );
+
+  console.log('polished workshop exact-byte intake / provenance / runtime-hold selftest: PASS');
 } finally {
   rmSync(temp, { recursive: true, force: true });
 }

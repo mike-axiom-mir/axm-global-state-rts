@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { verifyPolishedWorkshopIntake } from '../src/assets/polished-workshop-intake.mjs';
@@ -10,6 +10,20 @@ const temp = mkdtempSync(join(tmpdir(), 'axm-workshop-intake-'));
 const SOURCE_COMMIT = '1111111111111111111111111111111111111111';
 const MERGE_COMMIT = '2222222222222222222222222222222222222222';
 const TESTED_TREE = '3333333333333333333333333333333333333333';
+
+const pinnedReference = JSON.parse(readFileSync(new URL('../assets/polished-workshop-reference.v0.1.json', import.meta.url), 'utf8'));
+const pinnedReceipt = JSON.parse(readFileSync(new URL('../assets/polished-workshop-intake-receipt.v0.1.json', import.meta.url), 'utf8'));
+assert.equal(pinnedReceipt.schema, 'axm.global-state-rts.external-asset-intake-receipt/v0.1');
+assert.equal(pinnedReceipt.assetId, pinnedReference.assetId);
+assert.equal(pinnedReceipt.candidateFor, 'building-workshop-a');
+assert.equal(pinnedReceipt.status, 'BYTES_ACCEPTED_RUNTIME_NOT_RENDERED');
+assert.equal(pinnedReceipt.exactReferenceMatches.archive.sha256, pinnedReference.source.sha256);
+assert.equal(pinnedReceipt.exactReferenceMatches.hero.sha256, pinnedReference.models.hero.sha256);
+assert.equal(pinnedReceipt.exactReferenceMatches.lod1.sha256, pinnedReference.models.lod1.sha256);
+assert.equal(pinnedReceipt.consumerEvidence.runtimeImport, 'NOT_TESTED');
+assert.equal(pinnedReceipt.consumerEvidence.browserRender, 'NOT_TESTED');
+assert.equal(pinnedReceipt.consumerEvidence.splitScreenReadability, 'NOT_TESTED');
+assert.equal(pinnedReceipt.fallback.preserveProceduralPlaceholder, true);
 
 try {
   const archivePath = join(temp, 'axm-workshop-polished.zip');

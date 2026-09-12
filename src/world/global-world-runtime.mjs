@@ -1,4 +1,5 @@
 import { createStrategicParty } from '../sim/strategic-party.mjs';
+import { generateAsteroidEventsForHour } from './asteroid-events.mjs';
 import { createSparseWorldState } from './sparse-world-state.mjs';
 import { buildWorldLandmarks } from './world-landmarks.mjs';
 import { createWorldLodGrid } from './world-lod-grid.mjs';
@@ -59,6 +60,14 @@ export class GlobalWorldRuntime {
 
   streamPlan(focusPoints) {
     return buildWorldStreamPlan(this.grid, focusPoints, this.streamProfile);
+  }
+
+  asteroidEventsForHour(hourIndex, options = {}) {
+    return generateAsteroidEventsForHour({
+      worldSeed: this.worldSeed,
+      hourIndex,
+      ...options
+    });
   }
 
   snapshot(nowMs = null) {

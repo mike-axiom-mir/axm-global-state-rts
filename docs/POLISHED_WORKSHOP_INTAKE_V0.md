@@ -30,7 +30,7 @@ The producer package declares metres, glTF `+Y` up and `+Z` forward, matching th
 The repository does not ingest or silently copy the large external binaries into git. Given the exact ZIP and an extracted directory, run:
 
 ```bash
-npm run asset:intake:workshop -- \
+node scripts/verify-polished-workshop-intake.mjs \
   --archive /path/to/axm-workshop-polished.zip \
   --extracted /path/to/extracted-workshop \
   --write /tmp/polished-workshop-intake-receipt.json
@@ -45,6 +45,12 @@ The verifier fails closed if any of these disagree with the pinned reference:
 5. independent `glb-inspection.json` model hashes;
 6. producer metres / Y-up / +Z-forward contract;
 7. producer source / merge / tested-tree Git identity format.
+
+## CI boundary
+
+The intake contract has its own narrow workflow at `.github/workflows/polished-workshop-intake.yml`. It syntax-checks the intake code and runs `tests/polished-workshop-intake-selftest.mjs` without editing the repository's shared monolithic `package.json` test command. This avoids collisions with unrelated RTS growth lanes while still keeping the intake contract under CI.
+
+The real external ZIP is intentionally not committed to this repository. CI therefore protects the verifier, pinned receipt invariants, tamper rejection, axis mismatch rejection, provenance validation and runtime-HOLD semantics; the pinned receipt records the previously executed exact real-byte check.
 
 ## What is TESTED now
 

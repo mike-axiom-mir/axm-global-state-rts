@@ -160,12 +160,22 @@ export function createChunkedLocalTerrain(region, {
     recentHeightQueries.length = 0;
   }
 
+  function sampleHeight(xM, zM) {
+    const x = Number(xM) || 0;
+    const z = Number(zM) || 0;
+    const sample = sampleLocalSurface(region.frame, x, z, { enforceOperationalRadius: true });
+    return sample.planet.elevationM - centerElevationM;
+  }
+
   function heightAt(xM, zM) {
     const x = Number(xM) || 0;
     const z = Number(zM) || 0;
     rememberHeightQuery(x, z);
-    const sample = sampleLocalSurface(region.frame, x, z, { enforceOperationalRadius: true });
-    return sample.planet.elevationM - centerElevationM;
+    return sampleHeight(x, z);
+  }
+
+  function peekHeightAt(xM, zM) {
+    return sampleHeight(xM, zM);
   }
 
   function dispose() {
@@ -183,6 +193,7 @@ export function createChunkedLocalTerrain(region, {
     updateFocusPoints,
     enableAutoFocus,
     heightAt,
+    peekHeightAt,
     residentChunkCount: () => cache.size,
     stats: () => lastStats,
     dispose

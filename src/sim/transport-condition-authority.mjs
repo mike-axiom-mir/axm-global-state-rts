@@ -1,7 +1,8 @@
 import { CIVILIZATION_STOCKPILE_SCHEMA } from './civilization-stockpile.mjs';
+import { STRATEGIC_SUPPLY_CARGO_SCHEMA } from './strategic-supply-cargo.mjs';
 import { LOCAL_INFRASTRUCTURE_SCHEMA } from '../world/local-infrastructure.mjs';
 
-export const TRANSPORT_CONDITION_AUTHORITY_SCHEMA = 'axm.global-state-rts.transport-condition-authority/v0.2';
+export const TRANSPORT_CONDITION_AUTHORITY_SCHEMA = 'axm.global-state-rts.transport-condition-authority/v0.3';
 export const TRANSPORT_SEGMENT_STATES = Object.freeze(['open', 'broken', 'repaired']);
 
 function freezeRecord(record) {
@@ -17,6 +18,13 @@ function validateSegment(segment) {
     throw new TypeError('local infrastructure corridor segment required');
   }
   return segment;
+}
+
+function validateRepairSource(source) {
+  if (!source || ![CIVILIZATION_STOCKPILE_SCHEMA, STRATEGIC_SUPPLY_CARGO_SCHEMA].includes(source.schema) || typeof source.debit !== 'function') {
+    throw new TypeError('repair source must be a CivilizationStockpile or StrategicSupplyCargo');
+  }
+  return source;
 }
 
 function segmentEdgeProgress(segment) {
@@ -133,14 +141,13 @@ export class TransportConditionAuthority {
     return observed.repairCost;
   }
 
-  repair(segmentId, { eventId = null } = {}) {
+  repairUsing(segmentId, resourceSource, { eventId = null, sourceLabel = null } = {}) {
     const id = String(segmentId);
     const observed = this.observed.get(id);
     if (!observed) return Object.freeze({ accepted: false, reason: 'segment-not-observed-broken' });
     if (this.statusFor(id) === 'repaired') return Object.freeze({ accepted: false, reason: 'already-repaired' });
-    if (!this.stockpile) return Object.freeze({ accepted: false, reason: 'no-stockpile-bound' });
-
-    const debit = this.stockpile.debit(observed.repairCost, {
+    const source = validateRepairSource(resourceSource);
+    const debit = source.debit(observed.repairCost, {
       reason: 'transport-crossing-repair',
       eventId: eventId || `repair:${id}`
     });
@@ -163,10 +170,18 @@ export class TransportConditionAuthority {
       edgeId: observed.edgeId,
       edgeProgress: observed.edgeProgress,
       cost: observed.repairCost,
+      resourceSourceSchema: source.schema,
+      resourceSourceId: source.id ? String(source.id) : null,
+      sourceLabel: sourceLabel ? String(sourceLabel) : null,
       eventId: mutation.eventId
     });
     this.receipts.push(receipt);
     return Object.freeze({ accepted: true, receipt, state: mutation.state });
+  }
+
+  repair(segmentId, { eventId = null } = {}) {
+    if (!this.stockpile) return Object.freeze({ accepted: false, reason: 'no-stockpile-bound' });
+    return this.repairUsing(segmentId, this.stockpile, { eventId, sourceLabel: 'bound-civilization-stockpile' });
   }
 
   damage(segment, { reason = 'transport-damage', eventId = null } = {}) {

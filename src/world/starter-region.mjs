@@ -29,6 +29,7 @@ function previewFixturesForSeat(seatId) {
   const offset = (n - 2.5) * 28;
   return Object.freeze([
     freezeFixture({ id: `${seatId}:core`, assetId: 'building-settlement-core-a', kind: 'building', xM: offset, zM: 0, yawDeg: 12 + n * 7 }),
+    freezeFixture({ id: `${seatId}:workshop`, assetId: 'building-workshop-a', kind: 'building', xM: 52 + offset, zM: 42, yawDeg: -24 + n * 5 }),
     freezeFixture({ id: `${seatId}:storage`, assetId: 'building-storage-depot-a', kind: 'building', xM: -150 + offset, zM: 95, yawDeg: -18 }),
     freezeFixture({ id: `${seatId}:collector`, assetId: 'resource-scrap-collector-a', kind: 'resource', xM: 170 + offset, zM: 120, yawDeg: 26 }),
     freezeFixture({ id: `${seatId}:light`, assetId: 'defense-light-tower-a', kind: 'defense', xM: 90 + offset, zM: -145, yawDeg: 0 }),

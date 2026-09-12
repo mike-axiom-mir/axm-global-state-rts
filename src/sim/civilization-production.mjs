@@ -1,4 +1,4 @@
-export const CIVILIZATION_PRODUCTION_SCHEMA = 'axm.global-state-rts.civilization-production/v0.1';
+export const CIVILIZATION_PRODUCTION_SCHEMA = 'axm.global-state-rts.civilization-production/v0.2';
 
 export const PRODUCTION_PROFILES = Object.freeze({
   'building:open-crop-terrace': Object.freeze({
@@ -105,6 +105,13 @@ export class CivilizationProduction {
     this.totalProduced = {};
     this.revision = 0;
     this.lastAdvanceWorkUnits = 0;
+    this.deliverySink = null;
+  }
+
+  setDeliverySink(sink) {
+    if (sink !== null && !sink?.acceptProduction) throw new TypeError('delivery sink must expose acceptProduction');
+    this.deliverySink = sink;
+    return this.deliverySink;
   }
 
   #productionBuilding(buildingId) {
@@ -230,6 +237,20 @@ export class CivilizationProduction {
     return Object.freeze({ released });
   }
 
+  releaseUnitIds(unitIds) {
+    if (!Array.isArray(unitIds)) throw new TypeError('unitIds must be an array');
+    const affectedBuildingIds = new Set();
+    let released = 0;
+    for (const unitId of [...new Set(unitIds.map(String))].filter(Boolean).sort()) {
+      if (!this.workerToJob.has(unitId)) continue;
+      const buildingId = this.#removeWorkerFromJob(unitId);
+      if (buildingId) affectedBuildingIds.add(buildingId);
+      released += 1;
+    }
+    if (released > 0) this.revision += 1;
+    return Object.freeze({ released, affectedBuildingIds: Object.freeze([...affectedBuildingIds].sort()) });
+  }
+
   advance(deltaSeconds, { foodModifiers = null, eventId = null } = {}) {
     const seconds = finiteNonNegative(deltaSeconds, 'deltaSeconds');
     if (seconds === 0) return Object.freeze({ seconds: 0, produced: Object.freeze({}), activeJobs: 0, workUnits: 0 });
@@ -255,9 +276,17 @@ export class CivilizationProduction {
       job.revision += 1;
       produced[resourceId] = (produced[resourceId] || 0) + amount;
       this.totalProduced[resourceId] = (this.totalProduced[resourceId] || 0) + amount;
+      if (this.deliverySink) {
+        this.deliverySink.acceptProduction({
+          buildingId: job.buildingId,
+          resourceId,
+          amount,
+          workerCount: job.workerIds.size
+        });
+      }
     }
 
-    if (Object.keys(produced).length) {
+    if (Object.keys(produced).length && !this.deliverySink) {
       this.stockpile.credit(produced, {
         reason: 'aggregate-production',
         eventId: eventId || `production:${this.revision + 1}:${Math.round(this.elapsedSeconds + seconds)}`

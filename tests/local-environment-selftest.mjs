@@ -3,6 +3,9 @@ import { sampleLatLon } from '../planet-upstream/worlds/foundation-planet/core/p
 import {
   COASTAL_REMNANT_ASSET_IDS,
   LOCAL_ENVIRONMENT_MAX_CELLS,
+  WEATHER_PERIOD_HOURS,
+  WEATHER_TYPES,
+  describeLocalWeather,
   queryLocalEnvironment
 } from '../src/world/local-environment.mjs';
 import { createSurfaceFrame } from '../src/world/spatial-frame.mjs';
@@ -87,4 +90,51 @@ const moved = queryLocalEnvironment(region, {
 assert.ok(moved.cellCount <= LOCAL_ENVIRONMENT_MAX_CELLS);
 assert.notDeepEqual(moved.cells.map(cell => cell.id), first.cells.map(cell => cell.id), 'moving the stream window changes the realized shoreline/water slice');
 
-console.log('bounded Foundation shoreline / sea surface / coastal ruin environment selftest: PASS');
+const weatherOptions = {
+  centerXM: 0,
+  centerZM: 0,
+  worldSeed: 'local-environment-selftest',
+  worldHourIndex: 42
+};
+const weatherA = describeLocalWeather(region, weatherOptions);
+const weatherB = describeLocalWeather(region, weatherOptions);
+assert.deepEqual(weatherB, weatherA, 'same world/weather-cell/hour must reconstruct identical weather');
+assert.ok(WEATHER_TYPES.includes(weatherA.weatherType));
+assert.equal(weatherA.worldHourIndex, 42);
+assert.equal(weatherA.weatherEpoch, Math.floor(42 / WEATHER_PERIOD_HOURS));
+assert.ok(weatherA.intensity >= 0 && weatherA.intensity <= 1);
+assert.ok(weatherA.windDirectionDeg >= 0 && weatherA.windDirectionDeg < 360);
+assert.ok(weatherA.windMps >= 0 && weatherA.windMps <= 32);
+assert.ok(weatherA.visibilityMultiplier >= 0.25 && weatherA.visibilityMultiplier <= 1);
+assert.ok(weatherA.lightMultiplier >= 0.35 && weatherA.lightMultiplier <= 1.05);
+assert.ok(weatherA.fogDensityMultiplier >= 1 && weatherA.fogDensityMultiplier <= 3.8);
+assert.ok(weatherA.wetness >= 0 && weatherA.wetness <= 1);
+assert.ok(weatherA.coldness >= 0 && weatherA.coldness <= 1);
+assert.equal(weatherA.gameplayVisionApplied, false, 'weather is not allowed to silently change authoritative vision yet');
+assert.match(weatherA.authority, /not-gameplay-authority/);
+
+const sameEpochStart = describeLocalWeather(region, {
+  ...weatherOptions,
+  worldHourIndex: 6
+});
+const sameEpochEnd = describeLocalWeather(region, {
+  ...weatherOptions,
+  worldHourIndex: 8
+});
+assert.deepEqual(
+  { ...sameEpochStart, worldHourIndex: sameEpochEnd.worldHourIndex },
+  sameEpochEnd,
+  'hours inside the same 3-hour epoch preserve the same environmental state apart from the reported hour index'
+);
+
+const weatherStates = new Set();
+for (let hour = 0; hour < 72; hour += WEATHER_PERIOD_HOURS) {
+  const weather = describeLocalWeather(region, {
+    ...weatherOptions,
+    worldHourIndex: hour
+  });
+  weatherStates.add(`${weather.weatherType}:${weather.windDirectionDeg.toFixed(3)}:${weather.intensity.toFixed(3)}`);
+}
+assert.ok(weatherStates.size > 2, 'successive deterministic epochs should produce changing weather state rather than one frozen condition');
+
+console.log('bounded Foundation shoreline / sea / coastal ruins + deterministic weather selftest: PASS');

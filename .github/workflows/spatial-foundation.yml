@@ -22,3 +22,5 @@ jobs:
           node-version: 20
       - name: Verify spatial foundation
         run: npm test
+      - name: Verify candidate asset importer syntax
+        run: python3 -m py_compile scripts/import_candidate_asset_packs.py

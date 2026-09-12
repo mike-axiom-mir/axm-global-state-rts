@@ -1,0 +1,39 @@
+{
+  "schema": "axm.global-state-rts.incoming-asset-packs/v0.2",
+  "status": "CREATED_CANDIDATES_NOT_ACCEPTED",
+  "recorded_at": "2026-09-12",
+  "packs": [
+    {
+      "id": "axm-rts-survivors-v02",
+      "archive_sha256": "03d3f6ad63362583cf08983c835dd2fdc8f5ea79c29bd9882042465bd478f6dc",
+      "generator_repository": "mike-axiom-mir/axm-universal-creation",
+      "generator_commit": "d0c21aeebac105dbf92b1feaa6af1ef471ab8161",
+      "source_request_commit": "35b951c9613a75b9dfbcedec9aa434e93eee79e4",
+      "style_revision": "after-the-fall-survivor-style",
+      "review": "STYLE_DIRECTION_IMPROVED_RUNTIME_TEST_PENDING",
+      "notes": "Stronger scavenged materials, repair history and survivor silhouettes than v0.1. Geometry/file checks pass in the supplied verification report, but the RTS has not yet imported/rendered these GLBs in its own browser runtime.",
+      "candidate_assets": [
+        {"asset_id":"building-settlement-core-a","sha256":"e9d0effc63006b54fea1e478342b8af74429dc1c09361e7309c3628b14173a8c","triangles":4288},
+        {"asset_id":"building-storage-depot-a","sha256":"e5706b4eed79f9fba72c452fb001378923da8e6e6dc66cee726403790ee8758a","triangles":3332},
+        {"asset_id":"crew-base-a","sha256":"fcbb557719978d5d49fafd4fabf5ff77a177336147677aed81eee985faf62886","triangles":1572},
+        {"asset_id":"crew-worker-kit-a","sha256":"c210af9c6da3328d760aaf1ae2998b3e62a398d2efab650856e0674357612bf5","triangles":396},
+        {"asset_id":"crew-rifle-kit-a","sha256":"116fe9878a14d026ce4960e1829f791e75dc064471814d364ff0b5036978377d","triangles":436}
+      ]
+    },
+    {
+      "id": "axm-rts-workshop-custom-v03",
+      "archive_sha256": "d3eafee218174d787eddaa05c8e66ed5b2d405bb767fc551378a165d626436a0",
+      "generator_repository": "mike-axiom-mir/axm-universal-creation",
+      "generator_commit": "d0c21aeebac105dbf92b1feaa6af1ef471ab8161",
+      "source_request_commit": "35b951c9613a75b9dfbcedec9aa434e93eee79e4",
+      "style_revision": "custom-surface-workshop",
+      "review": "STRONG_STYLE_CANDIDATE_RUNTIME_AND_PERFORMANCE_TEST_PENDING",
+      "notes": "Custom curved/open salvage workshop is much closer to the target apocalypse language. Near geometry is 11,338 triangles, above the original low-thousands target, so runtime cost must be measured before acceptance.",
+      "candidate_assets": [
+        {"asset_id":"building-workshop-a","sha256":"9db53689c56dbe484fb842a7d7684e7f8160eedad953718ba740a3d76776eac0","triangles":11338},
+        {"asset_id":"building-workshop-a-lod1","sha256":"8c2a8197cd1d873530a3375f35ae6f7e96b139d90f596d4855a57ad696a6948c","triangles":3174}
+      ]
+    }
+  ],
+  "acceptance_rule": "CREATED is not ACCEPTED. Runtime import, scale, draw-call, split-screen and visual-readability evidence are required before catalog acceptance."
+}

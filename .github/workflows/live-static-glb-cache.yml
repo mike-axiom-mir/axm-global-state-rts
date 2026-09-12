@@ -1,0 +1,57 @@
+name: Live four-seat static GLB cache
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/presentation/local-region-scene.mjs'
+      - 'tests/browser/live-static-glb-cache.spec.js'
+      - '.github/workflows/live-static-glb-cache.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-four-seat-cache:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out target game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify live scene syntax
+        run: node --check src/presentation/local-region-scene.mjs
+      - name: Install pinned Playwright route
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start local RTS shell
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-live-cache.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-live-cache.log
+          exit 1
+      - name: Exercise four live seats through cached installer
+        run: npx playwright test tests/browser/live-static-glb-cache.spec.js --reporter=line
+      - name: Preserve browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-live-static-glb-cache
+          path: |
+            test-results/global-state-rts-live-static-glb-cache.png
+            /tmp/axm-global-state-rts-live-cache.log
+          if-no-files-found: warn
+          retention-days: 14

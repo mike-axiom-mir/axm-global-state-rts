@@ -1,11 +1,15 @@
 import { CIVILIZATION_STOCKPILE_SCHEMA } from './civilization-stockpile.mjs';
 import { LOCAL_INFRASTRUCTURE_SCHEMA } from '../world/local-infrastructure.mjs';
 
-export const TRANSPORT_CONDITION_AUTHORITY_SCHEMA = 'axm.global-state-rts.transport-condition-authority/v0.1';
+export const TRANSPORT_CONDITION_AUTHORITY_SCHEMA = 'axm.global-state-rts.transport-condition-authority/v0.2';
 export const TRANSPORT_SEGMENT_STATES = Object.freeze(['open', 'broken', 'repaired']);
 
 function freezeRecord(record) {
   return Object.freeze({ ...record });
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
 }
 
 function validateSegment(segment) {
@@ -13,6 +17,13 @@ function validateSegment(segment) {
     throw new TypeError('local infrastructure corridor segment required');
   }
   return segment;
+}
+
+function segmentEdgeProgress(segment) {
+  if (Number.isFinite(segment.edgeProgress)) return clamp(segment.edgeProgress, 0, 1);
+  const match = /:(\d+)$/.exec(String(segment.id));
+  if (!match) return 0.5;
+  return clamp(Number(match[1]) / 1_000_000, 0, 1);
 }
 
 function repairCostFor(segment) {
@@ -29,6 +40,20 @@ function repairCostFor(segment) {
 
 function defaultBroken(segment) {
   return segment.terrain.surfaceClass === 'broken-water-gap';
+}
+
+function observedRecord(segment) {
+  return freezeRecord({
+    segmentId: segment.id,
+    edgeId: segment.edgeId,
+    edgeProgress: segmentEdgeProgress(segment),
+    roadClass: segment.roadClass,
+    rail: Boolean(segment.rail),
+    surfaceClass: segment.terrain.surfaceClass,
+    lengthM: segment.lengthM,
+    maxDepthM: segment.terrain.maxDepthM,
+    repairCost: repairCostFor(segment)
+  });
 }
 
 export class TransportConditionAuthority {
@@ -53,16 +78,7 @@ export class TransportConditionAuthority {
       validateSegment(segment);
       if (!defaultBroken(segment)) continue;
       if (this.observed.has(segment.id)) continue;
-      this.observed.set(segment.id, freezeRecord({
-        segmentId: segment.id,
-        edgeId: segment.edgeId,
-        roadClass: segment.roadClass,
-        rail: Boolean(segment.rail),
-        surfaceClass: segment.terrain.surfaceClass,
-        lengthM: segment.lengthM,
-        maxDepthM: segment.terrain.maxDepthM,
-        repairCost: repairCostFor(segment)
-      }));
+      this.observed.set(segment.id, observedRecord(segment));
       added += 1;
     }
     if (added) this.revision += 1;
@@ -79,22 +95,35 @@ export class TransportConditionAuthority {
     return 'open';
   }
 
-  unresolvedBreaksForEdge(edgeId) {
-    return [...this.observed.values()]
+  unresolvedBreakDetailsForEdge(edgeId) {
+    return Object.freeze([...this.observed.values()]
       .filter(item => item.edgeId === edgeId && this.statusFor(item.segmentId) === 'broken')
-      .map(item => item.segmentId)
-      .sort();
+      .sort((a, b) => a.edgeProgress - b.edgeProgress || a.segmentId.localeCompare(b.segmentId))
+      .map(item => freezeRecord({
+        segmentId: item.segmentId,
+        edgeId: item.edgeId,
+        edgeProgress: item.edgeProgress,
+        surfaceClass: item.surfaceClass,
+        lengthM: item.lengthM,
+        maxDepthM: item.maxDepthM,
+        repairCost: item.repairCost
+      })));
+  }
+
+  unresolvedBreaksForEdge(edgeId) {
+    return Object.freeze(this.unresolvedBreakDetailsForEdge(edgeId).map(item => item.segmentId));
   }
 
   edgePolicy(edge, mode) {
-    const unresolved = this.unresolvedBreaksForEdge(edge.id);
-    if (!unresolved.length) return Object.freeze({ passable: true, multiplier: 1, reason: null, unresolvedSegmentIds: Object.freeze([]) });
+    const unresolvedDetails = this.unresolvedBreakDetailsForEdge(edge.id);
+    if (!unresolvedDetails.length) return Object.freeze({ passable: true, multiplier: 1, reason: null, unresolvedSegmentIds: Object.freeze([]) });
     return Object.freeze({
       passable: false,
       multiplier: Infinity,
       reason: 'observed-broken-crossing',
       mode,
-      unresolvedSegmentIds: Object.freeze(unresolved)
+      unresolvedSegmentIds: Object.freeze(unresolvedDetails.map(item => item.segmentId)),
+      unresolvedBreaks: unresolvedDetails
     });
   }
 
@@ -120,6 +149,7 @@ export class TransportConditionAuthority {
     const mutation = freezeRecord({
       segmentId: id,
       edgeId: observed.edgeId,
+      edgeProgress: observed.edgeProgress,
       state: 'repaired',
       repairedFrom: observed.surfaceClass,
       eventId: eventId ? String(eventId) : null
@@ -131,6 +161,7 @@ export class TransportConditionAuthority {
       revision: this.revision,
       segmentId: id,
       edgeId: observed.edgeId,
+      edgeProgress: observed.edgeProgress,
       cost: observed.repairCost,
       eventId: mutation.eventId
     });
@@ -143,21 +174,12 @@ export class TransportConditionAuthority {
     if (!['bridge-span', 'causeway'].includes(segment.terrain.surfaceClass) && this.statusFor(segment) !== 'repaired') {
       return Object.freeze({ accepted: false, reason: 'segment-not-engineered-crossing' });
     }
-    if (!this.observed.has(segment.id)) {
-      this.observed.set(segment.id, freezeRecord({
-        segmentId: segment.id,
-        edgeId: segment.edgeId,
-        roadClass: segment.roadClass,
-        rail: Boolean(segment.rail),
-        surfaceClass: segment.terrain.surfaceClass,
-        lengthM: segment.lengthM,
-        maxDepthM: segment.terrain.maxDepthM,
-        repairCost: repairCostFor(segment)
-      }));
-    }
+    if (!this.observed.has(segment.id)) this.observed.set(segment.id, observedRecord(segment));
+    const observed = this.observed.get(segment.id);
     const mutation = freezeRecord({
       segmentId: segment.id,
       edgeId: segment.edgeId,
+      edgeProgress: observed.edgeProgress,
       state: 'broken',
       reason: String(reason),
       eventId: eventId ? String(eventId) : null

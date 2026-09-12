@@ -1,4 +1,5 @@
 import { createStrategicParty } from '../sim/strategic-party.mjs';
+import { createStrategicRouteJourney } from '../sim/strategic-route-journey.mjs';
 import { createWorldCityFabric } from '../sim/world-city-fabric.mjs';
 import { createAsteroidFieldRuntime } from './asteroid-field.mjs';
 import { createSparseWorldState } from './sparse-world-state.mjs';
@@ -15,7 +16,7 @@ import {
   featureCellForCoordinate
 } from './world-feature-cells.mjs';
 
-export const GLOBAL_WORLD_RUNTIME_SCHEMA = 'axm.global-state-rts.global-world-runtime/v0.2';
+export const GLOBAL_WORLD_RUNTIME_SCHEMA = 'axm.global-state-rts.global-world-runtime/v0.3';
 
 export class GlobalWorldRuntime {
   constructor({
@@ -27,7 +28,8 @@ export class GlobalWorldRuntime {
     extraTransportLinksPerCity = 2,
     asteroidActiveWindowHours,
     asteroidMaxEventsPerHour = 3,
-    asteroidMutations = []
+    asteroidMutations = [],
+    transportConditionAuthority = null
   } = {}) {
     this.schema = GLOBAL_WORLD_RUNTIME_SCHEMA;
     this.worldSeed = String(worldSeed);
@@ -46,7 +48,9 @@ export class GlobalWorldRuntime {
       maxEventsPerHour: asteroidMaxEventsPerHour,
       mutations: asteroidMutations
     });
+    this.transportConditionAuthority = transportConditionAuthority;
     this.parties = new Map();
+    this.routeJourneys = new Map();
     this.lastAdvanceMs = null;
     this.revision = 0;
   }
@@ -75,6 +79,45 @@ export class GlobalWorldRuntime {
     const snapshot = party.startTravel(destination, nowMs, options);
     this.revision += 1;
     return snapshot;
+  }
+
+  createRouteJourney({ id, startNodeId, memberCount = 1, mode = 'foot', speedMultiplier = 1 } = {}) {
+    if (!id) throw new TypeError('id required');
+    if (this.routeJourneys.has(String(id))) throw new Error(`route journey already exists: ${id}`);
+    const journey = createStrategicRouteJourney({
+      id,
+      network: this.transportNetwork,
+      landmarks: this.landmarks,
+      worldScale: this.scale,
+      startNodeId,
+      memberCount,
+      mode,
+      speedMultiplier,
+      transportAuthority: this.transportConditionAuthority
+    });
+    this.routeJourneys.set(String(id), journey);
+    this.revision += 1;
+    return journey;
+  }
+
+  routeJourney(id) {
+    return this.routeJourneys.get(String(id)) || null;
+  }
+
+  startRouteJourney(id, destinationNodeId, nowMs) {
+    const journey = this.routeJourney(id);
+    if (!journey) throw new RangeError(`unknown route journey: ${id}`);
+    const result = journey.start(destinationNodeId, nowMs);
+    this.revision += 1;
+    return result;
+  }
+
+  repairRouteJourneyCrossing(id, nowMs, options = {}) {
+    const journey = this.routeJourney(id);
+    if (!journey) throw new RangeError(`unknown route journey: ${id}`);
+    const result = journey.repairCurrentCrossing(nowMs, options);
+    if (result.accepted) this.revision += 1;
+    return result;
   }
 
   claimTerritoryCoordinate(latDeg, lonDeg, ownerId) {
@@ -111,6 +154,7 @@ export class GlobalWorldRuntime {
   advanceTo(nowMs) {
     if (!Number.isFinite(nowMs) || nowMs < 0) throw new RangeError('nowMs must be finite and non-negative');
     for (const party of this.parties.values()) party.advanceTo(nowMs);
+    for (const journey of this.routeJourneys.values()) journey.advanceTo(nowMs);
     if (this.lastAdvanceMs !== null && nowMs >= this.lastAdvanceMs) {
       this.advanceCities((nowMs - this.lastAdvanceMs) / 1000);
     }
@@ -144,6 +188,9 @@ export class GlobalWorldRuntime {
     const parties = [...this.parties.values()]
       .sort((a, b) => a.id.localeCompare(b.id))
       .map(party => party.snapshot(nowMs));
+    const routeJourneys = [...this.routeJourneys.values()]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map(journey => nowMs === null ? journey.snapshot() : journey.advanceTo(nowMs));
     const citySnapshot = this.cityFabric.snapshot();
     const majorCities = citySnapshot.cities.filter(city => city.tier === 'major-city');
     return Object.freeze({
@@ -165,7 +212,8 @@ export class GlobalWorldRuntime {
       transport: Object.freeze({
         nodes: this.transportNetwork.nodeCount,
         edges: this.transportNetwork.edgeCount,
-        indexedSectors: this.mapIndex.occupiedSectorCount
+        indexedSectors: this.mapIndex.occupiedSectorCount,
+        conditionRevision: this.transportConditionAuthority?.revision ?? null
       }),
       territory: Object.freeze({
         revision: this.territory.revision,
@@ -174,7 +222,8 @@ export class GlobalWorldRuntime {
       }),
       asteroidField: this.asteroidField.summary(nowMs),
       sparseMutationCount: this.state.mutatedCellCount,
-      parties: Object.freeze(parties)
+      parties: Object.freeze(parties),
+      routeJourneys: Object.freeze(routeJourneys)
     });
   }
 }

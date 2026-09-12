@@ -1,5 +1,6 @@
 import { sampleLatLon } from '../../planet-upstream/worlds/foundation-planet/core/planet-model.mjs';
 import { createSurfaceFrame, localToLatLon, normalizeLongitude } from './spatial-frame.mjs';
+import { buildWorldLandmarks } from './world-landmarks.mjs';
 
 export const STARTER_REGION_SCHEMA = 'axm.global-state-rts.starter-region/v0.2';
 export const STARTER_REGION_HALF_SIZE_M = 5400;
@@ -14,6 +15,7 @@ const RAW_DROP_ANCHORS = Object.freeze([
 ]);
 
 const resolvedAnchorCache = new Map();
+let fallbackLandAnchors = null;
 
 function seatNumber(seatId) {
   const match = /^seat-(\d+)$/.exec(String(seatId || ''));
@@ -35,6 +37,29 @@ function landEnough(latDeg, lonDeg) {
     : null;
 }
 
+function globalFallbackAnchor(seatIndex) {
+  if (!fallbackLandAnchors) {
+    // Reuse the deterministic land-placement search as a bounded final fallback only.
+    // These coordinates are probes for safe preview drops; they are not added to the
+    // actual world-city catalog and therefore do not create phantom cities.
+    fallbackLandAnchors = buildWorldLandmarks({
+      worldSeed: 'axm-starter-drop-land-fallback-v0',
+      majorCityCount: 4,
+      regionalCityCount: 0
+    }).majorCities.map(city => Object.freeze({ ...city.coordinate }));
+  }
+  const coordinate = fallbackLandAnchors[seatIndex - 1];
+  const terrain = landEnough(coordinate.lat, coordinate.lon);
+  if (!terrain) throw new Error(`global starter land fallback failed for seat ${seatIndex}`);
+  return Object.freeze({
+    latDeg: coordinate.lat,
+    lonDeg: normalizeLongitude(coordinate.lon),
+    resolvedFromBase: true,
+    resolutionMethod: 'global-land-fallback',
+    terrain
+  });
+}
+
 function resolveLandAnchor(raw, seatIndex) {
   const direct = landEnough(raw.latDeg, raw.lonDeg);
   if (direct) {
@@ -42,11 +67,12 @@ function resolveLandAnchor(raw, seatIndex) {
       latDeg: raw.latDeg,
       lonDeg: normalizeLongitude(raw.lonDeg),
       resolvedFromBase: false,
+      resolutionMethod: 'base-anchor',
       terrain: direct
     });
   }
 
-  // Deterministic outward radial search around the original preview anchor.
+  // First preserve locality: deterministic outward radial search around the intended anchor.
   // This is only preview/drop placement; it does not change Foundation Planet geography.
   for (let ring = 1; ring <= 28; ring++) {
     const radiusDeg = ring * 0.32;
@@ -62,12 +88,16 @@ function resolveLandAnchor(raw, seatIndex) {
         latDeg,
         lonDeg,
         resolvedFromBase: true,
+        resolutionMethod: 'nearby-land-search',
         terrain
       });
     }
   }
 
-  throw new Error(`could not resolve dry-land starter anchor near ${raw.latDeg},${raw.lonDeg}`);
+  // Some coarse preview anchors can sit deep inside an ocean. Never keep widening an
+  // unbounded search around them: fall back to four deterministic, globally separated
+  // land probes instead. This executes only during preview-region creation and is cached.
+  return globalFallbackAnchor(seatIndex);
 }
 
 function resolvedDropAnchor(seatId) {
@@ -126,6 +156,7 @@ export function createStarterRegion(seatId) {
     origin: Object.freeze({ latDeg: anchor.latDeg, lonDeg: anchor.lonDeg }),
     originTerrain: anchor.terrain,
     anchorResolvedFromBase: anchor.resolvedFromBase,
+    anchorResolutionMethod: anchor.resolutionMethod,
     halfSizeM: STARTER_REGION_HALF_SIZE_M,
     frame,
     previewFixtures: previewFixturesForSeat(seatId),

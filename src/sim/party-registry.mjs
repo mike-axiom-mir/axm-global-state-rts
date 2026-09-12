@@ -1,4 +1,4 @@
-export const PARTY_REGISTRY_SCHEMA = 'axm.global-state-rts.party-registry/v0.1';
+export const PARTY_REGISTRY_SCHEMA = 'axm.global-state-rts.party-registry/v0.2';
 
 function nonEmpty(value, label) {
   const text = String(value ?? '');
@@ -30,6 +30,29 @@ export class PartyRegistry {
     if (!Array.isArray(unitIds)) throw new TypeError('unitIds must be an array');
     for (const id of unitIds) this.knownUnits.add(nonEmpty(id, 'unit id'));
     this.revision += 1;
+  }
+
+  unregisterUnits(unitIds) {
+    if (!Array.isArray(unitIds)) throw new TypeError('unitIds must be an array');
+    const removing = new Set(unitIds.map(id => String(id)).filter(Boolean));
+    let removedKnownUnits = 0;
+    const affectedParties = new Set();
+    for (const unitId of removing) {
+      if (this.knownUnits.delete(unitId)) removedKnownUnits += 1;
+      const partyId = this.primaryPartyByUnit.get(unitId);
+      if (partyId) affectedParties.add(partyId);
+      this.primaryPartyByUnit.delete(unitId);
+    }
+    for (const party of this.parties.values()) {
+      const before = party.unitIds.length;
+      party.unitIds = party.unitIds.filter(id => !removing.has(id));
+      if (party.unitIds.length !== before) affectedParties.add(party.id);
+    }
+    if (removedKnownUnits > 0 || affectedParties.size > 0) this.revision += 1;
+    return Object.freeze({
+      removedKnownUnits,
+      affectedParties: Object.freeze([...affectedParties].sort())
+    });
   }
 
   createParty(id, { label = id } = {}) {

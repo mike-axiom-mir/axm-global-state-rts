@@ -91,6 +91,24 @@ Up to four split-screen seats share the same world cache. Four views do not mean
 
 The exact budgets are tuning values, but the bounded-memory rule is structural.
 
+## Local tactical terrain chunks
+
+The globe LOD controls strategic state. Tactical terrain gets a second bounded layer so a large local battlefield does not become one giant permanent mesh.
+
+Initial planner defaults:
+
+- chunk size: **256 m**;
+- active ring: 2 chunks from each local focus;
+- warm ring: 4 chunks from each local focus;
+- active terrain resolution: `17 × 17` vertices per chunk;
+- warm terrain resolution: `9 × 9` vertices per chunk;
+- combined 4-seat active budget: 128 chunks;
+- combined 4-seat warm budget: 384 chunks.
+
+A selftest with four separated local views stays below **50,000 planned terrain vertices** before props/units, while still allowing each camera to move through a much larger logical area.
+
+The planner is `src/world/local-terrain-stream.mjs`. The current local renderer has not yet been replaced by this chunk cache; this is the budget/streaming contract for that next renderer step.
+
 ## Major cities
 
 The first deterministic landmark generator places:
@@ -103,6 +121,22 @@ The first deterministic landmark generator places:
 This gives the world stable large-scale anchors without storing a giant authored map file.
 
 City economy, food, defensive response and capture behavior are still separate gameplay work; this rung only establishes deterministic placement.
+
+## Asteroid opportunities without a world tick storm
+
+Asteroids are generated as a small deterministic **hour-indexed event stream**, not by asking millions of cells every frame whether an asteroid appears.
+
+Current contract:
+
+- 0–3 candidate impacts per world hour by default;
+- equal-area globe placement;
+- stable event IDs from world seed + hour;
+- compact material/resource descriptors;
+- events remain `undiscovered-until-legitimate-vision` from the player-facing perspective.
+
+This keeps the long-term resource/opportunity system cheap while preserving the intended reason to explore and hold wider territory.
+
+Implemented in `src/world/asteroid-events.mjs`.
 
 ## Mass-macro rule applied
 
@@ -130,11 +164,14 @@ Implemented now:
 - 15–60 minute legal tuning range;
 - great-circle interpolation;
 - hierarchical equal-area world address space;
-- bounded streaming plans;
+- bounded globe streaming plans;
+- bounded local terrain chunk planning;
 - deterministic procedural cells;
 - sparse persistent mutation store;
 - aggregate remote party travel;
 - deterministic major/regional city placement;
+- deterministic sparse hourly asteroid opportunity stream;
+- composed global runtime substrate;
 - selftests for these contracts.
 
 Not claimed yet:
@@ -147,5 +184,5 @@ Not claimed yet:
 - city economy/combat AI;
 - party materialization into large local battles;
 - final world-day clock;
-- asteroid event scheduler;
-- final terrain chunk renderer.
+- final chunked terrain renderer/cache;
+- final asteroid impact visuals/extraction gameplay.

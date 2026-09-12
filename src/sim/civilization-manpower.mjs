@@ -1,4 +1,4 @@
-export const CIVILIZATION_MANPOWER_SCHEMA = 'axm.global-state-rts.civilization-manpower/v0.2';
+export const CIVILIZATION_MANPOWER_SCHEMA = 'axm.global-state-rts.civilization-manpower/v0.3';
 
 export const ROLE_DEFINITIONS = Object.freeze({
   crew: Object.freeze({
@@ -242,11 +242,29 @@ export class CivilizationManpower {
     const normalizedClass = String(vehicleClass || '');
     if (!VEHICLE_LICENSES[normalizedClass]) throw new RangeError(`unknown vehicleClass: ${vehicleClass}`);
     if (!unit.licenses.has(normalizedClass)) return Object.freeze({ accepted: false, reason: 'required-license-missing', requiredLicense: normalizedClass });
+    if (unit.assignedVehicleId === normalizedVehicleId) return Object.freeze({ accepted: false, reason: 'vehicle-already-assigned', unit: unitSnapshot(unit) });
+    if (unit.assignedVehicleId) return Object.freeze({ accepted: false, reason: 'unit-already-assigned-vehicle', assignedVehicleId: unit.assignedVehicleId });
     unit.assignedVehicleId = normalizedVehicleId;
     unit.assignedVehicleClass = normalizedClass;
     unit.revision += 1;
     this.revision += 1;
     return Object.freeze({ accepted: true, unit: unitSnapshot(unit) });
+  }
+
+  unassignVehicle(unitId, { expectedVehicleId = null } = {}) {
+    const unit = this.units.get(String(unitId));
+    if (!unit) throw new RangeError(`unknown unit: ${unitId}`);
+    if (!unit.assignedVehicleId) return Object.freeze({ accepted: false, reason: 'unit-not-assigned-vehicle', unit: unitSnapshot(unit) });
+    if (expectedVehicleId && unit.assignedVehicleId !== String(expectedVehicleId)) {
+      return Object.freeze({ accepted: false, reason: 'vehicle-assignment-mismatch', assignedVehicleId: unit.assignedVehicleId });
+    }
+    const previousVehicleId = unit.assignedVehicleId;
+    const previousVehicleClass = unit.assignedVehicleClass;
+    unit.assignedVehicleId = null;
+    unit.assignedVehicleClass = null;
+    unit.revision += 1;
+    this.revision += 1;
+    return Object.freeze({ accepted: true, previousVehicleId, previousVehicleClass, unit: unitSnapshot(unit) });
   }
 
   removeUnits(unitIds, { reason = 'combat-casualty', eventId = null } = {}) {

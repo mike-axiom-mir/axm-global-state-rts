@@ -1,9 +1,23 @@
-export const CIVILIZATION_COMBAT_AUTHORITY_SCHEMA = 'axm.global-state-rts.civilization-combat-authority/v0.1';
+export const CIVILIZATION_COMBAT_AUTHORITY_SCHEMA = 'axm.global-state-rts.civilization-combat-authority/v0.2';
 export const AUTHORITATIVE_COMBAT_ENCOUNTER_SCHEMA = 'axm.global-state-rts.authoritative-combat-encounter/v0.1';
 
 function normalizeIds(unitIds) {
   if (!Array.isArray(unitIds)) throw new TypeError('unitIds must be an array');
   return [...new Set(unitIds.map(String))].filter(Boolean).sort();
+}
+
+function releaseVehicleDrivers(vehicleFabric, unitIds, { encounterId, tick, revision } = {}) {
+  if (!vehicleFabric) return Object.freeze({ released: 0, vehicleIds: Object.freeze([]) });
+  const casualtySet = new Set(unitIds);
+  const vehicleIds = [];
+  for (const vehicle of vehicleFabric.snapshot().vehicles || []) {
+    if (!vehicle.driverUnitId || !casualtySet.has(vehicle.driverUnitId)) continue;
+    const result = vehicleFabric.unassignDriver(vehicle.instanceId, {
+      eventId: `combat-driver:${encounterId || 'encounter'}:${tick ?? 'tick'}:${revision}`
+    });
+    if (result.accepted) vehicleIds.push(vehicle.instanceId);
+  }
+  return Object.freeze({ released: vehicleIds.length, vehicleIds: Object.freeze(vehicleIds.sort()) });
 }
 
 export class CivilizationCombatAuthority {
@@ -13,7 +27,8 @@ export class CivilizationCombatAuthority {
     equipment,
     production = null,
     logistics = null,
-    partyRegistry = null
+    partyRegistry = null,
+    vehicleFabric = null
   } = {}) {
     const id = String(civilizationId || '');
     if (!id) throw new TypeError('civilizationId required');
@@ -22,6 +37,7 @@ export class CivilizationCombatAuthority {
     if (production && !production.releaseUnitIds) throw new TypeError('production must expose releaseUnitIds');
     if (logistics && !logistics.reconcileWorkerCounts) throw new TypeError('logistics must expose reconcileWorkerCounts');
     if (partyRegistry && !partyRegistry.unregisterUnits) throw new TypeError('partyRegistry must expose unregisterUnits');
+    if (vehicleFabric && (!vehicleFabric.snapshot || !vehicleFabric.unassignDriver)) throw new TypeError('vehicleFabric must expose snapshot/unassignDriver');
 
     this.schema = CIVILIZATION_COMBAT_AUTHORITY_SCHEMA;
     this.civilizationId = id;
@@ -30,6 +46,7 @@ export class CivilizationCombatAuthority {
     this.production = production;
     this.logistics = logistics;
     this.partyRegistry = partyRegistry;
+    this.vehicleFabric = vehicleFabric;
     this.revision = 0;
     this.receipts = [];
   }
@@ -52,7 +69,7 @@ export class CivilizationCombatAuthority {
       });
     }
 
-    // Keep this order. Production needs the unit role/factors while the unit still exists.
+    // Keep this order. Production and vehicle assignment need the live unit's role/identity before manpower deletion.
     // Equipped weapons are destroyed with the casualty and are never returned to inventory.
     const equipment = this.equipment.discardDestroyedUnitLoadouts(liveIds, {
       reason,
@@ -64,6 +81,11 @@ export class CivilizationCombatAuthority {
     const parties = this.partyRegistry
       ? this.partyRegistry.unregisterUnits(liveIds)
       : Object.freeze({ removedKnownUnits: 0, affectedParties: Object.freeze([]) });
+    const vehicles = releaseVehicleDrivers(this.vehicleFabric, liveIds, {
+      encounterId,
+      tick,
+      revision: this.revision + 1
+    });
     const manpower = this.manpower.removeUnits(liveIds, {
       reason,
       eventId: eventId || `combat-manpower:${encounterId || 'encounter'}:${tick ?? 'tick'}:${this.revision + 1}`
@@ -86,6 +108,8 @@ export class CivilizationCombatAuthority {
       productionWorkersReleased: production.released,
       affectedProductionBuildings: production.affectedBuildingIds,
       affectedParties: parties.affectedParties,
+      vehicleDriversReleased: vehicles.released,
+      affectedVehicleIds: vehicles.vehicleIds,
       logisticsRoutesChanged: logistics.changed,
       remainingPopulation: manpower.population
     });

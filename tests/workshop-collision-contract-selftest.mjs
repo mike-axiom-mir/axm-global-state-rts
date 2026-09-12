@@ -36,8 +36,8 @@ for (const seatId of ['seat-1', 'seat-2', 'seat-3', 'seat-4']) {
 
   const pushed = clampPointOutsideWorkshopFootprint(collision, collision.centerXM, collision.centerZM, { paddingM: 0.35 });
   assert.equal(pushed.changed, true);
+  assert.equal(pointInsideWorkshopFootprint(collision, pushed.xM, pushed.zM, { paddingM: 0.35 }), false);
   assert.equal(pointInsideWorkshopFootprint(collision, pushed.xM, pushed.zM, { paddingM: 0.34 }), false);
-  assert.equal(pointInsideWorkshopFootprint(collision, pushed.xM, pushed.zM, { paddingM: 0.35 }), true);
 }
 
 assert.throws(() => workshopCollisionForFixture({ assetId: 'wrong', xM: 0, zM: 0, yawDeg: 0 }), /fixture/);

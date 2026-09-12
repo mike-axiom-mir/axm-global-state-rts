@@ -1,15 +1,21 @@
-import { createSurfaceFrame, localToLatLon } from './spatial-frame.mjs';
+import { sampleLatLon } from '../../planet-upstream/worlds/foundation-planet/core/planet-model.mjs';
+import { createSurfaceFrame, localToLatLon, normalizeLongitude } from './spatial-frame.mjs';
+import { buildWorldLandmarks } from './world-landmarks.mjs';
 
-export const STARTER_REGION_SCHEMA = 'axm.global-state-rts.starter-region/v0.1';
+export const STARTER_REGION_SCHEMA = 'axm.global-state-rts.starter-region/v0.2';
 export const STARTER_REGION_HALF_SIZE_M = 5400;
 export const STARTER_REGION_OPERATION_RADIUS_M = 10000;
+export const STARTER_DROP_MIN_ELEVATION_M = 25;
 
-const DROP_ANCHORS = Object.freeze([
+const RAW_DROP_ANCHORS = Object.freeze([
   Object.freeze({ latDeg: 12.5, lonDeg: -42.0 }),
   Object.freeze({ latDeg: 7.25, lonDeg: 34.5 }),
   Object.freeze({ latDeg: -18.75, lonDeg: 96.0 }),
   Object.freeze({ latDeg: 31.5, lonDeg: 142.0 })
 ]);
+
+const resolvedAnchorCache = new Map();
+let fallbackLandAnchors = null;
 
 function seatNumber(seatId) {
   const match = /^seat-(\d+)$/.exec(String(seatId || ''));
@@ -18,6 +24,88 @@ function seatNumber(seatId) {
     throw new RangeError('seatId must be seat-1 through seat-4');
   }
   return number;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function landEnough(latDeg, lonDeg) {
+  const terrain = sampleLatLon(latDeg, lonDeg);
+  return terrain.elevationM >= STARTER_DROP_MIN_ELEVATION_M
+    ? Object.freeze({ biome: terrain.biome, elevationM: terrain.elevationM })
+    : null;
+}
+
+function globalFallbackAnchor(seatIndex) {
+  if (!fallbackLandAnchors) {
+    // Reuse the deterministic land-placement search as a bounded final fallback only.
+    // These coordinates are probes for safe preview drops; they are not added to the
+    // actual world-city catalog and therefore do not create phantom cities.
+    fallbackLandAnchors = buildWorldLandmarks({
+      worldSeed: 'axm-starter-drop-land-fallback-v0',
+      majorCityCount: 4,
+      regionalCityCount: 0
+    }).majorCities.map(city => Object.freeze({ ...city.coordinate }));
+  }
+  const coordinate = fallbackLandAnchors[seatIndex - 1];
+  const terrain = landEnough(coordinate.lat, coordinate.lon);
+  if (!terrain) throw new Error(`global starter land fallback failed for seat ${seatIndex}`);
+  return Object.freeze({
+    latDeg: coordinate.lat,
+    lonDeg: normalizeLongitude(coordinate.lon),
+    resolvedFromBase: true,
+    resolutionMethod: 'global-land-fallback',
+    terrain
+  });
+}
+
+function resolveLandAnchor(raw, seatIndex) {
+  const direct = landEnough(raw.latDeg, raw.lonDeg);
+  if (direct) {
+    return Object.freeze({
+      latDeg: raw.latDeg,
+      lonDeg: normalizeLongitude(raw.lonDeg),
+      resolvedFromBase: false,
+      resolutionMethod: 'base-anchor',
+      terrain: direct
+    });
+  }
+
+  // First preserve locality: deterministic outward radial search around the intended anchor.
+  // This is only preview/drop placement; it does not change Foundation Planet geography.
+  for (let ring = 1; ring <= 28; ring++) {
+    const radiusDeg = ring * 0.32;
+    const samples = Math.max(12, ring * 10);
+    for (let step = 0; step < samples; step++) {
+      const angle = (step / samples) * Math.PI * 2 + seatIndex * 0.731;
+      const latDeg = clamp(raw.latDeg + Math.sin(angle) * radiusDeg, -78, 78);
+      const longitudeScale = Math.max(0.28, Math.cos(latDeg * Math.PI / 180));
+      const lonDeg = normalizeLongitude(raw.lonDeg + Math.cos(angle) * radiusDeg / longitudeScale);
+      const terrain = landEnough(latDeg, lonDeg);
+      if (!terrain) continue;
+      return Object.freeze({
+        latDeg,
+        lonDeg,
+        resolvedFromBase: true,
+        resolutionMethod: 'nearby-land-search',
+        terrain
+      });
+    }
+  }
+
+  // Some coarse preview anchors can sit deep inside an ocean. Never keep widening an
+  // unbounded search around them: fall back to four deterministic, globally separated
+  // land probes instead. This executes only during preview-region creation and is cached.
+  return globalFallbackAnchor(seatIndex);
+}
+
+function resolvedDropAnchor(seatId) {
+  const n = seatNumber(seatId);
+  if (!resolvedAnchorCache.has(n)) {
+    resolvedAnchorCache.set(n, resolveLandAnchor(RAW_DROP_ANCHORS[n - 1], n));
+  }
+  return resolvedAnchorCache.get(n);
 }
 
 function freezeFixture(fixture) {
@@ -49,7 +137,7 @@ function previewCrewForSeat(seatId) {
 }
 
 export function starterDropAnchor(seatId) {
-  return DROP_ANCHORS[seatNumber(seatId) - 1];
+  return resolvedDropAnchor(seatId);
 }
 
 export function createStarterRegion(seatId) {
@@ -62,10 +150,13 @@ export function createStarterRegion(seatId) {
 
   return Object.freeze({
     schema: STARTER_REGION_SCHEMA,
-    id: `starter-region:${seatId}:${anchor.latDeg.toFixed(2)},${anchor.lonDeg.toFixed(2)}`,
+    id: `starter-region:${seatId}:${anchor.latDeg.toFixed(4)},${anchor.lonDeg.toFixed(4)}`,
     seatId,
     status: 'EXPERIMENTAL_PREVIEW_FIXTURE',
     origin: Object.freeze({ latDeg: anchor.latDeg, lonDeg: anchor.lonDeg }),
+    originTerrain: anchor.terrain,
+    anchorResolvedFromBase: anchor.resolvedFromBase,
+    anchorResolutionMethod: anchor.resolutionMethod,
     halfSizeM: STARTER_REGION_HALF_SIZE_M,
     frame,
     previewFixtures: previewFixturesForSeat(seatId),

@@ -1,9 +1,10 @@
 import { TRANSPORT_CONDITION_AUTHORITY_SCHEMA } from './transport-condition-authority.mjs';
+import { STRATEGIC_SUPPLY_CARGO_SCHEMA } from './strategic-supply-cargo.mjs';
 import { planLandmarkRoute } from '../world/world-route-planner.mjs';
 import { WORLD_SCALE_SCHEMA, interpolateGreatCircle } from '../world/world-scale.mjs';
 import { WORLD_TRANSPORT_NETWORK_SCHEMA } from '../world/world-transport-network.mjs';
 
-export const STRATEGIC_ROUTE_JOURNEY_SCHEMA = 'axm.global-state-rts.strategic-route-journey/v0.1';
+export const STRATEGIC_ROUTE_JOURNEY_SCHEMA = 'axm.global-state-rts.strategic-route-journey/v0.2';
 
 const MODES = Object.freeze(['foot', 'wheeled', 'tracked', 'rail']);
 const EPSILON = 1e-9;
@@ -21,6 +22,7 @@ function clamp(value, min, max) {
 function freezeCoordinate(input) {
   finite(input?.lat, 'lat');
   finite(input?.lon, 'lon');
+  if (input.lat < -90 || input.lat > 90) throw new RangeError('lat must be between -90 and 90');
   return Object.freeze({ lat: input.lat, lon: ((input.lon + 540) % 360) - 180 });
 }
 
@@ -52,17 +54,21 @@ export class StrategicRouteJourney {
     memberCount = 1,
     mode = 'foot',
     speedMultiplier = 1,
-    transportAuthority = null
+    transportAuthority = null,
+    supplyCargo = null
   } = {}) {
     if (!id) throw new TypeError('id required');
     if (!network || network.schema !== WORLD_TRANSPORT_NETWORK_SCHEMA) throw new TypeError('valid transport network required');
-    if (!worldScale || worldScale.schema !== WORLD_SCALE_SCHEMA) throw new TypeError('valid world scale required');
+    if (!worldScale || worldScale.schema !== WORLD_SCALE_SCHEMA) throw new TypeError('valid worldScale required');
     if (!MODES.includes(mode)) throw new RangeError(`unsupported journey mode: ${mode}`);
     if (!Number.isInteger(memberCount) || memberCount <= 0) throw new RangeError('memberCount must be a positive integer');
     finite(speedMultiplier, 'speedMultiplier');
     if (speedMultiplier <= 0) throw new RangeError('speedMultiplier must be greater than zero');
     if (transportAuthority && transportAuthority.schema !== TRANSPORT_CONDITION_AUTHORITY_SCHEMA) {
       throw new TypeError('transportAuthority must be a TransportConditionAuthority when supplied');
+    }
+    if (supplyCargo && supplyCargo.schema !== STRATEGIC_SUPPLY_CARGO_SCHEMA) {
+      throw new TypeError('supplyCargo must be a StrategicSupplyCargo when supplied');
     }
 
     this.schema = STRATEGIC_ROUTE_JOURNEY_SCHEMA;
@@ -72,6 +78,7 @@ export class StrategicRouteJourney {
     this.landmarks = landmarkMap(landmarks);
     this.edges = edgeMap(network);
     this.transportAuthority = transportAuthority;
+    this.supplyCargo = supplyCargo;
     this.memberCount = memberCount;
     this.mode = mode;
     this.speedMultiplier = speedMultiplier;
@@ -100,6 +107,44 @@ export class StrategicRouteJourney {
       mode: this.mode,
       edgePolicy: (edge, mode) => this.#edgePolicy(edge, mode)
     });
+  }
+
+  #atLandmarkNode() {
+    return Boolean(this.currentNodeId) && !this.activeEdge && this.status !== 'halted-crossing';
+  }
+
+  loadSupplyFromStockpile(stockpile, manifest, { eventId = null } = {}) {
+    if (!this.supplyCargo) return Object.freeze({ accepted: false, reason: 'no-journey-supply-cargo', snapshot: this.snapshot() });
+    if (!this.#atLandmarkNode()) return Object.freeze({ accepted: false, reason: 'journey-not-at-landmark-node', snapshot: this.snapshot() });
+    const result = this.supplyCargo.loadFromStockpile(stockpile, manifest, { eventId });
+    if (result.accepted) {
+      this.revision += 1;
+      this.receipts.push(freezeReceipt({
+        type: 'journey-supply-loaded',
+        revision: this.revision,
+        nodeId: this.currentNodeId,
+        cargoId: this.supplyCargo.id,
+        eventId: eventId ? String(eventId) : null
+      }));
+    }
+    return Object.freeze({ ...result, snapshot: this.snapshot() });
+  }
+
+  unloadSupplyToStockpile(stockpile, manifest = null, { eventId = null } = {}) {
+    if (!this.supplyCargo) return Object.freeze({ accepted: false, reason: 'no-journey-supply-cargo', snapshot: this.snapshot() });
+    if (!this.#atLandmarkNode()) return Object.freeze({ accepted: false, reason: 'journey-not-at-landmark-node', snapshot: this.snapshot() });
+    const result = this.supplyCargo.unloadToStockpile(stockpile, manifest, { eventId });
+    if (result.accepted) {
+      this.revision += 1;
+      this.receipts.push(freezeReceipt({
+        type: 'journey-supply-unloaded',
+        revision: this.revision,
+        nodeId: this.currentNodeId,
+        cargoId: this.supplyCargo.id,
+        eventId: eventId ? String(eventId) : null
+      }));
+    }
+    return Object.freeze({ ...result, snapshot: this.snapshot() });
   }
 
   start(destinationNodeId, nowMs) {
@@ -138,6 +183,7 @@ export class StrategicRouteJourney {
       mode: this.mode,
       routeEdgeCount: plan.edgeIds.length,
       memberCount: this.memberCount,
+      cargoId: this.supplyCargo?.id || null,
       atMs: nowMs
     }));
     this.#beginCurrentEdge(nowMs);
@@ -231,10 +277,7 @@ export class StrategicRouteJourney {
     const details = this.transportAuthority.unresolvedBreakDetailsForEdge(edge.id);
     const forward = this.activeEdge.fromId === edge.aId && this.activeEdge.toId === edge.bId;
     const candidates = details
-      .map(detail => Object.freeze({
-        ...detail,
-        routeProgress: forward ? detail.edgeProgress : 1 - detail.edgeProgress
-      }))
+      .map(detail => Object.freeze({ ...detail, routeProgress: forward ? detail.edgeProgress : 1 - detail.edgeProgress }))
       .filter(detail => detail.routeProgress > this.activeEdge.startProgress + EPSILON)
       .sort((a, b) => a.routeProgress - b.routeProgress || a.segmentId.localeCompare(b.segmentId));
     return candidates[0] || null;
@@ -287,13 +330,7 @@ export class StrategicRouteJourney {
       this.activeEdge = null;
       this.edgeIndex += 1;
       this.revision += 1;
-      this.receipts.push(freezeReceipt({
-        type: 'journey-edge-completed',
-        revision: this.revision,
-        edgeId: edgeState.edgeId,
-        nodeId: reachedNodeId,
-        atMs: arrivalMs
-      }));
+      this.receipts.push(freezeReceipt({ type: 'journey-edge-completed', revision: this.revision, edgeId: edgeState.edgeId, nodeId: reachedNodeId, atMs: arrivalMs }));
       this.#beginCurrentEdge(arrivalMs);
     }
     return this.snapshot();
@@ -305,7 +342,11 @@ export class StrategicRouteJourney {
       return Object.freeze({ accepted: false, reason: 'journey-not-halted-at-crossing', snapshot: this.snapshot() });
     }
     if (!this.transportAuthority) return Object.freeze({ accepted: false, reason: 'no-transport-authority', snapshot: this.snapshot() });
-    const result = this.transportAuthority.repair(this.halt.segmentId, { eventId });
+    if (!this.supplyCargo) return Object.freeze({ accepted: false, reason: 'no-local-repair-supply', snapshot: this.snapshot() });
+    const result = this.transportAuthority.repairUsing(this.halt.segmentId, this.supplyCargo, {
+      eventId,
+      sourceLabel: `journey:${this.id}:local-cargo`
+    });
     if (!result.accepted) return Object.freeze({ ...result, snapshot: this.snapshot() });
     this.resumeAfterRepair(nowMs);
     return Object.freeze({ accepted: true, repair: result, snapshot: this.snapshot() });
@@ -331,6 +372,7 @@ export class StrategicRouteJourney {
       segmentId,
       edgeId: this.activeEdge.edgeId,
       edgeProgress: this.activeEdge.startProgress,
+      cargoId: this.supplyCargo?.id || null,
       atMs: nowMs
     }));
     return Object.freeze({ accepted: true, snapshot: this.snapshot() });
@@ -356,6 +398,8 @@ export class StrategicRouteJourney {
       }) : null,
       activeEdge: this.activeEdge ? Object.freeze({ ...this.activeEdge }) : null,
       halt: this.halt,
+      supplyCargo: this.supplyCargo ? this.supplyCargo.snapshot() : null,
+      fieldRepairSupply: this.supplyCargo ? 'journey-local-cargo' : 'none',
       receipts: Object.freeze([...this.receipts]),
       workUnits: Object.freeze({
         aggregatePartyUnits: this.memberCount > 0 ? 1 : 0,

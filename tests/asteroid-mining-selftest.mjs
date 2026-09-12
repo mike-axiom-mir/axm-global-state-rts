@@ -138,7 +138,11 @@ assert.equal(mining.snapshot().jobs[0].workerCount, 3);
 assert.equal(mining.snapshot().jobs[0].workerIds.includes(deadWorker), false);
 
 // Worker count can be large globally, but one rig keeps an explicit bounded local workforce.
-const overCapacity = mining.assignRig('mining-rig', manpower.snapshot().units.map(unit => unit.id).concat(['ghost-1', 'ghost-2', 'ghost-3', 'ghost-4', 'ghost-5']), knownSite.site);
+const overCapacity = mining.assignRig(
+  'mining-rig',
+  manpower.snapshot().units.map(unit => unit.id).concat(['ghost-1', 'ghost-2', 'ghost-3', 'ghost-4', 'ghost-5', 'ghost-6']),
+  knownSite.site
+);
 assert.equal(overCapacity.accepted, false);
 assert.equal(overCapacity.reason, 'worker-capacity-exceeded');
 

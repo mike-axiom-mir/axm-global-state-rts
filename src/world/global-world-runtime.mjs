@@ -16,7 +16,7 @@ import {
   featureCellForCoordinate
 } from './world-feature-cells.mjs';
 
-export const GLOBAL_WORLD_RUNTIME_SCHEMA = 'axm.global-state-rts.global-world-runtime/v0.3';
+export const GLOBAL_WORLD_RUNTIME_SCHEMA = 'axm.global-state-rts.global-world-runtime/v0.4';
 
 export class GlobalWorldRuntime {
   constructor({
@@ -57,13 +57,7 @@ export class GlobalWorldRuntime {
 
   createParty({ id, location, memberCount = 1, speedMultiplier = 1 }) {
     if (this.parties.has(id)) throw new Error(`party already exists: ${id}`);
-    const party = createStrategicParty({
-      id,
-      worldScale: this.scale,
-      location,
-      memberCount,
-      speedMultiplier
-    });
+    const party = createStrategicParty({ id, worldScale: this.scale, location, memberCount, speedMultiplier });
     this.parties.set(String(id), party);
     this.revision += 1;
     return party;
@@ -81,7 +75,7 @@ export class GlobalWorldRuntime {
     return snapshot;
   }
 
-  createRouteJourney({ id, startNodeId, memberCount = 1, mode = 'foot', speedMultiplier = 1 } = {}) {
+  createRouteJourney({ id, startNodeId, memberCount = 1, mode = 'foot', speedMultiplier = 1, supplyCargo = null } = {}) {
     if (!id) throw new TypeError('id required');
     if (this.routeJourneys.has(String(id))) throw new Error(`route journey already exists: ${id}`);
     const journey = createStrategicRouteJourney({
@@ -93,7 +87,8 @@ export class GlobalWorldRuntime {
       memberCount,
       mode,
       speedMultiplier,
-      transportAuthority: this.transportConditionAuthority
+      transportAuthority: this.transportConditionAuthority,
+      supplyCargo
     });
     this.routeJourneys.set(String(id), journey);
     this.revision += 1;
@@ -155,9 +150,7 @@ export class GlobalWorldRuntime {
     if (!Number.isFinite(nowMs) || nowMs < 0) throw new RangeError('nowMs must be finite and non-negative');
     for (const party of this.parties.values()) party.advanceTo(nowMs);
     for (const journey of this.routeJourneys.values()) journey.advanceTo(nowMs);
-    if (this.lastAdvanceMs !== null && nowMs >= this.lastAdvanceMs) {
-      this.advanceCities((nowMs - this.lastAdvanceMs) / 1000);
-    }
+    if (this.lastAdvanceMs !== null && nowMs >= this.lastAdvanceMs) this.advanceCities((nowMs - this.lastAdvanceMs) / 1000);
     this.lastAdvanceMs = nowMs;
     return this.snapshot(nowMs);
   }
@@ -185,9 +178,7 @@ export class GlobalWorldRuntime {
   }
 
   snapshot(nowMs = null) {
-    const parties = [...this.parties.values()]
-      .sort((a, b) => a.id.localeCompare(b.id))
-      .map(party => party.snapshot(nowMs));
+    const parties = [...this.parties.values()].sort((a, b) => a.id.localeCompare(b.id)).map(party => party.snapshot(nowMs));
     const routeJourneys = [...this.routeJourneys.values()]
       .sort((a, b) => a.id.localeCompare(b.id))
       .map(journey => nowMs === null ? journey.snapshot() : journey.advanceTo(nowMs));
@@ -198,10 +189,7 @@ export class GlobalWorldRuntime {
       worldSeed: this.worldSeed,
       revision: this.revision,
       scale: this.scale,
-      landmarkCounts: Object.freeze({
-        majorCities: this.landmarks.majorCities.length,
-        regionalCities: this.landmarks.regionalCities.length
-      }),
+      landmarkCounts: Object.freeze({ majorCities: this.landmarks.majorCities.length, regionalCities: this.landmarks.regionalCities.length }),
       citySimulation: Object.freeze({
         revision: citySnapshot.revision,
         cityCount: citySnapshot.cityCount,

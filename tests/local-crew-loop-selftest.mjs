@@ -6,6 +6,7 @@ function roundedSnapshot(snapshot) {
   return {
     elapsedMs: snapshot.elapsedMs,
     order: snapshot.order,
+    environment: snapshot.environment,
     core: { ...snapshot.core, integrity: Number(snapshot.core.integrity.toFixed(6)) },
     storage: { ...snapshot.storage, scrap: Number(snapshot.storage.scrap.toFixed(6)) },
     crew: snapshot.crew.map(crew => ({
@@ -78,13 +79,38 @@ const second = runGatherRepairSequence();
 assert.deepEqual(second, first, 'same starting state + commands produce the same deterministic outcome');
 
 const region = createStarterRegion('seat-2');
-const sim = createLocalRegionSimulation(region);
-const hiddenId = sim.debugCanonicalSnapshot().resources.find(resource => !resource.known).id;
-assert.deepEqual(sim.issueGatherKnownScrap({ resourceId: hiddenId }), {
+const sim = createLocalRegionSimulation(region, { lightTowerActive: false });
+const canonical = sim.debugCanonicalSnapshot();
+const hidden = canonical.resources.find(resource => !resource.known);
+assert.ok(hidden);
+assert.deepEqual(sim.issueGatherKnownScrap({ resourceId: hidden.id }), {
   accepted: false,
   reason: 'resource-not-known-or-depleted'
 });
-assert.equal(sim.discoverResource(hiddenId), true);
-assert.equal(sim.snapshot().knowledge.knownResourceIds.includes(hiddenId), true, 'explicit discovery can admit a resource into user knowledge');
 
-console.log('local Crew gather/deliver/repair selftest: PASS');
+assert.equal(sim.snapshot().environment.crewVisionRadiusM, 180);
+sim.setLightingPhase('night');
+assert.equal(sim.snapshot().environment.crewVisionRadiusM, 45, 'night contracts unaided Crew vision');
+assert.equal(sim.snapshot().knowledge.knownResourceIds.includes(hidden.id), false);
+
+const explore = sim.issueExploreAt(hidden.xM, hidden.zM);
+assert.equal(explore.accepted, true);
+assert.equal(explore.order.type, 'explore');
+sim.advance(120_000);
+assert.equal(
+  sim.snapshot().knowledge.knownResourceIds.includes(hidden.id),
+  true,
+  'moving Crew into legitimate night vision discovers the hidden resource automatically'
+);
+assert.equal(sim.issueGatherKnownScrap({ resourceId: hidden.id }).accepted, true, 'discovered material becomes eligible for normal gathering');
+
+const lightRegion = createStarterRegion('seat-3');
+const lightSim = createLocalRegionSimulation(lightRegion, {
+  initialLightingPhase: 'night',
+  lightTowerActive: true,
+  lightTowerVisionRadiusM: 1000
+});
+const lightHidden = lightSim.debugCanonicalSnapshot().resources.find(resource => resource.id.endsWith('scrap-b'));
+assert.ok(lightHidden?.known, 'active artificial light can legitimately admit a resource into knowledge when it covers the location');
+
+console.log('local Crew gather/deliver/repair + vision/exploration selftest: PASS');

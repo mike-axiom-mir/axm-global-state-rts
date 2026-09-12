@@ -1,10 +1,11 @@
 import { STARTER_REGION_SCHEMA } from '../world/starter-region.mjs';
 
-export const LOCAL_REGION_SIM_SCHEMA = 'axm.global-state-rts.local-region-sim/v0.1';
-export const LOCAL_REGION_SNAPSHOT_SCHEMA = 'axm.global-state-rts.local-region-snapshot/v0.1';
+export const LOCAL_REGION_SIM_SCHEMA = 'axm.global-state-rts.local-region-sim/v0.2';
+export const LOCAL_REGION_SNAPSHOT_SCHEMA = 'axm.global-state-rts.local-region-snapshot/v0.2';
 export const LOCAL_REGION_DEFAULT_STEP_MS = 250;
 
 const EPSILON = 1e-9;
+const LIGHTING_PHASES = Object.freeze(['day', 'night']);
 
 function finite(value, label) {
   if (!Number.isFinite(value)) throw new TypeError(`${label} must be finite`);
@@ -68,6 +69,12 @@ function snapshotResource(resource) {
   });
 }
 
+function lightingPhase(value) {
+  const normalized = String(value || '').toLowerCase();
+  if (!LIGHTING_PHASES.includes(normalized)) throw new RangeError(`lighting phase must be one of: ${LIGHTING_PHASES.join(', ')}`);
+  return normalized;
+}
+
 export class LocalRegionSimulation {
   constructor(region, {
     stepMs = LOCAL_REGION_DEFAULT_STEP_MS,
@@ -77,7 +84,12 @@ export class LocalRegionSimulation {
     repairIntegrityPerSecond = 0.34,
     repairScrapPerIntegrity = 1.25,
     storageCapacity = 5000,
-    startingCoreIntegrity = 68
+    startingCoreIntegrity = 68,
+    dayVisionRadiusM = 180,
+    nightVisionRadiusM = 45,
+    lightTowerVisionRadiusM = 240,
+    initialLightingPhase = 'day',
+    lightTowerActive = true
   } = {}) {
     if (!region || region.schema !== STARTER_REGION_SCHEMA) throw new TypeError('starter region required');
     if (!Number.isInteger(stepMs) || stepMs <= 0) throw new RangeError('stepMs must be a positive integer');
@@ -85,6 +97,7 @@ export class LocalRegionSimulation {
     if (repairIntegrityPerSecond <= 0 || repairScrapPerIntegrity <= 0) throw new RangeError('repair tuning values must be positive');
     if (storageCapacity <= 0) throw new RangeError('storageCapacity must be positive');
     if (startingCoreIntegrity <= 0 || startingCoreIntegrity > 100) throw new RangeError('startingCoreIntegrity must be in (0,100]');
+    if (dayVisionRadiusM <= 0 || nightVisionRadiusM <= 0 || lightTowerVisionRadiusM <= 0) throw new RangeError('vision radii must be positive');
 
     this.schema = LOCAL_REGION_SIM_SCHEMA;
     this.region = region;
@@ -94,17 +107,25 @@ export class LocalRegionSimulation {
     this.accumulatorMs = 0;
     this.orderSequence = 0;
     this.order = null;
+    this.environment = {
+      lightingPhase: lightingPhase(initialLightingPhase),
+      lightTowerActive: Boolean(lightTowerActive)
+    };
     this.tuning = Object.freeze({
       crewSpeedMps,
       carryCapacity,
       gatherRatePerSecond,
       repairIntegrityPerSecond,
       repairScrapPerIntegrity,
-      storageCapacity
+      storageCapacity,
+      dayVisionRadiusM,
+      nightVisionRadiusM,
+      lightTowerVisionRadiusM
     });
 
     const coreFixture = fixture(region, 'core');
     const storageFixture = fixture(region, 'storage');
+    const lightFixture = fixture(region, 'light');
     const knownScrap = fixture(region, 'scrap-a');
     const hiddenScrap = fixture(region, 'scrap-b');
 
@@ -123,6 +144,12 @@ export class LocalRegionSimulation {
       zM: storageFixture.zM,
       scrap: 0,
       capacity: storageCapacity
+    };
+    this.lightTower = {
+      id: lightFixture.id,
+      assetId: lightFixture.assetId,
+      xM: lightFixture.xM,
+      zM: lightFixture.zM
     };
     this.resources = [
       {
@@ -151,6 +178,8 @@ export class LocalRegionSimulation {
       carrying: 0,
       targetId: null
     }));
+
+    this.#refreshKnowledgeFromVision();
   }
 
   knownResources() {
@@ -165,6 +194,26 @@ export class LocalRegionSimulation {
       this.revision += 1;
     }
     return resource.known;
+  }
+
+  setLightingPhase(phase) {
+    const next = lightingPhase(phase);
+    if (this.environment.lightingPhase !== next) {
+      this.environment.lightingPhase = next;
+      this.#refreshKnowledgeFromVision();
+      this.revision += 1;
+    }
+    return this.environment.lightingPhase;
+  }
+
+  setLightTowerActive(active) {
+    const next = Boolean(active);
+    if (this.environment.lightTowerActive !== next) {
+      this.environment.lightTowerActive = next;
+      this.#refreshKnowledgeFromVision();
+      this.revision += 1;
+    }
+    return this.environment.lightTowerActive;
   }
 
   issueGatherKnownScrap({ resourceId = null } = {}) {
@@ -202,6 +251,27 @@ export class LocalRegionSimulation {
     return this.issueGatherKnownScrap({ resourceId: target.id });
   }
 
+  issueExploreAt(xM, zM) {
+    finite(xM, 'xM');
+    finite(zM, 'zM');
+    if (Math.abs(xM) > this.region.halfSizeM || Math.abs(zM) > this.region.halfSizeM) {
+      return Object.freeze({ accepted: false, reason: 'explore-target-outside-local-region' });
+    }
+    this.orderSequence += 1;
+    this.order = {
+      id: `order-${this.orderSequence}`,
+      type: 'explore',
+      xM,
+      zM
+    };
+    for (const crew of this.crew) {
+      crew.phase = 'to-explore';
+      crew.targetId = this.order.id;
+    }
+    this.revision += 1;
+    return Object.freeze({ accepted: true, order: cloneOrder(this.order) });
+  }
+
   issueRepairCore() {
     this.orderSequence += 1;
     this.order = { id: `order-${this.orderSequence}`, type: 'repair-core', targetId: this.core.id };
@@ -220,6 +290,9 @@ export class LocalRegionSimulation {
     if (actionId === 'context' || actionId === 'repair-core') {
       return this.issueRepairCore();
     }
+    if (actionId === 'explore') {
+      return this.issueExploreAt(cursorXM, cursorZM);
+    }
     return Object.freeze({ accepted: false, reason: 'not-a-local-sim-action' });
   }
 
@@ -236,10 +309,38 @@ export class LocalRegionSimulation {
     return steps;
   }
 
+  #crewVisionRadius() {
+    return this.environment.lightingPhase === 'night'
+      ? this.tuning.nightVisionRadiusM
+      : this.tuning.dayVisionRadiusM;
+  }
+
+  #resourceVisible(resource) {
+    const crewRadius = this.#crewVisionRadius();
+    if (this.crew.some(crew => distance(crew, resource) <= crewRadius + EPSILON)) return true;
+    return this.environment.lightTowerActive
+      && distance(this.lightTower, resource) <= this.tuning.lightTowerVisionRadiusM + EPSILON;
+  }
+
+  #refreshKnowledgeFromVision() {
+    const discovered = [];
+    for (const resource of this.resources) {
+      if (resource.known || resource.amount <= EPSILON) continue;
+      if (!this.#resourceVisible(resource)) continue;
+      resource.known = true;
+      discovered.push(resource.id);
+    }
+    if (discovered.length) this.revision += 1;
+    return discovered;
+  }
+
   #step(dtSeconds) {
     this.elapsedMs += this.stepMs;
+    this.#refreshKnowledgeFromVision();
     if (this.order?.type === 'gather-scrap') this.#stepGather(dtSeconds);
     else if (this.order?.type === 'repair-core') this.#stepRepair(dtSeconds);
+    else if (this.order?.type === 'explore') this.#stepExplore(dtSeconds);
+    this.#refreshKnowledgeFromVision();
     this.revision += 1;
   }
 
@@ -249,6 +350,22 @@ export class LocalRegionSimulation {
     const candidates = this.knownResources();
     if (!candidates.length) return null;
     return [...candidates].sort((a, b) => distance(crew, a) - distance(crew, b) || a.id.localeCompare(b.id))[0];
+  }
+
+  #stepExplore(dtSeconds) {
+    const target = { xM: this.order.xM, zM: this.order.zM };
+    const maxMove = this.tuning.crewSpeedMps * dtSeconds;
+    let arrived = 0;
+    for (const crew of this.crew) {
+      crew.phase = 'to-explore';
+      crew.targetId = this.order.id;
+      if (moveToward(crew, target, maxMove)) {
+        crew.phase = 'idle';
+        crew.targetId = null;
+        arrived += 1;
+      }
+    }
+    if (arrived === this.crew.length) this.order = null;
   }
 
   #stepGather(dtSeconds) {
@@ -344,6 +461,12 @@ export class LocalRegionSimulation {
       revision: this.revision,
       elapsedMs: this.elapsedMs,
       order: cloneOrder(this.order),
+      environment: Object.freeze({
+        lightingPhase: this.environment.lightingPhase,
+        lightTowerActive: this.environment.lightTowerActive,
+        crewVisionRadiusM: this.#crewVisionRadius(),
+        lightTowerVisionRadiusM: this.tuning.lightTowerVisionRadiusM
+      }),
       core: Object.freeze({
         id: this.core.id,
         assetId: this.core.assetId,
@@ -357,6 +480,12 @@ export class LocalRegionSimulation {
         scrap: this.storage.scrap,
         capacity: this.storage.capacity,
         position: immutablePoint(this.storage)
+      }),
+      lightTower: Object.freeze({
+        id: this.lightTower.id,
+        assetId: this.lightTower.assetId,
+        active: this.environment.lightTowerActive,
+        position: immutablePoint(this.lightTower)
       }),
       crew: Object.freeze(this.crew.map(snapshotCrew)),
       resources: Object.freeze(this.resources.filter(resource => resource.known).map(snapshotResource)),

@@ -1,5 +1,5 @@
 export const STANDARD_GAMEPAD_PROFILE = Object.freeze({
-  id: 'axm-rts-standard-v0.1',
+  id: 'axm-rts-standard-v0.2',
   deadzone: 0.18,
   buttons: Object.freeze({
     0: 'confirm',
@@ -10,6 +10,7 @@ export const STANDARD_GAMEPAD_PROFILE = Object.freeze({
     5: 'party-next',
     8: 'map-toggle',
     9: 'pause',
+    10: 'explore',
     12: 'ui-up',
     13: 'ui-down',
     14: 'ui-left',

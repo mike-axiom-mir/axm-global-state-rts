@@ -1,13 +1,21 @@
 import { buildStaticGlbScene as buildStaticGlbSceneUncached } from './static-glb-runtime.mjs';
 
-export const STATIC_GLB_CACHE_SCHEMA = 'axm.global-state-rts.static-glb-decode-cache/v0.1';
+export const STATIC_GLB_CACHE_SCHEMA = 'axm.global-state-rts.static-glb-decode-cache/v0.2-shared-resources';
 
 const templatePromises = new Map();
+const hashPromises = new WeakMap();
+const protectedDisposables = new WeakMap();
 const stats = {
   templateBuilds: 0,
   cacheHits: 0,
   cacheMisses: 0,
-  instances: 0
+  instances: 0,
+  hashBuilds: 0,
+  hashHits: 0,
+  sharedGeometries: 0,
+  sharedMaterials: 0,
+  sharedTextures: 0,
+  suppressedDisposals: 0
 };
 
 const TEXTURE_SLOTS = Object.freeze([
@@ -35,58 +43,88 @@ async function sha256Hex(buffer) {
   return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function cloneTexture(source, textureCache) {
-  if (!source) return source;
-  if (textureCache.has(source)) return textureCache.get(source);
-  const clone = source.clone();
-  // Three.Texture.clone()/copy preserves the decoded Source/ImageBitmap but not
-  // the original Texture's event listeners. This gives each instance its own
-  // disposable texture object without repeating image decode.
-  clone.needsUpdate = true;
-  clone.userData = { ...source.userData, axmDecodedSourceShared: true };
-  textureCache.set(source, clone);
-  return clone;
-}
-
-function cloneMaterial(source, materialCache, textureCache) {
-  if (!source) return source;
-  if (materialCache.has(source)) return materialCache.get(source);
-  const clone = source.clone();
-  for (const slot of TEXTURE_SLOTS) {
-    if (source[slot]) clone[slot] = cloneTexture(source[slot], textureCache);
+function hashFor(buffer) {
+  let pending = hashPromises.get(buffer);
+  if (pending) {
+    stats.hashHits += 1;
+    return pending;
   }
-  clone.userData = { ...source.userData, axmDecodedTemplateClone: true };
-  clone.needsUpdate = true;
-  materialCache.set(source, clone);
-  return clone;
+  stats.hashBuilds += 1;
+  pending = sha256Hex(buffer);
+  hashPromises.set(buffer, pending);
+  pending.catch(() => {
+    if (hashPromises.get(buffer) === pending) hashPromises.delete(buffer);
+  });
+  return pending;
 }
 
-function cloneTemplateObject(template) {
-  const clone = template.clone(true);
-  const geometryCache = new Map();
-  const materialCache = new Map();
-  const textureCache = new Map();
+function protectSharedDisposable(resource, kind) {
+  if (!resource || typeof resource.dispose !== 'function') return;
+  if (protectedDisposables.has(resource)) return;
+  const originalDispose = resource.dispose.bind(resource);
+  protectedDisposables.set(resource, originalDispose);
+  resource.userData = {
+    ...(resource.userData || {}),
+    axmSharedImmutableResource: true,
+    axmSharedResourceKind: kind,
+    axmSharedResourceOwner: 'page-static-glb-template-cache'
+  };
+  resource.dispose = () => {
+    // Local seat/scene disposal must never invalidate resources still shared by
+    // sibling seat instances. The template cache owns these resources for the
+    // lifetime of the page. A later explicit cache-lifetime API can release
+    // them only when no live instance remains.
+    stats.suppressedDisposals += 1;
+  };
+}
 
-  clone.traverse(object => {
-    if (object.geometry) {
-      const sourceGeometry = object.geometry;
-      let geometry = geometryCache.get(sourceGeometry);
-      if (!geometry) {
-        geometry = sourceGeometry.clone();
-        geometry.userData = { ...sourceGeometry.userData, axmDecodedTemplateClone: true };
-        geometryCache.set(sourceGeometry, geometry);
+function protectTemplateResources(root) {
+  const geometries = new Set();
+  const materials = new Set();
+  const textures = new Set();
+
+  root.traverse(object => {
+    if (object.geometry) geometries.add(object.geometry);
+    const list = Array.isArray(object.material)
+      ? object.material
+      : object.material
+        ? [object.material]
+        : [];
+    for (const material of list) {
+      materials.add(material);
+      for (const slot of TEXTURE_SLOTS) {
+        if (material?.[slot]) textures.add(material[slot]);
       }
-      object.geometry = geometry;
     }
-
-    if (Array.isArray(object.material)) {
-      object.material = object.material.map(material => cloneMaterial(material, materialCache, textureCache));
-    } else if (object.material) {
-      object.material = cloneMaterial(object.material, materialCache, textureCache);
-    }
-    object.userData = { ...object.userData, axmDecodedTemplateClone: true };
   });
 
+  for (const geometry of geometries) protectSharedDisposable(geometry, 'geometry');
+  for (const material of materials) protectSharedDisposable(material, 'material');
+  for (const texture of textures) protectSharedDisposable(texture, 'texture');
+
+  stats.sharedGeometries += geometries.size;
+  stats.sharedMaterials += materials.size;
+  stats.sharedTextures += textures.size;
+  return Object.freeze({
+    geometries: geometries.size,
+    materials: materials.size,
+    textures: textures.size
+  });
+}
+
+function instantiateSharedTemplate(template) {
+  // Object3D.clone(true) creates independent scene/node wrappers but Three.js
+  // intentionally retains the same geometry and material references. That is
+  // the behavior wanted here: transforms/userData remain seat-local while the
+  // immutable heavy resources are shared.
+  const clone = template.clone(true);
+  clone.traverse(object => {
+    object.userData = {
+      ...(object.userData || {}),
+      axmSharedDecodedResources: true,
+      axmSharedResourceOwner: 'page-static-glb-template-cache'
+    };
+  });
   return clone;
 }
 
@@ -99,7 +137,16 @@ async function templateFor(buffer, sha256) {
     stats.cacheMisses += 1;
     pending = (async () => {
       stats.templateBuilds += 1;
-      return buildStaticGlbSceneUncached(buffer, { expectedSha256: sha256 });
+      const loaded = await buildStaticGlbSceneUncached(buffer, { expectedSha256: sha256 });
+      const resources = protectTemplateResources(loaded.object);
+      loaded.object.traverse(object => {
+        object.userData = {
+          ...(object.userData || {}),
+          axmSharedDecodedResources: true,
+          axmSharedResourceOwner: 'page-static-glb-template-cache'
+        };
+      });
+      return Object.freeze({ ...loaded, resources });
     })();
     templatePromises.set(sha256, pending);
   }
@@ -114,13 +161,13 @@ async function templateFor(buffer, sha256) {
 
 export async function buildStaticGlbScene(value, { expectedSha256 = null } = {}) {
   const buffer = asArrayBuffer(value);
-  const sha256 = await sha256Hex(buffer);
+  const sha256 = await hashFor(buffer);
   if (expectedSha256 && sha256 !== expectedSha256) {
     throw new Error(`cached-static-glb-runtime: runtime bytes hash mismatch: expected ${expectedSha256}, got ${sha256}`);
   }
 
   const { loaded, cacheStatus } = await templateFor(buffer, sha256);
-  const object = cloneTemplateObject(loaded.object);
+  const object = instantiateSharedTemplate(loaded.object);
   stats.instances += 1;
   const receipt = Object.freeze({
     ...loaded.receipt,
@@ -130,10 +177,17 @@ export async function buildStaticGlbScene(value, { expectedSha256 = null } = {})
       sha256,
       templateBuilds: stats.templateBuilds,
       instances: stats.instances,
-      boundary: 'Decoded template/ImageBitmap sources are reused; each returned instance still owns cloned geometry/material/texture objects.'
+      resourceMode: 'SHARED_IMMUTABLE_GEOMETRY_MATERIAL_TEXTURE',
+      sharedResources: loaded.resources,
+      boundary: 'Object/transform wrappers are per instance; geometry, materials and textures are page-cache-owned immutable shared resources.'
     })
   });
-  object.userData.axmRuntimeReceipt = receipt;
+  object.userData = {
+    ...(object.userData || {}),
+    axmRuntimeReceipt: receipt,
+    axmSharedDecodedResources: true,
+    axmSharedResourceOwner: 'page-static-glb-template-cache'
+  };
   return Object.freeze({ object, receipt });
 }
 
@@ -145,10 +199,19 @@ export function staticGlbDecodeCacheStats() {
     cacheHits: stats.cacheHits,
     cacheMisses: stats.cacheMisses,
     instances: stats.instances,
+    hashBuilds: stats.hashBuilds,
+    hashHits: stats.hashHits,
+    sharedGeometries: stats.sharedGeometries,
+    sharedMaterials: stats.sharedMaterials,
+    sharedTextures: stats.sharedTextures,
+    suppressedDisposals: stats.suppressedDisposals,
+    resourceMode: 'SHARED_IMMUTABLE_GEOMETRY_MATERIAL_TEXTURE',
+    lifetime: 'PAGE_CACHE_OWNS_RESOURCES',
     nonclaims: Object.freeze([
-      'This cache does not prove GPU texture residency is shared across instances.',
-      'Geometry, material and texture wrapper objects remain per-instance for disposal isolation.',
-      'A decoded-template cache does not establish target-device FPS acceptance.'
+      'Shared Three.js resource identity does not by itself prove target GPU residency or FPS improvement.',
+      'Shared geometry/material/texture resources are immutable by contract; mutating one would affect every live instance.',
+      'Resources intentionally remain cache-owned for the browser-page lifetime; explicit cache eviction is not implemented yet.',
+      'A shared-resource cache does not establish target-device performance acceptance.'
     ])
   });
 }

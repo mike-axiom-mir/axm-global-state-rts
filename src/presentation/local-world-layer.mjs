@@ -1,8 +1,9 @@
 import * as THREE from '../../planet-upstream/shared/vendor/three-r160/three.module.js';
 import { createLocalKnowledgeField } from '../sim/local-knowledge-field.mjs';
 import { canonicalQueryLocalFeatures } from '../world/local-feature-query.mjs';
+import { queryLocalWorldDressing } from '../world/world-dressing.mjs';
 
-export const LOCAL_WORLD_LAYER_SCHEMA = 'axm.global-state-rts.local-world-layer/v0.1';
+export const LOCAL_WORLD_LAYER_SCHEMA = 'axm.global-state-rts.local-world-layer/v0.2';
 
 const MATERIAL_COLORS = Object.freeze({
   scrap: 0x766557,
@@ -14,6 +15,23 @@ const MATERIAL_COLORS = Object.freeze({
   'fuel-bearing': 0x4d4b45,
   'rare-alloy': 0x6d7784,
   'strange-mineral': 0x46d3d7
+});
+
+const DRESSING_CAP_PER_ASSET = 256;
+
+const DRESSING_VISUALS = Object.freeze({
+  'world-prop-dead-tree-a': Object.freeze({ shape: 'trunk', color: 0x4d4339, height: 8.5, width: 0.85 }),
+  'world-prop-conifer-a': Object.freeze({ shape: 'cone', color: 0x31483c, height: 7.2, width: 3.6 }),
+  'world-prop-dry-brush-a': Object.freeze({ shape: 'cone', color: 0x756645, height: 1.4, width: 2.1 }),
+  'world-prop-scrub-a': Object.freeze({ shape: 'rock', color: 0x4f654d, height: 1.4, width: 2.1 }),
+  'world-prop-grass-clump-a': Object.freeze({ shape: 'cone', color: 0x586a45, height: 1.1, width: 1.7 }),
+  'world-prop-boulder-a': Object.freeze({ shape: 'rock', color: 0x65655f, height: 2.5, width: 2.9 }),
+  'world-prop-rock-spire-a': Object.freeze({ shape: 'cone', color: 0x6a6962, height: 5.6, width: 2.2 }),
+  'world-prop-power-pole-a': Object.freeze({ shape: 'trunk', color: 0x4d5150, height: 8.8, width: 0.55, metalness: 0.3 }),
+  'world-prop-road-sign-a': Object.freeze({ shape: 'sign', color: 0x596b66, height: 4.8, width: 2.7, metalness: 0.28 }),
+  'world-prop-wreck-car-a': Object.freeze({ shape: 'box', color: 0x655143, height: 1.5, width: 3.8, depth: 1.9, metalness: 0.32 }),
+  'world-prop-billboard-frame-a': Object.freeze({ shape: 'sign', color: 0x514b43, height: 7.0, width: 5.2, metalness: 0.26 }),
+  'world-prop-concrete-slab-a': Object.freeze({ shape: 'box', color: 0x6d6d66, height: 0.65, width: 4.2, depth: 2.7 })
 });
 
 function standardMaterial(color, options = {}) {
@@ -112,6 +130,35 @@ function makeFeatureVisual(feature) {
   return visual;
 }
 
+function dressingGeometry(definition) {
+  if (definition.shape === 'trunk') return new THREE.CylinderGeometry(definition.width * 0.34, definition.width * 0.52, definition.height, 6);
+  if (definition.shape === 'cone') return new THREE.ConeGeometry(definition.width * 0.5, definition.height, 7);
+  if (definition.shape === 'rock') return new THREE.DodecahedronGeometry(definition.width * 0.5, 0);
+  if (definition.shape === 'sign') return new THREE.BoxGeometry(definition.width, definition.height, Math.max(0.18, definition.width * 0.08));
+  return new THREE.BoxGeometry(definition.width, definition.height, definition.depth || definition.width * 0.55);
+}
+
+function createDressingMesh(assetId) {
+  const definition = DRESSING_VISUALS[assetId];
+  if (!definition) return null;
+  const mesh = new THREE.InstancedMesh(
+    dressingGeometry(definition),
+    standardMaterial(definition.color, { metalness: definition.metalness ?? 0.04 }),
+    DRESSING_CAP_PER_ASSET
+  );
+  mesh.count = 0;
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  mesh.frustumCulled = false;
+  mesh.name = `world-dressing:${assetId}`;
+  mesh.userData.assetId = assetId;
+  return mesh;
+}
+
+function dressingBaseHeight(assetId) {
+  return DRESSING_VISUALS[assetId]?.height || 1;
+}
+
 function disposeObject(root) {
   root?.traverse?.(object => {
     object.geometry?.dispose?.();
@@ -142,6 +189,7 @@ export function createLocalWorldLayer(region, terrain, {
   fogCellSizeM = 96,
   fogRadiusM = 1250,
   featureRadiusM = 1600,
+  dressingRadiusM = 1700,
   maxFogInstances = 1200
 } = {}) {
   if (!region?.frame || !terrain?.heightAt) throw new TypeError('region and terrain required');
@@ -152,11 +200,20 @@ export function createLocalWorldLayer(region, terrain, {
   root.name = `local-world-layer:${region.id}`;
   const fogRoot = new THREE.Group();
   const featureRoot = new THREE.Group();
-  root.add(fogRoot, featureRoot);
+  const dressingRoot = new THREE.Group();
+  root.add(dressingRoot, featureRoot, fogRoot);
 
   const unexploredFog = createFogMesh(fogCellSizeM, maxFogInstances, 0.72, 'fog-unexplored');
   const memoryFog = createFogMesh(fogCellSizeM, maxFogInstances, 0.26, 'fog-explored-memory');
   fogRoot.add(unexploredFog, memoryFog);
+
+  const dressingMeshes = new Map();
+  for (const assetId of Object.keys(DRESSING_VISUALS)) {
+    const mesh = createDressingMesh(assetId);
+    if (!mesh) continue;
+    dressingMeshes.set(assetId, mesh);
+    dressingRoot.add(mesh);
+  }
 
   const knowledge = createLocalKnowledgeField(region, { cellSizeM: fogCellSizeM });
   const featureVisuals = new Map();
@@ -164,13 +221,17 @@ export function createLocalWorldLayer(region, terrain, {
   let simulationRevision = -1;
   let centerKey = '';
   let lastKnowledgeRevision = -1;
+  let dressingStats = Object.freeze({ props: 0, cells: 0, drawCalls: 0 });
   let stats = Object.freeze({
     visibleFeatures: 0,
     cachedFeatureVisuals: 0,
     unexploredFogTiles: 0,
     memoryFogTiles: 0,
     visibleCells: 0,
-    exploredCells: 0
+    exploredCells: 0,
+    dressingProps: 0,
+    dressingCells: 0,
+    dressingDrawCalls: 0
   });
 
   function syncKnowledge(snapshot) {
@@ -202,6 +263,42 @@ export function createLocalWorldLayer(region, terrain, {
     unexploredFog.instanceMatrix.needsUpdate = true;
     memoryFog.instanceMatrix.needsUpdate = true;
     return { unknownCount: unexploredFog.count, memoryCount: memoryFog.count };
+  }
+
+  function syncDressing(centerXM, centerZM) {
+    const query = queryLocalWorldDressing(region, {
+      centerXM,
+      centerZM,
+      radiusM: dressingRadiusM,
+      worldSeed
+    });
+    const counts = new Map([...dressingMeshes.keys()].map(assetId => [assetId, 0]));
+
+    for (const prop of query.props) {
+      const mesh = dressingMeshes.get(prop.assetId);
+      if (!mesh) continue;
+      const index = counts.get(prop.assetId) || 0;
+      if (index >= DRESSING_CAP_PER_ASSET) continue;
+      const baseHeight = dressingBaseHeight(prop.assetId);
+      const scale = prop.scale;
+      dummy.position.set(prop.local.xM, heightAt(prop.local.xM, prop.local.zM) + baseHeight * scale * 0.5, prop.local.zM);
+      dummy.rotation.set(0, THREE.MathUtils.degToRad(prop.yawDeg), 0);
+      dummy.scale.set(scale, scale, scale);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(index, dummy.matrix);
+      counts.set(prop.assetId, index + 1);
+    }
+
+    let drawCalls = 0;
+    let props = 0;
+    for (const [assetId, mesh] of dressingMeshes) {
+      mesh.count = counts.get(assetId) || 0;
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.count > 0) drawCalls += 1;
+      props += mesh.count;
+    }
+    dressingStats = Object.freeze({ props, cells: query.cellsScanned, drawCalls });
+    return dressingStats;
   }
 
   function syncFeatures(snapshot, centerXM, centerZM) {
@@ -250,6 +347,7 @@ export function createLocalWorldLayer(region, terrain, {
     if (!knowledgeChanged && !centerChanged && lastKnowledgeRevision === knowledge.revision) return stats;
     centerKey = nextCenterKey;
     lastKnowledgeRevision = knowledge.revision;
+    if (centerChanged || dressingStats.props === 0) syncDressing(centerXM, centerZM);
     const fog = syncFog(centerXM, centerZM);
     const visibleFeatures = syncFeatures(simulationSnapshot, centerXM, centerZM);
     const knowledgeStats = knowledge.stats();
@@ -260,7 +358,10 @@ export function createLocalWorldLayer(region, terrain, {
       memoryFogTiles: fog.memoryCount,
       visibleCells: knowledgeStats.visibleCells,
       exploredCells: knowledgeStats.exploredCells,
-      lightingPhase: knowledgeStats.lightingPhase
+      lightingPhase: knowledgeStats.lightingPhase,
+      dressingProps: dressingStats.props,
+      dressingCells: dressingStats.cells,
+      dressingDrawCalls: dressingStats.drawCalls
     });
     return stats;
   }
@@ -268,6 +369,8 @@ export function createLocalWorldLayer(region, terrain, {
   function dispose() {
     for (const visual of featureVisuals.values()) disposeObject(visual);
     featureVisuals.clear();
+    for (const mesh of dressingMeshes.values()) disposeObject(mesh);
+    dressingMeshes.clear();
     unexploredFog.geometry.dispose();
     unexploredFog.material.dispose();
     memoryFog.geometry.dispose();

@@ -1,6 +1,6 @@
 import { PRODUCTION_PROFILES } from './civilization-production.mjs';
 
-export const CIVILIZATION_LOGISTICS_SCHEMA = 'axm.global-state-rts.civilization-logistics/v0.1';
+export const CIVILIZATION_LOGISTICS_SCHEMA = 'axm.global-state-rts.civilization-logistics/v0.2';
 
 const STORAGE_DEFINITIONS = Object.freeze(new Set([
   'building:settlement-core',
@@ -232,6 +232,7 @@ export class CivilizationLogistics {
       }
     }
     this.lastRebalanceWorkUnits = workUnits;
+    this.reconcileWorkerCounts();
     this.revision += 1;
     return Object.freeze({ workUnits, assignments: Object.freeze(assignments) });
   }
@@ -252,14 +253,14 @@ export class CivilizationLogistics {
         distanceM: storage ? distance(building, storage) : Number.POSITIVE_INFINITY,
         bufferedAmount: 0,
         deliveredAmount: 0,
-        workerCount: Math.max(1, Number(workerCount) || 1),
+        workerCount: Math.max(0, Number(workerCount) || 0),
         throughputPerSecond: 0,
         revision: 0
       };
       this.routes.set(key, route);
     }
     route.bufferedAmount += value;
-    route.workerCount = Math.max(1, Number(workerCount) || 1);
+    route.workerCount = Math.max(0, Number(workerCount) || 0);
     if (storage) {
       route.storageBuildingId = storage.instanceId;
       route.distanceM = distance(building, storage);
@@ -267,6 +268,21 @@ export class CivilizationLogistics {
     route.revision += 1;
     this.revision += 1;
     return Object.freeze({ accepted: true, buffered: value, route: publicRoute(route) });
+  }
+
+  reconcileWorkerCounts() {
+    const jobs = new Map(this.production.snapshot().jobs.map(job => [job.buildingId, job]));
+    let changed = 0;
+    for (const route of this.routes.values()) {
+      const nextWorkerCount = jobs.get(route.originBuildingId)?.workerCount ?? 0;
+      if (route.workerCount === nextWorkerCount) continue;
+      route.workerCount = nextWorkerCount;
+      if (nextWorkerCount <= 0) route.throughputPerSecond = 0;
+      route.revision += 1;
+      changed += 1;
+    }
+    if (changed > 0) this.revision += 1;
+    return Object.freeze({ changed, routeCount: this.routes.size });
   }
 
   advance(deltaSeconds, { eventId = null } = {}) {

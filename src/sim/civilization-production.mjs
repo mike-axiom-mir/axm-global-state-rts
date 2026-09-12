@@ -1,4 +1,4 @@
-export const CIVILIZATION_PRODUCTION_SCHEMA = 'axm.global-state-rts.civilization-production/v0.1';
+export const CIVILIZATION_PRODUCTION_SCHEMA = 'axm.global-state-rts.civilization-production/v0.2';
 
 export const PRODUCTION_PROFILES = Object.freeze({
   'building:open-crop-terrace': Object.freeze({
@@ -228,6 +228,20 @@ export class CivilizationProduction {
     job.revision += 1;
     this.revision += 1;
     return Object.freeze({ released });
+  }
+
+  releaseUnitIds(unitIds) {
+    if (!Array.isArray(unitIds)) throw new TypeError('unitIds must be an array');
+    const affectedBuildingIds = new Set();
+    let released = 0;
+    for (const unitId of [...new Set(unitIds.map(String))].filter(Boolean).sort()) {
+      if (!this.workerToJob.has(unitId)) continue;
+      const buildingId = this.#removeWorkerFromJob(unitId);
+      if (buildingId) affectedBuildingIds.add(buildingId);
+      released += 1;
+    }
+    if (released > 0) this.revision += 1;
+    return Object.freeze({ released, affectedBuildingIds: Object.freeze([...affectedBuildingIds].sort()) });
   }
 
   advance(deltaSeconds, { foodModifiers = null, eventId = null } = {}) {

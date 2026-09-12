@@ -100,6 +100,7 @@ function makeSeatCameraState(seatId) {
     localCamera: new THREE.PerspectiveCamera(44, 1, 1, 20000),
     localRegion: createStarterRegion(seatId),
     localBundle: null,
+    latestSimulationSnapshot: null,
     localTargetX: 0,
     localTargetZ: 0,
     localYaw: -0.62,
@@ -184,11 +185,32 @@ export class SplitScreenPlanetRenderer {
     return this.seatStates.get(seatId)?.mode || null;
   }
 
+  syncSeatSimulation(seatId, snapshot) {
+    const state = this.seatStates.get(seatId);
+    if (!state) return false;
+    state.latestSimulationSnapshot = snapshot || null;
+    if (state.localBundle && snapshot) {
+      state.localBundle.syncSimulationSnapshot(snapshot, {
+        centerXM: state.localTargetX,
+        centerZM: state.localTargetZ
+      });
+    }
+    return true;
+  }
+
   toggleSeatMode(seatId) {
     const state = this.seatStates.get(seatId);
     if (!state) throw new RangeError(`unknown renderer seat: ${seatId}`);
     const nextMode = state.mode === 'globe' ? 'local-rts' : 'globe';
-    if (nextMode === 'local-rts') this.#ensureLocalRegion(state);
+    if (nextMode === 'local-rts') {
+      const bundle = this.#ensureLocalRegion(state);
+      if (state.latestSimulationSnapshot) {
+        bundle.syncSimulationSnapshot(state.latestSimulationSnapshot, {
+          centerXM: state.localTargetX,
+          centerZM: state.localTargetZ
+        });
+      }
+    }
     state.transition = {
       from: state.mode,
       to: nextMode,
@@ -214,7 +236,8 @@ export class SplitScreenPlanetRenderer {
         targetZM: state.localTargetZ,
         cursorXM: state.cursorX,
         cursorZM: state.cursorZ,
-        distanceM: state.localDistance
+        distanceM: state.localDistance,
+        world: state.localBundle?.worldStats?.() || null
       })
     });
   }
@@ -388,7 +411,13 @@ export class SplitScreenPlanetRenderer {
       const view = this.#viewForState(state, nowMs);
       if (view.mode === 'local-rts') {
         const bundle = this.#ensureLocalRegion(state);
-        this.renderer.setClearColor(0x48535a, 1);
+        if (state.latestSimulationSnapshot) {
+          bundle.syncSimulationSnapshot(state.latestSimulationSnapshot, {
+            centerXM: state.localTargetX,
+            centerZM: state.localTargetZ
+          });
+        }
+        this.renderer.setClearColor(state.latestSimulationSnapshot?.environment?.lightingPhase === 'night' ? 0x091118 : 0x48535a, 1);
         this.renderer.clear(true, true, true);
         this.#updateLocalCamera(state, aspect, view.distanceOverride);
         this.renderer.render(bundle.scene, state.localCamera);

@@ -1,6 +1,6 @@
 import { ROLE_DEFINITIONS } from './civilization-manpower.mjs';
 
-export const COMBAT_EQUIPMENT_SCHEMA = 'axm.global-state-rts.combat-equipment/v0.1';
+export const COMBAT_EQUIPMENT_SCHEMA = 'axm.global-state-rts.combat-equipment/v0.2';
 
 export const MATERIAL_VALUE_WEIGHTS = Object.freeze({
   scrap: 1,
@@ -188,6 +188,35 @@ export class CombatEquipmentLedger {
     const receipt = Object.freeze({ type: 'equipped-weapon', unitId: unit.id, weaponId: definition.id, previousWeaponId, eventId: eventId ? String(eventId) : null });
     this.receipts.push(receipt);
     return Object.freeze({ accepted: true, receipt, loadout: this.unitLoadout(unit.id) });
+  }
+
+  discardDestroyedUnitLoadouts(unitIds, { reason = 'combat-casualty', eventId = null } = {}) {
+    if (!Array.isArray(unitIds)) throw new TypeError('unitIds must be an array');
+    const ids = [...new Set(unitIds.map(String))].filter(Boolean).sort();
+    const destroyedWeapons = {};
+    const affectedUnitIds = [];
+    for (const unitId of ids) {
+      const weaponId = this.loadouts.get(unitId);
+      if (!weaponId) continue;
+      this.loadouts.delete(unitId);
+      destroyedWeapons[weaponId] = (destroyedWeapons[weaponId] || 0) + 1;
+      affectedUnitIds.push(unitId);
+    }
+    if (affectedUnitIds.length) {
+      this.revision += 1;
+      this.receipts.push(Object.freeze({
+        type: 'destroyed-loadouts',
+        unitIds: Object.freeze(affectedUnitIds),
+        destroyedWeapons: Object.freeze({ ...destroyedWeapons }),
+        reason: String(reason),
+        eventId: eventId ? String(eventId) : null
+      }));
+    }
+    return Object.freeze({
+      accepted: true,
+      affectedUnitIds: Object.freeze(affectedUnitIds),
+      destroyedWeapons: Object.freeze({ ...destroyedWeapons })
+    });
   }
 
   unitLoadout(unitId) {

@@ -1,15 +1,19 @@
-import { createSurfaceFrame, localToLatLon } from './spatial-frame.mjs';
+import { sampleLatLon } from '../../planet-upstream/worlds/foundation-planet/core/planet-model.mjs';
+import { createSurfaceFrame, localToLatLon, normalizeLongitude } from './spatial-frame.mjs';
 
-export const STARTER_REGION_SCHEMA = 'axm.global-state-rts.starter-region/v0.1';
+export const STARTER_REGION_SCHEMA = 'axm.global-state-rts.starter-region/v0.2';
 export const STARTER_REGION_HALF_SIZE_M = 5400;
 export const STARTER_REGION_OPERATION_RADIUS_M = 10000;
+export const STARTER_DROP_MIN_ELEVATION_M = 25;
 
-const DROP_ANCHORS = Object.freeze([
+const RAW_DROP_ANCHORS = Object.freeze([
   Object.freeze({ latDeg: 12.5, lonDeg: -42.0 }),
   Object.freeze({ latDeg: 7.25, lonDeg: 34.5 }),
   Object.freeze({ latDeg: -18.75, lonDeg: 96.0 }),
   Object.freeze({ latDeg: 31.5, lonDeg: 142.0 })
 ]);
+
+const resolvedAnchorCache = new Map();
 
 function seatNumber(seatId) {
   const match = /^seat-(\d+)$/.exec(String(seatId || ''));
@@ -18,6 +22,60 @@ function seatNumber(seatId) {
     throw new RangeError('seatId must be seat-1 through seat-4');
   }
   return number;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function landEnough(latDeg, lonDeg) {
+  const terrain = sampleLatLon(latDeg, lonDeg);
+  return terrain.elevationM >= STARTER_DROP_MIN_ELEVATION_M
+    ? Object.freeze({ biome: terrain.biome, elevationM: terrain.elevationM })
+    : null;
+}
+
+function resolveLandAnchor(raw, seatIndex) {
+  const direct = landEnough(raw.latDeg, raw.lonDeg);
+  if (direct) {
+    return Object.freeze({
+      latDeg: raw.latDeg,
+      lonDeg: normalizeLongitude(raw.lonDeg),
+      resolvedFromBase: false,
+      terrain: direct
+    });
+  }
+
+  // Deterministic outward radial search around the original preview anchor.
+  // This is only preview/drop placement; it does not change Foundation Planet geography.
+  for (let ring = 1; ring <= 28; ring++) {
+    const radiusDeg = ring * 0.32;
+    const samples = Math.max(12, ring * 10);
+    for (let step = 0; step < samples; step++) {
+      const angle = (step / samples) * Math.PI * 2 + seatIndex * 0.731;
+      const latDeg = clamp(raw.latDeg + Math.sin(angle) * radiusDeg, -78, 78);
+      const longitudeScale = Math.max(0.28, Math.cos(latDeg * Math.PI / 180));
+      const lonDeg = normalizeLongitude(raw.lonDeg + Math.cos(angle) * radiusDeg / longitudeScale);
+      const terrain = landEnough(latDeg, lonDeg);
+      if (!terrain) continue;
+      return Object.freeze({
+        latDeg,
+        lonDeg,
+        resolvedFromBase: true,
+        terrain
+      });
+    }
+  }
+
+  throw new Error(`could not resolve dry-land starter anchor near ${raw.latDeg},${raw.lonDeg}`);
+}
+
+function resolvedDropAnchor(seatId) {
+  const n = seatNumber(seatId);
+  if (!resolvedAnchorCache.has(n)) {
+    resolvedAnchorCache.set(n, resolveLandAnchor(RAW_DROP_ANCHORS[n - 1], n));
+  }
+  return resolvedAnchorCache.get(n);
 }
 
 function freezeFixture(fixture) {
@@ -49,7 +107,7 @@ function previewCrewForSeat(seatId) {
 }
 
 export function starterDropAnchor(seatId) {
-  return DROP_ANCHORS[seatNumber(seatId) - 1];
+  return resolvedDropAnchor(seatId);
 }
 
 export function createStarterRegion(seatId) {
@@ -62,10 +120,12 @@ export function createStarterRegion(seatId) {
 
   return Object.freeze({
     schema: STARTER_REGION_SCHEMA,
-    id: `starter-region:${seatId}:${anchor.latDeg.toFixed(2)},${anchor.lonDeg.toFixed(2)}`,
+    id: `starter-region:${seatId}:${anchor.latDeg.toFixed(4)},${anchor.lonDeg.toFixed(4)}`,
     seatId,
     status: 'EXPERIMENTAL_PREVIEW_FIXTURE',
     origin: Object.freeze({ latDeg: anchor.latDeg, lonDeg: anchor.lonDeg }),
+    originTerrain: anchor.terrain,
+    anchorResolvedFromBase: anchor.resolvedFromBase,
     halfSizeM: STARTER_REGION_HALF_SIZE_M,
     frame,
     previewFixtures: previewFixturesForSeat(seatId),

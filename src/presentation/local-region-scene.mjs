@@ -1,5 +1,5 @@
 import * as THREE from '../../planet-upstream/shared/vendor/three-r160/three.module.js';
-import { buildStaticGlbScene } from '../assets/static-glb-runtime.mjs';
+import { buildStaticGlbScene } from '../assets/cached-static-glb-runtime.mjs';
 import { STARTER_REGION_SCHEMA } from '../world/starter-region.mjs';
 import { createChunkedLocalTerrain } from './chunked-local-terrain.mjs';
 import { createLocalEnvironmentLayer } from './local-environment-layer.mjs';

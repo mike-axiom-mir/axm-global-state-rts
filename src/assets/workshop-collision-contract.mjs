@@ -13,6 +13,7 @@ const SOURCE_BOUNDS = Object.freeze({
 });
 
 const SAFETY_MARGIN_M = 0.12;
+const OUTSIDE_EPSILON_M = 1e-6;
 const DEG_TO_RAD = Math.PI / 180;
 
 function finite(value, label) {
@@ -119,8 +120,8 @@ export function clampPointOutsideWorkshopFootprint(collision, xM, zM, { paddingM
   const pushZ = halfZ - Math.abs(local.z);
   let correctedX = local.x;
   let correctedZ = local.z;
-  if (pushX <= pushZ) correctedX = (local.x < 0 ? -1 : 1) * halfX;
-  else correctedZ = (local.z < 0 ? -1 : 1) * halfZ;
+  if (pushX <= pushZ) correctedX = (local.x < 0 ? -1 : 1) * (halfX + OUTSIDE_EPSILON_M);
+  else correctedZ = (local.z < 0 ? -1 : 1) * (halfZ + OUTSIDE_EPSILON_M);
 
   const world = rotateLocalToWorld(correctedX, correctedZ, collision.yawRad);
   return Object.freeze({

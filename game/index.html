@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#080b0f">
+  <title>AXM Global State RTS — Planet Shell</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="stage" aria-label="Global State RTS Planet shell">
+      <div id="viewport" class="viewport"></div>
+      <div id="seatLabels" class="seat-labels" aria-hidden="true"></div>
+    </section>
+
+    <aside class="control-dock" aria-label="Local seat setup">
+      <div class="brand-row">
+        <div>
+          <p class="eyebrow">EXPERIMENTAL PLANET SHELL</p>
+          <h1>Global State RTS</h1>
+        </div>
+        <div id="inputStatus" class="status">Waiting for input</div>
+      </div>
+
+      <div class="setup-row">
+        <label>
+          Local seats
+          <select id="seatCount">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </label>
+        <button id="controllerScan" type="button">Rescan controllers</button>
+      </div>
+
+      <div id="seatSetup" class="seat-setup" aria-live="polite"></div>
+
+      <p class="help">
+        Controller-first: left stick reserves seat cursor, right stick rotates that seat camera, triggers zoom, A/B/X/Y and bumpers enter the same 100-APM seat action gate. Seat 1 also keeps keyboard/mouse camera control for single-player PC testing.
+      </p>
+      <p class="truth">
+        Current rung: real Foundation Planet samples + real 1–4 scissor viewports + controller routing contracts. No gameplay economy, multiplayer networking, connected AI provider, or final local terrain transition is claimed yet.
+      </p>
+    </aside>
+  </main>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>

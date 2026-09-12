@@ -2,13 +2,16 @@ import * as THREE from '../../planet-upstream/shared/vendor/three-r160/three.mod
 import {
   COASTAL_REMNANT_ASSET_IDS,
   LOCAL_ENVIRONMENT_CELL_SIZE_M,
+  WEATHER_PERIOD_HOURS,
+  describeLocalWeather,
   queryLocalEnvironment
 } from '../world/local-environment.mjs';
 
-export const LOCAL_ENVIRONMENT_LAYER_SCHEMA = 'axm.global-state-rts.local-environment-layer/v0.1';
+export const LOCAL_ENVIRONMENT_LAYER_SCHEMA = 'axm.global-state-rts.local-environment-layer/v0.2';
 
 const MAX_ENVIRONMENT_INSTANCES = 480;
 const MAX_REMNANTS_PER_ASSET = 96;
+const MAX_WEATHER_PARTICLES = 180;
 
 const SHORE_VISUALS = Object.freeze({
   'low-shore': Object.freeze({ color: 0x84775f, widthScale: 0.34 }),
@@ -23,6 +26,13 @@ const REMNANT_VISUALS = Object.freeze({
   'coast-remnant-drain-pipe-a': Object.freeze({ shape: 'pipe', color: 0x555d5e, width: 5.2, height: 2.6, depth: 5.2, metalness: 0.30 }),
   'coast-remnant-beached-frame-a': Object.freeze({ shape: 'frame', color: 0x685044, width: 10, height: 3.8, depth: 3.2, metalness: 0.24 }),
   'coast-remnant-flood-sign-a': Object.freeze({ shape: 'sign', color: 0x606d68, width: 3.2, height: 5.2, depth: 0.34, metalness: 0.25 })
+});
+
+const WEATHER_PARTICLE_VISUALS = Object.freeze({
+  rain: Object.freeze({ color: 0x9db8c2, size: 1.35, opacity: 0.58, baseCount: 120 }),
+  storm: Object.freeze({ color: 0x91aeb9, size: 1.55, opacity: 0.72, baseCount: 175 }),
+  snow: Object.freeze({ color: 0xd7e0df, size: 3.1, opacity: 0.78, baseCount: 135 }),
+  dust: Object.freeze({ color: 0xa58a66, size: 3.8, opacity: 0.44, baseCount: 155 })
 });
 
 function standardMaterial(color, options = {}) {
@@ -60,13 +70,23 @@ function disposeRoot(root) {
   });
 }
 
+function weatherParticleKind(weather) {
+  if (weather.weatherType === 'storm') return 'storm';
+  if (weather.precipitation === 'rain') return 'rain';
+  if (weather.precipitation === 'snow') return 'snow';
+  if (weather.precipitation === 'dust') return 'dust';
+  return null;
+}
+
 export function createLocalEnvironmentLayer(region, terrain, {
   worldSeed = 'axm-global-state-rts-v0',
-  radiusM = 2200
+  radiusM = 2200,
+  worldHourProvider = () => Math.floor(Date.now() / 3_600_000)
 } = {}) {
   if (!region?.frame || !terrain?.heightAt || !Number.isFinite(terrain.centerElevationM)) {
     throw new TypeError('region and chunked terrain required');
   }
+  if (typeof worldHourProvider !== 'function') throw new TypeError('worldHourProvider must be a function');
   const heightAt = typeof terrain.peekHeightAt === 'function'
     ? terrain.peekHeightAt.bind(terrain)
     : terrain.heightAt.bind(terrain);
@@ -110,20 +130,49 @@ export function createLocalEnvironmentLayer(region, terrain, {
     root.add(mesh);
   }
 
+  const weatherGeometry = new THREE.BufferGeometry();
+  const weatherPositions = new Float32Array(MAX_WEATHER_PARTICLES * 3);
+  weatherGeometry.setAttribute('position', new THREE.BufferAttribute(weatherPositions, 3));
+  weatherGeometry.setDrawRange(0, 0);
+  const weatherMaterial = new THREE.PointsMaterial({
+    color: 0xffffff,
+    size: 1.4,
+    transparent: true,
+    opacity: 0,
+    depthWrite: false,
+    sizeAttenuation: true
+  });
+  const weatherPoints = new THREE.Points(weatherGeometry, weatherMaterial);
+  weatherPoints.frustumCulled = false;
+  weatherPoints.renderOrder = 2;
+  weatherPoints.name = 'environment-weather-particles';
+  root.add(weatherPoints);
+
   const dummy = new THREE.Object3D();
-  let centerKey = '';
-  let lastStats = Object.freeze({
+  let geometryCenterKey = '';
+  let lastGeometryStats = Object.freeze({
     waterTiles: 0,
+    shallowWaterTiles: 0,
+    deepWaterTiles: 0,
     shorelineCells: 0,
     coastalRemnants: 0,
     drawCalls: 0,
     scannedCells: 0
   });
+  let lastWeatherKey = '';
+  let lastWeather = null;
+  let weatherParticleCount = 0;
+  let lastStats = Object.freeze({
+    ...lastGeometryStats,
+    weather: null,
+    weatherParticles: 0,
+    seaLevelY
+  });
 
-  function sync(centerXM = 0, centerZM = 0) {
+  function syncGeometry(centerXM, centerZM) {
     const nextCenterKey = `${Math.floor(centerXM / LOCAL_ENVIRONMENT_CELL_SIZE_M)}:${Math.floor(centerZM / LOCAL_ENVIRONMENT_CELL_SIZE_M)}`;
-    if (nextCenterKey === centerKey) return lastStats;
-    centerKey = nextCenterKey;
+    if (nextCenterKey === geometryCenterKey) return { changed: false, centerKey: nextCenterKey };
+    geometryCenterKey = nextCenterKey;
     const query = queryLocalEnvironment(region, { centerXM, centerZM, radiusM, worldSeed });
     let shallowCount = 0;
     let deepCount = 0;
@@ -200,14 +249,75 @@ export function createLocalEnvironmentLayer(region, terrain, {
       if (mesh.count) drawCalls += 1;
     }
 
-    lastStats = Object.freeze({
+    lastGeometryStats = Object.freeze({
       waterTiles: shallowCount + deepCount,
       shallowWaterTiles: shallowCount,
       deepWaterTiles: deepCount,
       shorelineCells: [...shoreCounts.values()].reduce((sum, count) => sum + count, 0),
       coastalRemnants: realizedRemnants,
       drawCalls,
-      scannedCells: query.scannedCells,
+      scannedCells: query.scannedCells
+    });
+    return { changed: true, centerKey: nextCenterKey };
+  }
+
+  function syncWeather(centerXM, centerZM, worldHourIndex, forcePositionRefresh = false) {
+    const weather = describeLocalWeather(region, { centerXM, centerZM, worldSeed, worldHourIndex });
+    const weatherKey = `${weather.weatherEpoch}:${weather.weatherCellKey}:${weather.weatherType}:${Math.round(weather.intensity * 1000)}`;
+    if (weatherKey === lastWeatherKey && !forcePositionRefresh) return false;
+    lastWeatherKey = weatherKey;
+    lastWeather = weather;
+
+    const particleKind = weatherParticleKind(weather);
+    const visual = particleKind ? WEATHER_PARTICLE_VISUALS[particleKind] : null;
+    weatherParticleCount = visual
+      ? Math.min(MAX_WEATHER_PARTICLES, Math.max(24, Math.round(visual.baseCount * (0.45 + weather.intensity * 0.65))))
+      : 0;
+
+    if (!visual) {
+      weatherMaterial.opacity = 0;
+      weatherGeometry.setDrawRange(0, 0);
+      weatherGeometry.attributes.position.needsUpdate = true;
+      return true;
+    }
+
+    weatherMaterial.color.setHex(visual.color);
+    weatherMaterial.size = visual.size;
+    weatherMaterial.opacity = visual.opacity * (0.62 + weather.intensity * 0.38);
+    const windRad = THREE.MathUtils.degToRad(weather.windDirectionDeg);
+    const windX = Math.sin(windRad);
+    const windZ = Math.cos(windRad);
+    const focusY = heightAt(centerXM, centerZM);
+    const spread = Math.min(900, Math.max(320, radiusM * 0.44));
+
+    for (let index = 0; index < weatherParticleCount; index++) {
+      const angle = index * 2.399963229728653 + weather.weatherEpoch * 0.137;
+      const normalized = ((index * 47) % 181) / 180;
+      const radial = 40 + normalized * spread;
+      const vertical = 24 + (((index * 67 + weather.weatherEpoch * 11) % 151) / 150) * 150;
+      const windShift = (normalized - 0.5) * weather.windMps * 6;
+      weatherPositions[index * 3] = centerXM + Math.cos(angle) * radial + windX * windShift;
+      weatherPositions[index * 3 + 1] = focusY + vertical;
+      weatherPositions[index * 3 + 2] = centerZM + Math.sin(angle) * radial + windZ * windShift;
+    }
+    weatherGeometry.setDrawRange(0, weatherParticleCount);
+    weatherGeometry.attributes.position.needsUpdate = true;
+    return true;
+  }
+
+  function sync(centerXM = 0, centerZM = 0, worldHourIndex = null) {
+    const centerX = Number(centerXM) || 0;
+    const centerZ = Number(centerZM) || 0;
+    const resolvedHour = worldHourIndex == null ? Math.floor(Number(worldHourProvider()) || 0) : Number(worldHourIndex);
+    if (!Number.isInteger(resolvedHour)) throw new RangeError('worldHourIndex must resolve to an integer');
+    const geometry = syncGeometry(centerX, centerZ);
+    syncWeather(centerX, centerZ, resolvedHour, geometry.changed);
+    lastStats = Object.freeze({
+      ...lastGeometryStats,
+      drawCalls: lastGeometryStats.drawCalls + (weatherParticleCount ? 1 : 0),
+      weather: lastWeather,
+      weatherParticles: weatherParticleCount,
+      weatherPeriodHours: WEATHER_PERIOD_HOURS,
       seaLevelY
     });
     return lastStats;

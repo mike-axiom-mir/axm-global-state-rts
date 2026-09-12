@@ -1,8 +1,8 @@
 import { createSurfaceFrame, localToLatLon } from './spatial-frame.mjs';
 
 export const STARTER_REGION_SCHEMA = 'axm.global-state-rts.starter-region/v0.1';
-export const STARTER_REGION_HALF_SIZE_M = 2400;
-export const STARTER_REGION_OPERATION_RADIUS_M = 5000;
+export const STARTER_REGION_HALF_SIZE_M = 5400;
+export const STARTER_REGION_OPERATION_RADIUS_M = 10000;
 
 const DROP_ANCHORS = Object.freeze([
   Object.freeze({ latDeg: 12.5, lonDeg: -42.0 }),

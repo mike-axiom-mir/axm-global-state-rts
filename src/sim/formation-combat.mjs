@@ -1,5 +1,5 @@
 export const COMBAT_FORMATION_SCHEMA = 'axm.global-state-rts.combat-formation/v0.1';
-export const COMBAT_ENCOUNTER_SCHEMA = 'axm.global-state-rts.combat-encounter/v0.1';
+export const COMBAT_ENCOUNTER_SCHEMA = 'axm.global-state-rts.combat-encounter/v0.2';
 
 const ROLE_COMBAT = Object.freeze({
   crew: Object.freeze({ health: 80, armor: 0 }),
@@ -276,7 +276,16 @@ export class CombatEncounter {
       closed: this.closed
     });
     this.receipts.push(receipt);
-    return Object.freeze({ accepted: true, receipt, attacker: this.attacker.snapshot(), defender: this.defender.snapshot() });
+    return Object.freeze({
+      accepted: true,
+      receipt,
+      casualties: Object.freeze({
+        attacker: damageToAttacker.casualtyIds,
+        defender: damageToDefender.casualtyIds
+      }),
+      attacker: this.attacker.snapshot(),
+      defender: this.defender.snapshot()
+    });
   }
 
   snapshot() {

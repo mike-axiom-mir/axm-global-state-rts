@@ -101,11 +101,13 @@ async function runVariant(page, { seatCount, variant, verification }) {
         receipt
       };
     }));
+    const cache = await import('/src/assets/cached-static-glb-runtime.mjs');
     return {
       receipts: seatResults.map(entry => entry.receipt),
       perSeatInstallMs: seatResults.map(entry => ({ seatId: entry.seatId, installMs: entry.installMs })),
       installMs: performance.now() - started,
-      strategy: 'parallel-per-seat-decode-current-runtime'
+      strategy: 'parallel-per-seat-live-decoded-template-cache',
+      cacheStats: cache.staticGlbDecodeCacheStats()
     };
   }, { seatCount, url: `${BASE}/${config.file}`, expectedSha256 });
 
@@ -117,6 +119,14 @@ async function runVariant(page, { seatCount, variant, verification }) {
     expect(receipt.materials).toBe(19);
     expect(receipt.embeddedImages).toBe(47);
   }
+
+  const cacheStatuses = install.receipts.map(receipt => receipt.decodedTemplateCache?.status || null);
+  expect(cacheStatuses.filter(status => status === 'MISS')).toHaveLength(1);
+  expect(cacheStatuses.filter(status => status === 'HIT')).toHaveLength(Math.max(0, seatCount - 1));
+  expect(install.cacheStats.templateBuilds).toBe(1);
+  expect(install.cacheStats.instances).toBe(seatCount);
+  expect(install.cacheStats.cacheMisses).toBe(1);
+  expect(install.cacheStats.cacheHits).toBe(Math.max(0, seatCount - 1));
 
   await page.waitForTimeout(500);
   const raf = await sampleRaf(page);
@@ -143,14 +153,16 @@ async function runVariant(page, { seatCount, variant, verification }) {
     installStrategy: install.strategy,
     installMs: install.installMs,
     perSeatInstallMs: install.perSeatInstallMs,
+    cacheStatuses,
+    cacheStats: install.cacheStats,
     frameIntervals: summarizeIntervals(raf.intervals),
     jsHeap: raf.memory,
     screenshot: screenshotPath,
-    truthBoundary: 'CI/headless relative observation only; current runtime still decodes one full asset instance per seat and this is not target-device FPS certification.'
+    truthBoundary: 'CI/headless relative observation only; one GLB decode template is reused across seats, but this is not target-device FPS or GPU-residency certification.'
   };
 }
 
-test('real workshop detailed vs LOD1 cost/readability evidence across one and four seats', async ({ page }) => {
+test('real workshop detailed vs LOD1 cost/readability evidence across one and four seats with live cache', async ({ page }) => {
   test.setTimeout(420_000);
   const verificationResponse = await page.request.get(VERIFICATION_URL);
   expect(verificationResponse.ok()).toBe(true);
@@ -183,17 +195,18 @@ test('real workshop detailed vs LOD1 cost/readability evidence across one and fo
   }
 
   const evidence = {
-    schema: 'axm.global-state-rts.workshop-lod-performance-evidence/v0.1',
-    status: 'CI_RELATIVE_COST_MEASURED_VISUAL_REVIEW_PENDING',
+    schema: 'axm.global-state-rts.workshop-lod-performance-evidence/v0.2-cache',
+    status: 'CI_RELATIVE_COST_MEASURED_WITH_LIVE_DECODE_CACHE_VISUAL_REVIEW_PENDING',
     producerSourceRuntime: verification.source_runtime,
     results,
     comparisons,
+    cacheExpectation: 'Each fresh page/variant must build one decoded template; four-seat installs must reuse it three times.',
     nonclaims: [
       'GitHub-hosted headless Chromium is not a target-device performance certification.',
-      'Same material/image counts mean geometry LOD does not reduce the current material/texture surface.',
-      'The four-seat path still decodes one complete GLB/material/texture instance per seat; this run measures that current cost rather than claiming an optimized shared-asset cache.',
-      'Screenshots require separate visual inspection before LOD perceptual-equivalence or split-screen-readability claims.',
-      'Collision and navigation are outside this experiment.'
+      'Same material/image counts mean geometry LOD does not reduce the per-instance material/texture wrapper surface.',
+      'The live cache reuses decoded source/template work; this evidence does not prove GPU residency sharing.',
+      'Screenshots require separate visual inspection before broad LOD perceptual-equivalence or split-screen-readability claims.',
+      'Collision/navigation behavior is tested elsewhere and is outside this performance experiment.'
     ]
   };
   writeFileSync('test-results/workshop-lod-performance-evidence.json', `${JSON.stringify(evidence, null, 2)}\n`);

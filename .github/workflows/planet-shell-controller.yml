@@ -1,0 +1,62 @@
+name: Global State RTS controller shell
+
+on:
+  pull_request:
+    paths:
+      - game/**
+      - src/input/**
+      - src/session/**
+      - src/presentation/**
+      - tests/browser/planet-shell-controller.spec.js
+      - .github/workflows/planet-shell-controller.yml
+      - package.json
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  chromium-controller-shell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Run deterministic/source gates
+        run: npm test
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start local browser shell
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-server.log 2>&1 &
+          echo $! > /tmp/axm-global-state-rts-server.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-server.log
+          exit 1
+      - name: Exercise four controllers and machine seat in Chromium
+        run: npx playwright test tests/browser/planet-shell-controller.spec.js --reporter=line
+      - name: Preserve browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-controller-shell
+          path: |
+            test-results/global-state-rts-*.png
+            /tmp/axm-global-state-rts-server.log
+          if-no-files-found: warn
+          retention-days: 14

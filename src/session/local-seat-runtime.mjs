@@ -43,13 +43,22 @@ export class LocalSeatRuntime {
     this.rateGate = new SeatActionRateGate({ maxActions: apmCap });
   }
 
+  #seatBindings(seatId) {
+    let sources = this.bindings.get(seatId);
+    if (!sources) {
+      sources = new Map();
+      this.bindings.set(seatId, sources);
+    }
+    return sources;
+  }
+
   bindInput({ seatId, sourceKind, deviceId = null }) {
     const seat = seatById(this.roster, seatId);
     assertSourceForSeat(seat, sourceKind);
 
     if (sourceKind === 'keyboard-pointer') {
-      for (const [otherSeatId, binding] of this.bindings.entries()) {
-        if (binding.sourceKind === 'keyboard-pointer' && otherSeatId !== seatId) {
+      for (const [otherSeatId, sources] of this.bindings.entries()) {
+        if (sources.has('keyboard-pointer') && otherSeatId !== seatId) {
           throw new Error('keyboard-pointer can only be bound to one seat');
         }
       }
@@ -57,32 +66,40 @@ export class LocalSeatRuntime {
 
     if (sourceKind === 'gamepad') {
       if (!Number.isInteger(deviceId) || deviceId < 0) throw new RangeError('gamepad deviceId must be a non-negative integer');
-      for (const [otherSeatId, binding] of this.bindings.entries()) {
-        if (binding.sourceKind === 'gamepad' && binding.deviceId === deviceId && otherSeatId !== seatId) {
+      for (const [otherSeatId, sources] of this.bindings.entries()) {
+        const binding = sources.get('gamepad');
+        if (binding?.deviceId === deviceId && otherSeatId !== seatId) {
           throw new Error(`gamepad ${deviceId} is already bound to ${otherSeatId}`);
         }
       }
     }
 
     const binding = Object.freeze({ seatId, sourceKind, deviceId });
-    this.bindings.set(seatId, binding);
+    this.#seatBindings(seatId).set(sourceKind, binding);
     return binding;
   }
 
-  bindingFor(seatId) {
-    return this.bindings.get(seatId) || null;
+  bindingFor(seatId, sourceKind = null) {
+    const sources = this.bindings.get(seatId);
+    if (!sources) return null;
+    if (sourceKind) return sources.get(sourceKind) || null;
+    return sources.values().next().value || null;
+  }
+
+  bindingsForSeat(seatId) {
+    return Object.freeze([...(this.bindings.get(seatId)?.values() || [])]);
   }
 
   submitAction({ seatId, sourceKind, actionId, payload = null, timestampMs }) {
     const seat = seatById(this.roster, seatId);
     assertSourceForSeat(seat, sourceKind);
 
-    const binding = this.bindings.get(seatId);
-    if (binding && binding.sourceKind !== sourceKind) {
-      throw new Error(`${seatId} is bound to ${binding.sourceKind}, not ${sourceKind}`);
-    }
+    const binding = this.bindingFor(seatId, sourceKind);
     if (!binding && sourceKind !== MACHINE_INPUT_KIND) {
       throw new Error(`${seatId} has no bound ${sourceKind} input`);
+    }
+    if (!binding && sourceKind === MACHINE_INPUT_KIND) {
+      throw new Error(`${seatId} has no bound machine input`);
     }
 
     const rate = this.rateGate.submit({ seatId, actionId, timestampMs });

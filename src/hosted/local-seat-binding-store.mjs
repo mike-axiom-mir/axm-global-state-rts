@@ -36,6 +36,16 @@ function validateBindingSnapshot(snapshot, index = null) {
   }
   validateDigest(snapshot.journalGenesisDigest, `${label}.journalGenesisDigest`);
   validateDigest(snapshot.journalGenesisStateHash, `${label}.journalGenesisStateHash`);
+  const journalRevision = Number(snapshot.journalRevision);
+  if (!Number.isInteger(journalRevision) || journalRevision < 0) {
+    throw new RangeError(`${label}.journalRevision must be a non-negative integer`);
+  }
+  if (journalRevision === 0) {
+    if (snapshot.journalHeadHash !== null) throw new TypeError(`${label}.journalHeadHash must be null at revision 0`);
+  } else {
+    validateDigest(snapshot.journalHeadHash, `${label}.journalHeadHash`);
+  }
+  validateDigest(snapshot.journalStateHash, `${label}.journalStateHash`);
   return { regionSeatId, participantId };
 }
 

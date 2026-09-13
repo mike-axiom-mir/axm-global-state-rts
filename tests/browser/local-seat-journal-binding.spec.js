@@ -147,7 +147,7 @@ test('authority-revalidated machine participant can journal and explicitly adopt
   expect(staleAdoption.body.reason).toBe('local-authority-revision-conflict');
   expect(staleAdoption.issued).toBeUndefined();
   expect(staleAdoption.adopted).toBeUndefined();
-  await expect(page.locator('#hostLocalAdoptionStatus')).toContainText('no checkpoint replacement applied');
+  await expect(page.locator('#hostLocalAdoptionStatus')).toContainText('browser-local state left unchanged');
   await expect(page.locator('#hostLocalCheckpointStatus')).toContainText('journal r2');
 
   const adoptionMoment = await page.evaluate(async () => {
@@ -169,7 +169,7 @@ test('authority-revalidated machine participant can journal and explicitly adopt
   expect(adoptionMoment.liveAtReturn).toEqual(adopted.adopted.after);
 
   await expect(page.locator('#hostLocalAdoptionStatus')).toContainText('adopted seat-1:r2:');
-  await expect(page.locator('#hostLocalAdoptionStatus')).toContainText('point-in-time replacement');
+  await expect(page.locator('#hostLocalAdoptionStatus')).toContainText('explicit replacement only');
 
   const hostAfterAdoption = await page.evaluate(async () => {
     const response = await fetch('/api/world/local-seat?regionSeatId=seat-1&participantId=world%3Acheckpoint-machine');

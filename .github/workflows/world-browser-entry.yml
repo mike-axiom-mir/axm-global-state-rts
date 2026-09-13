@@ -5,12 +5,16 @@ on:
     branches:
       - main
     paths:
+      - 'game/app.mjs'
+      - 'game/index.html'
       - 'game/world-entry.html'
       - 'game/world-entry.mjs'
       - 'src/session/world-browser-client.mjs'
+      - 'src/session/world-seat-binding.mjs'
       - 'src/hosted/**'
       - 'scripts/serve.mjs'
       - 'tests/world-browser-client-selftest.mjs'
+      - 'tests/world-seat-binding-selftest.mjs'
       - 'tests/browser/world-entry.spec.js'
       - '.github/workflows/world-browser-entry.yml'
   workflow_dispatch:
@@ -37,9 +41,13 @@ jobs:
         run: |
           npm test
           node --check src/session/world-browser-client.mjs
+          node --check src/session/world-seat-binding.mjs
+          node --check game/app.mjs
           node --check game/world-entry.mjs
+          node --check tests/world-seat-binding-selftest.mjs
           node --check tests/browser/world-entry.spec.js
           node tests/world-browser-client-selftest.mjs
+          node tests/world-seat-binding-selftest.mjs
 
       - name: Install pinned Playwright test runner
         run: npm install --no-save @playwright/test@1.55.0
@@ -62,7 +70,7 @@ jobs:
           cat /tmp/axm-global-state-rts-world-entry.log
           exit 1
 
-      - name: Exercise human and machine world entry in Chromium
+      - name: Exercise human/machine entry and authority-bound seat in Chromium
         run: npx playwright test tests/browser/world-entry.spec.js --reporter=line
 
       - name: Preserve browser evidence
@@ -72,6 +80,7 @@ jobs:
           name: global-state-rts-world-entry
           path: |
             test-results/global-state-rts-world-entry.png
+            test-results/global-state-rts-world-bound-seat.png
             /tmp/axm-global-state-rts-world-entry.log
           if-no-files-found: warn
           retention-days: 14

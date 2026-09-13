@@ -7,6 +7,10 @@ on:
       - src/input/**
       - src/session/**
       - src/presentation/**
+      - src/hosted/local-seat-binding-store.mjs
+      - src/hosted/local-seat-journal-authority.mjs
+      - src/hosted/world-session-authority.mjs
+      - scripts/serve.mjs
       - tests/browser/planet-shell-controller.spec.js
       - .github/workflows/planet-shell-controller.yml
       - package.json

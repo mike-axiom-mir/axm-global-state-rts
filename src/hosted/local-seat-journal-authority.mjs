@@ -6,10 +6,18 @@ export const LOCAL_SEAT_JOURNAL_AUTHORITY_SCHEMA =
 export const LOCAL_SEAT_JOURNAL_BINDING_SCHEMA =
   'axm.global-state-rts.local-seat-journal-binding/v0.1';
 
+const HOST_ENABLED_LOCAL_ACTIONS = Object.freeze(['gather-scrap']);
+
 function nonEmpty(value, label) {
   const text = String(value ?? '').trim();
   if (!text) throw new TypeError(`${label} required`);
   return text;
+}
+
+function nonNegativeInteger(value, label) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 0) throw new RangeError(`${label} must be a non-negative integer`);
+  return number;
 }
 
 function normalizeSeatId(value) {
@@ -63,9 +71,13 @@ export class LocalSeatJournalAuthority {
     this.journalsBySeat = new Map();
   }
 
-  #worldTime() {
+  #nowMs() {
     const nowMs = Number(this.clock());
     if (!Number.isFinite(nowMs) || nowMs < 0) throw new RangeError('host clock must return a finite non-negative timestamp');
+    return nowMs;
+  }
+
+  #worldTime(nowMs = this.#nowMs()) {
     return this.participantRegistry.worldTime(nowMs);
   }
 
@@ -143,6 +155,101 @@ export class LocalSeatJournalAuthority {
       binding,
       journal: journal.meta(),
       worldTime
+    });
+  }
+
+  submitBoundCommand({ participantId, regionSeatId, intent, expectedRevision } = {}) {
+    const id = nonEmpty(participantId, 'participantId');
+    const seatId = normalizeSeatId(regionSeatId);
+    const expected = nonNegativeInteger(expectedRevision, 'expectedRevision');
+    const binding = this.bindingsBySeat.get(seatId) || null;
+    if (!binding) {
+      return Object.freeze({
+        accepted: false,
+        reason: 'local-seat-not-bound',
+        participantId: id,
+        regionSeatId: seatId
+      });
+    }
+    if (binding.participantId !== id) {
+      return Object.freeze({
+        accepted: false,
+        reason: 'participant-local-seat-binding-mismatch',
+        participantId: id,
+        regionSeatId: seatId,
+        currentParticipantId: binding.participantId
+      });
+    }
+
+    const participant = this.participantRegistry.participant(id);
+    if (!participant) throw new RangeError(`unknown participant: ${id}`);
+    const actionId = String(intent?.actionId || '');
+    if (!HOST_ENABLED_LOCAL_ACTIONS.includes(actionId)) {
+      return Object.freeze({
+        accepted: false,
+        reason: 'host-local-action-not-enabled',
+        participantId: id,
+        regionSeatId: seatId,
+        requestedActionId: actionId || null,
+        enabledActionIds: HOST_ENABLED_LOCAL_ACTIONS
+      });
+    }
+
+    const journal = this.journalsBySeat.get(seatId);
+    const currentMeta = journal.meta();
+    if (expected !== currentMeta.revision) {
+      return Object.freeze({
+        accepted: false,
+        reason: 'local-authority-revision-conflict',
+        participantId: id,
+        regionSeatId: seatId,
+        expectedRevision: expected,
+        currentRevision: currentMeta.revision,
+        headHash: currentMeta.headHash,
+        stateHash: currentMeta.stateHash
+      });
+    }
+
+    const nowMs = this.#nowMs();
+    const worldTime = this.#worldTime(nowMs);
+    if (typeof this.participantRegistry.submitAction !== 'function') {
+      throw new TypeError('participantRegistry.submitAction required for host local command admission');
+    }
+    const admission = this.participantRegistry.submitAction({
+      participantId: id,
+      actionId: `host-local:${actionId}`,
+      timestampMs: nowMs
+    });
+    if (!admission.accepted) {
+      return Object.freeze({
+        accepted: false,
+        reason: 'participant-action-rate-limited',
+        participantId: id,
+        regionSeatId: seatId,
+        admission,
+        journal: currentMeta,
+        worldTime
+      });
+    }
+
+    const result = journal.submit(intent, {
+      participant: {
+        participantId: participant.participantId,
+        controllerKind: participant.controllerKind
+      },
+      worldHourIndex: worldTime.worldHourIndex,
+      expectedRevision: expected,
+      recordedAtMs: nowMs
+    });
+
+    return Object.freeze({
+      ...result,
+      participantId: id,
+      regionSeatId: seatId,
+      binding,
+      admission,
+      worldTime,
+      truthBoundary: 'host-reproduced-local-journal-command-no-browser-state-equivalence-no-shared-world-promotion'
     });
   }
 

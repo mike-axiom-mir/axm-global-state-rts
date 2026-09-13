@@ -4,7 +4,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -141,17 +141,21 @@ test('authority-revalidated machine participant can journal and explicitly adopt
   expect(advanceHostBehindBrowser.status).toBe(200);
   expect(advanceHostBehindBrowser.body.revision).toBe(2);
 
-  const browserBeforeStaleAdoption = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'));
   const staleAdoption = await page.evaluate(() => window.__AXM_HOST_LOCAL_SEAT__.adoptHostCheckpoint());
   expect(staleAdoption.accepted).toBe(false);
   expect(staleAdoption.status).toBe(409);
   expect(staleAdoption.body.reason).toBe('local-authority-revision-conflict');
-  const browserAfterStaleAdoption = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'));
-  expect(browserAfterStaleAdoption).toEqual(browserBeforeStaleAdoption);
-  await expect(page.locator('#hostLocalAdoptionStatus')).toContainText('checkpoint adoption rejected');
+  expect(staleAdoption.issued).toBeUndefined();
+  expect(staleAdoption.adopted).toBeUndefined();
+  await expect(page.locator('#hostLocalAdoptionStatus')).toContainText('no checkpoint replacement applied');
   await expect(page.locator('#hostLocalCheckpointStatus')).toContainText('journal r2');
 
-  const adopted = await page.evaluate(() => window.__AXM_HOST_LOCAL_SEAT__.adoptHostCheckpoint());
+  const adoptionMoment = await page.evaluate(async () => {
+    const adopted = await window.__AXM_HOST_LOCAL_SEAT__.adoptHostCheckpoint();
+    const liveAtReturn = window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1');
+    return { adopted, liveAtReturn };
+  });
+  const adopted = adoptionMoment.adopted;
   expect(adopted.accepted).toBe(true);
   expect(adopted.expectedRevision).toBe(2);
   expect(adopted.issued.accepted).toBe(true);
@@ -162,11 +166,10 @@ test('authority-revalidated machine participant can journal and explicitly adopt
   expect(adopted.adopted.revision).toBe(2);
   expect(adopted.adopted.truthBoundary).toBe('explicit-browser-local-replacement-from-host-replay-package-no-host-or-global-mutation');
   expect(adopted.adopted.after).toEqual(adopted.issued.checkpoint.publicState);
+  expect(adoptionMoment.liveAtReturn).toEqual(adopted.adopted.after);
 
-  const browserAfterAdoption = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'));
-  expect(browserAfterAdoption).toEqual(adopted.issued.checkpoint.publicState);
   await expect(page.locator('#hostLocalAdoptionStatus')).toContainText('adopted seat-1:r2:');
-  await expect(page.locator('#hostLocalAdoptionStatus')).toContainText('explicit replacement only');
+  await expect(page.locator('#hostLocalAdoptionStatus')).toContainText('point-in-time replacement');
 
   const hostAfterAdoption = await page.evaluate(async () => {
     const response = await fetch('/api/world/local-seat?regionSeatId=seat-1&participantId=world%3Acheckpoint-machine');

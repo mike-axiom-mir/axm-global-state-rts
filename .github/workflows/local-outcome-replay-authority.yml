@@ -1,0 +1,46 @@
+name: Global State RTS local outcome replay authority
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/hosted/local-outcome-replay-authority.mjs'
+      - 'src/sim/local-region-sim.mjs'
+      - 'src/session/world-time-local-sync.mjs'
+      - 'src/world/starter-region.mjs'
+      - 'tests/local-outcome-replay-authority-selftest.mjs'
+      - 'docs/LOCAL_OUTCOME_REPLAY_AUTHORITY_V0.md'
+      - '.github/workflows/local-outcome-replay-authority.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  local-outcome-replay-authority:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run repository deterministic/source gate
+        run: npm test
+
+      - name: Check replay authority source
+        run: |
+          node --check src/hosted/local-outcome-replay-authority.mjs
+          node --check tests/local-outcome-replay-authority-selftest.mjs
+          node --check src/session/world-time-local-sync.mjs
+          node --check src/sim/local-region-sim.mjs
+
+      - name: Prove bounded host replay and forged-claim rejection
+        run: node tests/local-outcome-replay-authority-selftest.mjs

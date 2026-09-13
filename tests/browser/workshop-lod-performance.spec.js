@@ -3,9 +3,19 @@ import { expect, test } from '@playwright/test';
 
 const BASE = 'http://127.0.0.1:4174/runtime-assets/workshop-specialist';
 const VERIFICATION_URL = `${BASE}/verification.json`;
+const SHARED_RESOURCE_MODE = 'SHARED_IMMUTABLE_GEOMETRY_MATERIAL_TEXTURE';
 const VARIANTS = Object.freeze({
   detailed: Object.freeze({ file: 'improvised-workshop.glb', expectedTriangles: 190431 }),
   lod1: Object.freeze({ file: 'improvised-workshop-lod1.glb', expectedTriangles: 68534 })
+});
+
+// Exact installMs values from the previously merged decoded-template-cache run.
+// They are preserved only as a historical CI baseline; runner-to-runner timing is noisy.
+const PRIOR_DECODE_CACHE_BASELINE_MS = Object.freeze({
+  '1:detailed': 21216.20000000001,
+  '1:lod1': 17756.399999999965,
+  '4:detailed': 32654.70000000001,
+  '4:lod1': 30691.900000000023
 });
 
 function percentile(sorted, fraction) {
@@ -106,7 +116,7 @@ async function runVariant(page, { seatCount, variant, verification }) {
       receipts: seatResults.map(entry => entry.receipt),
       perSeatInstallMs: seatResults.map(entry => ({ seatId: entry.seatId, installMs: entry.installMs })),
       installMs: performance.now() - started,
-      strategy: 'parallel-per-seat-live-decoded-template-cache',
+      strategy: 'parallel-per-seat-shared-immutable-resource-cache',
       cacheStats: cache.staticGlbDecodeCacheStats()
     };
   }, { seatCount, url: `${BASE}/${config.file}`, expectedSha256 });
@@ -118,21 +128,29 @@ async function runVariant(page, { seatCount, variant, verification }) {
     expect(receipt.triangles).toBe(config.expectedTriangles);
     expect(receipt.materials).toBe(19);
     expect(receipt.embeddedImages).toBe(47);
+    expect(receipt.decodedTemplateCache?.resourceMode).toBe(SHARED_RESOURCE_MODE);
   }
 
   const cacheStatuses = install.receipts.map(receipt => receipt.decodedTemplateCache?.status || null);
+  const resourceModes = install.receipts.map(receipt => receipt.decodedTemplateCache?.resourceMode || null);
   expect(cacheStatuses.filter(status => status === 'MISS')).toHaveLength(1);
   expect(cacheStatuses.filter(status => status === 'HIT')).toHaveLength(Math.max(0, seatCount - 1));
+  expect(resourceModes.every(mode => mode === SHARED_RESOURCE_MODE)).toBe(true);
   expect(install.cacheStats.templateBuilds).toBe(1);
   expect(install.cacheStats.instances).toBe(seatCount);
   expect(install.cacheStats.cacheMisses).toBe(1);
   expect(install.cacheStats.cacheHits).toBe(Math.max(0, seatCount - 1));
+  expect(install.cacheStats.resourceMode).toBe(SHARED_RESOURCE_MODE);
+  expect(install.cacheStats.sharedGeometries).toBeGreaterThan(0);
+  expect(install.cacheStats.sharedMaterials).toBeGreaterThan(0);
+  expect(install.cacheStats.sharedTextures).toBeGreaterThan(0);
 
   await page.waitForTimeout(500);
   const raf = await sampleRaf(page);
   const screenshotPath = `test-results/workshop-${variant}-${seatCount}seat.png`;
   await page.screenshot({ path: screenshotPath, fullPage: true });
   const first = install.receipts[0];
+  const historicalBaselineMs = PRIOR_DECODE_CACHE_BASELINE_MS[`${seatCount}:${variant}`] ?? null;
   return {
     seatCount,
     variant,
@@ -145,24 +163,28 @@ async function runVariant(page, { seatCount, variant, verification }) {
       meshes: first.meshes,
       primitives: first.primitives
     },
-    aggregateDecodedAssetSurface: {
+    logicalInstanceSurface: {
       triangles: first.triangles * seatCount,
-      materialInstances: first.materials * seatCount,
-      embeddedImageDescriptors: first.embeddedImages * seatCount
+      materialReferences: first.materials * seatCount,
+      embeddedImageReferences: first.embeddedImages * seatCount
     },
     installStrategy: install.strategy,
     installMs: install.installMs,
+    historicalDecodeCacheInstallMs: historicalBaselineMs,
+    observedDeltaVsHistoricalDecodeCacheMs: historicalBaselineMs === null ? null : install.installMs - historicalBaselineMs,
+    observedFractionVsHistoricalDecodeCache: historicalBaselineMs === null ? null : install.installMs / historicalBaselineMs,
     perSeatInstallMs: install.perSeatInstallMs,
     cacheStatuses,
+    resourceModes,
     cacheStats: install.cacheStats,
     frameIntervals: summarizeIntervals(raf.intervals),
     jsHeap: raf.memory,
     screenshot: screenshotPath,
-    truthBoundary: 'CI/headless relative observation only; one GLB decode template is reused across seats, but this is not target-device FPS or GPU-residency certification.'
+    truthBoundary: 'CI/headless relative observation only; heavy Three.js geometry/material/texture identities are shared across seat instances, but this is not target-device FPS, GPU-memory or GPU-residency certification.'
   };
 }
 
-test('real workshop detailed vs LOD1 cost/readability evidence across one and four seats with live cache', async ({ page }) => {
+test('real workshop detailed vs LOD1 cost/readability evidence across one and four seats with shared immutable resources', async ({ page }) => {
   test.setTimeout(420_000);
   const verificationResponse = await page.request.get(VERIFICATION_URL);
   expect(verificationResponse.ok()).toBe(true);
@@ -178,15 +200,15 @@ test('real workshop detailed vs LOD1 cost/readability evidence across one and fo
   for (const seatCount of [1, 4]) {
     const detailed = results.find(result => result.seatCount === seatCount && result.variant === 'detailed');
     const lod1 = results.find(result => result.seatCount === seatCount && result.variant === 'lod1');
-    expect(lod1.aggregateDecodedAssetSurface.triangles).toBeLessThan(detailed.aggregateDecodedAssetSurface.triangles);
-    expect(lod1.aggregateDecodedAssetSurface.materialInstances).toBe(detailed.aggregateDecodedAssetSurface.materialInstances);
-    expect(lod1.aggregateDecodedAssetSurface.embeddedImageDescriptors).toBe(detailed.aggregateDecodedAssetSurface.embeddedImageDescriptors);
+    expect(lod1.logicalInstanceSurface.triangles).toBeLessThan(detailed.logicalInstanceSurface.triangles);
+    expect(lod1.logicalInstanceSurface.materialReferences).toBe(detailed.logicalInstanceSurface.materialReferences);
+    expect(lod1.logicalInstanceSurface.embeddedImageReferences).toBe(detailed.logicalInstanceSurface.embeddedImageReferences);
     comparisons.push({
       seatCount,
-      triangleReduction: detailed.aggregateDecodedAssetSurface.triangles - lod1.aggregateDecodedAssetSurface.triangles,
-      triangleReductionFraction: 1 - (lod1.aggregateDecodedAssetSurface.triangles / detailed.aggregateDecodedAssetSurface.triangles),
-      materialInstanceReduction: detailed.aggregateDecodedAssetSurface.materialInstances - lod1.aggregateDecodedAssetSurface.materialInstances,
-      embeddedImageDescriptorReduction: detailed.aggregateDecodedAssetSurface.embeddedImageDescriptors - lod1.aggregateDecodedAssetSurface.embeddedImageDescriptors,
+      triangleReduction: detailed.logicalInstanceSurface.triangles - lod1.logicalInstanceSurface.triangles,
+      triangleReductionFraction: 1 - (lod1.logicalInstanceSurface.triangles / detailed.logicalInstanceSurface.triangles),
+      materialReferenceReduction: detailed.logicalInstanceSurface.materialReferences - lod1.logicalInstanceSurface.materialReferences,
+      embeddedImageReferenceReduction: detailed.logicalInstanceSurface.embeddedImageReferences - lod1.logicalInstanceSurface.embeddedImageReferences,
       observedInstallDeltaMs: lod1.installMs - detailed.installMs,
       observedFrameMedianDeltaMs: lod1.frameIntervals.medianMs - detailed.frameIntervals.medianMs,
       observedFrameP95DeltaMs: lod1.frameIntervals.p95Ms - detailed.frameIntervals.p95Ms,
@@ -195,16 +217,17 @@ test('real workshop detailed vs LOD1 cost/readability evidence across one and fo
   }
 
   const evidence = {
-    schema: 'axm.global-state-rts.workshop-lod-performance-evidence/v0.2-cache',
-    status: 'CI_RELATIVE_COST_MEASURED_WITH_LIVE_DECODE_CACHE_VISUAL_REVIEW_PENDING',
+    schema: 'axm.global-state-rts.workshop-lod-performance-evidence/v0.3-shared-resources',
+    status: 'CI_RELATIVE_COST_MEASURED_WITH_SHARED_IMMUTABLE_RESOURCES_VISUAL_REVIEW_PENDING',
     producerSourceRuntime: verification.source_runtime,
+    priorDecodeCacheBaselineMs: PRIOR_DECODE_CACHE_BASELINE_MS,
     results,
     comparisons,
-    cacheExpectation: 'Each fresh page/variant must build one decoded template; four-seat installs must reuse it three times.',
+    cacheExpectation: 'Each fresh page/variant must build one decoded template; four-seat installs must reuse the same immutable geometry/material/texture resources across four independent Object3D wrappers.',
     nonclaims: [
+      'Historical baseline and current measurement are separate GitHub-hosted CI runs; timing deltas are descriptive and runner noise is not controlled.',
+      'Shared JavaScript/Three.js resource identity does not prove shared GPU residency or reduced GPU memory.',
       'GitHub-hosted headless Chromium is not a target-device performance certification.',
-      'Same material/image counts mean geometry LOD does not reduce the per-instance material/texture wrapper surface.',
-      'The live cache reuses decoded source/template work; this evidence does not prove GPU residency sharing.',
       'Screenshots require separate visual inspection before broad LOD perceptual-equivalence or split-screen-readability claims.',
       'Collision/navigation behavior is tested elsewhere and is outside this performance experiment.'
     ]

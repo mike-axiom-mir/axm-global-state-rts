@@ -38,62 +38,14 @@
 
       <div id="seatSetup" class="seat-setup" aria-live="polite"></div>
 
-      <section class="world-presence" aria-labelledby="worldPresenceTitle">
-        <div class="world-presence-head">
-          <div>
-            <p class="eyebrow">SHARED WORLD PRESENCE · DEV AUTHORITY</p>
-            <h2 id="worldPresenceTitle">Enter the persistent world seam</h2>
-          </div>
-          <div id="worldMetaStatus" class="status world-meta-status">Checking world host</div>
-        </div>
-
-        <div class="world-entry-grid">
-          <label>Entry profile
-            <select id="worldEntryMode">
-              <option value="guest">Guest run</option>
-              <option value="account">World account</option>
-            </select>
-          </label>
-          <label>Controller kind
-            <select id="worldControllerKind">
-              <option value="human">Human</option>
-              <option value="machine">Machine</option>
-            </select>
-          </label>
-          <label>Display name
-            <input id="worldDisplayName" type="text" maxlength="64" autocomplete="off" placeholder="Player or machine name">
-          </label>
-          <label><span id="worldIdentityLabel">Guest session id</span>
-            <input id="worldIdentity" type="text" maxlength="96" autocomplete="off" placeholder="browser-session-id">
-          </label>
-          <div class="world-entry-actions">
-            <button id="worldEnterButton" type="button">Enter world</button>
-            <button id="worldRefreshButton" type="button">Refresh</button>
-          </div>
-        </div>
-
-        <div id="worldParticipantSummary" class="world-participant-summary" aria-live="polite">
-          No shared-world participant entered in this browser yet.
-        </div>
-        <div class="world-chest-actions">
-          <button id="worldAccrueButton" type="button" disabled>Accrue world-time chests</button>
-          <button id="worldOpenChestButton" type="button" disabled>Open 1 chest</button>
-          <span id="worldActionStatus" class="status">Entry required</span>
-        </div>
-        <p class="truth world-truth">
-          Development truth boundary: world-account IDs are not authenticated identities yet. Guest state is memory-session best effort. Account restart durability exists only when the host has an account store configured. Human and machine participants use the same entry, chest and command authority; this panel does not claim public deployment, identity ownership proof, TLS, anti-Sybil protection or distributed persistence.
-        </p>
-      </section>
-
       <p class="help">
         Controller-first: right stick pans the local camera, left stick moves the RTS cursor, triggers zoom, A/confirm gathers the nearest known scrap around the cursor, X/context orders core repair, L3 sends Crew to explore the cursor area, and map/select toggles globe/local. Seat 1 also keeps keyboard/mouse: WASD/arrows, mouse drag, wheel zoom, Enter to gather, X to repair, F to explore, M for globe/local.
       </p>
       <p class="truth">
-        Current rung: deterministic Crew → known scrap → storage → core repair plus vision-limited exploration on real Foundation Planet local terrain, with independent 1–4 seat views and equal human/machine 100-APM command admission. Hidden resources enter user knowledge only when legitimate Crew/light vision reaches them. A development shared-world participant/account authority now exists behind the local host; public authentication, deployed multiplayer transport, distributed persistence and production-scale hosting are not claimed.
+        Current rung: deterministic Crew → known scrap → storage → core repair plus vision-limited exploration on real Foundation Planet local terrain, with independent 1–4 seat views and equal human/machine 100-APM command admission. Hidden resources enter user knowledge only when legitimate Crew/light vision reaches them. Final fog rendering, light exposure to enemies, combat, production and the persistent global server are not claimed yet.
       </p>
     </aside>
   </main>
   <script type="module" src="./app.mjs"></script>
-  <script type="module" src="./world-presence.mjs"></script>
 </body>
 </html>

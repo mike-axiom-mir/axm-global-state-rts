@@ -1,6 +1,7 @@
 import { createHostedSharedStateAuthority } from './shared-state-authority.mjs';
 import { createLocalSeatJournalAuthority } from './local-seat-journal-authority.mjs';
 import { createWorldParticipantRegistry } from './world-participant-registry.mjs';
+import { LOCAL_CHECKPOINT_ADOPTION_SCHEMA } from '../session/local-checkpoint-adoption.mjs';
 
 export const WORLD_SESSION_AUTHORITY_SCHEMA = 'axm.global-state-rts.world-session-authority/v0.3';
 
@@ -14,6 +15,12 @@ function nonEmpty(value, label) {
   const text = String(value ?? '').trim();
   if (!text) throw new TypeError(`${label} required`);
   return text;
+}
+
+function nonNegativeInteger(value, label) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 0) throw new RangeError(`${label} must be a non-negative integer`);
+  return number;
 }
 
 function cloneJson(value) {
@@ -108,6 +115,63 @@ export class WorldSessionAuthority {
 
   localSeatStatus(options = {}) {
     return this.localSeats.status(options);
+  }
+
+  localSeatAdoptionCheckpoint({ participantId, regionSeatId, expectedRevision } = {}) {
+    const participant = participantIdFrom(participantId);
+    const expected = nonNegativeInteger(expectedRevision, 'expectedRevision');
+    const status = this.localSeats.status({ participantId: participant, regionSeatId });
+    if (!status.accepted) return status;
+    if (expected !== status.journal.revision) {
+      return Object.freeze({
+        accepted: false,
+        reason: 'local-authority-revision-conflict',
+        participantId: participant,
+        regionSeatId: status.binding.regionSeatId,
+        expectedRevision: expected,
+        currentRevision: status.journal.revision,
+        headHash: status.journal.headHash,
+        stateHash: status.journal.stateHash
+      });
+    }
+
+    const journal = this.localSeats.journalForSeat(status.binding.regionSeatId);
+    const entries = journal.store.readAll();
+    if (!Array.isArray(entries) || entries.length !== status.journal.revision) {
+      throw new Error('host local journal entry count does not match checkpoint revision');
+    }
+    const commands = Object.freeze(entries.map((entry, index) => Object.freeze({
+      revision: index + 1,
+      worldHourIndex: entry.worldHourIndex,
+      lightingPhase: entry.lightingPhase,
+      physicalIntent: Object.freeze(cloneJson(entry.physicalIntent)),
+      stateHash: entry.stateHash
+    })));
+    const checkpoint = Object.freeze({
+      schema: LOCAL_CHECKPOINT_ADOPTION_SCHEMA,
+      checkpointId: `${status.binding.regionSeatId}:r${status.journal.revision}:${String(status.journal.stateHash).slice(0, 12)}`,
+      regionSeatId: status.binding.regionSeatId,
+      revision: status.journal.revision,
+      headHash: status.journal.headHash,
+      stateHash: status.journal.stateHash,
+      genesisWorldHourIndex: status.journal.genesisWorldHourIndex,
+      genesisLightingPhase: journal.genesis.lightingPhase,
+      commands,
+      publicState: journal.simulation.snapshot(),
+      truthBoundary:
+        'host-issued-replay-package-for-explicit-browser-adoption-no-hidden-resource-disclosure-no-shared-world-promotion'
+    });
+
+    return Object.freeze({
+      accepted: true,
+      participantId: participant,
+      binding: status.binding,
+      checkpoint,
+      continuity: status.continuity,
+      worldTime: status.worldTime,
+      truthBoundary:
+        'host-revalidated-bound-seat-checkpoint-package-explicit-adoption-required'
+    });
   }
 
   submitLocalSeatCommand(options = {}) {

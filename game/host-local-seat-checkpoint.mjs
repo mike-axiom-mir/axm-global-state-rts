@@ -38,14 +38,31 @@ adoptionStatus.textContent = 'Adoption is explicit: the current browser-local si
 adoptionRow.append(adoptButton, adoptionStatus);
 commandRow.insertAdjacentElement('afterend', adoptionRow);
 
+const salvageRow = document.createElement('div');
+salvageRow.className = 'setup-row';
+const salvageButton = document.createElement('button');
+salvageButton.id = 'hostLocalSalvage';
+salvageButton.type = 'button';
+salvageButton.disabled = true;
+salvageButton.textContent = 'Record verified salvage';
+const salvageStatus = document.createElement('div');
+salvageStatus.id = 'hostLocalSalvageStatus';
+salvageStatus.className = 'status';
+salvageStatus.setAttribute('aria-live', 'polite');
+salvageStatus.textContent = 'World accounts may explicitly record host-verified stored salvage. This is persistent proof, not spendable currency, and does not debit local storage.';
+salvageRow.append(salvageButton, salvageStatus);
+adoptionRow.insertAdjacentElement('afterend', salvageRow);
+
 const client = createWorldBrowserClient();
 let retainedEvidence = null;
 let activeParticipantId = null;
 let inFlight = null;
 let commandInFlight = null;
 let adoptionInFlight = null;
+let salvageInFlight = null;
 let lastCommandEvidence = null;
 let lastAdoptionEvidence = null;
+let lastSalvageEvidence = null;
 
 function shortHash(value) {
   const text = String(value || '');
@@ -103,18 +120,49 @@ function previewAdoption({ seatId = 'seat-1' } = {}) {
   });
 }
 
+function previewSalvage({ seatId = 'seat-1' } = {}) {
+  const surface = shell();
+  if (!surface) return Object.freeze({ accepted: false, reason: 'rts-shell-not-ready' });
+  const binding = surface.worldBinding?.(seatId) || null;
+  if (!binding) return Object.freeze({ accepted: false, reason: 'world-participant-not-bound' });
+  if (!retainedEvidence?.accepted || retainedEvidence.binding?.participantId !== binding.participantId) {
+    return Object.freeze({ accepted: false, reason: 'host-local-checkpoint-not-ready' });
+  }
+  if (retainedEvidence.binding?.profileKind !== 'world-account') {
+    return Object.freeze({ accepted: false, reason: 'verified-local-salvage-requires-world-account' });
+  }
+  const view = surface.describeSeatView?.(seatId);
+  if (view?.mode !== 'local-rts') return Object.freeze({ accepted: false, reason: 'verified-local-salvage-requires-local-rts' });
+  if (!Number.isInteger(retainedEvidence.journal?.revision) || retainedEvidence.journal.revision < 1) {
+    return Object.freeze({ accepted: false, reason: 'verified-local-salvage-requires-host-journal-outcome' });
+  }
+  return Object.freeze({
+    accepted: true,
+    binding,
+    expectedRevision: retainedEvidence.journal.revision,
+    stateHash: retainedEvidence.journal.stateHash
+  });
+}
+
 function refreshControls() {
+  const busy = Boolean(commandInFlight || adoptionInFlight || salvageInFlight);
   const gatherPreview = previewGatherAtCursor();
-  gatherButton.disabled = Boolean(commandInFlight || adoptionInFlight) || !gatherPreview.accepted;
+  gatherButton.disabled = busy || !gatherPreview.accepted;
   gatherButton.title = gatherPreview.accepted
     ? 'Ask the host to reproduce and journal one gather command from this cursor against the displayed checkpoint.'
     : gatherPreview.reason;
 
   const adoptionPreview = previewAdoption();
-  adoptButton.disabled = Boolean(commandInFlight || adoptionInFlight) || !adoptionPreview.accepted;
+  adoptButton.disabled = busy || !adoptionPreview.accepted;
   adoptButton.title = adoptionPreview.accepted
     ? `Explicitly replace the browser-local simulation with host checkpoint r${adoptionPreview.expectedRevision}.`
     : adoptionPreview.reason;
+
+  const salvagePreview = previewSalvage();
+  salvageButton.disabled = busy || !salvagePreview.accepted;
+  salvageButton.title = salvagePreview.accepted
+    ? `Record host-verified stored salvage from journal r${salvagePreview.expectedRevision} on this world account without debiting local storage.`
+    : salvagePreview.reason;
 }
 
 function render(message = null) {
@@ -315,6 +363,66 @@ async function adoptHostCheckpoint({ seatId = 'seat-1' } = {}) {
   return adoptionInFlight;
 }
 
+async function recordVerifiedLocalSalvage({ seatId = 'seat-1' } = {}) {
+  if (salvageInFlight) return salvageInFlight;
+  const preview = previewSalvage({ seatId });
+  if (!preview.accepted) {
+    salvageStatus.textContent = `Verified salvage unavailable · ${preview.reason}`;
+    refreshControls();
+    return preview;
+  }
+
+  salvageStatus.textContent = `${seatId} · asking host to record verified stored salvage from journal r${preview.expectedRevision}…`;
+  salvageInFlight = (async () => {
+    try {
+      const result = await client.recordVerifiedLocalSalvage({
+        participantId: preview.binding.participantId,
+        regionSeatId: seatId,
+        expectedRevision: preview.expectedRevision
+      });
+      const summary = await client.verifiedLocalSalvage(preview.binding.participantId);
+      lastSalvageEvidence = Object.freeze({
+        accepted: true,
+        expectedRevision: preview.expectedRevision,
+        result,
+        summary
+      });
+      const credited = Number(result.creditedScrap || 0).toFixed(3);
+      const total = Number(summary.summary?.scrap || 0).toFixed(3);
+      const reuse = result.reused ? 'already recorded · no additional proof credit' : `+${credited} newly verified`;
+      salvageStatus.textContent = `${seatId} · host r${result.source?.revision ?? preview.expectedRevision} · ${reuse} · persistent verified salvage ${total} · not spendable currency · local storage not debited.`;
+      return lastSalvageEvidence;
+    } catch (error) {
+      const reason = error?.body?.reason || error?.body?.error || error?.message || String(error);
+      if (error?.status === 409 && error?.body?.reason === 'local-authority-revision-conflict') {
+        try {
+          retainedEvidence = await client.localSeatStatus({
+            participantId: preview.binding.participantId,
+            regionSeatId: seatId
+          });
+          render();
+        } catch {
+          // Preserve the original conflict and do not retry the economic evidence write.
+        }
+      }
+      lastSalvageEvidence = Object.freeze({
+        accepted: false,
+        reason,
+        status: error?.status || 0,
+        body: error?.body || null,
+        expectedRevision: preview.expectedRevision
+      });
+      salvageStatus.textContent = `${seatId} · verified salvage record rejected · ${reason} · no automatic retry or transfer.`;
+      return lastSalvageEvidence;
+    } finally {
+      salvageInFlight = null;
+      refreshControls();
+    }
+  })();
+  refreshControls();
+  return salvageInFlight;
+}
+
 const bridge = Object.freeze({
   status() {
     return retainedEvidence;
@@ -325,10 +433,15 @@ const bridge = Object.freeze({
   lastAdoption() {
     return lastAdoptionEvidence;
   },
+  lastSalvage() {
+    return lastSalvageEvidence;
+  },
   previewGatherAtCursor,
   previewAdoption,
+  previewSalvage,
   submitGatherAtCursor,
   adoptHostCheckpoint,
+  recordVerifiedLocalSalvage,
   bindCurrent() {
     return bindCurrentWorldSeat();
   },
@@ -343,6 +456,7 @@ Object.defineProperty(window, '__AXM_HOST_LOCAL_SEAT__', {
 
 gatherButton.addEventListener('click', () => { void submitGatherAtCursor(); });
 adoptButton.addEventListener('click', () => { void adoptHostCheckpoint(); });
+salvageButton.addEventListener('click', () => { void recordVerifiedLocalSalvage(); });
 render();
 const observer = setInterval(() => {
   const binding = currentWorldBinding();

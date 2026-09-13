@@ -1,4 +1,4 @@
-export const WORLD_BROWSER_CLIENT_SCHEMA = 'axm.global-state-rts.world-browser-client/v0.2';
+export const WORLD_BROWSER_CLIENT_SCHEMA = 'axm.global-state-rts.world-browser-client/v0.3';
 
 function nonEmpty(value, label) {
   const text = String(value ?? '').trim();
@@ -15,6 +15,12 @@ function controllerKind(value) {
 function nonNegativeInteger(value, label) {
   const number = Number(value);
   if (!Number.isInteger(number) || number < 0) throw new RangeError(`${label} must be a non-negative integer`);
+  return number;
+}
+
+function positiveInteger(value, label) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number <= 0) throw new RangeError(`${label} must be a positive integer`);
   return number;
 }
 
@@ -83,6 +89,12 @@ export class WorldBrowserClient {
 
   verifiedLocalSalvage(participantId) {
     return this.#request('GET', '/api/world/local-salvage', {
+      query: { participantId: nonEmpty(participantId, 'participantId') }
+    });
+  }
+
+  verifiedLocalSalvageReservation(participantId) {
+    return this.#request('GET', '/api/world/local-salvage/reservation', {
       query: { participantId: nonEmpty(participantId, 'participantId') }
     });
   }
@@ -182,6 +194,27 @@ export class WorldBrowserClient {
         participantId: nonEmpty(participantId, 'participantId'),
         regionSeatId: nonEmpty(regionSeatId, 'regionSeatId'),
         expectedRevision: nonNegativeInteger(expectedRevision, 'expectedRevision')
+      }
+    });
+  }
+
+  reserveVerifiedLocalSalvage({ participantId, regionSeatId = 'seat-1', expectedRevision, amountMilli } = {}) {
+    return this.#request('POST', '/api/world/local-seat/salvage-reserve', {
+      body: {
+        participantId: nonEmpty(participantId, 'participantId'),
+        regionSeatId: nonEmpty(regionSeatId, 'regionSeatId'),
+        expectedRevision: nonNegativeInteger(expectedRevision, 'expectedRevision'),
+        amountMilli: positiveInteger(amountMilli, 'amountMilli')
+      }
+    });
+  }
+
+  releaseVerifiedLocalSalvage({ participantId, regionSeatId = 'seat-1', amountMilli } = {}) {
+    return this.#request('POST', '/api/world/local-seat/salvage-release', {
+      body: {
+        participantId: nonEmpty(participantId, 'participantId'),
+        regionSeatId: nonEmpty(regionSeatId, 'regionSeatId'),
+        amountMilli: positiveInteger(amountMilli, 'amountMilli')
       }
     });
   }

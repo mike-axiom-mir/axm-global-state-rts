@@ -1,4 +1,4 @@
-export const WORLD_HTTP_API_SCHEMA = 'axm.global-state-rts.world-http-api/v0.1';
+export const WORLD_HTTP_API_SCHEMA = 'axm.global-state-rts.world-http-api/v0.2';
 
 function queryValue(searchParams, key) {
   if (!searchParams) return null;
@@ -49,7 +49,11 @@ function localSeatMutationStatus(result) {
     'local-authority-revision-conflict',
     'verified-local-salvage-stale-source-revision',
     'verified-local-salvage-same-revision-mismatch',
-    'verified-local-salvage-source-regressed'
+    'verified-local-salvage-source-regressed',
+    'verified-local-salvage-reservation-requires-current-proof',
+    'verified-local-salvage-reservation-stale-source',
+    'verified-local-salvage-reservation-source-mismatch',
+    'verified-local-salvage-reservation-source-no-longer-covers-reserved'
   ].includes(result?.reason)) return 409;
   return 400;
 }
@@ -151,6 +155,16 @@ export class WorldHttpApiService {
         const participantId = queryValue(searchParams, 'participantId');
         if (!participantId) return response(400, { error: 'participantId query parameter required' });
         const result = this.authority.verifiedLocalSalvageSummary(participantId);
+        return response(result.accepted ? 200 : 400, result);
+      }
+
+      if (verb === 'GET' && route === '/api/world/local-salvage/reservation') {
+        if (typeof this.authority.verifiedLocalSalvageReservationSummary !== 'function') {
+          return response(501, { error: 'verified local salvage reservation authority unavailable' });
+        }
+        const participantId = queryValue(searchParams, 'participantId');
+        if (!participantId) return response(400, { error: 'participantId query parameter required' });
+        const result = this.authority.verifiedLocalSalvageReservationSummary(participantId);
         return response(result.accepted ? 200 : 400, result);
       }
 
@@ -284,6 +298,31 @@ export class WorldHttpApiService {
             participantId: body.participantId,
             regionSeatId: body.regionSeatId,
             expectedRevision: body.expectedRevision
+          });
+          return response(localSeatMutationStatus(result), result);
+        }
+
+        if (route === '/api/world/local-seat/salvage-reserve') {
+          if (typeof this.authority.reserveVerifiedLocalSalvage !== 'function') {
+            return response(501, { error: 'verified local salvage reservation authority unavailable' });
+          }
+          const result = this.authority.reserveVerifiedLocalSalvage({
+            participantId: body.participantId,
+            regionSeatId: body.regionSeatId,
+            expectedRevision: body.expectedRevision,
+            amountMilli: body.amountMilli
+          });
+          return response(localSeatMutationStatus(result), result);
+        }
+
+        if (route === '/api/world/local-seat/salvage-release') {
+          if (typeof this.authority.releaseVerifiedLocalSalvage !== 'function') {
+            return response(501, { error: 'verified local salvage reservation authority unavailable' });
+          }
+          const result = this.authority.releaseVerifiedLocalSalvage({
+            participantId: body.participantId,
+            regionSeatId: body.regionSeatId,
+            amountMilli: body.amountMilli
           });
           return response(localSeatMutationStatus(result), result);
         }

@@ -123,14 +123,28 @@ export class WorldHttpApiService {
         }
 
         if (route === '/api/world/enter/account') {
+          const accountId = String(body.accountId ?? '').trim();
+          if (!accountId) return response(400, { error: 'accountId required' });
+          const existing = this.authority.participant(`world:${accountId}`);
+          if (existing) {
+            return response(200, {
+              participant: existing,
+              accountPersistence: this.authority.accountPersistenceMeta(),
+              reused: true
+            });
+          }
           const participant = this.authority.createWorldAccount({
-            accountId: body.accountId,
+            accountId,
             displayName: body.displayName,
             controllerKind: body.controllerKind,
             credentialMode: body.credentialMode,
             nowMs
           });
-          return response(200, { participant, accountPersistence: this.authority.accountPersistenceMeta() });
+          return response(200, {
+            participant,
+            accountPersistence: this.authority.accountPersistenceMeta(),
+            reused: false
+          });
         }
 
         if (route === '/api/world/promote') {

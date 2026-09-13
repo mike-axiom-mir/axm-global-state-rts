@@ -113,7 +113,7 @@ jobs:
           cat /tmp/axm-global-state-rts-workshop-lod-ladder.log
           exit 1
 
-      - name: Render tactical RTS and far tiers in target Chromium
+      - name: Render close and default-360m LOD tiers in target Chromium
         run: npx playwright test tests/browser/workshop-runtime-lod-ladder.spec.js --reporter=line
 
       - name: Preserve target LOD visual evidence
@@ -123,12 +123,19 @@ jobs:
           name: workshop-runtime-lod-ladder-target-evidence
           path: |
             test-results/workshop-runtime-lod-ladder-evidence.json
-            test-results/workshop-runtime-tactical-1seat.png
-            test-results/workshop-runtime-rts-1seat.png
-            test-results/workshop-runtime-far-1seat.png
-            test-results/workshop-runtime-tactical-4seat.png
-            test-results/workshop-runtime-rts-4seat.png
-            test-results/workshop-runtime-far-4seat.png
+            test-results/workshop-runtime-default360-lod-evidence.json
+            test-results/workshop-runtime-close120-tactical-1seat.png
+            test-results/workshop-runtime-close120-rts-1seat.png
+            test-results/workshop-runtime-close120-far-1seat.png
+            test-results/workshop-runtime-close120-tactical-4seat.png
+            test-results/workshop-runtime-close120-rts-4seat.png
+            test-results/workshop-runtime-close120-far-4seat.png
+            test-results/workshop-runtime-default360-tactical-1seat.png
+            test-results/workshop-runtime-default360-rts-1seat.png
+            test-results/workshop-runtime-default360-far-1seat.png
+            test-results/workshop-runtime-default360-tactical-4seat.png
+            test-results/workshop-runtime-default360-rts-4seat.png
+            test-results/workshop-runtime-default360-far-4seat.png
             runtime-assets/workshop-lod-ladder/glb-inspection.json
             runtime-assets/workshop-lod-ladder/game-readiness-gates.json
             runtime-assets/workshop-lod-ladder/verification.json

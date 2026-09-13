@@ -19,7 +19,7 @@ permissions:
 jobs:
   checked-in-creation-machine-runtime:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 28
     steps:
       - name: Check out exact RTS candidate and pinned Planet
         uses: actions/checkout@v4
@@ -42,6 +42,9 @@ jobs:
             --asset improvised-workshop \
             --variant far
           node tests/creation-machine-runtime-prep-selftest.mjs
+
+      - name: Run repository deterministic and source gates
+        run: npm test
 
       - name: Install pinned Playwright browser test route
         run: npm install --no-save @playwright/test@1.55.0
@@ -66,6 +69,9 @@ jobs:
       - name: Exercise real checked-in Creation Machine bytes through LOCAL RTS browser seam
         run: npx playwright test tests/browser/creation-machine-runtime.spec.js --reporter=line
 
+      - name: Regress four-controller and machine-seat browser shell
+        run: npx playwright test tests/browser/planet-shell-controller.spec.js --reporter=line
+
       - name: Preserve runtime evidence without committing generated derivative
         if: always()
         uses: actions/upload-artifact@v4
@@ -74,6 +80,7 @@ jobs:
           path: |
             assets/creation-machine/runtime-prepared/improvised-workshop-lod1.receipt.json
             test-results/global-state-rts-creation-machine-workshop-runtime.png
+            test-results/global-state-rts-*.png
             /tmp/axm-global-state-rts-creation-machine.log
           if-no-files-found: warn
           retention-days: 14

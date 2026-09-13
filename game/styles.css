@@ -8,7 +8,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; background: #080b0f; }
 body { min-height: 100vh; overflow: hidden; }
-button, select, input { font: inherit; }
+button, select { font: inherit; }
 
 .app-shell {
   min-height: 100vh;
@@ -65,7 +65,7 @@ h1 { margin: .08rem 0 0; font-size: 1.05rem; }
 .status { font-size: .78rem; color: #cbd6da; }
 
 .setup-row label { display: flex; gap: .45rem; align-items: center; font-size: .82rem; color: #cbd6da; }
-select, button, input {
+select, button {
   min-height: 2.35rem;
   border-radius: .5rem;
   border: 1px solid rgba(255,255,255,.16);
@@ -74,7 +74,7 @@ select, button, input {
   padding: .45rem .65rem;
 }
 button { cursor: pointer; }
-button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid #dce9ee; outline-offset: 2px; }
+button:focus-visible, select:focus-visible { outline: 2px solid #dce9ee; outline-offset: 2px; }
 
 .seat-setup {
   display: grid;
@@ -94,45 +94,6 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
 .seat-card select { width: 100%; min-width: 0; }
 .seat-card .binding { margin-top: .4rem; font-size: .68rem; color: #93a3aa; overflow-wrap: anywhere; }
 
-.world-presence {
-  border: 1px solid rgba(255,255,255,.11);
-  border-radius: .65rem;
-  padding: .7rem;
-  background: #0d1319;
-  display: grid;
-  gap: .6rem;
-}
-.world-presence-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: .8rem;
-  flex-wrap: wrap;
-}
-.world-presence h2 { margin: .08rem 0 0; font-size: .92rem; }
-.world-meta-status { overflow-wrap: anywhere; }
-.world-entry-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
-  gap: .5rem;
-  align-items: end;
-}
-.world-entry-grid label { display: grid; gap: .2rem; font-size: .7rem; color: #aab7bd; }
-.world-entry-grid select, .world-entry-grid input { width: 100%; min-width: 0; }
-.world-entry-actions, .world-chest-actions { display: flex; gap: .45rem; align-items: center; flex-wrap: wrap; }
-.world-participant-summary {
-  min-height: 2.25rem;
-  padding: .5rem .6rem;
-  border-radius: .5rem;
-  background: #141b22;
-  font-size: .72rem;
-  line-height: 1.45;
-  color: #cbd6da;
-  overflow-wrap: anywhere;
-}
-.world-chest-actions button:disabled { cursor: not-allowed; opacity: .5; }
-.world-truth { padding-top: .05rem; }
-
 .help, .truth { margin: 0; font-size: .72rem; line-height: 1.4; color: #9eacb2; }
 .truth { color: #7f9098; }
 
@@ -140,12 +101,9 @@ button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px s
   body { overflow: auto; }
   .app-shell { min-height: 100vh; grid-template-rows: minmax(360px, 62vh) auto; }
   .seat-setup { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .world-entry-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .world-entry-actions { grid-column: 1 / -1; }
 }
 
 @media (max-width: 430px) {
   .seat-setup { grid-template-columns: 1fr; }
-  .world-entry-grid { grid-template-columns: 1fr; }
   .control-dock { padding-inline: .7rem; }
 }

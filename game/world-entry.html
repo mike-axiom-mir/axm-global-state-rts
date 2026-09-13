@@ -50,6 +50,7 @@
         <button id="enterAccount" type="button">Enter world account</button>
         <button id="accrueChests" type="button" disabled>Sync hourly chests</button>
         <button id="openChest" type="button" disabled>Open 1 chest</button>
+        <button id="continueToRts" type="button" disabled>Continue as this participant</button>
       </div>
 
       <div class="world-readout" aria-live="polite">
@@ -59,7 +60,7 @@
         <span id="chestStatus">chests: —</span>
       </div>
       <p class="help warning">Guest state is session-only. A world account can be persisted by the host adapter, but this screen does not prove account ownership, passwords, TLS, anti-Sybil controls, or production deployment.</p>
-      <p class="help"><a href="./">Open the local RTS shell</a> after entry. Binding this participant identity into the local gameplay seat is the next integration seam; this page does not silently claim that binding already exists.</p>
+      <p class="help">Continue stores a single-use browser handoff, opens one matching local seat, then the RTS shell re-reads the participant from host authority before binding it. The handoff is a development convenience, not an authentication credential.</p>
     </section>
   </main>
   <script type="module" src="./world-entry.mjs"></script>

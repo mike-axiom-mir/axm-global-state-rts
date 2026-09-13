@@ -1,0 +1,448 @@
+import { createHash } from 'node:crypto';
+import { createMemoryWorldJournalStore } from './journal-store.mjs';
+import {
+  LOCAL_OUTCOME_INTENT_SCHEMA,
+  LOCAL_OUTCOME_REPLAY_MAX_STEPS
+} from './local-outcome-replay-authority.mjs';
+import {
+  LOCAL_REGION_DEFAULT_STEP_MS,
+  createLocalRegionSimulation
+} from '../sim/local-region-sim.mjs';
+import { lightingPhaseForWorldHour } from '../session/world-time-local-sync.mjs';
+import { createStarterRegion } from '../world/starter-region.mjs';
+
+export const LOCAL_REGION_COMMAND_JOURNAL_AUTHORITY_SCHEMA =
+  'axm.global-state-rts.local-region-command-journal-authority/v0.1';
+export const LOCAL_REGION_COMMAND_JOURNAL_ENTRY_SCHEMA =
+  'axm.global-state-rts.local-region-command-journal-entry/v0.1';
+export const LOCAL_REGION_COMMAND_JOURNAL_MAX_COMMANDS = 128;
+
+const ACTIONS = Object.freeze(['gather-scrap', 'explore', 'repair-core']);
+const CONTROLLER_KINDS = Object.freeze(['human', 'machine']);
+const INTENT_KEYS = Object.freeze(['actionId', 'cursorXM', 'cursorZM', 'stepCount']);
+
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonicalize(value[key])]));
+  }
+  return value;
+}
+
+function canonicalJson(value) {
+  return JSON.stringify(canonicalize(value));
+}
+
+function sha256Canonical(value) {
+  return createHash('sha256').update(canonicalJson(value)).digest('hex');
+}
+
+function nonEmpty(value, label) {
+  const text = String(value ?? '').trim();
+  if (!text) throw new TypeError(`${label} required`);
+  return text;
+}
+
+function finite(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) throw new TypeError(`${label} must be finite`);
+  return number;
+}
+
+function nonNegativeInteger(value, label) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 0) throw new RangeError(`${label} must be a non-negative integer`);
+  return number;
+}
+
+function normalizeRegionSeatId(value) {
+  const seat = nonEmpty(value, 'regionSeatId');
+  if (!/^seat-[1-4]$/.test(seat)) throw new RangeError('regionSeatId must be seat-1 through seat-4');
+  return seat;
+}
+
+function normalizeParticipant(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new TypeError('participant host context required');
+  const participantId = nonEmpty(raw.participantId, 'participant.participantId');
+  const controllerKind = nonEmpty(raw.controllerKind, 'participant.controllerKind');
+  if (!CONTROLLER_KINDS.includes(controllerKind)) throw new RangeError('participant.controllerKind must be human or machine');
+  return Object.freeze({ participantId, controllerKind });
+}
+
+function normalizeIntent(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new TypeError('intent must be an object');
+  const keys = Object.keys(raw).sort();
+  const expectedKeys = [...INTENT_KEYS].sort();
+  if (keys.length !== expectedKeys.length || keys.some((key, index) => key !== expectedKeys[index])) {
+    throw new TypeError(`intent must contain exactly: ${INTENT_KEYS.join(', ')}`);
+  }
+  const actionId = nonEmpty(raw.actionId, 'intent.actionId');
+  if (!ACTIONS.includes(actionId)) throw new RangeError(`unsupported local replay action: ${actionId}`);
+  const cursorXM = finite(raw.cursorXM, 'intent.cursorXM');
+  const cursorZM = finite(raw.cursorZM, 'intent.cursorZM');
+  const stepCount = nonNegativeInteger(raw.stepCount, 'intent.stepCount');
+  if (stepCount > LOCAL_OUTCOME_REPLAY_MAX_STEPS) {
+    throw new RangeError(`intent.stepCount must be <= ${LOCAL_OUTCOME_REPLAY_MAX_STEPS}`);
+  }
+  return Object.freeze({ actionId, cursorXM, cursorZM, stepCount });
+}
+
+function stateHash(simulation) {
+  return sha256Canonical(simulation.debugCanonicalSnapshot());
+}
+
+function createGenesis(regionSeatId, genesisWorldHourIndex) {
+  const seat = normalizeRegionSeatId(regionSeatId);
+  const worldHour = nonNegativeInteger(genesisWorldHourIndex, 'genesisWorldHourIndex');
+  const lightingPhase = lightingPhaseForWorldHour(worldHour);
+  const simulation = createLocalRegionSimulation(createStarterRegion(seat), {
+    initialLightingPhase: lightingPhase
+  });
+  const initialStateHash = stateHash(simulation);
+  const digest = sha256Canonical({
+    schema: LOCAL_REGION_COMMAND_JOURNAL_AUTHORITY_SCHEMA,
+    regionSeatId: seat,
+    genesisWorldHourIndex: worldHour,
+    lightingPhase,
+    stepMs: LOCAL_REGION_DEFAULT_STEP_MS,
+    initialStateHash
+  });
+  return Object.freeze({
+    regionSeatId: seat,
+    genesisWorldHourIndex: worldHour,
+    lightingPhase,
+    stepMs: LOCAL_REGION_DEFAULT_STEP_MS,
+    initialStateHash,
+    digest,
+    simulation
+  });
+}
+
+function physicalCommandDigest({ previousStateHash, intent, regionSeatId, worldHourIndex, lightingPhase }) {
+  return sha256Canonical({
+    intentSchema: LOCAL_OUTCOME_INTENT_SCHEMA,
+    previousStateHash,
+    intent,
+    regionSeatId,
+    worldHourIndex,
+    lightingPhase,
+    stepMs: LOCAL_REGION_DEFAULT_STEP_MS
+  });
+}
+
+function admissionDigest(physicalDigest, participant) {
+  return sha256Canonical({
+    physicalCommandDigest: physicalDigest,
+    participant
+  });
+}
+
+function entryHashInput(entry) {
+  return {
+    schema: entry.schema,
+    revision: entry.revision,
+    commandId: entry.commandId,
+    participantId: entry.participantId,
+    controllerKind: entry.controllerKind,
+    regionSeatId: entry.regionSeatId,
+    genesisDigest: entry.genesisDigest,
+    worldHourIndex: entry.worldHourIndex,
+    lightingPhase: entry.lightingPhase,
+    physicalIntent: entry.physicalIntent,
+    physicalCommandDigest: entry.physicalCommandDigest,
+    admissionDigest: entry.admissionDigest,
+    recordedAtMs: entry.recordedAtMs,
+    previousStateHash: entry.previousStateHash,
+    stateHash: entry.stateHash,
+    previousHash: entry.previousHash
+  };
+}
+
+function applyPhysicalCommand(simulation, intent, worldHourIndex) {
+  const lightingPhase = lightingPhaseForWorldHour(worldHourIndex);
+  simulation.setLightingPhase(lightingPhase);
+  const action = simulation.issueLocalAction(intent.actionId, {
+    cursorXM: intent.cursorXM,
+    cursorZM: intent.cursorZM
+  });
+  if (!action.accepted) return Object.freeze({ accepted: false, reason: action.reason, lightingPhase });
+  simulation.advance(intent.stepCount * LOCAL_REGION_DEFAULT_STEP_MS);
+  return Object.freeze({ accepted: true, action, lightingPhase });
+}
+
+function replayEntries(entries, { regionSeatId, genesisWorldHourIndex }) {
+  const genesis = createGenesis(regionSeatId, genesisWorldHourIndex);
+  const simulation = genesis.simulation;
+  let previousHash = null;
+  let currentStateHash = genesis.initialStateHash;
+
+  for (let index = 0; index < entries.length; index++) {
+    const entry = entries[index];
+    const revision = index + 1;
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new TypeError(`local journal entry ${revision} must be an object`);
+    if (entry.schema !== LOCAL_REGION_COMMAND_JOURNAL_ENTRY_SCHEMA) throw new Error(`local journal schema mismatch at revision ${revision}`);
+    if (entry.revision !== revision) throw new Error(`local journal revision mismatch at ${revision}`);
+    if ((entry.previousHash ?? null) !== (previousHash ?? null)) throw new Error(`local journal chain broken at revision ${revision}`);
+    if (entry.regionSeatId !== genesis.regionSeatId) throw new Error(`local journal seat mismatch at revision ${revision}`);
+    if (entry.genesisDigest !== genesis.digest) throw new Error(`local journal genesis mismatch at revision ${revision}`);
+    if (entry.previousStateHash !== currentStateHash) throw new Error(`local journal previous state hash mismatch at revision ${revision}`);
+
+    const participant = normalizeParticipant({
+      participantId: entry.participantId,
+      controllerKind: entry.controllerKind
+    });
+    const intent = normalizeIntent(entry.physicalIntent);
+    const worldHourIndex = nonNegativeInteger(entry.worldHourIndex, `entry ${revision} worldHourIndex`);
+    const lightingPhase = lightingPhaseForWorldHour(worldHourIndex);
+    if (entry.lightingPhase !== lightingPhase) throw new Error(`local journal lighting mismatch at revision ${revision}`);
+
+    const actualPhysicalDigest = physicalCommandDigest({
+      previousStateHash: currentStateHash,
+      intent,
+      regionSeatId: genesis.regionSeatId,
+      worldHourIndex,
+      lightingPhase
+    });
+    if (entry.physicalCommandDigest !== actualPhysicalDigest) throw new Error(`local journal physical command digest mismatch at revision ${revision}`);
+    const actualAdmissionDigest = admissionDigest(actualPhysicalDigest, participant);
+    if (entry.admissionDigest !== actualAdmissionDigest) throw new Error(`local journal admission digest mismatch at revision ${revision}`);
+
+    const applied = applyPhysicalCommand(simulation, intent, worldHourIndex);
+    if (!applied.accepted) throw new Error(`persisted local command rejected during replay at revision ${revision}: ${applied.reason}`);
+    const actualStateHash = stateHash(simulation);
+    if (entry.stateHash !== actualStateHash) throw new Error(`local journal state hash mismatch at revision ${revision}`);
+
+    const actualEntryHash = sha256Canonical(entryHashInput(entry));
+    if (entry.entryHash !== actualEntryHash) throw new Error(`local journal entry hash mismatch at revision ${revision}`);
+
+    previousHash = entry.entryHash;
+    currentStateHash = actualStateHash;
+  }
+
+  return {
+    genesis,
+    simulation,
+    revision: entries.length,
+    headHash: previousHash,
+    stateHash: currentStateHash
+  };
+}
+
+export class LocalRegionCommandJournalAuthority {
+  constructor({
+    regionSeatId,
+    genesisWorldHourIndex,
+    store = createMemoryWorldJournalStore(),
+    clock = () => Date.now(),
+    maxCommands = LOCAL_REGION_COMMAND_JOURNAL_MAX_COMMANDS
+  } = {}) {
+    if (!store?.readAll || !store?.append) throw new TypeError('journal store required');
+    if (typeof clock !== 'function') throw new TypeError('clock must be a function');
+    if (!Number.isInteger(maxCommands) || maxCommands <= 0) throw new RangeError('maxCommands must be a positive integer');
+    this.schema = LOCAL_REGION_COMMAND_JOURNAL_AUTHORITY_SCHEMA;
+    this.regionSeatId = normalizeRegionSeatId(regionSeatId);
+    this.genesisWorldHourIndex = nonNegativeInteger(genesisWorldHourIndex, 'genesisWorldHourIndex');
+    this.store = store;
+    this.clock = clock;
+    this.maxCommands = maxCommands;
+    this.genesis = null;
+    this.simulation = null;
+    this.revision = 0;
+    this.headHash = null;
+    this.stateHash = null;
+    this.#rehydrate();
+  }
+
+  #applyReplay(replay) {
+    this.genesis = replay.genesis;
+    this.simulation = replay.simulation;
+    this.revision = replay.revision;
+    this.headHash = replay.headHash;
+    this.stateHash = replay.stateHash;
+  }
+
+  #rehydrate() {
+    const replay = replayEntries(this.store.readAll(), {
+      regionSeatId: this.regionSeatId,
+      genesisWorldHourIndex: this.genesisWorldHourIndex
+    });
+    this.#applyReplay(replay);
+  }
+
+  submit(intentInput, {
+    participant,
+    worldHourIndex,
+    expectedRevision = this.revision,
+    recordedAtMs = this.clock()
+  } = {}) {
+    const intent = normalizeIntent(intentInput);
+    const actor = normalizeParticipant(participant);
+    const hostWorldHour = nonNegativeInteger(worldHourIndex, 'worldHourIndex');
+    const expected = nonNegativeInteger(expectedRevision, 'expectedRevision');
+    const recorded = finite(recordedAtMs, 'recordedAtMs');
+    if (recorded < 0) throw new RangeError('recordedAtMs must be non-negative');
+
+    const replay = replayEntries(this.store.readAll(), {
+      regionSeatId: this.regionSeatId,
+      genesisWorldHourIndex: this.genesisWorldHourIndex
+    });
+
+    if (expected !== replay.revision) {
+      this.#applyReplay(replay);
+      return Object.freeze({
+        accepted: false,
+        reason: 'local-authority-revision-conflict',
+        expectedRevision: expected,
+        currentRevision: replay.revision,
+        headHash: replay.headHash,
+        stateHash: replay.stateHash
+      });
+    }
+    if (replay.revision >= this.maxCommands) {
+      this.#applyReplay(replay);
+      return Object.freeze({
+        accepted: false,
+        reason: 'local-journal-cap-reached',
+        revision: replay.revision,
+        maxCommands: this.maxCommands,
+        headHash: replay.headHash,
+        stateHash: replay.stateHash
+      });
+    }
+
+    const previousStateHash = replay.stateHash;
+    const lightingPhase = lightingPhaseForWorldHour(hostWorldHour);
+    const physicalDigest = physicalCommandDigest({
+      previousStateHash,
+      intent,
+      regionSeatId: this.regionSeatId,
+      worldHourIndex: hostWorldHour,
+      lightingPhase
+    });
+    const actorAdmissionDigest = admissionDigest(physicalDigest, actor);
+    const applied = applyPhysicalCommand(replay.simulation, intent, hostWorldHour);
+    if (!applied.accepted) {
+      this.#rehydrate();
+      return Object.freeze({
+        accepted: false,
+        reason: applied.reason,
+        revision: this.revision,
+        stateHash: this.stateHash,
+        lightingPhase
+      });
+    }
+
+    const nextRevision = replay.revision + 1;
+    const nextStateHash = stateHash(replay.simulation);
+    const draft = {
+      schema: LOCAL_REGION_COMMAND_JOURNAL_ENTRY_SCHEMA,
+      revision: nextRevision,
+      commandId: `local:${this.regionSeatId}:r${nextRevision}`,
+      participantId: actor.participantId,
+      controllerKind: actor.controllerKind,
+      regionSeatId: this.regionSeatId,
+      genesisDigest: replay.genesis.digest,
+      worldHourIndex: hostWorldHour,
+      lightingPhase,
+      physicalIntent: intent,
+      physicalCommandDigest: physicalDigest,
+      admissionDigest: actorAdmissionDigest,
+      recordedAtMs: recorded,
+      previousStateHash,
+      stateHash: nextStateHash,
+      previousHash: replay.headHash
+    };
+    const entry = Object.freeze({
+      ...draft,
+      entryHash: sha256Canonical(entryHashInput(draft))
+    });
+
+    let append;
+    try {
+      append = this.store.append(entry, {
+        expectedRevision: replay.revision,
+        expectedHeadHash: replay.headHash
+      });
+    } catch (error) {
+      this.#rehydrate();
+      throw error;
+    }
+    if (!append.accepted) {
+      this.#rehydrate();
+      return Object.freeze({
+        accepted: false,
+        reason: append.reason,
+        currentRevision: this.revision,
+        headHash: this.headHash,
+        stateHash: this.stateHash
+      });
+    }
+
+    this.genesis = replay.genesis;
+    this.simulation = replay.simulation;
+    this.revision = nextRevision;
+    this.headHash = entry.entryHash;
+    this.stateHash = nextStateHash;
+
+    return Object.freeze({
+      accepted: true,
+      authority: 'host-owned-local-rts-command-journal-v0',
+      persistence: 'host-journaled-local-state-no-shared-world-mutation',
+      revision: this.revision,
+      headHash: this.headHash,
+      stateHash: this.stateHash,
+      physicalCommandDigest: physicalDigest,
+      admissionDigest: actorAdmissionDigest,
+      entry,
+      outcome: this.simulation.snapshot()
+    });
+  }
+
+  meta() {
+    return Object.freeze({
+      schema: LOCAL_REGION_COMMAND_JOURNAL_AUTHORITY_SCHEMA,
+      regionSeatId: this.regionSeatId,
+      genesisWorldHourIndex: this.genesisWorldHourIndex,
+      genesisDigest: this.genesis.digest,
+      genesisStateHash: this.genesis.initialStateHash,
+      revision: this.revision,
+      headHash: this.headHash,
+      stateHash: this.stateHash,
+      storeKind: this.store.kind || 'unknown',
+      maxCommands: this.maxCommands,
+      persistence: 'host-journaled-local-state-no-shared-world-mutation'
+    });
+  }
+
+  authoritativeSnapshot() {
+    return Object.freeze({
+      schema: LOCAL_REGION_COMMAND_JOURNAL_AUTHORITY_SCHEMA,
+      revision: this.revision,
+      headHash: this.headHash,
+      stateHash: this.stateHash,
+      regionSeatId: this.regionSeatId,
+      state: this.simulation.snapshot()
+    });
+  }
+
+  verifyPersistedJournal() {
+    const replay = replayEntries(this.store.readAll(), {
+      regionSeatId: this.regionSeatId,
+      genesisWorldHourIndex: this.genesisWorldHourIndex
+    });
+    return Object.freeze({
+      accepted: true,
+      revision: replay.revision,
+      headHash: replay.headHash,
+      stateHash: replay.stateHash,
+      matchesLive:
+        replay.revision === this.revision
+        && replay.headHash === this.headHash
+        && replay.stateHash === this.stateHash
+    });
+  }
+}
+
+export function createLocalRegionCommandJournalAuthority(options = {}) {
+  return new LocalRegionCommandJournalAuthority(options);
+}

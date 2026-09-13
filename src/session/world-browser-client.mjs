@@ -75,6 +75,15 @@ export class WorldBrowserClient {
     return this.#request('GET', '/api/world/career', { query: { participantId: nonEmpty(participantId, 'participantId') } });
   }
 
+  localSeatStatus({ regionSeatId = 'seat-1', participantId = null } = {}) {
+    return this.#request('GET', '/api/world/local-seat', {
+      query: {
+        regionSeatId: nonEmpty(regionSeatId, 'regionSeatId'),
+        ...(participantId === null ? {} : { participantId: nonEmpty(participantId, 'participantId') })
+      }
+    });
+  }
+
   enterGuest({ sessionId, displayName = 'Guest', controllerKind: requestedKind = 'human' } = {}) {
     return this.#request('POST', '/api/world/enter/guest', {
       body: {
@@ -118,6 +127,18 @@ export class WorldBrowserClient {
     if (!Number.isInteger(requested) || requested < 1 || requested > 24) throw new RangeError('count must be an integer between 1 and 24');
     return this.#request('POST', '/api/world/chests/open', {
       body: { participantId: nonEmpty(participantId, 'participantId'), count: requested }
+    });
+  }
+
+  bindLocalSeat({ participantId, regionSeatId = 'seat-1', expectedControllerKind = null } = {}) {
+    return this.#request('POST', '/api/world/local-seat/bind', {
+      body: {
+        participantId: nonEmpty(participantId, 'participantId'),
+        regionSeatId: nonEmpty(regionSeatId, 'regionSeatId'),
+        ...(expectedControllerKind === null
+          ? {}
+          : { expectedControllerKind: controllerKind(expectedControllerKind) })
+      }
     });
   }
 

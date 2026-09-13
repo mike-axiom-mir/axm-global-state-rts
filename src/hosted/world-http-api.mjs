@@ -28,6 +28,18 @@ function mutationStatus(result) {
   return 400;
 }
 
+function localSeatStatusCode(result) {
+  if (result?.accepted) return 200;
+  if (result?.reason === 'local-seat-not-bound') return 404;
+  if ([
+    'local-seat-controller-kind-conflict',
+    'local-seat-already-bound',
+    'participant-already-bound-to-local-seat',
+    'participant-local-seat-binding-mismatch'
+  ].includes(result?.reason)) return 409;
+  return 400;
+}
+
 export class WorldHttpApiService {
   constructor({ authority, writeMode = 'off', clock = () => Date.now() } = {}) {
     if (!authority?.participants || !authority?.sharedState || typeof authority.submitParticipantCommand !== 'function') {
@@ -89,6 +101,11 @@ export class WorldHttpApiService {
           participantRevision: snapshot.participants.revision,
           participantCount: snapshot.participants.participantCount,
           accountPersistence: snapshot.accountPersistence,
+          localSeats: Object.freeze({
+            bindingCount: snapshot.localSeats?.bindingCount || 0,
+            persistence: snapshot.localSeats?.persistence || 'unavailable',
+            truthBoundary: snapshot.localSeats?.truthBoundary || 'unavailable'
+          }),
           sharedState: this.authority.sharedState.meta()
         });
       }
@@ -106,6 +123,18 @@ export class WorldHttpApiService {
         const participantId = queryValue(searchParams, 'participantId');
         if (!participantId) return response(400, { error: 'participantId query parameter required' });
         return response(200, this.authority.participantCareerSummary(participantId));
+      }
+
+      if (verb === 'GET' && route === '/api/world/local-seat') {
+        if (typeof this.authority.localSeatStatus !== 'function') return response(501, { error: 'local seat authority unavailable' });
+        const regionSeatId = queryValue(searchParams, 'regionSeatId');
+        if (!regionSeatId) return response(400, { error: 'regionSeatId query parameter required' });
+        const participantId = queryValue(searchParams, 'participantId');
+        const result = this.authority.localSeatStatus({
+          regionSeatId,
+          ...(participantId ? { participantId } : {})
+        });
+        return response(localSeatStatusCode(result), result);
       }
 
       if (verb === 'POST' && route === '/api/global-state/command') {
@@ -177,6 +206,16 @@ export class WorldHttpApiService {
         if (route === '/api/world/chests/open') {
           const result = this.authority.openChests(body.participantId, body.count === undefined ? 1 : Number(body.count));
           return response(result.accepted ? 200 : 400, result);
+        }
+
+        if (route === '/api/world/local-seat/bind') {
+          if (typeof this.authority.bindLocalSeat !== 'function') return response(501, { error: 'local seat authority unavailable' });
+          const result = this.authority.bindLocalSeat({
+            participantId: body.participantId,
+            regionSeatId: body.regionSeatId,
+            expectedControllerKind: body.expectedControllerKind
+          });
+          return response(localSeatStatusCode(result), result);
         }
 
         if (route === '/api/world/command') {

@@ -74,7 +74,7 @@ function exercise(controllerKind, accountId) {
   assert.equal(meta.body.salvageTransferSettlement.available, true);
   assert.equal(meta.body.salvageTransferSettlement.transactionJournal.storeKind, 'memory');
 
-  const cancelId = `transfer:${controllerKind}:cancel`;
+  const cancelId = 'transfer:parity:cancel';
   const preparedForCancel = call(api, 'POST', '/api/world/local-seat/salvage-transfer/prepare', {
     transferId: cancelId,
     participantId,
@@ -97,7 +97,7 @@ function exercise(controllerKind, accountId) {
   assert.equal(authority.verifiedLocalSalvageReservations.summary(participantId).reservedScrapMilli, 1000,
     'cancel leaves the separately managed reservation intact');
 
-  const transferId = `transfer:${controllerKind}:debit`;
+  const transferId = 'transfer:parity:debit';
   const prepared = call(api, 'POST', '/api/world/local-seat/salvage-transfer/prepare', {
     transferId,
     participantId,
@@ -176,7 +176,7 @@ const machine = exercise('machine', 'settlement-http-machine');
 assert.equal(human.beforeScrap, machine.beforeScrap);
 assert.equal(human.afterScrap, machine.afterScrap);
 assert.equal(human.localDebitDigest, machine.localDebitDigest,
-  'human and machine participants must produce the same actor-independent physical debit evidence');
+  'human and machine participants must produce the same actor-independent physical debit evidence when the same physical transfer identifier is used');
 assert.equal(human.resultingLocalStateHash, machine.resultingLocalStateHash,
   'human and machine participants must reach the same physical LOCAL state under equivalent conditions');
 assert.equal(human.resultingLocalRevision, machine.resultingLocalRevision);

@@ -191,7 +191,7 @@ const hostGather = dev.handle({
     participantId: machineId,
     regionSeatId: 'seat-1',
     expectedRevision: 0,
-    intent: { actionId: 'gather-scrap', cursorXM: 0, cursorZM: 0, stepCount: 160 },
+    intent: { actionId: 'gather-scrap', cursorXM: 0, cursorZM: 0, stepCount: 800 },
     controllerKind: 'human',
     worldHourIndex: 999999
   }
@@ -204,6 +204,7 @@ assert.equal(hostGather.body.entry.controllerKind, 'machine', 'host participant 
 assert.equal(hostGather.body.entry.worldHourIndex, 22, 'host clock remains world-time authority');
 assert.equal(hostGather.body.worldTime.worldHourIndex, 22);
 assert.equal(hostGather.body.binding.participantId, machineId);
+assert.ok(hostGather.body.outcome.storage.scrap > 0, 'host-replayed gather must reach storage before recording positive salvage proof');
 assert.equal(
   hostGather.body.truthBoundary,
   'host-reproduced-local-journal-command-no-browser-state-equivalence-no-shared-world-promotion'

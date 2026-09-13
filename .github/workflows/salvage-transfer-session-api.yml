@@ -1,0 +1,142 @@
+name: Salvage transfer session API
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/hosted/settlement-world-session-authority.mjs'
+      - 'src/hosted/settlement-world-http-api.mjs'
+      - 'src/hosted/salvage-transfer-settlement-coordinator.mjs'
+      - 'src/hosted/salvage-transfer-transaction-journal.mjs'
+      - 'src/hosted/world-session-authority.mjs'
+      - 'src/hosted/world-http-api.mjs'
+      - 'game/host-local-salvage-transfer.mjs'
+      - 'game/host-local-salvage-reservation.mjs'
+      - 'game/host-local-seat-checkpoint.mjs'
+      - 'game/index.html'
+      - 'scripts/serve.mjs'
+      - 'tests/salvage-transfer-session-http-selftest.mjs'
+      - 'tests/salvage-transfer-settlement-coordinator-selftest.mjs'
+      - 'tests/browser/local-salvage-transfer.spec.js'
+      - 'docs/SALVAGE_TRANSFER_SESSION_API_V0.md'
+      - '.github/workflows/salvage-transfer-session-api.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-authority:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Full deterministic and source suite
+        run: npm test
+      - name: Syntax gate settlement session surface
+        run: |
+          node --check src/hosted/settlement-world-session-authority.mjs
+          node --check src/hosted/settlement-world-http-api.mjs
+          node --check src/hosted/salvage-transfer-settlement-coordinator.mjs
+          node --check src/hosted/salvage-transfer-transaction-journal.mjs
+          node --check game/host-local-salvage-transfer.mjs
+          node --check scripts/serve.mjs
+          node --check tests/salvage-transfer-session-http-selftest.mjs
+          node --check tests/salvage-transfer-settlement-coordinator-selftest.mjs
+          node --check tests/browser/local-salvage-transfer.spec.js
+      - name: Exercise session HTTP integration, coordinator recovery, and existing authority regressions
+        run: |
+          node tests/salvage-transfer-session-http-selftest.mjs
+          node tests/salvage-transfer-settlement-coordinator-selftest.mjs
+          node tests/world-session-authority-selftest.mjs
+          node tests/world-http-api-selftest.mjs
+          node tests/local-seat-restart-continuity-selftest.mjs
+          node tests/verified-local-salvage-reservation-http-selftest.mjs
+
+  chromium-durable-settlement:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Deterministic/source prerequisite
+        run: npm test
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start clean durable settlement host
+        run: |
+          rm -rf /tmp/axm-settlement-seat-journals
+          rm -f /tmp/axm-settlement-bindings.json /tmp/axm-settlement-world.jsonl /tmp/axm-settlement-accounts.json /tmp/axm-settlement-transfers.jsonl
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-settlement-world.jsonl \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-settlement-accounts.json \
+          AXM_LOCAL_SEAT_BINDINGS_PATH=/tmp/axm-settlement-bindings.json \
+          AXM_LOCAL_SEAT_JOURNAL_DIR=/tmp/axm-settlement-seat-journals \
+          AXM_SALVAGE_TRANSFER_JOURNAL_PATH=/tmp/axm-settlement-transfers.jsonl \
+          node scripts/serve.mjs > /tmp/axm-settlement-host.log 2>&1 &
+          echo $! > /tmp/axm-settlement-host.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-settlement-host.log
+          exit 1
+      - name: Exercise explicit prepare and LOCAL debit in Chromium
+        run: npx playwright test tests/browser/local-salvage-transfer.spec.js --grep "creates durable" --workers=1 --reporter=line
+      - name: Restart the same durable host
+        run: |
+          kill "$(cat /tmp/axm-settlement-host.pid)" || true
+          for i in {1..20}; do
+            if ! curl --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null 2>&1; then
+              break
+            fi
+            sleep 0.2
+          done
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-settlement-world.jsonl \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-settlement-accounts.json \
+          AXM_LOCAL_SEAT_BINDINGS_PATH=/tmp/axm-settlement-bindings.json \
+          AXM_LOCAL_SEAT_JOURNAL_DIR=/tmp/axm-settlement-seat-journals \
+          AXM_SALVAGE_TRANSFER_JOURNAL_PATH=/tmp/axm-settlement-transfers.jsonl \
+          node scripts/serve.mjs > /tmp/axm-settlement-restart-host.log 2>&1 &
+          echo $! > /tmp/axm-settlement-host.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-settlement-restart-host.log
+          exit 1
+      - name: Exercise restart-visible debit evidence in Chromium
+        run: npx playwright test tests/browser/local-salvage-transfer.spec.js --grep "restores the debited" --workers=1 --reporter=line
+      - name: Preserve settlement browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: salvage-transfer-session-api
+          path: |
+            test-results/global-state-rts-salvage-transfer-local-debit.png
+            test-results/global-state-rts-salvage-transfer-restart.png
+            /tmp/axm-settlement-host.log
+            /tmp/axm-settlement-restart-host.log
+            /tmp/axm-settlement-accounts.json
+            /tmp/axm-settlement-bindings.json
+            /tmp/axm-settlement-seat-journals/*.jsonl
+            /tmp/axm-settlement-transfers.jsonl
+          if-no-files-found: warn
+          retention-days: 14

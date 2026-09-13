@@ -18,13 +18,16 @@ test('human guest and machine world-account use the same browser world-entry sur
   const response = await page.goto('http://127.0.0.1:4174/game/world-entry.html', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);
   await expect(page.locator('#worldMeta')).toContainText('host: dev writes');
+  await expect(page.locator('#worldMeta')).toContainText('next chest boundary');
 
   await page.locator('#displayName').fill('Human Browser');
   await page.locator('#enterGuest').click();
   await expect(page.locator('#entryStatus')).toContainText('Entered shared world as guest');
+  await expect(page.locator('#entryStatus')).toContainText('world-time chest sync +0');
   await expect(page.locator('#participantId')).toContainText('participant: guest:browser-');
   await expect(page.locator('#profileStatus')).toContainText('guest · human');
   await expect(page.locator('#chestStatus')).toContainText('stored');
+  await expect(page.locator('#chestStatus')).toContainText('accounted through world hour');
   await expect(page.locator('#continueToRts')).toBeEnabled();
 
   await page.locator('#controllerKind').selectOption('machine');
@@ -32,6 +35,7 @@ test('human guest and machine world-account use the same browser world-entry sur
   await page.locator('#accountId').fill('browser-chatgpt');
   await page.locator('#enterAccount').click();
   await expect(page.locator('#entryStatus')).toContainText('Entered shared world as world-account');
+  await expect(page.locator('#entryStatus')).toContainText('world-time chest sync +0');
   await expect(page.locator('#participantId')).toContainText('participant: world:browser-chatgpt');
   await expect(page.locator('#profileStatus')).toContainText('world-account · machine · leaderboard career-linked');
 
@@ -45,6 +49,7 @@ test('human guest and machine world-account use the same browser world-entry sur
   await page.locator('#displayName').fill('Silent Browser Rewrite Attempt');
   await page.locator('#enterAccount').click();
   await expect(page.locator('#entryStatus')).toContainText('Entered shared world as world-account');
+  await expect(page.locator('#entryStatus')).toContainText('world-time chest sync +0');
   await expect(page.locator('#profileStatus')).toContainText('world-account · machine · leaderboard career-linked');
   const reentered = await page.evaluate(() => window.__AXM_WORLD_ENTRY__.participant());
   expect(reentered.participantId).toBe('world:browser-chatgpt');
@@ -52,7 +57,8 @@ test('human guest and machine world-account use the same browser world-entry sur
   expect(reentered.controllerKind).toBe('machine');
 
   await page.locator('#accrueChests').click();
-  await expect(page.locator('#entryStatus')).toContainText('Chest sync complete');
+  await expect(page.locator('#entryStatus')).toContainText('Chest clock refreshed');
+  await expect(page.locator('#entryStatus')).toContainText('+0');
 
   const apiParticipant = await page.evaluate(async () => {
     const response = await fetch('/api/world/participant?participantId=world%3Abrowser-chatgpt');

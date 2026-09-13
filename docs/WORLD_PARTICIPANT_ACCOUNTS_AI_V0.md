@@ -40,6 +40,10 @@ Chest accrual no longer needs a private per-device clock as its authority.
 
 A shared world clock exposes a monotonically increasing `worldHourIndex`. Account chest state records the last accounted world hour, so a reconnecting account can catch up from world time and the existing 24-chest cap bounds absence growth.
 
+World entry performs that catch-up before returning the participant to the frontend. The host reads its authoritative `now`, accrues every elapsed world hour once, advances the account's world-hour anchor, and persists a changed world-account cache through the configured account store. Re-entering in the same world hour therefore adds zero chests. A newly created account anchors at the current world hour and does not receive historical chests from before the account existed. A surviving guest session uses the same world-hour accrual rule in memory, while guest restart continuity remains deliberately unclaimed.
+
+The manual chest refresh control is only a recheck of host authority; it is not required for reconnect catch-up and cannot award a second chest for an already-accounted world hour.
+
 The clock contract is deterministic from:
 
 `world epoch + authoritative now -> worldHourIndex`

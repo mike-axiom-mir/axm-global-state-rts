@@ -74,6 +74,7 @@ test('human guest and machine world-account use the same browser world-entry sur
   await page.locator('#continueToRts').click();
   await page.waitForURL(url => url.pathname === '/game/' && url.searchParams.get('seat1') === 'machine');
   await page.waitForFunction(() => Boolean(window.__AXM_GLOBAL_STATE_RTS__?.worldBinding('seat-1')));
+  await page.waitForFunction(() => Boolean(window.__AXM_PERSISTENT_WORLD__));
   await expect(page.locator('#worldIdentityStatus')).toContainText('world:browser-chatgpt');
   await expect(page.locator('#worldIdentityStatus')).toContainText('machine');
 
@@ -86,16 +87,47 @@ test('human guest and machine world-account use the same browser world-entry sur
   expect(boundState.binding.controllerKind).toBe('machine');
   expect(boundState.seat.worldBinding.participantId).toBe('world:browser-chatgpt');
 
-  const claim = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitBoundWorldCommand({
+  const localToggle = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitMachineAction({
     seatId: 'seat-1',
-    commandId: 'browser-bound-claim-1',
-    eventType: 'territory.claim',
-    payload: { latDeg: 6, lonDeg: 7, ownerId: 'browser-spoof-attempt' }
+    actionId: 'map-toggle',
+    timestampMs: 7000
+  }));
+  expect(localToggle.accepted).toBe(true);
+  await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
+  await expect(page.locator('#worldClaimCursor')).toBeEnabled();
+
+  const preview = await page.evaluate(() => window.__AXM_PERSISTENT_WORLD__.previewSeatCursor('seat-1'));
+  expect(preview.accepted).toBe(true);
+  expect(preview.binding.controllerKind).toBe('machine');
+  expect(preview.intent.eventType).toBe('territory.claim');
+  expect(preview.intent.localEvidence.regionId).toContain('seat-1');
+  expect('ownerId' in preview.intent.payload).toBe(false);
+
+  const claim = await page.evaluate(() => window.__AXM_PERSISTENT_WORLD__.claimSeatCursor({
+    seatId: 'seat-1',
+    commandId: 'browser-local-cursor-claim-1'
   }));
   expect(claim.accepted).toBe(true);
   expect(claim.participantId).toBe('world:browser-chatgpt');
-  expect(claim.actorId).toBe('world:browser-chatgpt');
-  expect(claim.entry.payload.ownerId).toBe('world:browser-chatgpt');
+  expect(claim.controllerKind).toBe('machine');
+  expect(claim.result.accepted).toBe(true);
+  expect(claim.result.participantId).toBe('world:browser-chatgpt');
+  expect(claim.result.actorId).toBe('world:browser-chatgpt');
+  expect(claim.result.entry.payload.ownerId).toBe('world:browser-chatgpt');
+  expect(claim.result.entry.payload.latDeg).toBeCloseTo(claim.intent.payload.latDeg, 10);
+  expect(claim.result.entry.payload.lonDeg).toBeCloseTo(claim.intent.payload.lonDeg, 10);
+  await expect(page.locator('#worldClaimStatus')).toContainText('persistent world claim accepted');
+
+  const latestEvidence = await page.evaluate(() => window.__AXM_PERSISTENT_WORLD__.lastEvidence('seat-1'));
+  expect(latestEvidence.commandId).toBe('browser-local-cursor-claim-1');
+  expect(latestEvidence.result.entry.revision).toBe(1);
+
+  const worldMetaAfterClaim = await page.evaluate(async () => {
+    const response = await fetch('/api/world/meta');
+    return { status: response.status, body: await response.json() };
+  });
+  expect(worldMetaAfterClaim.status).toBe(200);
+  expect(worldMetaAfterClaim.body.sharedState.revision).toBe(1);
 
   await page.screenshot({ path: 'test-results/global-state-rts-world-bound-seat.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);

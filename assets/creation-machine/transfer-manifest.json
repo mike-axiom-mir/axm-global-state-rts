@@ -1,0 +1,3325 @@
+{
+  "schema": "axm.rts.asset-transfer/v1",
+  "source_archive": "axm-rts-plate-3d.zip",
+  "source_sha256": "07e520375341dfc8632026ccd556704545a91d38dde7de75d7b827a1763a490d",
+  "assets": 83,
+  "model_variants": 166,
+  "packs": [
+    {
+      "path": "packs/armored-bus.zip",
+      "bytes": 3961590,
+      "sha256": "4a9989452922ff74b7e33baac1d479787fcdc21fe1913005484b675cb529b7ee",
+      "members": [
+        "assets/armored-bus/armored-bus-lod1.bin",
+        "assets/armored-bus/armored-bus-lod1.gltf",
+        "assets/armored-bus/armored-bus.bin",
+        "assets/armored-bus/armored-bus.gltf",
+        "assets/armored-bus/preview.png",
+        "assets/armored-bus/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/asteroid-extraction-rig.zip",
+      "bytes": 2303192,
+      "sha256": "b8c4b7d2b097fae96edc21c4799a4155c00786d99ecf5557ff20fd288098f740",
+      "members": [
+        "assets/asteroid-extraction-rig/asteroid-extraction-rig-lod1.bin",
+        "assets/asteroid-extraction-rig/asteroid-extraction-rig-lod1.gltf",
+        "assets/asteroid-extraction-rig/asteroid-extraction-rig.bin",
+        "assets/asteroid-extraction-rig/asteroid-extraction-rig.gltf",
+        "assets/asteroid-extraction-rig/preview.png",
+        "assets/asteroid-extraction-rig/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/asteroid-impact-crater-rig.zip",
+      "bytes": 2791056,
+      "sha256": "e1aa9fbbf276656c5da54e3f8898da8c04ccf9accf048f028638876826605cd3",
+      "members": [
+        "assets/asteroid-impact-crater-rig/asteroid-impact-crater-rig-lod1.bin",
+        "assets/asteroid-impact-crater-rig/asteroid-impact-crater-rig-lod1.gltf",
+        "assets/asteroid-impact-crater-rig/asteroid-impact-crater-rig.bin",
+        "assets/asteroid-impact-crater-rig/asteroid-impact-crater-rig.gltf",
+        "assets/asteroid-impact-crater-rig/preview.png",
+        "assets/asteroid-impact-crater-rig/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/bathtub-turret.zip",
+      "bytes": 1501855,
+      "sha256": "ed75af9c5c1aa7bdd2735d76bba943cda0ebb65103b4240f9144f607e99281c2",
+      "members": [
+        "assets/bathtub-turret/bathtub-turret-lod1.bin",
+        "assets/bathtub-turret/bathtub-turret-lod1.gltf",
+        "assets/bathtub-turret/bathtub-turret.bin",
+        "assets/bathtub-turret/bathtub-turret.gltf",
+        "assets/bathtub-turret/preview.png",
+        "assets/bathtub-turret/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/battery-fuel-station.zip",
+      "bytes": 2233145,
+      "sha256": "334f75f32bfe0fa92c1594e3ce05bdaf8969718235f3030afcd819694b0e2696",
+      "members": [
+        "assets/battery-fuel-station/battery-fuel-station-lod1.bin",
+        "assets/battery-fuel-station/battery-fuel-station-lod1.gltf",
+        "assets/battery-fuel-station/battery-fuel-station.bin",
+        "assets/battery-fuel-station/battery-fuel-station.gltf",
+        "assets/battery-fuel-station/preview.png",
+        "assets/battery-fuel-station/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/bridge-fragment.zip",
+      "bytes": 2302008,
+      "sha256": "5bb89d5327060900624bcbc2ee9b5ad86f335e90615e08567fe038ee1f8fcd54",
+      "members": [
+        "assets/bridge-fragment/bridge-fragment-lod1.bin",
+        "assets/bridge-fragment/bridge-fragment-lod1.gltf",
+        "assets/bridge-fragment/bridge-fragment.bin",
+        "assets/bridge-fragment/bridge-fragment.gltf",
+        "assets/bridge-fragment/preview.png",
+        "assets/bridge-fragment/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/bridge-kit.zip",
+      "bytes": 1536567,
+      "sha256": "f86e9c23ea67d4298aeb43655dea27d2da412d6637989c25feae5ea961adb2b0",
+      "members": [
+        "assets/bridge-kit/bridge-kit-lod1.bin",
+        "assets/bridge-kit/bridge-kit-lod1.gltf",
+        "assets/bridge-kit/bridge-kit.bin",
+        "assets/bridge-kit/bridge-kit.gltf",
+        "assets/bridge-kit/preview.png",
+        "assets/bridge-kit/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/bus-window-greenhouse.zip",
+      "bytes": 3004995,
+      "sha256": "6a54a24577ae6f2e133ea13d4666e1b8a3cf8fba964fe30b7ba4dd9f687cd2eb",
+      "members": [
+        "assets/bus-window-greenhouse/bus-window-greenhouse-lod1.bin",
+        "assets/bus-window-greenhouse/bus-window-greenhouse-lod1.gltf",
+        "assets/bus-window-greenhouse/bus-window-greenhouse.bin",
+        "assets/bus-window-greenhouse/bus-window-greenhouse.gltf",
+        "assets/bus-window-greenhouse/preview.png",
+        "assets/bus-window-greenhouse/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/car-door-wall.zip",
+      "bytes": 1599588,
+      "sha256": "67eaf1345fdf004ac82e845035cdb1ed3f574edd36702207cf5175deeae2f47b",
+      "members": [
+        "assets/car-door-wall/car-door-wall-lod1.bin",
+        "assets/car-door-wall/car-door-wall-lod1.gltf",
+        "assets/car-door-wall/car-door-wall.bin",
+        "assets/car-door-wall/car-door-wall.gltf",
+        "assets/car-door-wall/preview.png",
+        "assets/car-door-wall/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/cargo-trailer.zip",
+      "bytes": 3173044,
+      "sha256": "beb199c25c450d3f0583bcb8f3d35afe0563e90b20f9b91501e656004a369ae3",
+      "members": [
+        "assets/cargo-trailer/cargo-trailer-lod1.bin",
+        "assets/cargo-trailer/cargo-trailer-lod1.gltf",
+        "assets/cargo-trailer/cargo-trailer.bin",
+        "assets/cargo-trailer/cargo-trailer.gltf",
+        "assets/cargo-trailer/preview.png",
+        "assets/cargo-trailer/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/citizen-harvester.zip",
+      "bytes": 1883497,
+      "sha256": "0201015c7176b80ded593d0582f6a9cf6c98aa8912b1ea57072c975019fcfcca",
+      "members": [
+        "assets/citizen-harvester/citizen-harvester-lod1.bin",
+        "assets/citizen-harvester/citizen-harvester-lod1.gltf",
+        "assets/citizen-harvester/citizen-harvester.bin",
+        "assets/citizen-harvester/citizen-harvester.gltf",
+        "assets/citizen-harvester/preview.png",
+        "assets/citizen-harvester/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/civic-shelter.zip",
+      "bytes": 3397337,
+      "sha256": "239f2ef1360786a54ab757fc8313b297dc790a6bb4da549ede241c65f65ff3d9",
+      "members": [
+        "assets/civic-shelter/civic-shelter-lod1.bin",
+        "assets/civic-shelter/civic-shelter-lod1.gltf",
+        "assets/civic-shelter/civic-shelter.bin",
+        "assets/civic-shelter/civic-shelter.gltf",
+        "assets/civic-shelter/preview.png",
+        "assets/civic-shelter/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/clustered-storage-bins.zip",
+      "bytes": 2393727,
+      "sha256": "53c2b5e67f5facd61b5fabbf0fac72352ab3d156b363db902a72595fcaa8ebba",
+      "members": [
+        "assets/clustered-storage-bins/clustered-storage-bins-lod1.bin",
+        "assets/clustered-storage-bins/clustered-storage-bins-lod1.gltf",
+        "assets/clustered-storage-bins/clustered-storage-bins.bin",
+        "assets/clustered-storage-bins/clustered-storage-bins.gltf",
+        "assets/clustered-storage-bins/preview.png",
+        "assets/clustered-storage-bins/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/comic-book-wall.zip",
+      "bytes": 1791078,
+      "sha256": "da53e141b8f195e5a3494e2f3a32483006cc8e261e3dd322c124f94d2c724a93",
+      "members": [
+        "assets/comic-book-wall/comic-book-wall-lod1.bin",
+        "assets/comic-book-wall/comic-book-wall-lod1.gltf",
+        "assets/comic-book-wall/comic-book-wall.bin",
+        "assets/comic-book-wall/comic-book-wall.gltf",
+        "assets/comic-book-wall/preview.png",
+        "assets/comic-book-wall/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/command-signal-hall.zip",
+      "bytes": 3732759,
+      "sha256": "1ae3e9be025b682a787072003d55031eeee38f6543c238e236f410d32a309b63",
+      "members": [
+        "assets/command-signal-hall/command-signal-hall-lod1.bin",
+        "assets/command-signal-hall/command-signal-hall-lod1.gltf",
+        "assets/command-signal-hall/command-signal-hall.bin",
+        "assets/command-signal-hall/command-signal-hall.gltf",
+        "assets/command-signal-hall/preview.png",
+        "assets/command-signal-hall/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/compact-smg.zip",
+      "bytes": 1317290,
+      "sha256": "2cb49a3dd373acf5e7150305710894960520196498c000f89baeac2389fb2a5b",
+      "members": [
+        "assets/compact-smg/compact-smg-lod1.bin",
+        "assets/compact-smg/compact-smg-lod1.gltf",
+        "assets/compact-smg/compact-smg.bin",
+        "assets/compact-smg/compact-smg.gltf",
+        "assets/compact-smg/preview.png",
+        "assets/compact-smg/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/crane-section-watchtower.zip",
+      "bytes": 2357878,
+      "sha256": "f1bff672c41c8785685564fe27075c326ba1cc1a0eb9b6b587583e30355e16fe",
+      "members": [
+        "assets/crane-section-watchtower/crane-section-watchtower-lod1.bin",
+        "assets/crane-section-watchtower/crane-section-watchtower-lod1.gltf",
+        "assets/crane-section-watchtower/crane-section-watchtower.bin",
+        "assets/crane-section-watchtower/crane-section-watchtower.gltf",
+        "assets/crane-section-watchtower/preview.png",
+        "assets/crane-section-watchtower/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/crane-truck.zip",
+      "bytes": 3957391,
+      "sha256": "92af7765b40285461e56e3a46bc4bc549d4879a0f04aa08c77dbbde06d868034",
+      "members": [
+        "assets/crane-truck/crane-truck-lod1.bin",
+        "assets/crane-truck/crane-truck-lod1.gltf",
+        "assets/crane-truck/crane-truck.bin",
+        "assets/crane-truck/crane-truck.gltf",
+        "assets/crane-truck/preview.png",
+        "assets/crane-truck/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/crew-worker.zip",
+      "bytes": 1883361,
+      "sha256": "70ade0560bb3129c990558de6136a6c20145545f11426e8fc5fcb8b0d8f46009",
+      "members": [
+        "assets/crew-worker/crew-worker-lod1.bin",
+        "assets/crew-worker/crew-worker-lod1.gltf",
+        "assets/crew-worker/crew-worker.bin",
+        "assets/crew-worker/crew-worker.gltf",
+        "assets/crew-worker/preview.png",
+        "assets/crew-worker/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/deep-mine-head.zip",
+      "bytes": 2593145,
+      "sha256": "35f510d9149b14f03ae7022aa8b9c61aa4b5b985e4495658dd3ea8ab4617bce5",
+      "members": [
+        "assets/deep-mine-head/deep-mine-head-lod1.bin",
+        "assets/deep-mine-head/deep-mine-head-lod1.gltf",
+        "assets/deep-mine-head/deep-mine-head.bin",
+        "assets/deep-mine-head/deep-mine-head.gltf",
+        "assets/deep-mine-head/preview.png",
+        "assets/deep-mine-head/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/drill-rig-vehicle.zip",
+      "bytes": 3970910,
+      "sha256": "02282b2e18c408630bde88b53a1a58273243c38e751d1054c6e6770c3e6d5ea8",
+      "members": [
+        "assets/drill-rig-vehicle/drill-rig-vehicle-lod1.bin",
+        "assets/drill-rig-vehicle/drill-rig-vehicle-lod1.gltf",
+        "assets/drill-rig-vehicle/drill-rig-vehicle.bin",
+        "assets/drill-rig-vehicle/drill-rig-vehicle.gltf",
+        "assets/drill-rig-vehicle/preview.png",
+        "assets/drill-rig-vehicle/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/engine-block.zip",
+      "bytes": 1392739,
+      "sha256": "86dd7a7d6f859aa5e921c2b0d931d4203a402e9e1953eb18a6ac84c22f3efe54",
+      "members": [
+        "assets/engine-block/engine-block-lod1.bin",
+        "assets/engine-block/engine-block-lod1.gltf",
+        "assets/engine-block/engine-block.bin",
+        "assets/engine-block/engine-block.gltf",
+        "assets/engine-block/preview.png",
+        "assets/engine-block/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/field-ambulance-van.zip",
+      "bytes": 3338622,
+      "sha256": "0650b27959ef78680352dbb30cbab59ac77b0b556f29ee1a111c3efdd9febcda",
+      "members": [
+        "assets/field-ambulance-van/field-ambulance-van-lod1.bin",
+        "assets/field-ambulance-van/field-ambulance-van-lod1.gltf",
+        "assets/field-ambulance-van/field-ambulance-van.bin",
+        "assets/field-ambulance-van/field-ambulance-van.gltf",
+        "assets/field-ambulance-van/preview.png",
+        "assets/field-ambulance-van/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/field-medic.zip",
+      "bytes": 1772246,
+      "sha256": "ea2961913aad577c5f181dd4ca97fae94271daed6132a48527fb3ac7c370722b",
+      "members": [
+        "assets/field-medic/field-medic-lod1.bin",
+        "assets/field-medic/field-medic-lod1.gltf",
+        "assets/field-medic/field-medic.bin",
+        "assets/field-medic/field-medic.gltf",
+        "assets/field-medic/preview.png",
+        "assets/field-medic/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/flatbed-convoy-truck.zip",
+      "bytes": 4231447,
+      "sha256": "0433a5eec70fd16b18031eb4cb224e8966ec6a0b1010580384c94b502a885210",
+      "members": [
+        "assets/flatbed-convoy-truck/flatbed-convoy-truck-lod1.bin",
+        "assets/flatbed-convoy-truck/flatbed-convoy-truck-lod1.gltf",
+        "assets/flatbed-convoy-truck/flatbed-convoy-truck.bin",
+        "assets/flatbed-convoy-truck/flatbed-convoy-truck.gltf",
+        "assets/flatbed-convoy-truck/preview.png",
+        "assets/flatbed-convoy-truck/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/fridge-barricade.zip",
+      "bytes": 1490040,
+      "sha256": "c3a136eb1f2f48652f398a6e03d067611c42c472346a8f17b442bc8cbb51d84b",
+      "members": [
+        "assets/fridge-barricade/fridge-barricade-lod1.bin",
+        "assets/fridge-barricade/fridge-barricade-lod1.gltf",
+        "assets/fridge-barricade/fridge-barricade.bin",
+        "assets/fridge-barricade/fridge-barricade.gltf",
+        "assets/fridge-barricade/preview.png",
+        "assets/fridge-barricade/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/fungal-shed.zip",
+      "bytes": 3077042,
+      "sha256": "c879bab1e929d9afc53984613e60556241cdbf6fa64cc626b59a642cb8778b1e",
+      "members": [
+        "assets/fungal-shed/fungal-shed-lod1.bin",
+        "assets/fungal-shed/fungal-shed-lod1.gltf",
+        "assets/fungal-shed/fungal-shed.bin",
+        "assets/fungal-shed/fungal-shed.gltf",
+        "assets/fungal-shed/preview.png",
+        "assets/fungal-shed/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/heavy-vehicle-operator.zip",
+      "bytes": 1726857,
+      "sha256": "7fecff4b73bd40b76c5fa337f702934bbf42243bde1a4183dcba82787085da37",
+      "members": [
+        "assets/heavy-vehicle-operator/heavy-vehicle-operator-lod1.bin",
+        "assets/heavy-vehicle-operator/heavy-vehicle-operator-lod1.gltf",
+        "assets/heavy-vehicle-operator/heavy-vehicle-operator.bin",
+        "assets/heavy-vehicle-operator/heavy-vehicle-operator.gltf",
+        "assets/heavy-vehicle-operator/preview.png",
+        "assets/heavy-vehicle-operator/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/improvised-anti-vehicle-barrier.zip",
+      "bytes": 1643059,
+      "sha256": "39ffc3dfbf9715c17499a43b8a92c9e6a77d445b1692ed9842b729b5edb8bf1e",
+      "members": [
+        "assets/improvised-anti-vehicle-barrier/improvised-anti-vehicle-barrier-lod1.bin",
+        "assets/improvised-anti-vehicle-barrier/improvised-anti-vehicle-barrier-lod1.gltf",
+        "assets/improvised-anti-vehicle-barrier/improvised-anti-vehicle-barrier.bin",
+        "assets/improvised-anti-vehicle-barrier/improvised-anti-vehicle-barrier.gltf",
+        "assets/improvised-anti-vehicle-barrier/preview.png",
+        "assets/improvised-anti-vehicle-barrier/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/improvised-launcher.zip",
+      "bytes": 1312180,
+      "sha256": "ecd0eade9e5d36a74b734ce2712404bbe665bda4afdc5d9344ca7e3687ea8feb",
+      "members": [
+        "assets/improvised-launcher/improvised-launcher-lod1.bin",
+        "assets/improvised-launcher/improvised-launcher-lod1.gltf",
+        "assets/improvised-launcher/improvised-launcher.bin",
+        "assets/improvised-launcher/improvised-launcher.gltf",
+        "assets/improvised-launcher/preview.png",
+        "assets/improvised-launcher/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/improvised-workshop.zip",
+      "bytes": 5872033,
+      "sha256": "07885d6ea0f34fac0cd6c97333f7f559101c2dcbff6b0ad610fea830cf908510",
+      "members": [
+        "assets/improvised-workshop/improvised-workshop-lod1.bin",
+        "assets/improvised-workshop/improvised-workshop-lod1.gltf",
+        "assets/improvised-workshop/improvised-workshop.bin",
+        "assets/improvised-workshop/improvised-workshop.gltf",
+        "assets/improvised-workshop/preview.png",
+        "assets/improvised-workshop/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/lantern-scanner.zip",
+      "bytes": 1398924,
+      "sha256": "2f4d4aeadc251b674a547aeda3645db172a6110481f9741d3565f6dc5416f9c1",
+      "members": [
+        "assets/lantern-scanner/lantern-scanner-lod1.bin",
+        "assets/lantern-scanner/lantern-scanner-lod1.gltf",
+        "assets/lantern-scanner/lantern-scanner.bin",
+        "assets/lantern-scanner/lantern-scanner.gltf",
+        "assets/lantern-scanner/preview.png",
+        "assets/lantern-scanner/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/licensed-driver.zip",
+      "bytes": 1739566,
+      "sha256": "3d0cdbbe006948e3ea6cd9967fe176fffd2422cce48b9f64d9666ccdc709b3f2",
+      "members": [
+        "assets/licensed-driver/licensed-driver-lod1.bin",
+        "assets/licensed-driver/licensed-driver-lod1.gltf",
+        "assets/licensed-driver/licensed-driver.bin",
+        "assets/licensed-driver/licensed-driver.gltf",
+        "assets/licensed-driver/preview.png",
+        "assets/licensed-driver/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/light-tower.zip",
+      "bytes": 1430843,
+      "sha256": "c3c63c7ac29d13847e3043a732be111070ef564f68d55f64fbe7963373c6b56e",
+      "members": [
+        "assets/light-tower/light-tower-lod1.bin",
+        "assets/light-tower/light-tower-lod1.gltf",
+        "assets/light-tower/light-tower.bin",
+        "assets/light-tower/light-tower.gltf",
+        "assets/light-tower/preview.png",
+        "assets/light-tower/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/livestock-pen.zip",
+      "bytes": 2344201,
+      "sha256": "feb8587b24a4fdb1a5614be3a07f94d8f2c1b5345fc7b3281c6f82651ef8e969",
+      "members": [
+        "assets/livestock-pen/livestock-pen-lod1.bin",
+        "assets/livestock-pen/livestock-pen-lod1.gltf",
+        "assets/livestock-pen/livestock-pen.bin",
+        "assets/livestock-pen/livestock-pen.gltf",
+        "assets/livestock-pen/preview.png",
+        "assets/livestock-pen/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/machine-shop.zip",
+      "bytes": 3287212,
+      "sha256": "228a18a2676e6a0ce6063f101538f6afcfaddef3114a14bc3fcece5fa6b4623c",
+      "members": [
+        "assets/machine-shop/machine-shop-lod1.bin",
+        "assets/machine-shop/machine-shop-lod1.gltf",
+        "assets/machine-shop/machine-shop.bin",
+        "assets/machine-shop/machine-shop.gltf",
+        "assets/machine-shop/preview.png",
+        "assets/machine-shop/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/major-city-tower-district.zip",
+      "bytes": 6669924,
+      "sha256": "2efb95ff8c7a90bc8ff50ca8c7a1fe12f1ee9b28737d239c581c7a7c48343dce",
+      "members": [
+        "assets/major-city-tower-district/major-city-tower-district-lod1.bin",
+        "assets/major-city-tower-district/major-city-tower-district-lod1.gltf",
+        "assets/major-city-tower-district/major-city-tower-district.bin",
+        "assets/major-city-tower-district/major-city-tower-district.gltf",
+        "assets/major-city-tower-district/preview.png",
+        "assets/major-city-tower-district/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/major-city-wall-section.zip",
+      "bytes": 4263003,
+      "sha256": "36110a987dd357e40e2d903c85081edd86e0602debd128ba1220e3b6c8528a5a",
+      "members": [
+        "assets/major-city-wall-section/major-city-wall-section-lod1.bin",
+        "assets/major-city-wall-section/major-city-wall-section-lod1.gltf",
+        "assets/major-city-wall-section/major-city-wall-section.bin",
+        "assets/major-city-wall-section/major-city-wall-section.gltf",
+        "assets/major-city-wall-section/preview.png",
+        "assets/major-city-wall-section/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/mechanic-repair-crew.zip",
+      "bytes": 1773071,
+      "sha256": "f43b2f8db63e7d687dfb7b242d446b76f7d022a81af11e38a0f62c8f3586c1c2",
+      "members": [
+        "assets/mechanic-repair-crew/mechanic-repair-crew-lod1.bin",
+        "assets/mechanic-repair-crew/mechanic-repair-crew-lod1.gltf",
+        "assets/mechanic-repair-crew/mechanic-repair-crew.bin",
+        "assets/mechanic-repair-crew/mechanic-repair-crew.gltf",
+        "assets/mechanic-repair-crew/preview.png",
+        "assets/mechanic-repair-crew/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/mercenary-carrier.zip",
+      "bytes": 4012942,
+      "sha256": "aa68d10af944750b7d40603921fd9635dcf23b02da0f66c304afb27bf3c0015c",
+      "members": [
+        "assets/mercenary-carrier/mercenary-carrier-lod1.bin",
+        "assets/mercenary-carrier/mercenary-carrier-lod1.gltf",
+        "assets/mercenary-carrier/mercenary-carrier.bin",
+        "assets/mercenary-carrier/mercenary-carrier.gltf",
+        "assets/mercenary-carrier/preview.png",
+        "assets/mercenary-carrier/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/mercenary-ex-mil.zip",
+      "bytes": 1807261,
+      "sha256": "0d2feca047372caaff4415443eb912e67d87d678aebe2874f00ddfd933f9adbc",
+      "members": [
+        "assets/mercenary-ex-mil/mercenary-ex-mil-lod1.bin",
+        "assets/mercenary-ex-mil/mercenary-ex-mil-lod1.gltf",
+        "assets/mercenary-ex-mil/mercenary-ex-mil.bin",
+        "assets/mercenary-ex-mil/mercenary-ex-mil.gltf",
+        "assets/mercenary-ex-mil/preview.png",
+        "assets/mercenary-ex-mil/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/mercenary-free-agent.zip",
+      "bytes": 1798519,
+      "sha256": "9c72d23df9590d99a73bbc3344ea7dbbc07a2b1b4d998b6f8b75269765821428",
+      "members": [
+        "assets/mercenary-free-agent/mercenary-free-agent-lod1.bin",
+        "assets/mercenary-free-agent/mercenary-free-agent-lod1.gltf",
+        "assets/mercenary-free-agent/mercenary-free-agent.bin",
+        "assets/mercenary-free-agent/mercenary-free-agent.gltf",
+        "assets/mercenary-free-agent/preview.png",
+        "assets/mercenary-free-agent/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/meteor-power-cell.zip",
+      "bytes": 1252726,
+      "sha256": "18aa8a9960466560e2a76ccd303ca153801e337f7677205a57b80f9675ff2623",
+      "members": [
+        "assets/meteor-power-cell/meteor-power-cell-lod1.bin",
+        "assets/meteor-power-cell/meteor-power-cell-lod1.gltf",
+        "assets/meteor-power-cell/meteor-power-cell.bin",
+        "assets/meteor-power-cell/meteor-power-cell.gltf",
+        "assets/meteor-power-cell/preview.png",
+        "assets/meteor-power-cell/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/meteor-reactor.zip",
+      "bytes": 3357429,
+      "sha256": "0f85c7f1ac7f8f4b5ef97386ce1a931b76f18cdba4ac428bd121dc835b88e85f",
+      "members": [
+        "assets/meteor-reactor/meteor-reactor-lod1.bin",
+        "assets/meteor-reactor/meteor-reactor-lod1.gltf",
+        "assets/meteor-reactor/meteor-reactor.bin",
+        "assets/meteor-reactor/meteor-reactor.gltf",
+        "assets/meteor-reactor/preview.png",
+        "assets/meteor-reactor/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/mine-marker.zip",
+      "bytes": 1415184,
+      "sha256": "8d266f0756b8154517212408002a514c0bc5c4ba5e3dc51da01b54bbfed933d8",
+      "members": [
+        "assets/mine-marker/mine-marker-lod1.bin",
+        "assets/mine-marker/mine-marker-lod1.gltf",
+        "assets/mine-marker/mine-marker.bin",
+        "assets/mine-marker/mine-marker.gltf",
+        "assets/mine-marker/preview.png",
+        "assets/mine-marker/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/mining-drill.zip",
+      "bytes": 1539009,
+      "sha256": "2f3bb24e8fe3d619d254569a4fe5111bbaeb6bbc9063b7724377106d72e057c7",
+      "members": [
+        "assets/mining-drill/mining-drill-lod1.bin",
+        "assets/mining-drill/mining-drill-lod1.gltf",
+        "assets/mining-drill/mining-drill.bin",
+        "assets/mining-drill/mining-drill.gltf",
+        "assets/mining-drill/preview.png",
+        "assets/mining-drill/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/open-crop-terrace.zip",
+      "bytes": 2678998,
+      "sha256": "c5c8fa251c23e8c58177dacec744d200ed7feeb0e51dce437a50e7b03f1c85ac",
+      "members": [
+        "assets/open-crop-terrace/open-crop-terrace-lod1.bin",
+        "assets/open-crop-terrace/open-crop-terrace-lod1.gltf",
+        "assets/open-crop-terrace/open-crop-terrace.bin",
+        "assets/open-crop-terrace/open-crop-terrace.gltf",
+        "assets/open-crop-terrace/preview.png",
+        "assets/open-crop-terrace/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/pipe-shotgun.zip",
+      "bytes": 1309520,
+      "sha256": "a13c8a700bcbabaab561395646770775a7e21138dbfb4c7bc058af3674801e3a",
+      "members": [
+        "assets/pipe-shotgun/pipe-shotgun-lod1.bin",
+        "assets/pipe-shotgun/pipe-shotgun-lod1.gltf",
+        "assets/pipe-shotgun/pipe-shotgun.bin",
+        "assets/pipe-shotgun/pipe-shotgun.gltf",
+        "assets/pipe-shotgun/preview.png",
+        "assets/pipe-shotgun/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/power-core-building.zip",
+      "bytes": 3019861,
+      "sha256": "38c7d80bd4fa09b743afa0e022d85a532cee324bdcb111d9aa77b14679e90f47",
+      "members": [
+        "assets/power-core-building/power-core-building-lod1.bin",
+        "assets/power-core-building/power-core-building-lod1.gltf",
+        "assets/power-core-building/power-core-building.bin",
+        "assets/power-core-building/power-core-building.gltf",
+        "assets/power-core-building/preview.png",
+        "assets/power-core-building/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/push-cart.zip",
+      "bytes": 2212154,
+      "sha256": "726ecf013ef581dfbf8a59de828d65ac73a5588f4b7134b96bfd5dbbb911d596",
+      "members": [
+        "assets/push-cart/preview.png",
+        "assets/push-cart/push-cart-lod1.bin",
+        "assets/push-cart/push-cart-lod1.gltf",
+        "assets/push-cart/push-cart.bin",
+        "assets/push-cart/push-cart.gltf",
+        "assets/push-cart/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/rail-checkpoint.zip",
+      "bytes": 3686943,
+      "sha256": "a17f6ca5b34783e0424054e364e86f702dcfdaa2bef6376e2f0f17182bbbfb48",
+      "members": [
+        "assets/rail-checkpoint/preview.png",
+        "assets/rail-checkpoint/rail-checkpoint-lod1.bin",
+        "assets/rail-checkpoint/rail-checkpoint-lod1.gltf",
+        "assets/rail-checkpoint/rail-checkpoint.bin",
+        "assets/rail-checkpoint/rail-checkpoint.gltf",
+        "assets/rail-checkpoint/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/refinery-shack.zip",
+      "bytes": 2309361,
+      "sha256": "47fbbd972e32df6acc8d823914fd07974caff5248b4125347544d2d57c584ad0",
+      "members": [
+        "assets/refinery-shack/preview.png",
+        "assets/refinery-shack/refinery-shack-lod1.bin",
+        "assets/refinery-shack/refinery-shack-lod1.gltf",
+        "assets/refinery-shack/refinery-shack.bin",
+        "assets/refinery-shack/refinery-shack.gltf",
+        "assets/refinery-shack/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/regional-scrap-market-gate.zip",
+      "bytes": 3925511,
+      "sha256": "6d0e3d993c34cc0b2cab70fe1f04bb18a43feb08269a0f0703e289b3dd3412b5",
+      "members": [
+        "assets/regional-scrap-market-gate/preview.png",
+        "assets/regional-scrap-market-gate/regional-scrap-market-gate-lod1.bin",
+        "assets/regional-scrap-market-gate/regional-scrap-market-gate-lod1.gltf",
+        "assets/regional-scrap-market-gate/regional-scrap-market-gate.bin",
+        "assets/regional-scrap-market-gate/regional-scrap-market-gate.gltf",
+        "assets/regional-scrap-market-gate/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/repair-garage.zip",
+      "bytes": 3784182,
+      "sha256": "4fe773c8895e6c64869d04f97d981b9ef4137b2455f7603093a99dbd793f852b",
+      "members": [
+        "assets/repair-garage/preview.png",
+        "assets/repair-garage/repair-garage-lod1.bin",
+        "assets/repair-garage/repair-garage-lod1.gltf",
+        "assets/repair-garage/repair-garage.bin",
+        "assets/repair-garage/repair-garage.gltf",
+        "assets/repair-garage/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/repair-welder.zip",
+      "bytes": 1301929,
+      "sha256": "b2ae9778aa81294b85563ab480411d3ccd2a4593916311ceb45cd124a516eb51",
+      "members": [
+        "assets/repair-welder/preview.png",
+        "assets/repair-welder/repair-welder-lod1.bin",
+        "assets/repair-welder/repair-welder-lod1.gltf",
+        "assets/repair-welder/repair-welder.bin",
+        "assets/repair-welder/repair-welder.gltf",
+        "assets/repair-welder/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/rifle-guard.zip",
+      "bytes": 1795467,
+      "sha256": "ab9ad8426e083dafd3342f7bc223f5fd18252ea8cc3d0dea5ff6d92b9f2ed49e",
+      "members": [
+        "assets/rifle-guard/preview.png",
+        "assets/rifle-guard/rifle-guard-lod1.bin",
+        "assets/rifle-guard/rifle-guard-lod1.gltf",
+        "assets/rifle-guard/rifle-guard.bin",
+        "assets/rifle-guard/rifle-guard.gltf",
+        "assets/rifle-guard/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/rotary-gun.zip",
+      "bytes": 1433920,
+      "sha256": "89094a48666e934ebeba624ba3f294451d08828f9851a1cecf43eb258502fc90",
+      "members": [
+        "assets/rotary-gun/preview.png",
+        "assets/rotary-gun/rotary-gun-lod1.bin",
+        "assets/rotary-gun/rotary-gun-lod1.gltf",
+        "assets/rotary-gun/rotary-gun.bin",
+        "assets/rotary-gun/rotary-gun.gltf",
+        "assets/rotary-gun/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/ruined-town-block.zip",
+      "bytes": 2348799,
+      "sha256": "2d2a06d2e038722c0bdda58b60beb946dff7893161efbae1b34dfa818a5a844c",
+      "members": [
+        "assets/ruined-town-block/preview.png",
+        "assets/ruined-town-block/ruined-town-block-lod1.bin",
+        "assets/ruined-town-block/ruined-town-block-lod1.gltf",
+        "assets/ruined-town-block/ruined-town-block.bin",
+        "assets/ruined-town-block/ruined-town-block.gltf",
+        "assets/ruined-town-block/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/sandbag-scrap-firing-nest.zip",
+      "bytes": 1589951,
+      "sha256": "d5c48a7945045cef4a3cf48f6fa187a9d8a64b266d706e0755b3d1c7dec64ea3",
+      "members": [
+        "assets/sandbag-scrap-firing-nest/preview.png",
+        "assets/sandbag-scrap-firing-nest/sandbag-scrap-firing-nest-lod1.bin",
+        "assets/sandbag-scrap-firing-nest/sandbag-scrap-firing-nest-lod1.gltf",
+        "assets/sandbag-scrap-firing-nest/sandbag-scrap-firing-nest.bin",
+        "assets/sandbag-scrap-firing-nest/sandbag-scrap-firing-nest.gltf",
+        "assets/sandbag-scrap-firing-nest/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/scavenger.zip",
+      "bytes": 1749134,
+      "sha256": "a80446cba4b07cb50e47b8102a1340c8e05f698445bea0f4bbb22028735844f4",
+      "members": [
+        "assets/scavenger/preview.png",
+        "assets/scavenger/scavenger-lod1.bin",
+        "assets/scavenger/scavenger-lod1.gltf",
+        "assets/scavenger/scavenger.bin",
+        "assets/scavenger/scavenger.gltf",
+        "assets/scavenger/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/scout.zip",
+      "bytes": 1803518,
+      "sha256": "26c9a54f1ccbfe3d6ebe9353d4d69ce676feb1838f89320fb6c0c794ededa6c1",
+      "members": [
+        "assets/scout/preview.png",
+        "assets/scout/scout-lod1.bin",
+        "assets/scout/scout-lod1.gltf",
+        "assets/scout/scout.bin",
+        "assets/scout/scout.gltf",
+        "assets/scout/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/scout-trike.zip",
+      "bytes": 2207997,
+      "sha256": "003b4a40c6175f9ad66142a9fca9be28e5bf9878dbccc7f170e64e2f4be3b044",
+      "members": [
+        "assets/scout-trike/preview.png",
+        "assets/scout-trike/scout-trike-lod1.bin",
+        "assets/scout-trike/scout-trike-lod1.gltf",
+        "assets/scout-trike/scout-trike.bin",
+        "assets/scout-trike/scout-trike.gltf",
+        "assets/scout-trike/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/scrap-buggy.zip",
+      "bytes": 2854178,
+      "sha256": "acac317f9788b18167e15cbc6e9bc998769e3cf7358618a6992785513134538a",
+      "members": [
+        "assets/scrap-buggy/preview.png",
+        "assets/scrap-buggy/scrap-buggy-lod1.bin",
+        "assets/scrap-buggy/scrap-buggy-lod1.gltf",
+        "assets/scrap-buggy/scrap-buggy.bin",
+        "assets/scrap-buggy/scrap-buggy.gltf",
+        "assets/scrap-buggy/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/scrap-bunker.zip",
+      "bytes": 2571683,
+      "sha256": "f700642548f4fd668badb3a83de65c623fc494a9eb5b2302169ddcf709178809",
+      "members": [
+        "assets/scrap-bunker/preview.png",
+        "assets/scrap-bunker/scrap-bunker-lod1.bin",
+        "assets/scrap-bunker/scrap-bunker-lod1.gltf",
+        "assets/scrap-bunker/scrap-bunker.bin",
+        "assets/scrap-bunker/scrap-bunker.gltf",
+        "assets/scrap-bunker/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/scrap-rifle.zip",
+      "bytes": 1315154,
+      "sha256": "73153d064baa238be36388c881f02250909cd43b237eae3eeaaba3a1fe840740",
+      "members": [
+        "assets/scrap-rifle/preview.png",
+        "assets/scrap-rifle/scrap-rifle-lod1.bin",
+        "assets/scrap-rifle/scrap-rifle-lod1.gltf",
+        "assets/scrap-rifle/scrap-rifle.bin",
+        "assets/scrap-rifle/scrap-rifle.gltf",
+        "assets/scrap-rifle/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/scrap-sorting-yard.zip",
+      "bytes": 2607572,
+      "sha256": "5b3325d9dcd70f51a3a4cacc401c0cdd671164abb43064a73741f39d4df244bf",
+      "members": [
+        "assets/scrap-sorting-yard/preview.png",
+        "assets/scrap-sorting-yard/scrap-sorting-yard-lod1.bin",
+        "assets/scrap-sorting-yard/scrap-sorting-yard-lod1.gltf",
+        "assets/scrap-sorting-yard/scrap-sorting-yard.bin",
+        "assets/scrap-sorting-yard/scrap-sorting-yard.gltf",
+        "assets/scrap-sorting-yard/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/settlement-hub.zip",
+      "bytes": 4213603,
+      "sha256": "cbea17f77617246461b72658945c2125ff44f3645673484fec85a19ee98d10c4",
+      "members": [
+        "assets/settlement-hub/preview.png",
+        "assets/settlement-hub/settlement-hub-lod1.bin",
+        "assets/settlement-hub/settlement-hub-lod1.gltf",
+        "assets/settlement-hub/settlement-hub.bin",
+        "assets/settlement-hub/settlement-hub.gltf",
+        "assets/settlement-hub/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/shallow-mine-entrance.zip",
+      "bytes": 2506843,
+      "sha256": "901708071b6c2545f83a4a394fe46aaf23d591612daf82454ce9a932a0bf9c52",
+      "members": [
+        "assets/shallow-mine-entrance/preview.png",
+        "assets/shallow-mine-entrance/shallow-mine-entrance-lod1.bin",
+        "assets/shallow-mine-entrance/shallow-mine-entrance-lod1.gltf",
+        "assets/shallow-mine-entrance/shallow-mine-entrance.bin",
+        "assets/shallow-mine-entrance/shallow-mine-entrance.gltf",
+        "assets/shallow-mine-entrance/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/shared-textures.zip",
+      "bytes": 18557834,
+      "sha256": "c303594223974b8359f3fa6b92cb7076c1d2566a95f5d1eef1c09375d58f7d3c",
+      "members": [
+        "textures/02e21e92ec95a4600ff3c5d2077d2f18f172a0f1dedd27acaaea5a5736ad46d6.png",
+        "textures/0fcf7a4bfc891efa72a7e1a14b4c7748bf1375bf6ba3fec2513399f596bcfc08.png",
+        "textures/107a02b3b51a67d79ea851f36e56629854453cbca3a6d8f6b4b1ea0188970472.png",
+        "textures/2401192560dadfe9595336942e19eb3c346b4230dd45ac712850ab97fc82f3c5.png",
+        "textures/311554a574c3fec7f5d3616ac3a3d5356e7833a5140e2bd44529abdc65fa27d7.png",
+        "textures/31bdda515f38ea7176dd4313e168268e62e5dabf0ad091081b245310b740d0e8.png",
+        "textures/31ec2b54b2216a6063df01cee1c19e2e4475f2c44672922862a823226c67cf45.png",
+        "textures/3847225d59b8220efed1cd73a343cfa958b8ba4a5eaeaeeab98b3016ae082910.png",
+        "textures/407738804fd39640a450052f508b25a421237b500377c4f3cc1c4eed4c6237d7.png",
+        "textures/4331f0cf1badd7991d3283c1e988b999460f7e4fdc02290225eaf653a72ade86.png",
+        "textures/459fc57a3652d2b09d847f832007aabe88ef818d03ea3f811ba689d805a802f5.png",
+        "textures/4651cfaad3a3b0d4f433d3a5b6f5569e1e4a54fa170dddbc7192c09671ee6141.png",
+        "textures/467eb0a72d0fb7a66621bee7e79424f346ae38c3f9cb96e53a69177faa9bbe90.png",
+        "textures/4e7d818b04bbb11fef692e7b1ff5066ed2fcf73e8ec8c8ecb14356d2cd6b46bc.png",
+        "textures/515302cf6fbbe31c4e6f6d6cf4453718453ff603c3bbc097c17f491486406c8f.png",
+        "textures/51d68cd41ea85b93ad08ef6e1439cb90471e83a27d6f94f7cf68d8426716ceed.png",
+        "textures/522df0228e910dc6734436663ab9e80c9beaba3603b3ec731993c0d0684befec.png",
+        "textures/55f2c3b656fb0ebc854102ccd8184a74a064832f3749e5ff8e7ef4d297f7988a.png",
+        "textures/5912b7b34619402c2bd9dcbc97451426e92b5bf2943f0f25bba46740266b76e6.png",
+        "textures/59210ea2ba40eeda8fd583d5422b9b206381d86ba2bc0ee03fcdd82e3a935e82.png",
+        "textures/5e3fd767cafb33acdb6dde6a4025510872adb70736d22e24b995e7b367886327.png",
+        "textures/6002d2213a5d043d2f7606f114a99665adb485365258cb8dd46098eca89290f2.png",
+        "textures/61eef2155f3afcbe7a950543ca0bda2dfd502d7de7e494ffe7f39007078eebb2.png",
+        "textures/65869f8eb031600fa0f5c101347665c66e0231a5d912b56fe802bf3d30ea70cb.png",
+        "textures/7a9e9df831e3dadabf857ac1e0574f756dcd97b95df197a93e7111beffc37224.png",
+        "textures/8090c4b78c704444fca611fc61349a81035474924f5a5a0e1b56eed19d24400c.png",
+        "textures/815d02932ec0859a5e2a7881e3de94e57fb1edc6002ef138a4735055b8ec78ba.png",
+        "textures/836f3d06788051a9b9a2f60be5fff87c0f6f7850ce60996825ec704fb8b33024.png",
+        "textures/91523ff7462eda9ac52812d6b309b820f610bdcd072622be6887385978b95185.png",
+        "textures/962f128fe576ef5f170509c55d48fceb6756b3a8c61d70fc5d23e32db9baadbf.png",
+        "textures/9e30ab303b738a8460755e46959c500f670ed8e648ad703e9e5bfbc3378a0ec4.png",
+        "textures/a1a7c085f39e798f0495435b68ec22d31afe2c6d5cd3ea7a5bd6819447658036.png",
+        "textures/af56b0f463ddf4c10d0f9be39aa875cdeb5dbcbc5c211f339f3324d5bb9efbe5.png",
+        "textures/b53bd95d9a9b19166cd6db5368ca13d96edef9d47034afa16ec09fe47189b7d6.png",
+        "textures/b55648af8663ffa96cecc604179c3cc78ab65087cdd8e200224e7ffde7ba8bc7.png",
+        "textures/b5d73ba7c1dcb64f79a1f7dac96a1281931c5979c6e8bd712811fafd5412ffeb.png",
+        "textures/c20844ab70e95bbc6db946aa283d6cab8928a3599a21feaa269357002c31a93e.png",
+        "textures/c2dcdd75cc38e137e773dcc26c58d6a3a0ac0707e9366874dd10b52c282dd0a9.png",
+        "textures/c60c3570e88f932e5c0151137b624e44461ea611bd1c097d2d58237fd9cc2398.png",
+        "textures/c6b4b22507a67fa5150523895c7191405265733422d25de3fafd74b3ffd4c91c.png",
+        "textures/ca222ef059bfc6cc9bf5235d254b4b1606ab6e0cc1a8afca45206607d04f2823.png",
+        "textures/cbaa8a70c6e226e5bbefc67361ce3447bec6ee46ddcc908c9111420d9d870284.png",
+        "textures/d3730e032b31d7def00a6a8ffc9ed5aeffe753004d3783f4af8ab6de0b89bfa2.png",
+        "textures/eb5567c162c4973ef3324a7a96ee938da6d1613c4424fe543009a78b60835d48.png",
+        "textures/f094cdabb93e3a7f7d2ee6278c0881aea6a311ae5743dacb09f15c0087def428.png",
+        "textures/f120c64ed9e56d8f108bc9e6c6c7f29d88f2b1fd435efeb3700efe32fce8a112.png",
+        "textures/fed996cc4e331f7776fe516e9cda3a464e222b294a4d1d58a70424b2bdf3f5d9.png"
+      ]
+    },
+    {
+      "path": "packs/shotgun-raider.zip",
+      "bytes": 1805482,
+      "sha256": "aa6da078310152c4497b4ea2dd1ae5d9f234e1ffbee79399751475036ec5bb96",
+      "members": [
+        "assets/shotgun-raider/preview.png",
+        "assets/shotgun-raider/shotgun-raider-lod1.bin",
+        "assets/shotgun-raider/shotgun-raider-lod1.gltf",
+        "assets/shotgun-raider/shotgun-raider.bin",
+        "assets/shotgun-raider/shotgun-raider.gltf",
+        "assets/shotgun-raider/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/signplate-barricade.zip",
+      "bytes": 1613627,
+      "sha256": "e5fa2555008a613b5e765d33cd738768822f0887d78e93b99cb55d8d94ef6f85",
+      "members": [
+        "assets/signplate-barricade/preview.png",
+        "assets/signplate-barricade/signplate-barricade-lod1.bin",
+        "assets/signplate-barricade/signplate-barricade-lod1.gltf",
+        "assets/signplate-barricade/signplate-barricade.bin",
+        "assets/signplate-barricade/signplate-barricade.gltf",
+        "assets/signplate-barricade/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/sky-tracker-dish.zip",
+      "bytes": 3467451,
+      "sha256": "6640ab07a449b7a8e3d68a19ced076db3df6d7281df12114fa669f0e08536bf1",
+      "members": [
+        "assets/sky-tracker-dish/preview.png",
+        "assets/sky-tracker-dish/sky-tracker-dish-lod1.bin",
+        "assets/sky-tracker-dish/sky-tracker-dish-lod1.gltf",
+        "assets/sky-tracker-dish/sky-tracker-dish.bin",
+        "assets/sky-tracker-dish/sky-tracker-dish.gltf",
+        "assets/sky-tracker-dish/source-verification.json"
+      ]
+    },
+    {
+      "path": "packs/spike-gate.zip",
+      "bytes": 1487073,
+      "sha256": "b702f4b981be3e3c01e5d516d25b9a945c1a31cfcd8355679f3ecfb9392a3c95",
+      "members": [
+        "assets/spike-gate/preview.png",
+        "assets/spike-gate/source-verification.json",
+        "assets/spike-gate/spike-gate-lod1.bin",
+        "assets/spike-gate/spike-gate-lod1.gltf",
+        "assets/spike-gate/spike-gate.bin",
+        "assets/spike-gate/spike-gate.gltf"
+      ]
+    },
+    {
+      "path": "packs/spotlight-tower.zip",
+      "bytes": 1430807,
+      "sha256": "961906ba2eb7ebc3deb039c5020c34c354e48f65c8e20704e864ca1819c2e19c",
+      "members": [
+        "assets/spotlight-tower/preview.png",
+        "assets/spotlight-tower/source-verification.json",
+        "assets/spotlight-tower/spotlight-tower-lod1.bin",
+        "assets/spotlight-tower/spotlight-tower-lod1.gltf",
+        "assets/spotlight-tower/spotlight-tower.bin",
+        "assets/spotlight-tower/spotlight-tower.gltf"
+      ]
+    },
+    {
+      "path": "packs/storage-hall.zip",
+      "bytes": 3384305,
+      "sha256": "b9357dc1d383b01f58ed0b9a085a90cd5b78bd90662742ed2699b65170f42fc3",
+      "members": [
+        "assets/storage-hall/preview.png",
+        "assets/storage-hall/source-verification.json",
+        "assets/storage-hall/storage-hall-lod1.bin",
+        "assets/storage-hall/storage-hall-lod1.gltf",
+        "assets/storage-hall/storage-hall.bin",
+        "assets/storage-hall/storage-hall.gltf"
+      ]
+    },
+    {
+      "path": "packs/strange-late-tech-salvage-structure.zip",
+      "bytes": 2738582,
+      "sha256": "d401d9791f219dfad3b4fdf36ae382963ecf0cba840d38b04d746df9b7e54716",
+      "members": [
+        "assets/strange-late-tech-salvage-structure/preview.png",
+        "assets/strange-late-tech-salvage-structure/source-verification.json",
+        "assets/strange-late-tech-salvage-structure/strange-late-tech-salvage-structure-lod1.bin",
+        "assets/strange-late-tech-salvage-structure/strange-late-tech-salvage-structure-lod1.gltf",
+        "assets/strange-late-tech-salvage-structure/strange-late-tech-salvage-structure.bin",
+        "assets/strange-late-tech-salvage-structure/strange-late-tech-salvage-structure.gltf"
+      ]
+    },
+    {
+      "path": "packs/survivor-outpost-cluster.zip",
+      "bytes": 5852570,
+      "sha256": "963069040ef5a7c5e6af95e9b39488d4106f5dc902e5d216ed16b03ceed5a036",
+      "members": [
+        "assets/survivor-outpost-cluster/preview.png",
+        "assets/survivor-outpost-cluster/source-verification.json",
+        "assets/survivor-outpost-cluster/survivor-outpost-cluster-lod1.bin",
+        "assets/survivor-outpost-cluster/survivor-outpost-cluster-lod1.gltf",
+        "assets/survivor-outpost-cluster/survivor-outpost-cluster.bin",
+        "assets/survivor-outpost-cluster/survivor-outpost-cluster.gltf"
+      ]
+    },
+    {
+      "path": "packs/tow-crawler.zip",
+      "bytes": 2699168,
+      "sha256": "91d7ac6db82de9fce20c0fff1b7d559cfbe5e66ef3e2fe28130c2b1ef1fec3cd",
+      "members": [
+        "assets/tow-crawler/preview.png",
+        "assets/tow-crawler/source-verification.json",
+        "assets/tow-crawler/tow-crawler-lod1.bin",
+        "assets/tow-crawler/tow-crawler-lod1.gltf",
+        "assets/tow-crawler/tow-crawler.bin",
+        "assets/tow-crawler/tow-crawler.gltf"
+      ]
+    },
+    {
+      "path": "packs/track-module.zip",
+      "bytes": 1530716,
+      "sha256": "aa5865e303beff81badec0169a78ef801fbdf12ee0fb9399504075af9439d9c8",
+      "members": [
+        "assets/track-module/preview.png",
+        "assets/track-module/source-verification.json",
+        "assets/track-module/track-module-lod1.bin",
+        "assets/track-module/track-module-lod1.gltf",
+        "assets/track-module/track-module.bin",
+        "assets/track-module/track-module.gltf"
+      ]
+    },
+    {
+      "path": "packs/training-yard.zip",
+      "bytes": 2173600,
+      "sha256": "1dc01ab6322084135c31f6da7ba81541e411884d3258cd1cf29d2422b9209d7f",
+      "members": [
+        "assets/training-yard/preview.png",
+        "assets/training-yard/source-verification.json",
+        "assets/training-yard/training-yard-lod1.bin",
+        "assets/training-yard/training-yard-lod1.gltf",
+        "assets/training-yard/training-yard.bin",
+        "assets/training-yard/training-yard.gltf"
+      ]
+    },
+    {
+      "path": "packs/turret-module.zip",
+      "bytes": 1561183,
+      "sha256": "29f07d34c5acd62427c5f7bc5c1be0e480e72b65841952834e0663d0a80fa5d5",
+      "members": [
+        "assets/turret-module/preview.png",
+        "assets/turret-module/source-verification.json",
+        "assets/turret-module/turret-module-lod1.bin",
+        "assets/turret-module/turret-module-lod1.gltf",
+        "assets/turret-module/turret-module.bin",
+        "assets/turret-module/turret-module.gltf"
+      ]
+    },
+    {
+      "path": "packs/utility-hauler.zip",
+      "bytes": 3605084,
+      "sha256": "5ea18928147ea30fa742dfb81a9ce780d140ca34a3636ae7b1ac4e2e32f5a578",
+      "members": [
+        "assets/utility-hauler/preview.png",
+        "assets/utility-hauler/source-verification.json",
+        "assets/utility-hauler/utility-hauler-lod1.bin",
+        "assets/utility-hauler/utility-hauler-lod1.gltf",
+        "assets/utility-hauler/utility-hauler.bin",
+        "assets/utility-hauler/utility-hauler.gltf"
+      ]
+    },
+    {
+      "path": "packs/water-catcher.zip",
+      "bytes": 2088849,
+      "sha256": "c6f8368859ecb6e1f048c4ffd026a9346cf48fa5f6783b29879ef901dfa004dd",
+      "members": [
+        "assets/water-catcher/preview.png",
+        "assets/water-catcher/source-verification.json",
+        "assets/water-catcher/water-catcher-lod1.bin",
+        "assets/water-catcher/water-catcher-lod1.gltf",
+        "assets/water-catcher/water-catcher.bin",
+        "assets/water-catcher/water-catcher.gltf"
+      ]
+    },
+    {
+      "path": "packs/wheel-module.zip",
+      "bytes": 1425570,
+      "sha256": "1f63f42a87f505820c8f7dc75a209cdc9ae325830e46c0caf00bb909723ab3a8",
+      "members": [
+        "assets/wheel-module/preview.png",
+        "assets/wheel-module/source-verification.json",
+        "assets/wheel-module/wheel-module-lod1.bin",
+        "assets/wheel-module/wheel-module-lod1.gltf",
+        "assets/wheel-module/wheel-module.bin",
+        "assets/wheel-module/wheel-module.gltf"
+      ]
+    }
+  ],
+  "files": {
+    "assets/armored-bus/armored-bus-lod1.bin": {
+      "bytes": 2674516,
+      "sha256": "99a56f6986fa628efcda1d6c6f379976656395b3d48b4995a7bcf649b653af80"
+    },
+    "assets/armored-bus/armored-bus-lod1.gltf": {
+      "bytes": 21649,
+      "sha256": "2b83731f92c5aac0b95a99bf0260bd03ebcf89799658b531d4a0abc56628bad3"
+    },
+    "assets/armored-bus/armored-bus.bin": {
+      "bytes": 7954844,
+      "sha256": "d7e3f0eec21ba7251db368e9aed280bbed98f2a01ffd1f18524f57765b821a40"
+    },
+    "assets/armored-bus/armored-bus.gltf": {
+      "bytes": 21640,
+      "sha256": "b221ce490fe26b102f385a916e561abbca96a155a5c4946a6d7300871da4dd70"
+    },
+    "assets/armored-bus/preview.png": {
+      "bytes": 1205867,
+      "sha256": "0e9a26adc803477fd947ab5c372dc7d6049e10ad4d4ac357f2dbd761d83c5a58"
+    },
+    "assets/armored-bus/source-verification.json": {
+      "bytes": 855,
+      "sha256": "d57e100aa22f73872a43797dc54f02414bd209459f4397d7447b3070e8467611"
+    },
+    "assets/asteroid-extraction-rig/asteroid-extraction-rig-lod1.bin": {
+      "bytes": 1279424,
+      "sha256": "0a7d070cded6e86877c3ecaaecec92c9a44ff8c6bfd00435f23b09c1e73a3a25"
+    },
+    "assets/asteroid-extraction-rig/asteroid-extraction-rig-lod1.gltf": {
+      "bytes": 18484,
+      "sha256": "e010a1460358e4ee724da03146180a5ef54c9611f3b2575c0b95f5f62aca11ed"
+    },
+    "assets/asteroid-extraction-rig/asteroid-extraction-rig.bin": {
+      "bytes": 3620992,
+      "sha256": "f02fb3f0772a348e111b6eb0cee6716697abf9690848b7be47c1cffbf2aac2f3"
+    },
+    "assets/asteroid-extraction-rig/asteroid-extraction-rig.gltf": {
+      "bytes": 18515,
+      "sha256": "d0e005524ff50b3ebdb52f65645fb92052c6a20f051104341b1c44fe955ef6ee"
+    },
+    "assets/asteroid-extraction-rig/preview.png": {
+      "bytes": 1052132,
+      "sha256": "81df4646a86b5ba0882fb255b4776d9befc77d8a833ba58144e787c00d5e8246"
+    },
+    "assets/asteroid-extraction-rig/source-verification.json": {
+      "bytes": 963,
+      "sha256": "00f8d1b9a02a0e4ac27fbc3b9468230ecfb9422b6df93092e4feedf372ae1e66"
+    },
+    "assets/asteroid-impact-crater-rig/asteroid-impact-crater-rig-lod1.bin": {
+      "bytes": 1579332,
+      "sha256": "5b1df7d7cea1069ada3a908e0a06ab7e9c3c661d6d6431134406c750dee927c0"
+    },
+    "assets/asteroid-impact-crater-rig/asteroid-impact-crater-rig-lod1.gltf": {
+      "bytes": 16913,
+      "sha256": "515a0d7ecb4d65999d761599fcd7c13af5ae6f4c937b6214662ead6b91388cf7"
+    },
+    "assets/asteroid-impact-crater-rig/asteroid-impact-crater-rig.bin": {
+      "bytes": 4457128,
+      "sha256": "5f9bbc93f2edfe03521df008a8acd8381e96145aba2597f701c74194025f8db5"
+    },
+    "assets/asteroid-impact-crater-rig/asteroid-impact-crater-rig.gltf": {
+      "bytes": 16929,
+      "sha256": "74ecaf55c972eb94c4a567ef54157a81a76af32f38d25ea31bdff9a2c9e43a40"
+    },
+    "assets/asteroid-impact-crater-rig/preview.png": {
+      "bytes": 1224201,
+      "sha256": "638fc2578f01ae037e8741489280c87d7b9513e8e418caa2ae6096e0a245a35c"
+    },
+    "assets/asteroid-impact-crater-rig/source-verification.json": {
+      "bytes": 963,
+      "sha256": "213a82e1c8678af0b4a6b9c5f1c672bd21afe9109ad85003c36c66c7b02a5f68"
+    },
+    "assets/bathtub-turret/bathtub-turret-lod1.bin": {
+      "bytes": 477372,
+      "sha256": "a27f65f23ef47832b6f0bf86a6667113ecd30ebe4cbf01e42add9162559e22f4"
+    },
+    "assets/bathtub-turret/bathtub-turret-lod1.gltf": {
+      "bytes": 18981,
+      "sha256": "9d16865c3ae201e9e0fe8e48be546533cc7f5683735711345dd51c305ada1f60"
+    },
+    "assets/bathtub-turret/bathtub-turret.bin": {
+      "bytes": 1340064,
+      "sha256": "dfe2bff2e094a23a6b6d414dbcad362ff20d4d38f877fd573fe09cb983d70259"
+    },
+    "assets/bathtub-turret/bathtub-turret.gltf": {
+      "bytes": 19055,
+      "sha256": "3b0e11a5923a65b0809aef9ac611e4bc9c33aa9d06b6d7f27db064f6d5e89d8e"
+    },
+    "assets/bathtub-turret/preview.png": {
+      "bytes": 963388,
+      "sha256": "931c9fcaf084eea1d938c126bf49dc61af5c3539b636d44dd1ba7a61e023dfd8"
+    },
+    "assets/bathtub-turret/source-verification.json": {
+      "bytes": 953,
+      "sha256": "ec9c21daf85fb8421e3dbe53f49d5dc10910631d87a01b6e76eabea922efa270"
+    },
+    "assets/battery-fuel-station/battery-fuel-station-lod1.bin": {
+      "bytes": 1071752,
+      "sha256": "22e72c9b6ae75f13b1461e8a029c6cfe15c9c2bbe47f97358a8014d7cfbe89e9"
+    },
+    "assets/battery-fuel-station/battery-fuel-station-lod1.gltf": {
+      "bytes": 22790,
+      "sha256": "f782418d3a0914f75041bc79c570edece550cb6da9d04c63c278eb3e809f15d2"
+    },
+    "assets/battery-fuel-station/battery-fuel-station.bin": {
+      "bytes": 2961044,
+      "sha256": "e47c655d100ca8dcdb64af97a54df52bf52a872558d0db4ba9633c20a99ff2c6"
+    },
+    "assets/battery-fuel-station/battery-fuel-station.gltf": {
+      "bytes": 22841,
+      "sha256": "470d3c46237797e3d92143d8b0b0ef652204f55a06b43de7ac9a44fed415e488"
+    },
+    "assets/battery-fuel-station/preview.png": {
+      "bytes": 1027129,
+      "sha256": "b9da04d6ed25b9c74016769414afc8e52292002afbfbf53ba657c227a78cea9a"
+    },
+    "assets/battery-fuel-station/source-verification.json": {
+      "bytes": 960,
+      "sha256": "7b0b4e51c9f55b719df834a8f7c5d9dc3538592fa34ace6fe25ec09cb68f8276"
+    },
+    "assets/bridge-fragment/bridge-fragment-lod1.bin": {
+      "bytes": 1178732,
+      "sha256": "5f5b70b5d43bd771c3a1b66f784023da5ff6eee80656e165f7bd5ab13b343c1b"
+    },
+    "assets/bridge-fragment/bridge-fragment-lod1.gltf": {
+      "bytes": 14043,
+      "sha256": "d5ba51af153edbf482a8a5caaf76d411c4bfd1eaa92835167e678304ef3b735c"
+    },
+    "assets/bridge-fragment/bridge-fragment.bin": {
+      "bytes": 3257328,
+      "sha256": "17362cd449ed6447707b26c904e31a4bb86bde0689eb87ec1b8b71dac2c74880"
+    },
+    "assets/bridge-fragment/bridge-fragment.gltf": {
+      "bytes": 14072,
+      "sha256": "60db67190f6e67e431a89cf9e2f1c90ce3f7bb95ba62ae14891979c5fc5b627a"
+    },
+    "assets/bridge-fragment/preview.png": {
+      "bytes": 1190777,
+      "sha256": "71670019b55e813b84911f27874b29443edc74f3c7b99c1bd219043ed2b046fc"
+    },
+    "assets/bridge-fragment/source-verification.json": {
+      "bytes": 952,
+      "sha256": "2773cb35c6f341ce1826f4de06269cbd2c13fd403600df29899ae38af536ee5c"
+    },
+    "assets/bridge-kit/bridge-kit-lod1.bin": {
+      "bytes": 694452,
+      "sha256": "53ab9906c353a2b65a96da29ebb750bc991ac33f3b2e6b9b85f89279f5d67ba7"
+    },
+    "assets/bridge-kit/bridge-kit-lod1.gltf": {
+      "bytes": 10987,
+      "sha256": "df4075cfbf047fa86faf72f591b75f4b41e449c421df3896a5e6e3d84c9909d1"
+    },
+    "assets/bridge-kit/bridge-kit.bin": {
+      "bytes": 1783676,
+      "sha256": "8c0da2d5755c3e7c5b6deeaea07a294db7f13b0575aba07b5d525a76ae8a136f"
+    },
+    "assets/bridge-kit/bridge-kit.gltf": {
+      "bytes": 11019,
+      "sha256": "47ea2b4fb0699a4f8a37c880a39fafa94dd4f4d42c6dab5d083c1642f449684f"
+    },
+    "assets/bridge-kit/preview.png": {
+      "bytes": 1009145,
+      "sha256": "886053cec09b1fb38108ee5450bae66c2515a2010fb3f2073723145014faba9c"
+    },
+    "assets/bridge-kit/source-verification.json": {
+      "bytes": 950,
+      "sha256": "2bb32f7ab308d1693b7a2f468b8b4c2f2045ce430e531f02661aded13748f2e7"
+    },
+    "assets/bus-window-greenhouse/bus-window-greenhouse-lod1.bin": {
+      "bytes": 1942856,
+      "sha256": "95832e242cdbc27e01fd65f0e5b8d2db88610179d20ab63d10eaa9e3304ef1ad"
+    },
+    "assets/bus-window-greenhouse/bus-window-greenhouse-lod1.gltf": {
+      "bytes": 22552,
+      "sha256": "8b54f788355bbe19c937b687acca21036e85337396f91262c03fad6b2be69a02"
+    },
+    "assets/bus-window-greenhouse/bus-window-greenhouse.bin": {
+      "bytes": 5602108,
+      "sha256": "9fc6b1c158e308e4fd53602d56146f789a9ae9935ffffdb106031042e80a8fa3"
+    },
+    "assets/bus-window-greenhouse/bus-window-greenhouse.gltf": {
+      "bytes": 22588,
+      "sha256": "885ae7c71230a3cf7b64866487e4050288b93565b0501430196c8107b7835d90"
+    },
+    "assets/bus-window-greenhouse/preview.png": {
+      "bytes": 1051447,
+      "sha256": "f04b6c70b05d1b02db8c1f977c4d541f0922eba80ac7b34ca7515b45f506042d"
+    },
+    "assets/bus-window-greenhouse/source-verification.json": {
+      "bytes": 961,
+      "sha256": "1b10d6822876756bf1c320f6d8263498cab3c1f3805e474b70644d399c7aea43"
+    },
+    "assets/car-door-wall/car-door-wall-lod1.bin": {
+      "bytes": 586844,
+      "sha256": "57244981dddd65427ff4509793218d83a6eac219ea034b0f32615d2a3713ae0a"
+    },
+    "assets/car-door-wall/car-door-wall-lod1.gltf": {
+      "bytes": 19346,
+      "sha256": "250617c8bf1f49eba10c77e81df6b73ac4609acb8b6a1b3c51503a8b3d38e7fa"
+    },
+    "assets/car-door-wall/car-door-wall.bin": {
+      "bytes": 1601732,
+      "sha256": "1def4f3dd41ca4c012a33c49780f0dc74b098fcfb285e7c5a6329d56430d98d7"
+    },
+    "assets/car-door-wall/car-door-wall.gltf": {
+      "bytes": 19420,
+      "sha256": "0b9dc68f232963b3508ce9ac807939d095613b11f824be2362b9c1430901e526"
+    },
+    "assets/car-door-wall/preview.png": {
+      "bytes": 983835,
+      "sha256": "f8d2ac961d99f2ac9617175a1a98bbd45e88edbb3f741b1c38e27f0d5e0ef506"
+    },
+    "assets/car-door-wall/source-verification.json": {
+      "bytes": 952,
+      "sha256": "a6ae111aad64612ab52d12338ebf6fec475b5118806f522dced2e7568b3d2ed4"
+    },
+    "assets/cargo-trailer/cargo-trailer-lod1.bin": {
+      "bytes": 1867744,
+      "sha256": "4cff8a7d540b55bd03aad7602087142bbaa885e502c6365d89f51acba0a37d8c"
+    },
+    "assets/cargo-trailer/cargo-trailer-lod1.gltf": {
+      "bytes": 15964,
+      "sha256": "1a50e098a706909b3cf78323d2f3417cd7f5ddc1a836dc0eab16a7e64488468e"
+    },
+    "assets/cargo-trailer/cargo-trailer.bin": {
+      "bytes": 5590576,
+      "sha256": "02cd56c4969c0216eb322af0d3679c96cd59659bf04511a840d7601a3b003bfd"
+    },
+    "assets/cargo-trailer/cargo-trailer.gltf": {
+      "bytes": 15987,
+      "sha256": "08b5d7d260b6d47fd80f9674b5b15c7870cbfaaaafc42294fd4ef8d5ae04f950"
+    },
+    "assets/cargo-trailer/preview.png": {
+      "bytes": 1149036,
+      "sha256": "01dfc0e1f17a29ea02c6f423d712961e809d5f0c98570b1453db99954675c520"
+    },
+    "assets/cargo-trailer/source-verification.json": {
+      "bytes": 857,
+      "sha256": "788c23cb802202fdecde2f08c2889f4bb34448eccaa045f312edb1f4ec8c32f5"
+    },
+    "assets/citizen-harvester/citizen-harvester-lod1.bin": {
+      "bytes": 469092,
+      "sha256": "75d9087701f23e52d36c1b10f92e936a5bfa8057e598fde960e061a4a305e6c2"
+    },
+    "assets/citizen-harvester/citizen-harvester-lod1.gltf": {
+      "bytes": 18624,
+      "sha256": "bf0e21078c2fae72443a3613fd53c8df96722cb39a5d32fb8f4507c2d08acd9c"
+    },
+    "assets/citizen-harvester/citizen-harvester.bin": {
+      "bytes": 1503616,
+      "sha256": "4540918aaab9cc5192eb2daac05d11330169722cea1c97595f986f0f19be3ce2"
+    },
+    "assets/citizen-harvester/citizen-harvester.gltf": {
+      "bytes": 18696,
+      "sha256": "476c6c9787d1b41064eaa7ab60d26bad20581a3ef8008b8ef5fc6be58b134ff5"
+    },
+    "assets/citizen-harvester/preview.png": {
+      "bytes": 1214943,
+      "sha256": "f9843c2a3ca727817d51bbaf5064fdd5d6019d20122a20227093439ef7a01163"
+    },
+    "assets/citizen-harvester/source-verification.json": {
+      "bytes": 953,
+      "sha256": "0ef909145a819a36294dca366573e0ea73ddd141bce63041230b9ab143bf156c"
+    },
+    "assets/civic-shelter/civic-shelter-lod1.bin": {
+      "bytes": 2116176,
+      "sha256": "3fb3e69b7250491a6ecc5f36cb52dd32ec0cd971acca322973a9b6d96ce8e1a5"
+    },
+    "assets/civic-shelter/civic-shelter-lod1.gltf": {
+      "bytes": 24302,
+      "sha256": "7895be683788cab28248ab935cecc2d9d306679b0e0573fccd9d5dffe9f6b5ec"
+    },
+    "assets/civic-shelter/civic-shelter.bin": {
+      "bytes": 6052392,
+      "sha256": "2acf3b9dbcd6f91fe2fc6f14c2f07ca45af408b4b8a3acdcbbb4284e81eaa22d"
+    },
+    "assets/civic-shelter/civic-shelter.gltf": {
+      "bytes": 24368,
+      "sha256": "83a1c805787edd12bb4f132b85103841704ac25e5c61bf3247e63a4d2230c599"
+    },
+    "assets/civic-shelter/preview.png": {
+      "bytes": 1106615,
+      "sha256": "37a8066b93693b623d50f3364ca1de9478222efcb0557db11323cc3a349a60f9"
+    },
+    "assets/civic-shelter/source-verification.json": {
+      "bytes": 955,
+      "sha256": "7cb83e74d7db2e33a765b5013bc70e435e5d7d606972c918d8004efe2cdd353b"
+    },
+    "assets/clustered-storage-bins/clustered-storage-bins-lod1.bin": {
+      "bytes": 1134206,
+      "sha256": "e630b6cfccd64ab8845940d79fe9f5d2e170c9498d166550d8e81c77b64d5623"
+    },
+    "assets/clustered-storage-bins/clustered-storage-bins-lod1.gltf": {
+      "bytes": 20049,
+      "sha256": "dedf1e9f6c80c39607e98b88df2d9a0ac819ec8b43cc9d6cae9df5f5dec113d4"
+    },
+    "assets/clustered-storage-bins/clustered-storage-bins.bin": {
+      "bytes": 3175684,
+      "sha256": "af82614515bcd21ed0245188e587698e05314fffd74e0390322fa8124cf6636d"
+    },
+    "assets/clustered-storage-bins/clustered-storage-bins.gltf": {
+      "bytes": 20051,
+      "sha256": "91818d24477ce44a4f102135c6dd4d3e1514495f19447816cac4ae2ccccd5360"
+    },
+    "assets/clustered-storage-bins/preview.png": {
+      "bytes": 1079851,
+      "sha256": "249b45ba47c22af05db189342a8b5aa01aa3e4d708a0a7941f14fb90f0563d09"
+    },
+    "assets/clustered-storage-bins/source-verification.json": {
+      "bytes": 962,
+      "sha256": "38c80515630581745a5349b650396e21d92285b2a585afd9a26e088c670f97d5"
+    },
+    "assets/comic-book-wall/comic-book-wall-lod1.bin": {
+      "bytes": 709544,
+      "sha256": "092acf9d71fb2aa7760a5ec6b2d261ce9df73e9efc99c3b9b957d2d71a979a5f"
+    },
+    "assets/comic-book-wall/comic-book-wall-lod1.gltf": {
+      "bytes": 14993,
+      "sha256": "1f2060644708bcaf06f098b0bb413683cd74efc96f1e7d236faa0e53686037ea"
+    },
+    "assets/comic-book-wall/comic-book-wall.bin": {
+      "bytes": 2002432,
+      "sha256": "0a29636bffedfc5187401aed6e0f01f79591b856e02d2326a6142965d472add7"
+    },
+    "assets/comic-book-wall/comic-book-wall.gltf": {
+      "bytes": 15056,
+      "sha256": "6f8bc82192ad6ad0560303da6a0bbb933b699e26e4a44e631f34e63dfc243f5b"
+    },
+    "assets/comic-book-wall/preview.png": {
+      "bytes": 1024025,
+      "sha256": "7c07316fde1545559cb4603088585294e9cf02b6224e2d38330bdf596e3d0445"
+    },
+    "assets/comic-book-wall/source-verification.json": {
+      "bytes": 955,
+      "sha256": "6f8320789fd15203914c9a34d305809b5e7a43aa342563c2b988e56329427f9a"
+    },
+    "assets/command-signal-hall/command-signal-hall-lod1.bin": {
+      "bytes": 2352570,
+      "sha256": "372bc4ac62ee1c2bed8c909f672de1d264309ec95e3ee057cced6b8c6544a6d0"
+    },
+    "assets/command-signal-hall/command-signal-hall-lod1.gltf": {
+      "bytes": 24730,
+      "sha256": "75e53a53e18f76cc165cd095337c8f93ab3e54a92868e1d9efd91fbf1797ae45"
+    },
+    "assets/command-signal-hall/command-signal-hall.bin": {
+      "bytes": 6623304,
+      "sha256": "9949d98e12dd729412045c3ad0016b570eef6c5395b97da587e0b764b3096bef"
+    },
+    "assets/command-signal-hall/command-signal-hall.gltf": {
+      "bytes": 24787,
+      "sha256": "3986eaa143c7552aba364de4e5b319414738bfe0727bf03eec53ded8faa7d9a4"
+    },
+    "assets/command-signal-hall/preview.png": {
+      "bytes": 988697,
+      "sha256": "e8181e3a1d0f4ee1c3fbafff70018ac960eebf8f3d42e6d4f0f634b112cd314d"
+    },
+    "assets/command-signal-hall/source-verification.json": {
+      "bytes": 961,
+      "sha256": "1e370bf47bc49f87c602bb73dbcb9ef0964a9229dd262629a8a1a96ab9d094f8"
+    },
+    "assets/compact-smg/compact-smg-lod1.bin": {
+      "bytes": 319932,
+      "sha256": "40863ca3cce38689f7c6900ced3fbef84449c93a8deee2566789aacb483d5371"
+    },
+    "assets/compact-smg/compact-smg-lod1.gltf": {
+      "bytes": 17247,
+      "sha256": "3e3b46376bd45acfa0a3740f66785c7ef6614be8c198bc8edaf07eb3d709300b"
+    },
+    "assets/compact-smg/compact-smg.bin": {
+      "bytes": 933184,
+      "sha256": "21015e8c9a4ab5f0d3c740779bd05174b0c2f9d604a4a894077e8deb63f37338"
+    },
+    "assets/compact-smg/compact-smg.gltf": {
+      "bytes": 17282,
+      "sha256": "885fe422d73492ff1e9c7da52380f6a70e77b88fc79335224bf5b40962a4dae5"
+    },
+    "assets/compact-smg/preview.png": {
+      "bytes": 959519,
+      "sha256": "f3bf6fc4813f682fdd79ab3743bf4a9fdd8d9aa05958ecd020c909ca25bd5580"
+    },
+    "assets/compact-smg/source-verification.json": {
+      "bytes": 951,
+      "sha256": "17911c061d483ffb51e1ea7552804f3e67c2eda1a9c8d126c59b2e9918e7c4ba"
+    },
+    "assets/crane-section-watchtower/crane-section-watchtower-lod1.bin": {
+      "bytes": 1237988,
+      "sha256": "16473e2021a724e6312d29840334f1671387fcd9a6fa1c69854703e855b13f30"
+    },
+    "assets/crane-section-watchtower/crane-section-watchtower-lod1.gltf": {
+      "bytes": 16757,
+      "sha256": "0930c04d337eeeb6328f6c6abe14126c1a2c096ee604b128ca7fd1891f8ca847"
+    },
+    "assets/crane-section-watchtower/crane-section-watchtower.bin": {
+      "bytes": 3608380,
+      "sha256": "adf9b1fd752a73f19a674ff4bea5ca35df9595e0d71b0d7b64596f4b01ba97c4"
+    },
+    "assets/crane-section-watchtower/crane-section-watchtower.gltf": {
+      "bytes": 16800,
+      "sha256": "382c7160030448a45a3c917f0f748c09e2ef5013a67fdd588b474186cd35d728"
+    },
+    "assets/crane-section-watchtower/preview.png": {
+      "bytes": 987118,
+      "sha256": "aeea12f623b3cefb9583b97e6f319a861e133eda690e95c7c856428001cd9d5f"
+    },
+    "assets/crane-section-watchtower/source-verification.json": {
+      "bytes": 964,
+      "sha256": "c90bd2276fa9d445feea2ea338f21727b941fd0a2cbc86424dddca551f467e49"
+    },
+    "assets/crane-truck/crane-truck-lod1.bin": {
+      "bytes": 2588876,
+      "sha256": "def34afec96c67b15a53babb4aee8b1cbfefde7943226f629e933b6d8433160c"
+    },
+    "assets/crane-truck/crane-truck-lod1.gltf": {
+      "bytes": 21870,
+      "sha256": "8053ca29396d8bbf19db4c596c03b08e1f34b7329882e828bf289b3e4bf3064c"
+    },
+    "assets/crane-truck/crane-truck.bin": {
+      "bytes": 7862868,
+      "sha256": "6942bc8efeb96dfd365cc15de241dc39b9f9df19f6d2d615964fd288136f59f5"
+    },
+    "assets/crane-truck/crane-truck.gltf": {
+      "bytes": 21931,
+      "sha256": "2a87decfad08c44ab318dadc26c3d47ba5e7e7818856a3c7782661577933df95"
+    },
+    "assets/crane-truck/preview.png": {
+      "bytes": 1176537,
+      "sha256": "a73735f42bb88d22eaef6567f28324f5625fa1b7fb49e8257b736542e9a1dc59"
+    },
+    "assets/crane-truck/source-verification.json": {
+      "bytes": 855,
+      "sha256": "dc1115f96ba85e40e55f5e371b936cbbe0d2a5e3f593016622d0ee2edb454c9f"
+    },
+    "assets/crew-worker/crew-worker-lod1.bin": {
+      "bytes": 486572,
+      "sha256": "aae0a7839027860595a400ee042668872285caea8d63b7b2ffbe3a968ce327ac"
+    },
+    "assets/crew-worker/crew-worker-lod1.gltf": {
+      "bytes": 22485,
+      "sha256": "8e47a08402a04e29cdd47faf472b33b3fe08d504d3f261bc99e1dd91fa3a9500"
+    },
+    "assets/crew-worker/crew-worker.bin": {
+      "bytes": 1476992,
+      "sha256": "be2f940c1cb4dffeecaab70dd715678613eceedf4e2e6197f0597bd1a3668cbd"
+    },
+    "assets/crew-worker/crew-worker.gltf": {
+      "bytes": 22578,
+      "sha256": "95ffe7fe4575d73b0dbeda89c1d198cfd516ee18db62eb294740bfa89ec85048"
+    },
+    "assets/crew-worker/preview.png": {
+      "bytes": 1211739,
+      "sha256": "f1eb3325c0f1aa8b774ad9bcfb289eba4c5aaabf96392c4340daf3826c9b0e11"
+    },
+    "assets/crew-worker/source-verification.json": {
+      "bytes": 947,
+      "sha256": "4f7a881de5a7323ac259735621bc63fcd87aa32909e1cd63254810acf49d7247"
+    },
+    "assets/deep-mine-head/deep-mine-head-lod1.bin": {
+      "bytes": 1518804,
+      "sha256": "ee7e969ae7cae00754fd6039d7ba10e66947c38532303742a42cdb8ab4c80c1e"
+    },
+    "assets/deep-mine-head/deep-mine-head-lod1.gltf": {
+      "bytes": 22954,
+      "sha256": "3b238d78cabd913a01caf963d9013df92844f8681d43590cbd812c77ebbacc7b"
+    },
+    "assets/deep-mine-head/deep-mine-head.bin": {
+      "bytes": 4265680,
+      "sha256": "3f634489d2b0769c60a7594bee55490634061b9093b16ed14f5f0d935ff0f62c"
+    },
+    "assets/deep-mine-head/deep-mine-head.gltf": {
+      "bytes": 23011,
+      "sha256": "a048a6f338bf6b74938d2a84b3d3aa55f8ead03a2a58b240f76cf97b3136eda5"
+    },
+    "assets/deep-mine-head/preview.png": {
+      "bytes": 960954,
+      "sha256": "b33d3fb88f679a9d4d3a5818af758e53bacb51d7a0c64cb516a1cd86278d4684"
+    },
+    "assets/deep-mine-head/source-verification.json": {
+      "bytes": 954,
+      "sha256": "3160208b4bb11fe7629a0125b069ad056de5c4565142998cb301e77c48aecd87"
+    },
+    "assets/drill-rig-vehicle/drill-rig-vehicle-lod1.bin": {
+      "bytes": 2584072,
+      "sha256": "246a35ee44ddf7baee5b49ef62137ea18063f5b478ca6c772cb2f9e4f51491ab"
+    },
+    "assets/drill-rig-vehicle/drill-rig-vehicle-lod1.gltf": {
+      "bytes": 21864,
+      "sha256": "cd1db8aa31a3783d42ff164e5665bc62f48ce91737818110d59756b2ce7f5d00"
+    },
+    "assets/drill-rig-vehicle/drill-rig-vehicle.bin": {
+      "bytes": 7941720,
+      "sha256": "0e8a05e6afe89c64e44b439f44d9210dd8c33b20a19ca49dc1588a8da0eb7198"
+    },
+    "assets/drill-rig-vehicle/drill-rig-vehicle.gltf": {
+      "bytes": 21924,
+      "sha256": "e457bcba2525b4868ab3c4bedb8f9613ec7e7a3590ec935f3b6fbdbc3aa57274"
+    },
+    "assets/drill-rig-vehicle/preview.png": {
+      "bytes": 1179159,
+      "sha256": "6dd681cd8ec407fd45558c3cc5eeda367bc75be9491415e5a2e6b2068bfbc589"
+    },
+    "assets/drill-rig-vehicle/source-verification.json": {
+      "bytes": 861,
+      "sha256": "04d7a813a4f8d8dcf1246e7a1f1378188996e8908888362a37fbe2eb8727b540"
+    },
+    "assets/engine-block/engine-block-lod1.bin": {
+      "bytes": 388164,
+      "sha256": "ef89380d2d8c2e108e978e441e089cc4488f22cd62094158dfd46b81e6851287"
+    },
+    "assets/engine-block/engine-block-lod1.gltf": {
+      "bytes": 14049,
+      "sha256": "60eb9989933304ce1bfb71a5748f0d5234c0ce21482a22003b5acb4d9b5753cd"
+    },
+    "assets/engine-block/engine-block.bin": {
+      "bytes": 1155728,
+      "sha256": "6fa5d7963c6e81e314d9e55d9187e63839a1a5389cc3488009c80f1b37de273a"
+    },
+    "assets/engine-block/engine-block.gltf": {
+      "bytes": 14085,
+      "sha256": "9332aea9071768af1b64ab159d9473530441fc0dfe78fec167e9bb3114783f6d"
+    },
+    "assets/engine-block/preview.png": {
+      "bytes": 981490,
+      "sha256": "e2454b8c702b25bd7bb1e6b69dd996704b0a846b29a53ddb9005b273fa086a98"
+    },
+    "assets/engine-block/source-verification.json": {
+      "bytes": 952,
+      "sha256": "398ca3d6c18711a4cdd82156389cf887efee8ae6b3aaf15a77307e2434b5e3b7"
+    },
+    "assets/field-ambulance-van/field-ambulance-van-lod1.bin": {
+      "bytes": 2024588,
+      "sha256": "9be1f2d9552d1e040392254acd2c3a2c561680d778eac3a7bbeb9b514aff75a5"
+    },
+    "assets/field-ambulance-van/field-ambulance-van-lod1.gltf": {
+      "bytes": 21809,
+      "sha256": "fab0545502acac7563f0cdbd33b80225c424e993429054ee1d1177ca171730e6"
+    },
+    "assets/field-ambulance-van/field-ambulance-van.bin": {
+      "bytes": 5908212,
+      "sha256": "163c1792a0c9c69121cbc5108cdb80e15c6f28257a77700113c47efbef44c770"
+    },
+    "assets/field-ambulance-van/field-ambulance-van.gltf": {
+      "bytes": 21826,
+      "sha256": "00e678e369f124623bec0fb29ba910c5b13b167e1cc783cb763a4204b995b71c"
+    },
+    "assets/field-ambulance-van/preview.png": {
+      "bytes": 1264301,
+      "sha256": "6bcda8018c870864637b9362f4b2ef395219281fff1db63bf978152839273bbf"
+    },
+    "assets/field-ambulance-van/source-verification.json": {
+      "bytes": 863,
+      "sha256": "5c53a54ccc7eb93d5c209c84b2097887278907d94fc07d75269145d141cde7cc"
+    },
+    "assets/field-medic/field-medic-lod1.bin": {
+      "bytes": 379672,
+      "sha256": "aa9bbd57724feb6eca4f96f7e335d048bfc7222219596e17bc557cde10bbed3e"
+    },
+    "assets/field-medic/field-medic-lod1.gltf": {
+      "bytes": 17663,
+      "sha256": "470e81f1496c5c0c02a68d6b1bb8d92e114ca8cd6f875699d5c93ecc4be54c8c"
+    },
+    "assets/field-medic/field-medic.bin": {
+      "bytes": 1193952,
+      "sha256": "ceb17dac135284b7d013d3484119f25bccd5b8af03da144c260b3f6409f34ae8"
+    },
+    "assets/field-medic/field-medic.gltf": {
+      "bytes": 17739,
+      "sha256": "224b4330845072301e26c0520e041b224733973da5f305dea6ca902cedad2cad"
+    },
+    "assets/field-medic/preview.png": {
+      "bytes": 1191673,
+      "sha256": "aec21af9867d40b30b8d65c0f43dd065795be60d676c333bb4995c84aaa42d76"
+    },
+    "assets/field-medic/source-verification.json": {
+      "bytes": 947,
+      "sha256": "bed1b30990dd7f9802f16d0ec0e2ed3256d710100e0f60d9bd149593ccc1ce1b"
+    },
+    "assets/flatbed-convoy-truck/flatbed-convoy-truck-lod1.bin": {
+      "bytes": 2910024,
+      "sha256": "0fba99f9c541578058080e51fb653aa17e453935f1496ece04a1bafd3a38bcd6"
+    },
+    "assets/flatbed-convoy-truck/flatbed-convoy-truck-lod1.gltf": {
+      "bytes": 21883,
+      "sha256": "a7cd30640fccf7b4492ff097794f59a7c031d1a22184bd0e365572456daae4be"
+    },
+    "assets/flatbed-convoy-truck/flatbed-convoy-truck.bin": {
+      "bytes": 8719132,
+      "sha256": "94c53eae9a3d4ba3ff3ab9c63ae797600af6d5b3b5d6bcee8e09bc58e3a9ad66"
+    },
+    "assets/flatbed-convoy-truck/flatbed-convoy-truck.gltf": {
+      "bytes": 21929,
+      "sha256": "088c7581ebbf22d539241f656f18e300752db188f4d80d8b09c0328f234b831e"
+    },
+    "assets/flatbed-convoy-truck/preview.png": {
+      "bytes": 1159810,
+      "sha256": "6eedd5136a531fb52a4c40836cc45f247957789318560251fb3795d48bca0715"
+    },
+    "assets/flatbed-convoy-truck/source-verification.json": {
+      "bytes": 864,
+      "sha256": "9f39b9ad1ab5da259532744e181b8139d9d0993b2deb42632b6eebfdd86d7cef"
+    },
+    "assets/fridge-barricade/fridge-barricade-lod1.bin": {
+      "bytes": 504984,
+      "sha256": "62d1e412f69e99dd20a21d00930cb86c3ea0ed80c89a6151f53248defd2fbca8"
+    },
+    "assets/fridge-barricade/fridge-barricade-lod1.gltf": {
+      "bytes": 15389,
+      "sha256": "4d571cc144d0c2d9183e56afe8d066e63cb710a660f67904ae4323545fdad01d"
+    },
+    "assets/fridge-barricade/fridge-barricade.bin": {
+      "bytes": 1355592,
+      "sha256": "f3e0177187ff0e0d3f720aeed398ed8e2194e8285cd102f885e54720b1af1d19"
+    },
+    "assets/fridge-barricade/fridge-barricade.gltf": {
+      "bytes": 15452,
+      "sha256": "294e2203a9fe3153c8b4852bc8d390e7eca5201f74bad92ad93c2d8e5a32bbb6"
+    },
+    "assets/fridge-barricade/preview.png": {
+      "bytes": 1016678,
+      "sha256": "2f24696de9a4fb36c4163fc9f4524114fd6f4272af175d2e951655b59496a7f0"
+    },
+    "assets/fridge-barricade/source-verification.json": {
+      "bytes": 955,
+      "sha256": "0a2c2695d3e775c00b105dbc42e705c024a5a8cc961d28597fc45d2d0d5c22a0"
+    },
+    "assets/fungal-shed/fungal-shed-lod1.bin": {
+      "bytes": 1839108,
+      "sha256": "a71b334d66a38bb0f0364c42568b8ced3ed754309ee74e5ccc5298940d95f984"
+    },
+    "assets/fungal-shed/fungal-shed-lod1.gltf": {
+      "bytes": 24365,
+      "sha256": "d1a781dbcb64d4f8c25ac8ee5c5df67dca8355402787152e9b927a89329f4b11"
+    },
+    "assets/fungal-shed/fungal-shed.bin": {
+      "bytes": 5391048,
+      "sha256": "0bbc0d358dc4f626c6dd7657363d7311c55ffbbb821e0ade8581aab81bfd14e2"
+    },
+    "assets/fungal-shed/fungal-shed.gltf": {
+      "bytes": 24380,
+      "sha256": "909fe86c922434e12b1417aaba1947caeb7c559534a54f4c011e2a11e051c4e9"
+    },
+    "assets/fungal-shed/preview.png": {
+      "bytes": 1056898,
+      "sha256": "01d579933e9ef2219a8e0b7bfd3ed275a5c5a0b948164f88f9d1cad1d357ddfe"
+    },
+    "assets/fungal-shed/source-verification.json": {
+      "bytes": 951,
+      "sha256": "c94e96d47d0b53d6245cea4fc8f3970f919b47acf5cf52d54b617cf086e1fa6b"
+    },
+    "assets/heavy-vehicle-operator/heavy-vehicle-operator-lod1.bin": {
+      "bytes": 334976,
+      "sha256": "fa705775d86e5bd90f2b860efcda649a84eacb2cfe7406eee221c686d12565ff"
+    },
+    "assets/heavy-vehicle-operator/heavy-vehicle-operator-lod1.gltf": {
+      "bytes": 17595,
+      "sha256": "e10189a4ab1fb585412292d43431e0e107256145b2e3b29c30472359bc8e14e1"
+    },
+    "assets/heavy-vehicle-operator/heavy-vehicle-operator.bin": {
+      "bytes": 1090856,
+      "sha256": "655d74a66c5decf8828391f337e6f1ff8a9480aad83adc255da2b408cd145cd3"
+    },
+    "assets/heavy-vehicle-operator/heavy-vehicle-operator.gltf": {
+      "bytes": 17661,
+      "sha256": "fdfe135f338186ee5ad91315809b2540a3ccdc508dd0548cdc2f60679de68649"
+    },
+    "assets/heavy-vehicle-operator/preview.png": {
+      "bytes": 1188739,
+      "sha256": "eb094fc22018162bdd93569214b48c0addab5f68e765327846ee29f60aab14f7"
+    },
+    "assets/heavy-vehicle-operator/source-verification.json": {
+      "bytes": 957,
+      "sha256": "5e7ed57dfd52a7a2166231a6c373fce1c197a0972d037991ae0d119ef86d4c5f"
+    },
+    "assets/improvised-anti-vehicle-barrier/improvised-anti-vehicle-barrier-lod1.bin": {
+      "bytes": 636188,
+      "sha256": "719abe04b5f27d167d7c7ce4a370c17ea630e474bf9fe1f7a3c7dcc80c2d8ca7"
+    },
+    "assets/improvised-anti-vehicle-barrier/improvised-anti-vehicle-barrier-lod1.gltf": {
+      "bytes": 17120,
+      "sha256": "f6c3ae9630d44c3be51209abd6cc0be0063996e7e077de5e633e3bd872c6cfb5"
+    },
+    "assets/improvised-anti-vehicle-barrier/improvised-anti-vehicle-barrier.bin": {
+      "bytes": 1809680,
+      "sha256": "9a94624dcfd7f8485a8daf1cfd336b16af31cc6a7e4c295fc830ad7f5eb29f80"
+    },
+    "assets/improvised-anti-vehicle-barrier/improvised-anti-vehicle-barrier.gltf": {
+      "bytes": 17186,
+      "sha256": "2abb70502081c71afa6d93a659ae0259cd971d95a5e6f9e10a0820b68b4eae17"
+    },
+    "assets/improvised-anti-vehicle-barrier/preview.png": {
+      "bytes": 955259,
+      "sha256": "1e10af46e6737503ffb8ab3d5271bd320740b6a26e6126a6116d85ab9d3711ce"
+    },
+    "assets/improvised-anti-vehicle-barrier/source-verification.json": {
+      "bytes": 971,
+      "sha256": "d680670ecbe3da05568e4b53079565728e81912ac9344e5b981f6016342306bb"
+    },
+    "assets/improvised-launcher/improvised-launcher-lod1.bin": {
+      "bytes": 288372,
+      "sha256": "9c07e98b6178d13c9cdc0819503a54692ce6227c01f238328b59e7d6568e03b5"
+    },
+    "assets/improvised-launcher/improvised-launcher-lod1.gltf": {
+      "bytes": 22315,
+      "sha256": "5f2306f29d7556682f6b8aa098ac21ff7e861db3d8c4aa5639bb257c7d8a0d88"
+    },
+    "assets/improvised-launcher/improvised-launcher.bin": {
+      "bytes": 833804,
+      "sha256": "ea4519c56a4ba2c0d28840a4218b7a23f3f7e036efc64e3ad10fd07cfe33349e"
+    },
+    "assets/improvised-launcher/improvised-launcher.gltf": {
+      "bytes": 22361,
+      "sha256": "5b7617faf6889ec7bc8273496ec06379b1d69ac9b227b927a2fb00eeecfc3a13"
+    },
+    "assets/improvised-launcher/preview.png": {
+      "bytes": 978229,
+      "sha256": "d1b99c97477f8ce433da7ab0153ac965b678d1d9d82f2a881c8976db0b5f3f39"
+    },
+    "assets/improvised-launcher/source-verification.json": {
+      "bytes": 959,
+      "sha256": "2aa389c95e7b606b732ad57ce01bd6fbb83808d109e11f7a938a27f9075a09e5"
+    },
+    "assets/improvised-workshop/improvised-workshop-lod1.bin": {
+      "bytes": 3748080,
+      "sha256": "76c7d6f85eecb3ce5b86a3891303d7f8e25d834307516826b92baf31be26ef4a"
+    },
+    "assets/improvised-workshop/improvised-workshop-lod1.gltf": {
+      "bytes": 28024,
+      "sha256": "78d3c90d66cd8f8e303b5f4f98838e61dab554ccfa791c83775a89c53777f18a"
+    },
+    "assets/improvised-workshop/improvised-workshop.bin": {
+      "bytes": 9778634,
+      "sha256": "6976cc95552e5b39be07c1aa32f32b693374c493d8dd594e4ec584dcc58d2257"
+    },
+    "assets/improvised-workshop/improvised-workshop.gltf": {
+      "bytes": 28070,
+      "sha256": "2985a43df7f8fa84cd49ac60da9c1ab159302257ebc6c6b4b73e1e28e9388e07"
+    },
+    "assets/improvised-workshop/preview.png": {
+      "bytes": 1706951,
+      "sha256": "e7d96e4752836dce747bbcde374774e2b425a0ddb2947467f55e334979a23302"
+    },
+    "assets/improvised-workshop/source-verification.json": {
+      "bytes": 3549,
+      "sha256": "dca65bbca31ebfbe5527d305ce85a216c0f4943d112b316fe0c0c11e2833467b"
+    },
+    "assets/lantern-scanner/lantern-scanner-lod1.bin": {
+      "bytes": 334984,
+      "sha256": "537dd0b811b4d5004429dc2de1ba965ae99507c3731776f9738c73c96c0069dd"
+    },
+    "assets/lantern-scanner/lantern-scanner-lod1.gltf": {
+      "bytes": 16944,
+      "sha256": "c5f6fe283b34aeb126a68b661b4757425fa832479c6c369c319f93775e91879b"
+    },
+    "assets/lantern-scanner/lantern-scanner.bin": {
+      "bytes": 949124,
+      "sha256": "e9a5e9f92e4859800b496bc05f308d290961f0236811595ca38422d6e5bb0844"
+    },
+    "assets/lantern-scanner/lantern-scanner.gltf": {
+      "bytes": 16989,
+      "sha256": "4f596dc2fb99939d2ecc99658d7ca5da078fc905c4d9ceb839c6bc428cf41408"
+    },
+    "assets/lantern-scanner/preview.png": {
+      "bytes": 971717,
+      "sha256": "8d59a8169399067c44e46bda1cbfababd26473344ce43d6ff88e30b87b462e6b"
+    },
+    "assets/lantern-scanner/source-verification.json": {
+      "bytes": 955,
+      "sha256": "a60b61617d6e81b415ee540afd198bc2d5f13dd29d70d196cb29226dada116d9"
+    },
+    "assets/licensed-driver/licensed-driver-lod1.bin": {
+      "bytes": 352904,
+      "sha256": "7a39b3115d968f43a562d9d7321c62c7651513063a17ac1b3fb38ef2725f6e51"
+    },
+    "assets/licensed-driver/licensed-driver-lod1.gltf": {
+      "bytes": 16084,
+      "sha256": "b446ce156855214f5bcb26a3d63280dafa534ef1633d2ecf65a2a000089d24a6"
+    },
+    "assets/licensed-driver/licensed-driver.bin": {
+      "bytes": 1144744,
+      "sha256": "0edbd80bb550a5ed6893ba5529deac71d9c97e468b42ce7cee23bf8ceafa8781"
+    },
+    "assets/licensed-driver/licensed-driver.gltf": {
+      "bytes": 16148,
+      "sha256": "531716f94cb4394cff82e2f4bf942b1d11278ecae9396da9946ceda0074407df"
+    },
+    "assets/licensed-driver/preview.png": {
+      "bytes": 1169427,
+      "sha256": "c045f358dea077761c5ef73a58e5af576216d88b367766996a12bf5e65f9fb30"
+    },
+    "assets/licensed-driver/source-verification.json": {
+      "bytes": 951,
+      "sha256": "7eba88dfd286577de1345c7457f85231e1254363a24eebe95a5dff3ffee70f8b"
+    },
+    "assets/light-tower/light-tower-lod1.bin": {
+      "bytes": 420380,
+      "sha256": "71b8972d372bc235851eae842860bf4c92f320b9a7a9d39889654692193e395c"
+    },
+    "assets/light-tower/light-tower-lod1.gltf": {
+      "bytes": 15610,
+      "sha256": "94f3b859a18d6fc2987113112f9011255806a0b80b07a89ae391861f83cd219f"
+    },
+    "assets/light-tower/light-tower.bin": {
+      "bytes": 1175096,
+      "sha256": "8a768b3c6823ee3ab913ab458c99b0136b611e464877572716fb3dadeabd8998"
+    },
+    "assets/light-tower/light-tower.gltf": {
+      "bytes": 15587,
+      "sha256": "529a0edbf5ae642e23ba793ab1742a88043f59c5a07cc56e2297fe58bdea1ab2"
+    },
+    "assets/light-tower/preview.png": {
+      "bytes": 986421,
+      "sha256": "841d7d2eb5ac20592e863a187cf135dacb003549346142464ee5c347076b0447"
+    },
+    "assets/light-tower/source-verification.json": {
+      "bytes": 951,
+      "sha256": "8d500f076c2cc4909dfa7e4e1bec2905d1fcd472484731d0c388927ba2ac954b"
+    },
+    "assets/livestock-pen/livestock-pen-lod1.bin": {
+      "bytes": 1084560,
+      "sha256": "064514db1c206f4cc9a63baac6de89658b912fcfc15e431df861377304f8c2d6"
+    },
+    "assets/livestock-pen/livestock-pen-lod1.gltf": {
+      "bytes": 21331,
+      "sha256": "8845919073b605bab92dc9cbd277dafb72cb5c86b6bb80b43b2b01a3d3236ec4"
+    },
+    "assets/livestock-pen/livestock-pen.bin": {
+      "bytes": 3106764,
+      "sha256": "5b658be8a44f9ddc48d08f294dca02e43615fe9a87f988d58822aeb7241d0efa"
+    },
+    "assets/livestock-pen/livestock-pen.gltf": {
+      "bytes": 21420,
+      "sha256": "2fa407cb6ea2f3c379b4364979e5561df6cc23dfdacf9ed8dc4dc917cfe2ed36"
+    },
+    "assets/livestock-pen/preview.png": {
+      "bytes": 1085706,
+      "sha256": "899589563d39b1d69a16208323ea97e2398eb1bfd87e00dbc7b68c5df5c68d18"
+    },
+    "assets/livestock-pen/source-verification.json": {
+      "bytes": 953,
+      "sha256": "cc062a7473daab5cf7d3532e5897cbabf289f9da82449d95033cddc535478da7"
+    },
+    "assets/machine-shop/machine-shop-lod1.bin": {
+      "bytes": 2068162,
+      "sha256": "4b7b9d594fa66693c277dfc16efb3b5b16070ac741bcd41653591f8c6ebfbd20"
+    },
+    "assets/machine-shop/machine-shop-lod1.gltf": {
+      "bytes": 24730,
+      "sha256": "e10260a330cfeff996cca5864201d58f7b66e8c0492932f979876a99ed537412"
+    },
+    "assets/machine-shop/machine-shop.bin": {
+      "bytes": 5815344,
+      "sha256": "115abf496858522985c04f828978b6901b3abc238afd9c15f7fff141a6581bb6"
+    },
+    "assets/machine-shop/machine-shop.gltf": {
+      "bytes": 24781,
+      "sha256": "2ed07c06d9f2660399d5e1d2161c334b9b6342708887e9343899b5f90efd3d5f"
+    },
+    "assets/machine-shop/preview.png": {
+      "bytes": 1064464,
+      "sha256": "b355e2938f3048b9d98e6ba5f25b9ff778489335b780d0a83097a08c00db8170"
+    },
+    "assets/machine-shop/source-verification.json": {
+      "bytes": 953,
+      "sha256": "27696740fe33443517c4ea4711784c3a42524e4f5a680cb5bf86d38cb8da36cc"
+    },
+    "assets/major-city-tower-district/major-city-tower-district-lod1.bin": {
+      "bytes": 5041832,
+      "sha256": "5a7631b3fc752da13e97f1e496aa547a5e58a728a118d14be6b6ced7dcc98495"
+    },
+    "assets/major-city-tower-district/major-city-tower-district-lod1.gltf": {
+      "bytes": 26499,
+      "sha256": "3dff3f31439cdfbfb52162728bc02bf8d5d6308c4eed5bca69274bac58126c33"
+    },
+    "assets/major-city-tower-district/major-city-tower-district.bin": {
+      "bytes": 15062488,
+      "sha256": "13ac42af8b9b222be5d5d41e0eadf4ffebcbbaa2d43a9092869e01c1b016d042"
+    },
+    "assets/major-city-tower-district/major-city-tower-district.gltf": {
+      "bytes": 26540,
+      "sha256": "1f2074e3278634d83068a857220b252b9ad2b2e2c61904d1239aee6ad1c0aea9"
+    },
+    "assets/major-city-tower-district/preview.png": {
+      "bytes": 1397194,
+      "sha256": "3c030d10f7cbb3a825dca125d26ce296c82adfd157244b17774c62eab16dc305"
+    },
+    "assets/major-city-tower-district/source-verification.json": {
+      "bytes": 963,
+      "sha256": "b5eca40ad8c4cc5427f4718a951bf084f149fa5672e451b18eca66c8cceaf10a"
+    },
+    "assets/major-city-wall-section/major-city-wall-section-lod1.bin": {
+      "bytes": 2959448,
+      "sha256": "9262e4464cb42d7afa27bc73b4b8af3de6890fc6e62c7fa7ffe0a8ab0b7b9fce"
+    },
+    "assets/major-city-wall-section/major-city-wall-section-lod1.gltf": {
+      "bytes": 21612,
+      "sha256": "c29d2f798f5c8266f909e2709038ea46006ccebf580083fb820fea51c0584c83"
+    },
+    "assets/major-city-wall-section/major-city-wall-section.bin": {
+      "bytes": 8752396,
+      "sha256": "f621f23ad90c1041758b386107cf3eb47bbb69beba5a2121f53b8a4ee0533d1a"
+    },
+    "assets/major-city-wall-section/major-city-wall-section.gltf": {
+      "bytes": 21622,
+      "sha256": "f51c043a8ef66ebab9d9b6e2afd36798f16f6221c14462505202a5ee2c3334b5"
+    },
+    "assets/major-city-wall-section/preview.png": {
+      "bytes": 1167406,
+      "sha256": "407f225740521f24958247d3784ea502d1535577d2b4f0396e529f5ec01d4ad8"
+    },
+    "assets/major-city-wall-section/source-verification.json": {
+      "bytes": 961,
+      "sha256": "c47d7d5f9f0c230864d94e9dc7e4c87fab6887e9a05c15253467aa04490b2936"
+    },
+    "assets/mechanic-repair-crew/mechanic-repair-crew-lod1.bin": {
+      "bytes": 362672,
+      "sha256": "d9dad285d709528b3ca10397aaffb18379e95875c279a6dcfcb025a816fa6004"
+    },
+    "assets/mechanic-repair-crew/mechanic-repair-crew-lod1.gltf": {
+      "bytes": 20471,
+      "sha256": "22896e89739e8b1195101bf2092e3da1b18090f6a02a6559999f1f67c756c154"
+    },
+    "assets/mechanic-repair-crew/mechanic-repair-crew.bin": {
+      "bytes": 1167264,
+      "sha256": "08e794f775a2dac1fb1666a77549d5857011ed9eda807a52e4dfc1ff71e010de"
+    },
+    "assets/mechanic-repair-crew/mechanic-repair-crew.gltf": {
+      "bytes": 20549,
+      "sha256": "b1245dc8e263278f1c889e8d88069542b5c0e60ee3ec9cff4c35a22396de12f6"
+    },
+    "assets/mechanic-repair-crew/preview.png": {
+      "bytes": 1188570,
+      "sha256": "85ef5ef18de879d81b89815ca544eaaf22e138baf015172d0ad02ba1ccb64d24"
+    },
+    "assets/mechanic-repair-crew/source-verification.json": {
+      "bytes": 956,
+      "sha256": "1405c7abab39e6662d9ad0818374f9a0c1c50f4e083ad74792fe2176203556bb"
+    },
+    "assets/mercenary-carrier/mercenary-carrier-lod1.bin": {
+      "bytes": 2713476,
+      "sha256": "b6ada21749a850f1ef4805d782b2e6ed96b4cf3fc21bac12c14dd6da663d0487"
+    },
+    "assets/mercenary-carrier/mercenary-carrier-lod1.gltf": {
+      "bytes": 21661,
+      "sha256": "ea0adb2c374c22f0bd14ccd50ca4ae1339b228806378e7c6491f6351d6844044"
+    },
+    "assets/mercenary-carrier/mercenary-carrier.bin": {
+      "bytes": 8048564,
+      "sha256": "cceb0c7827e40ea507702d7ede7575e6726c2b1cabb658c98ba817ae5bad7718"
+    },
+    "assets/mercenary-carrier/mercenary-carrier.gltf": {
+      "bytes": 21646,
+      "sha256": "3b6628e8f06e096016118e8bdf9b00b49fb4748f7f503c4416c709afeebdf889"
+    },
+    "assets/mercenary-carrier/preview.png": {
+      "bytes": 1208354,
+      "sha256": "fcb4921727a2da6220ffafad169cc45e191c00e95cafc7fc9b51fcfdda98d172"
+    },
+    "assets/mercenary-carrier/source-verification.json": {
+      "bytes": 861,
+      "sha256": "651f673b11b67d288bbb91ba59537a37e66ccff9da3c1f8daeb6b8ad38d13c07"
+    },
+    "assets/mercenary-ex-mil/mercenary-ex-mil-lod1.bin": {
+      "bytes": 411252,
+      "sha256": "bd830594c7b6bdb88f2076771d4b867902f50d1e4a01eb7bed0ddc6fa247fa84"
+    },
+    "assets/mercenary-ex-mil/mercenary-ex-mil-lod1.gltf": {
+      "bytes": 21096,
+      "sha256": "87daf176394135d40be65c2009b3f8bd05c2b828f3e050283cefa770160b1ea7"
+    },
+    "assets/mercenary-ex-mil/mercenary-ex-mil.bin": {
+      "bytes": 1311616,
+      "sha256": "98214f3a85446e858f93ff1a05c9bce2ceb7ea218ba66bb1fe9a0f32a9d09fa2"
+    },
+    "assets/mercenary-ex-mil/mercenary-ex-mil.gltf": {
+      "bytes": 21193,
+      "sha256": "091b41914f36580b9a5b500dfde14b48f785bf9c9aee6c949bab51bd6c9a1742"
+    },
+    "assets/mercenary-ex-mil/preview.png": {
+      "bytes": 1176687,
+      "sha256": "17219b0be9a3ed9f60c9c351d884276665eed04e710357580d49487f030e5a30"
+    },
+    "assets/mercenary-ex-mil/source-verification.json": {
+      "bytes": 952,
+      "sha256": "bf626dc8183b705f638c159f30f1e5f7e117444e3781dee728846dd2386e6b8c"
+    },
+    "assets/mercenary-free-agent/mercenary-free-agent-lod1.bin": {
+      "bytes": 403840,
+      "sha256": "221894c7722d7c0ad6db8862e59c911c128694c48aaa7ae2d4d89ee018c95759"
+    },
+    "assets/mercenary-free-agent/mercenary-free-agent-lod1.gltf": {
+      "bytes": 19908,
+      "sha256": "ea32e26be2caf9b1697e4dca6a8784ebff5589b59169db2ac6c38ea150c299f2"
+    },
+    "assets/mercenary-free-agent/mercenary-free-agent.bin": {
+      "bytes": 1295320,
+      "sha256": "07ae563e55146e3e931d69786470d669355a8f4f880d77b3bbdcb9f9e4a854c9"
+    },
+    "assets/mercenary-free-agent/mercenary-free-agent.gltf": {
+      "bytes": 19997,
+      "sha256": "192414089e16f293bd334f4e9cebe40fbe45e9a7f92700c658e87ccd4c4f491f"
+    },
+    "assets/mercenary-free-agent/preview.png": {
+      "bytes": 1164580,
+      "sha256": "01d661763cc162386ec168dabfcaeb9dd5a7f73fc39d90ee479dbd1fe258ca61"
+    },
+    "assets/mercenary-free-agent/source-verification.json": {
+      "bytes": 956,
+      "sha256": "576d138d64da4c1d042e935616c383841ad56fe0b4c2a5477c6b6131f40cdc75"
+    },
+    "assets/meteor-power-cell/meteor-power-cell-lod1.bin": {
+      "bytes": 220284,
+      "sha256": "7fb5a9a6d3c252381e5d4de193cdf7cc55ab6b0396ed03917787bc9323f75a2e"
+    },
+    "assets/meteor-power-cell/meteor-power-cell-lod1.gltf": {
+      "bytes": 12036,
+      "sha256": "612f43a12558951a815e7ca07a4861391ecaa39134c4e9f7683ef3dd1c78217f"
+    },
+    "assets/meteor-power-cell/meteor-power-cell.bin": {
+      "bytes": 676544,
+      "sha256": "0443179e6a8de603c415357142bdc8f41f39f59b00ab6aa3c65ae0c644b226a2"
+    },
+    "assets/meteor-power-cell/meteor-power-cell.gltf": {
+      "bytes": 12064,
+      "sha256": "61d962931688c164add67cf6df63226037f66c5bc275fb0583dff2bb9b38c3d8"
+    },
+    "assets/meteor-power-cell/preview.png": {
+      "bytes": 997896,
+      "sha256": "8c26803c17c479954e4a0714fb7d36224187be8eb924da9d239a73f6d4f01e00"
+    },
+    "assets/meteor-power-cell/source-verification.json": {
+      "bytes": 957,
+      "sha256": "7c81b5b53627247901c84f1b1404107c388fc77bd62d924ef73a9e90db3e50bf"
+    },
+    "assets/meteor-reactor/meteor-reactor-lod1.bin": {
+      "bytes": 2182296,
+      "sha256": "49bd34d4d787756318ba902d822f071c15a6a00b5c7fbca2ffec37cdced546c5"
+    },
+    "assets/meteor-reactor/meteor-reactor-lod1.gltf": {
+      "bytes": 18503,
+      "sha256": "8a24dba36eab8738d5de2bc4f5a2d259d40a8e38ad1a99a13ecefca05fc4566d"
+    },
+    "assets/meteor-reactor/meteor-reactor.bin": {
+      "bytes": 6318272,
+      "sha256": "a2665ea755b661b22a6912d2b4659491af4636c433bd58dee33075f61e35b273"
+    },
+    "assets/meteor-reactor/meteor-reactor.gltf": {
+      "bytes": 18545,
+      "sha256": "b038109a1a8d88420db2c5dd7366bcc5bf1a7b83d0d0c598640dbbea127fcb92"
+    },
+    "assets/meteor-reactor/preview.png": {
+      "bytes": 1246206,
+      "sha256": "bac3881f6bb5591bb305e0d98509218867a726f7d3791f23f7af0a19f9134e6f"
+    },
+    "assets/meteor-reactor/source-verification.json": {
+      "bytes": 951,
+      "sha256": "6ea465417b16975a62cd6d78175e00e0f7dd3112c990ed8f9f505429b7c7b6db"
+    },
+    "assets/mine-marker/mine-marker-lod1.bin": {
+      "bytes": 440344,
+      "sha256": "1afd38b5f530185cf56734817040fab59c0d6195558fbd9bda7fcfb0052131ba"
+    },
+    "assets/mine-marker/mine-marker-lod1.gltf": {
+      "bytes": 16469,
+      "sha256": "ab551ce895c3326903d5be0d90df416518ee881c950f283ee57267f00d73eed1"
+    },
+    "assets/mine-marker/mine-marker.bin": {
+      "bytes": 1230216,
+      "sha256": "d4a28c0819ce53d5354abd1ac13a512648382f3a24735e11f6fda44384ea3316"
+    },
+    "assets/mine-marker/mine-marker.gltf": {
+      "bytes": 16517,
+      "sha256": "1e19eed0e72b0120146a72eea84afbc9a54377583518941292f6e1b3b8c3a464"
+    },
+    "assets/mine-marker/preview.png": {
+      "bytes": 942037,
+      "sha256": "9f669917b223e490a10b1e5a5701b5aa07ab9806f2e7fdbbb210a177ccbe31b9"
+    },
+    "assets/mine-marker/source-verification.json": {
+      "bytes": 950,
+      "sha256": "1f50855a487978959e4bdbba02294ee438ae1c45a3954d8e9efb03e4bdb5dcc8"
+    },
+    "assets/mining-drill/mining-drill-lod1.bin": {
+      "bytes": 551780,
+      "sha256": "b046bb94283c2bd9a5b833caa24dfc4bcdda0ca7307b4592f34a7af47cf9a7c5"
+    },
+    "assets/mining-drill/mining-drill-lod1.gltf": {
+      "bytes": 15290,
+      "sha256": "b23add3a833f74c549e457a1a604dc38c4948996d6f1874b113d96b932748b65"
+    },
+    "assets/mining-drill/mining-drill.bin": {
+      "bytes": 1512552,
+      "sha256": "7b20f06422b1b4053cdb5278c829e20dfe1c1c988f0c03a194d4d0d3aa262f21"
+    },
+    "assets/mining-drill/mining-drill.gltf": {
+      "bytes": 15346,
+      "sha256": "355d3c188995ff497d993ee2e00ea5a43355673112bb291b676eee2dc9a32e6c"
+    },
+    "assets/mining-drill/preview.png": {
+      "bytes": 973836,
+      "sha256": "b30146cc6cf10d097a03bd120e605a54d1db9996a9f84fc86c12f101ea995c28"
+    },
+    "assets/mining-drill/source-verification.json": {
+      "bytes": 952,
+      "sha256": "585ec1604602887d776c289e57916f92749f4a7a24f2b50a763a0f9feddb8c50"
+    },
+    "assets/open-crop-terrace/open-crop-terrace-lod1.bin": {
+      "bytes": 1900500,
+      "sha256": "e60ee1486bf6d511c1cbed3b29ee56133d77e40a691da318762dde9f50155f4b"
+    },
+    "assets/open-crop-terrace/open-crop-terrace-lod1.gltf": {
+      "bytes": 18477,
+      "sha256": "7c188528aebad595d9618fd347690026aac4e41ea6b0f49410b90b0649a40878"
+    },
+    "assets/open-crop-terrace/open-crop-terrace.bin": {
+      "bytes": 5154848,
+      "sha256": "7469ed7deba24e8fada45722f8706db23c0da7cdc22ac5c818961a2b5063fea4"
+    },
+    "assets/open-crop-terrace/open-crop-terrace.gltf": {
+      "bytes": 18511,
+      "sha256": "5bee72454c86935b920603af33b45082d54e56a07c45eba9eccd85b7d2626b64"
+    },
+    "assets/open-crop-terrace/preview.png": {
+      "bytes": 1074961,
+      "sha256": "9af1e6b62a2a0b200d5160322b1e566447e0a8c676485aceb02a20db2881dcb4"
+    },
+    "assets/open-crop-terrace/source-verification.json": {
+      "bytes": 957,
+      "sha256": "754237b226daabbb1aba9116e80a3ded99d6d76c28aec03edaec471150de6580"
+    },
+    "assets/pipe-shotgun/pipe-shotgun-lod1.bin": {
+      "bytes": 307828,
+      "sha256": "1870144569535bdfe0a69311206c2511ababb7e9712df218cdd1af7e2740f30a"
+    },
+    "assets/pipe-shotgun/pipe-shotgun-lod1.gltf": {
+      "bytes": 18928,
+      "sha256": "2bbb2a11ea17d44184708c453ff584a2b962dbd2362218b2e3471079b31e8239"
+    },
+    "assets/pipe-shotgun/pipe-shotgun.bin": {
+      "bytes": 880360,
+      "sha256": "aaa02ae0600020036e8ac48284427c28e38d0c9ae61b1e19aade4250a327ac22"
+    },
+    "assets/pipe-shotgun/pipe-shotgun.gltf": {
+      "bytes": 18963,
+      "sha256": "d70914f0934d2f59cd56e7dbe363100b57f2f67d743313870461c0432fbc1f94"
+    },
+    "assets/pipe-shotgun/preview.png": {
+      "bytes": 964746,
+      "sha256": "d8a694b3ac67e85cf87d6d0fd58827a34253ae774684e0939e0d6591584bd025"
+    },
+    "assets/pipe-shotgun/source-verification.json": {
+      "bytes": 952,
+      "sha256": "75733ad8db473eed48f5227454487d8ada5953a2416d92c29717002b605fbe8d"
+    },
+    "assets/power-core-building/power-core-building-lod1.bin": {
+      "bytes": 1909608,
+      "sha256": "673f06b8e3fd39c2e31593c1c4bde24e8f0029181072cbe9358ab8168a73235d"
+    },
+    "assets/power-core-building/power-core-building-lod1.gltf": {
+      "bytes": 23124,
+      "sha256": "7a6496a14b3b25672b67a13383a822827af68b9d08a53cb86c7ff60512739307"
+    },
+    "assets/power-core-building/power-core-building.bin": {
+      "bytes": 5375464,
+      "sha256": "449e26aa900e44b15fa28d6849864c6be7fbc291e6ad7f4aef7cfa3fcd47ca11"
+    },
+    "assets/power-core-building/power-core-building.gltf": {
+      "bytes": 23138,
+      "sha256": "b8f72172a7bc63462b14fbf54d1abb865c7f24653237db1037bc281eb7155faa"
+    },
+    "assets/power-core-building/preview.png": {
+      "bytes": 1072635,
+      "sha256": "e9d80fc52f3bbe8534ad244605c0c6ea76e97362fe762bdd5c8db3f25cd78b91"
+    },
+    "assets/power-core-building/source-verification.json": {
+      "bytes": 960,
+      "sha256": "6b29cf3fa61f605ff9e6a2d458f3addd0b59a4cd34fb51f7921364fb98d64ef8"
+    },
+    "assets/push-cart/preview.png": {
+      "bytes": 1219869,
+      "sha256": "9cd129b45c4c057c6bf857096f738b13dc6764f601cb59919af8a07f9b3592df"
+    },
+    "assets/push-cart/push-cart-lod1.bin": {
+      "bytes": 991896,
+      "sha256": "5dddd704214761afbbb5717da08c972ab395094bda3430bbd161d6496cdca331"
+    },
+    "assets/push-cart/push-cart-lod1.gltf": {
+      "bytes": 16156,
+      "sha256": "3e8f7dd667b21a8626ded5cc1606b9d48f22f6af61c67febaee595a4980e5427"
+    },
+    "assets/push-cart/push-cart.bin": {
+      "bytes": 2620444,
+      "sha256": "a0348f670d88a99644dc6ab5a450719f146e586349e72ec1bf937e7c5a987735"
+    },
+    "assets/push-cart/push-cart.gltf": {
+      "bytes": 16206,
+      "sha256": "4967cc64fa7b51a63cd3a6740bdfe9bc4ca8afe37ed53d5b3a0b20bd31f6800a"
+    },
+    "assets/push-cart/source-verification.json": {
+      "bytes": 852,
+      "sha256": "dd26a9d13e047d1c49fdc5db266fc09a108993021739219da126f0b8100615d4"
+    },
+    "assets/rail-checkpoint/preview.png": {
+      "bytes": 1306241,
+      "sha256": "32687e057a81e919caadd81129c26ada7a0ff31c75766985018818e838a3c56a"
+    },
+    "assets/rail-checkpoint/rail-checkpoint-lod1.bin": {
+      "bytes": 2422876,
+      "sha256": "c47e27f7590622ae338bb2265fe5505ea2551b27785539a91515a5f5ad4175b6"
+    },
+    "assets/rail-checkpoint/rail-checkpoint-lod1.gltf": {
+      "bytes": 20550,
+      "sha256": "bc3947372b4bc135f04e713f1413c9dea575da572b796f65c375ea94ff77a4ac"
+    },
+    "assets/rail-checkpoint/rail-checkpoint.bin": {
+      "bytes": 6918472,
+      "sha256": "7ccea3d0d5a669ed07bb0590fb0ae90b026e216c2cfafb2530a202f086046ea4"
+    },
+    "assets/rail-checkpoint/rail-checkpoint.gltf": {
+      "bytes": 20587,
+      "sha256": "73c9a6be33cc02497ef1c2eb65551f7c5070f4dbb200509c29fb95a491e34baa"
+    },
+    "assets/rail-checkpoint/source-verification.json": {
+      "bytes": 952,
+      "sha256": "4481b7e6538c99f773f15440609ade5b402ec5121e8b2387a519f1a929aa0301"
+    },
+    "assets/refinery-shack/preview.png": {
+      "bytes": 1073756,
+      "sha256": "dd94de065aac0133b4d561b0ec0c7d61ee79062b8fc558a450605f96d534699c"
+    },
+    "assets/refinery-shack/refinery-shack-lod1.bin": {
+      "bytes": 1155588,
+      "sha256": "617c40b4bf99585d29ea2bf5cbf37a7c9a8154751657a3607233c42c0f1c09a3"
+    },
+    "assets/refinery-shack/refinery-shack-lod1.gltf": {
+      "bytes": 18545,
+      "sha256": "a8cc01362dc3603a13ce8a7919d7a7c3842f81347207df41bf3500e31bdf1df1"
+    },
+    "assets/refinery-shack/refinery-shack.bin": {
+      "bytes": 3255944,
+      "sha256": "bda818f04183d169faa6c4d77a8793553533c6cc2570a5ce14c5df9e3e58dd4b"
+    },
+    "assets/refinery-shack/refinery-shack.gltf": {
+      "bytes": 18595,
+      "sha256": "349653e29b0df5f072db0f6526136055abb645bdc0890bd0197d7bbc465786a1"
+    },
+    "assets/refinery-shack/source-verification.json": {
+      "bytes": 955,
+      "sha256": "57123d1636ae52c462eb3d3153b04799bfd42301d3eb2582cb8b6cb64958f10e"
+    },
+    "assets/regional-scrap-market-gate/preview.png": {
+      "bytes": 1312787,
+      "sha256": "5502ec54b1597b79e1e719736668af92116b82d98b39ae39e4fd77674d30e556"
+    },
+    "assets/regional-scrap-market-gate/regional-scrap-market-gate-lod1.bin": {
+      "bytes": 2651348,
+      "sha256": "52a4b94b86af665d01e4f5cf7e90fd44944bc619ec5c8bb08a5592c9ae5380f0"
+    },
+    "assets/regional-scrap-market-gate/regional-scrap-market-gate-lod1.gltf": {
+      "bytes": 20171,
+      "sha256": "d73e0a48b55d0124de3c4340991c8f55e802df0aa63353a6558a7921998eb744"
+    },
+    "assets/regional-scrap-market-gate/regional-scrap-market-gate.bin": {
+      "bytes": 7803560,
+      "sha256": "093543ba3a6d7c4928115d8957ee3fd4efe4576a2267662c6f56e70b7d34220a"
+    },
+    "assets/regional-scrap-market-gate/regional-scrap-market-gate.gltf": {
+      "bytes": 20194,
+      "sha256": "945939a8f0c714262c70f80c3fdc558d8af0f89086e80a9894abb6955f2bb31b"
+    },
+    "assets/regional-scrap-market-gate/source-verification.json": {
+      "bytes": 963,
+      "sha256": "b5d6f8010dd0fde7e8185e652ce1d52aef9c43ebc8dda9483052dfb958c5b546"
+    },
+    "assets/repair-garage/preview.png": {
+      "bytes": 1062019,
+      "sha256": "d09603d71776220e7374a941fd2564bca165c92f2e4244dbba165387c6406556"
+    },
+    "assets/repair-garage/repair-garage-lod1.bin": {
+      "bytes": 2538196,
+      "sha256": "c83f2098224f6e12effcaaec89c07800ae73611020b7e8ec6865fde4659b6841"
+    },
+    "assets/repair-garage/repair-garage-lod1.gltf": {
+      "bytes": 26410,
+      "sha256": "1a567d77f6450a4bad1edb99144676bd13318556cf4330897e4fa13f9fca7e4c"
+    },
+    "assets/repair-garage/repair-garage.bin": {
+      "bytes": 7189104,
+      "sha256": "8a61155a951ea7768250a9bff77c2e3e4e31e31bcf1847bf7165b2948c582e8d"
+    },
+    "assets/repair-garage/repair-garage.gltf": {
+      "bytes": 26468,
+      "sha256": "4d3e23c38ec90e88280a94edb6b8caf07fd9adbe525d2a456ff154cc96ea1d69"
+    },
+    "assets/repair-garage/source-verification.json": {
+      "bytes": 955,
+      "sha256": "79eb5d8c8a80293ca2221b5d5c715e3b59fa2378905775dbee52f4081318c926"
+    },
+    "assets/repair-welder/preview.png": {
+      "bytes": 969865,
+      "sha256": "afacea06c87cb4dd153ede0b6ba69abfd04e01c8290a378f3f40c7ea9bc20a8d"
+    },
+    "assets/repair-welder/repair-welder-lod1.bin": {
+      "bytes": 271504,
+      "sha256": "6bf428271329cc03d694a88a7f566736289fb278a4906d29b0044701e58a63b2"
+    },
+    "assets/repair-welder/repair-welder-lod1.gltf": {
+      "bytes": 16906,
+      "sha256": "4da8d8b959dd52886adee68e6e67110fbe79d339bb48b406e5742f13e552f6ca"
+    },
+    "assets/repair-welder/repair-welder.bin": {
+      "bytes": 802236,
+      "sha256": "a720de38b568c5ec79352ccad9de72824754e688261e88ce2693d636151d736b"
+    },
+    "assets/repair-welder/repair-welder.gltf": {
+      "bytes": 16936,
+      "sha256": "aea8fe8395297936ea1b1d28c9653d87d3261cb89c65abc8d499f51d95307d84"
+    },
+    "assets/repair-welder/source-verification.json": {
+      "bytes": 953,
+      "sha256": "8b0173687d0e51a8f332e616de51cd7dd38f3f4dbc1135358d349669949fefa6"
+    },
+    "assets/rifle-guard/preview.png": {
+      "bytes": 1176106,
+      "sha256": "7ab00db7e528f24b51a9bf303f1151e50e2211ea59c2cc7c706055275c4882a5"
+    },
+    "assets/rifle-guard/rifle-guard-lod1.bin": {
+      "bytes": 405216,
+      "sha256": "434cab3ddff26394380fc94f324a574f50270bfcc175e76e0f41deff23ac3125"
+    },
+    "assets/rifle-guard/rifle-guard-lod1.gltf": {
+      "bytes": 21092,
+      "sha256": "462564b40d10abd21f50413e88b44559698a6a5c88adc0922c6f177738dbfcc6"
+    },
+    "assets/rifle-guard/rifle-guard.bin": {
+      "bytes": 1292640,
+      "sha256": "03ac27c1dae21e6181e517d6eef1f270f8efa6588063d52a2a7923ffa3100982"
+    },
+    "assets/rifle-guard/rifle-guard.gltf": {
+      "bytes": 21187,
+      "sha256": "d2467590801492b1b0732cfeac7fe614fa9bf2ec888a05013093f0d9004336c7"
+    },
+    "assets/rifle-guard/source-verification.json": {
+      "bytes": 947,
+      "sha256": "756344578db281967f77a117fee935284d7d6a36f91a1884a42c9f8c52e888bb"
+    },
+    "assets/rotary-gun/preview.png": {
+      "bytes": 986053,
+      "sha256": "2a8d8bf16fbfee3fd76fbb48f8f0f215662fabc621760d1870550d9e8c34aa0c"
+    },
+    "assets/rotary-gun/rotary-gun-lod1.bin": {
+      "bytes": 444692,
+      "sha256": "226c6f8f582bbb84b8c6763c3c3953dd0dc1746f8c9f0b09170d0ce9c5165096"
+    },
+    "assets/rotary-gun/rotary-gun-lod1.gltf": {
+      "bytes": 15698,
+      "sha256": "7cc7502d0da27d7580b3998c99dc4435019c6ea1a9c9e65dd26b9e6cf1e65103"
+    },
+    "assets/rotary-gun/rotary-gun.bin": {
+      "bytes": 1245728,
+      "sha256": "0a1c3ed6cdcba8e5680bfa993e88857fcecea5986943e94e4df42cd18a4c0916"
+    },
+    "assets/rotary-gun/rotary-gun.gltf": {
+      "bytes": 15704,
+      "sha256": "deecfd28777ee9e7ea10f38995348ae0ac88ac5e94f59620e2e1bfce18e0ae7e"
+    },
+    "assets/rotary-gun/source-verification.json": {
+      "bytes": 950,
+      "sha256": "a68e9e981e8cd9df7945dea78ada432527d6e119efee7bbc94313c23915c98a4"
+    },
+    "assets/ruined-town-block/preview.png": {
+      "bytes": 1211009,
+      "sha256": "fe39805523531948d35247d9452bf7d0e7b0b538ebe30a9b5cd809d5024486e7"
+    },
+    "assets/ruined-town-block/ruined-town-block-lod1.bin": {
+      "bytes": 1300372,
+      "sha256": "6129c2aa9917a470a6d092590812dcf74eb89f62cd7a575407c55cb1abee78ab"
+    },
+    "assets/ruined-town-block/ruined-town-block-lod1.gltf": {
+      "bytes": 16916,
+      "sha256": "7377f21c6efb02adc581ea4b3d24d0cd554dcfe970035a54425a333c32f015df"
+    },
+    "assets/ruined-town-block/ruined-town-block.bin": {
+      "bytes": 3628128,
+      "sha256": "87666d41b3820c00df89a1afe5716864cdf668ad44efd28359449c5805e2b580"
+    },
+    "assets/ruined-town-block/ruined-town-block.gltf": {
+      "bytes": 16963,
+      "sha256": "efa022b48a6344f8e2d6efaf8f39443ee079b601acf0a388f926e0fbd0170dc0"
+    },
+    "assets/ruined-town-block/source-verification.json": {
+      "bytes": 954,
+      "sha256": "44651ad68ecd5215a902afd8a4218e61cc3f975ed831fd98b127cbfabf380277"
+    },
+    "assets/sandbag-scrap-firing-nest/preview.png": {
+      "bytes": 952587,
+      "sha256": "84aac68f88a2f9f642568463923e42efb812fbffe126c3c21bbdbae21852a7b7"
+    },
+    "assets/sandbag-scrap-firing-nest/sandbag-scrap-firing-nest-lod1.bin": {
+      "bytes": 608600,
+      "sha256": "2523b63aa7fe74c59a9c7e951873a243195484478bf229d0553acd16a11b34be"
+    },
+    "assets/sandbag-scrap-firing-nest/sandbag-scrap-firing-nest-lod1.gltf": {
+      "bytes": 15469,
+      "sha256": "c124d1fb94a3a812f093d93cb55f5856f0c5719ce5d6164fa5ca223f1861149f"
+    },
+    "assets/sandbag-scrap-firing-nest/sandbag-scrap-firing-nest.bin": {
+      "bytes": 1792376,
+      "sha256": "6c7b6043e1118fffcdc80e56503cb489af0b3b7ab9a09cfb930fc83f235022f3"
+    },
+    "assets/sandbag-scrap-firing-nest/sandbag-scrap-firing-nest.gltf": {
+      "bytes": 15532,
+      "sha256": "96243630c9178edbba8418c3193a284997bf3468544e7373b4612cfb28d8294b"
+    },
+    "assets/sandbag-scrap-firing-nest/source-verification.json": {
+      "bytes": 965,
+      "sha256": "454ddec0d858fb67e0f8edf19d78eea161badccfc2f74c5e4c004ff6d1359799"
+    },
+    "assets/scavenger/preview.png": {
+      "bytes": 1163576,
+      "sha256": "9b06539357debe95e1709dc6baf87f6fbb0d7356e7f8f4a99b4983d42929930a"
+    },
+    "assets/scavenger/scavenger-lod1.bin": {
+      "bytes": 351332,
+      "sha256": "008a81d7bf95322bf98d2f5d674b31d18e220f3fd28817310f8733ee9d938c3d"
+    },
+    "assets/scavenger/scavenger-lod1.gltf": {
+      "bytes": 16566,
+      "sha256": "b7ce4c371e0fbd02cf841009c72b45950bc2bdeef031a634bb1ecc4486fc1c4a"
+    },
+    "assets/scavenger/scavenger.bin": {
+      "bytes": 1139248,
+      "sha256": "dbde161e2f08376c865a9d00df6ad68787d7804748a97cb938722df6738f716b"
+    },
+    "assets/scavenger/scavenger.gltf": {
+      "bytes": 16633,
+      "sha256": "5c61f726c5b991ad1b0e225a794d73a74c57902c2d10f6422918ef0cdc92bfa2"
+    },
+    "assets/scavenger/source-verification.json": {
+      "bytes": 945,
+      "sha256": "43d457ca97168ba36fe818a611a489234b905103c77331adbed5bf0b9e078f6e"
+    },
+    "assets/scout/preview.png": {
+      "bytes": 1178897,
+      "sha256": "a84830f88d54771146d55c2d6a5a6578344d2a3f4fed65dc5653ba94950a142b"
+    },
+    "assets/scout/scout-lod1.bin": {
+      "bytes": 396864,
+      "sha256": "08ba58e7b61f16094fab3d50eddcde5a734d2a4fec106217e3be5dc326fa176e"
+    },
+    "assets/scout/scout-lod1.gltf": {
+      "bytes": 17855,
+      "sha256": "56adf9389f2c9c9480fbaac3ef29c55ab7d61ddd96d5506265280d8851995bf6"
+    },
+    "assets/scout/scout.bin": {
+      "bytes": 1245916,
+      "sha256": "0f709d71bf02125172ad8212f179678b27a02e0ce74440607bb80d3a6ce18016"
+    },
+    "assets/scout/scout.gltf": {
+      "bytes": 17933,
+      "sha256": "4dec1f3851a3fdb84bd68f23c0cc2979086f2c377d5444a387b18d9d42ee41c6"
+    },
+    "assets/scout/source-verification.json": {
+      "bytes": 941,
+      "sha256": "f5481ced9a59b18512046d9d23db960d28dcdfc49edadec3aa287346e30d5967"
+    },
+    "assets/scout-trike/preview.png": {
+      "bytes": 1111055,
+      "sha256": "d3690f9dd363ad43281a6467f1b6408d6bf2373f89fcfe98b119272fb11c02a8"
+    },
+    "assets/scout-trike/scout-trike-lod1.bin": {
+      "bytes": 1032912,
+      "sha256": "2ea8e41349651c3bb5bf377256413b45143d7805907c1e16ee0775e67f80546a"
+    },
+    "assets/scout-trike/scout-trike-lod1.gltf": {
+      "bytes": 17410,
+      "sha256": "73564909cc3f047dad5725464792d91aa1ac6629ab7e4737e1c5e8efdd20222c"
+    },
+    "assets/scout-trike/scout-trike.bin": {
+      "bytes": 2861232,
+      "sha256": "48a5e0a0829e3c8d40e3ec544d15275806aa9005a9ba5238846edf793e3b272e"
+    },
+    "assets/scout-trike/scout-trike.gltf": {
+      "bytes": 17468,
+      "sha256": "09d896794739aa073f08cfdeddfef103139a043fbf116488a116354166c8bcb7"
+    },
+    "assets/scout-trike/source-verification.json": {
+      "bytes": 854,
+      "sha256": "b6f014a5585427d56df22c0a7aeb666cda09f5c77402deea83a0d64276f0e1e2"
+    },
+    "assets/scrap-buggy/preview.png": {
+      "bytes": 1208996,
+      "sha256": "39c90f1678bc59b901163a28a0c7c179658b53270fdd6a931af683b9d219435f"
+    },
+    "assets/scrap-buggy/scrap-buggy-lod1.bin": {
+      "bytes": 1498224,
+      "sha256": "eaacbe4cb73188301a32eb8252917d024d80c3f47dc19121d5eb205f20d6d865"
+    },
+    "assets/scrap-buggy/scrap-buggy-lod1.gltf": {
+      "bytes": 17504,
+      "sha256": "de645897ba9d4ae1ecc872964e210761d4702f08ea5971a78870fdb36eaeef80"
+    },
+    "assets/scrap-buggy/scrap-buggy.bin": {
+      "bytes": 4454968,
+      "sha256": "3e57984fb355780d255c6993ffd0fd19fb27a38db79b82fb205bbfcbae4616f4"
+    },
+    "assets/scrap-buggy/scrap-buggy.gltf": {
+      "bytes": 17531,
+      "sha256": "27b1d31c61eb3089c77bccf3cc9f5ca0b867b6422d10494eea3bdacf210758d4"
+    },
+    "assets/scrap-buggy/source-verification.json": {
+      "bytes": 854,
+      "sha256": "3098ee70dbf447537f2308b198f900a4e85f2060b22bccff031aa83dc62e0148"
+    },
+    "assets/scrap-bunker/preview.png": {
+      "bytes": 1044712,
+      "sha256": "3d66eb0e0d7687e6c602828804f1ae3b7588c7922d5ce4458d97afc27c89838a"
+    },
+    "assets/scrap-bunker/scrap-bunker-lod1.bin": {
+      "bytes": 1370600,
+      "sha256": "ec21ebf60dcdc85e9afd2d486947b8bae8a87a7124678f336eb4ea9236505d33"
+    },
+    "assets/scrap-bunker/scrap-bunker-lod1.gltf": {
+      "bytes": 21559,
+      "sha256": "ae964cce39e3f16edfa4720274665129f2e3dd30b6861b479be0d9eb2acad731"
+    },
+    "assets/scrap-bunker/scrap-bunker.bin": {
+      "bytes": 3993552,
+      "sha256": "28f3217da312ee0952f9ce74eca63370a41c8e6723c647bcee553c14569c3139"
+    },
+    "assets/scrap-bunker/scrap-bunker.gltf": {
+      "bytes": 21592,
+      "sha256": "95e887670cba06375efd83d700d38cd73ffbc68172a3630a65e67a51ec1280bb"
+    },
+    "assets/scrap-bunker/source-verification.json": {
+      "bytes": 952,
+      "sha256": "acdf50e0763f395292c3d39ebe68148819481f1e6f150d47a9fbf0a831c90ecc"
+    },
+    "assets/scrap-rifle/preview.png": {
+      "bytes": 963040,
+      "sha256": "413228ca5570604f290f372702c19bff2cd577fbeaac019daef306185af69600"
+    },
+    "assets/scrap-rifle/scrap-rifle-lod1.bin": {
+      "bytes": 312940,
+      "sha256": "9b5a1d763f470d22ca2269caf89f598c5e52d2795049d43625f3381a7c298b98"
+    },
+    "assets/scrap-rifle/scrap-rifle-lod1.gltf": {
+      "bytes": 17248,
+      "sha256": "94f1e072b333258d5d4d9e00e177aa9e673dff7917312a8ecba537e7e667370f"
+    },
+    "assets/scrap-rifle/scrap-rifle.bin": {
+      "bytes": 911236,
+      "sha256": "61f919ded926c70ce1da692f4809ead1ebd627fc4d4d4beebadcfe2b4db62f1b"
+    },
+    "assets/scrap-rifle/scrap-rifle.gltf": {
+      "bytes": 17280,
+      "sha256": "2904275c1fffe3941929bb3f988f2b922e94a091cfa245721126d4bdf9c3300e"
+    },
+    "assets/scrap-rifle/source-verification.json": {
+      "bytes": 951,
+      "sha256": "24d693771b683a341c602217a799325b4aa28c7e84d01285fe95b7cc11e81690"
+    },
+    "assets/scrap-sorting-yard/preview.png": {
+      "bytes": 1045059,
+      "sha256": "efcf8942bb7a026fd54f5dad350ef14389a0b64538ae761d59f6107d32241d97"
+    },
+    "assets/scrap-sorting-yard/scrap-sorting-yard-lod1.bin": {
+      "bytes": 1695108,
+      "sha256": "d605a9141b1afb0b021e65306a7cb0a6d819bbf5ec1ceb9734a1bf762638b989"
+    },
+    "assets/scrap-sorting-yard/scrap-sorting-yard-lod1.gltf": {
+      "bytes": 20397,
+      "sha256": "2666c2ceef33fcf572a5b09385f13f65993e1cc7e5920b463499ab36107f3c06"
+    },
+    "assets/scrap-sorting-yard/scrap-sorting-yard.bin": {
+      "bytes": 4518308,
+      "sha256": "4b7a53d0e2c5bbeab701fbcd226ef3da1b25969e21c6608effff7a5240ef89ba"
+    },
+    "assets/scrap-sorting-yard/scrap-sorting-yard.gltf": {
+      "bytes": 20433,
+      "sha256": "92ae67d2e41d79b01022ffdcf45fe341eafb21479243d6963459226cb7bad0f4"
+    },
+    "assets/scrap-sorting-yard/source-verification.json": {
+      "bytes": 958,
+      "sha256": "d06eb2d7432253e471d1612ab8b66a15448f6e534c32efd36cca605addb15725"
+    },
+    "assets/settlement-hub/preview.png": {
+      "bytes": 1153002,
+      "sha256": "88ff4b73ffe7c6c7ef4ba5a07e2bf6f8b55d096029cfda73a5942c215bdd6f33"
+    },
+    "assets/settlement-hub/settlement-hub-lod1.bin": {
+      "bytes": 2959412,
+      "sha256": "d9266f5bf0f7a6975ac218fa6113ef7cc67abca104ad6ebc91876b38410cfddf"
+    },
+    "assets/settlement-hub/settlement-hub-lod1.gltf": {
+      "bytes": 24402,
+      "sha256": "29f7d3ad31e1cedc014cab12e1880f6c9b1d29f0bfc63405a9fc6444b8a10dc6"
+    },
+    "assets/settlement-hub/settlement-hub.bin": {
+      "bytes": 8747176,
+      "sha256": "f7331f5394770f27d97bd82bad31d8300fe7552e318f3440641a2822e9f49680"
+    },
+    "assets/settlement-hub/settlement-hub.gltf": {
+      "bytes": 24461,
+      "sha256": "56c0e4d5105e363a244eaae38e8e33a7fb72d1fd49982b89b2cf4f3ad0ab4833"
+    },
+    "assets/settlement-hub/source-verification.json": {
+      "bytes": 956,
+      "sha256": "b56588000a913f2d1436804981a7ae67ab74dfeabb2ecd4e50b6ea14d5cefe2f"
+    },
+    "assets/shallow-mine-entrance/preview.png": {
+      "bytes": 1028197,
+      "sha256": "65150bbf62ce6dc8d7db5cf951cf5387de4779b630fbdccea721f9b70ed19855"
+    },
+    "assets/shallow-mine-entrance/shallow-mine-entrance-lod1.bin": {
+      "bytes": 1501964,
+      "sha256": "e27f3d32c07e7626b569bf6a2b61be9ef1f629bd85f360db45be898e5b0b5696"
+    },
+    "assets/shallow-mine-entrance/shallow-mine-entrance-lod1.gltf": {
+      "bytes": 23121,
+      "sha256": "e455751d7af62ba7ac9d227830e858d84d45347b98d09ea85aeb3063157c75a7"
+    },
+    "assets/shallow-mine-entrance/shallow-mine-entrance.bin": {
+      "bytes": 4189080,
+      "sha256": "25e6a82de080f1905ac92c6821ab2bcaa2803bb8646fe204ee3e6ec4297f194d"
+    },
+    "assets/shallow-mine-entrance/shallow-mine-entrance.gltf": {
+      "bytes": 23165,
+      "sha256": "293856bd3256c3e09c9b7d4b670256529268f8f5f247830e81ec6aec3a9b42a5"
+    },
+    "assets/shallow-mine-entrance/source-verification.json": {
+      "bytes": 961,
+      "sha256": "a0e78848d8372c3b529b177614e834530d0d4249f9ecc7cf63897912aa1973dd"
+    },
+    "textures/02e21e92ec95a4600ff3c5d2077d2f18f172a0f1dedd27acaaea5a5736ad46d6.png": {
+      "bytes": 355561,
+      "sha256": "02e21e92ec95a4600ff3c5d2077d2f18f172a0f1dedd27acaaea5a5736ad46d6"
+    },
+    "textures/0fcf7a4bfc891efa72a7e1a14b4c7748bf1375bf6ba3fec2513399f596bcfc08.png": {
+      "bytes": 346215,
+      "sha256": "0fcf7a4bfc891efa72a7e1a14b4c7748bf1375bf6ba3fec2513399f596bcfc08"
+    },
+    "textures/107a02b3b51a67d79ea851f36e56629854453cbca3a6d8f6b4b1ea0188970472.png": {
+      "bytes": 298665,
+      "sha256": "107a02b3b51a67d79ea851f36e56629854453cbca3a6d8f6b4b1ea0188970472"
+    },
+    "textures/2401192560dadfe9595336942e19eb3c346b4230dd45ac712850ab97fc82f3c5.png": {
+      "bytes": 366184,
+      "sha256": "2401192560dadfe9595336942e19eb3c346b4230dd45ac712850ab97fc82f3c5"
+    },
+    "textures/311554a574c3fec7f5d3616ac3a3d5356e7833a5140e2bd44529abdc65fa27d7.png": {
+      "bytes": 305426,
+      "sha256": "311554a574c3fec7f5d3616ac3a3d5356e7833a5140e2bd44529abdc65fa27d7"
+    },
+    "textures/31bdda515f38ea7176dd4313e168268e62e5dabf0ad091081b245310b740d0e8.png": {
+      "bytes": 447390,
+      "sha256": "31bdda515f38ea7176dd4313e168268e62e5dabf0ad091081b245310b740d0e8"
+    },
+    "textures/31ec2b54b2216a6063df01cee1c19e2e4475f2c44672922862a823226c67cf45.png": {
+      "bytes": 345348,
+      "sha256": "31ec2b54b2216a6063df01cee1c19e2e4475f2c44672922862a823226c67cf45"
+    },
+    "textures/3847225d59b8220efed1cd73a343cfa958b8ba4a5eaeaeeab98b3016ae082910.png": {
+      "bytes": 395772,
+      "sha256": "3847225d59b8220efed1cd73a343cfa958b8ba4a5eaeaeeab98b3016ae082910"
+    },
+    "textures/407738804fd39640a450052f508b25a421237b500377c4f3cc1c4eed4c6237d7.png": {
+      "bytes": 295252,
+      "sha256": "407738804fd39640a450052f508b25a421237b500377c4f3cc1c4eed4c6237d7"
+    },
+    "textures/4331f0cf1badd7991d3283c1e988b999460f7e4fdc02290225eaf653a72ade86.png": {
+      "bytes": 355000,
+      "sha256": "4331f0cf1badd7991d3283c1e988b999460f7e4fdc02290225eaf653a72ade86"
+    },
+    "textures/459fc57a3652d2b09d847f832007aabe88ef818d03ea3f811ba689d805a802f5.png": {
+      "bytes": 302899,
+      "sha256": "459fc57a3652d2b09d847f832007aabe88ef818d03ea3f811ba689d805a802f5"
+    },
+    "textures/4651cfaad3a3b0d4f433d3a5b6f5569e1e4a54fa170dddbc7192c09671ee6141.png": {
+      "bytes": 130287,
+      "sha256": "4651cfaad3a3b0d4f433d3a5b6f5569e1e4a54fa170dddbc7192c09671ee6141"
+    },
+    "textures/467eb0a72d0fb7a66621bee7e79424f346ae38c3f9cb96e53a69177faa9bbe90.png": {
+      "bytes": 228585,
+      "sha256": "467eb0a72d0fb7a66621bee7e79424f346ae38c3f9cb96e53a69177faa9bbe90"
+    },
+    "textures/4e7d818b04bbb11fef692e7b1ff5066ed2fcf73e8ec8c8ecb14356d2cd6b46bc.png": {
+      "bytes": 220853,
+      "sha256": "4e7d818b04bbb11fef692e7b1ff5066ed2fcf73e8ec8c8ecb14356d2cd6b46bc"
+    },
+    "textures/515302cf6fbbe31c4e6f6d6cf4453718453ff603c3bbc097c17f491486406c8f.png": {
+      "bytes": 503900,
+      "sha256": "515302cf6fbbe31c4e6f6d6cf4453718453ff603c3bbc097c17f491486406c8f"
+    },
+    "textures/51d68cd41ea85b93ad08ef6e1439cb90471e83a27d6f94f7cf68d8426716ceed.png": {
+      "bytes": 101498,
+      "sha256": "51d68cd41ea85b93ad08ef6e1439cb90471e83a27d6f94f7cf68d8426716ceed"
+    },
+    "textures/522df0228e910dc6734436663ab9e80c9beaba3603b3ec731993c0d0684befec.png": {
+      "bytes": 338587,
+      "sha256": "522df0228e910dc6734436663ab9e80c9beaba3603b3ec731993c0d0684befec"
+    },
+    "textures/55f2c3b656fb0ebc854102ccd8184a74a064832f3749e5ff8e7ef4d297f7988a.png": {
+      "bytes": 228207,
+      "sha256": "55f2c3b656fb0ebc854102ccd8184a74a064832f3749e5ff8e7ef4d297f7988a"
+    },
+    "textures/5912b7b34619402c2bd9dcbc97451426e92b5bf2943f0f25bba46740266b76e6.png": {
+      "bytes": 339551,
+      "sha256": "5912b7b34619402c2bd9dcbc97451426e92b5bf2943f0f25bba46740266b76e6"
+    },
+    "textures/59210ea2ba40eeda8fd583d5422b9b206381d86ba2bc0ee03fcdd82e3a935e82.png": {
+      "bytes": 275936,
+      "sha256": "59210ea2ba40eeda8fd583d5422b9b206381d86ba2bc0ee03fcdd82e3a935e82"
+    },
+    "textures/5e3fd767cafb33acdb6dde6a4025510872adb70736d22e24b995e7b367886327.png": {
+      "bytes": 385069,
+      "sha256": "5e3fd767cafb33acdb6dde6a4025510872adb70736d22e24b995e7b367886327"
+    },
+    "textures/6002d2213a5d043d2f7606f114a99665adb485365258cb8dd46098eca89290f2.png": {
+      "bytes": 520551,
+      "sha256": "6002d2213a5d043d2f7606f114a99665adb485365258cb8dd46098eca89290f2"
+    },
+    "textures/61eef2155f3afcbe7a950543ca0bda2dfd502d7de7e494ffe7f39007078eebb2.png": {
+      "bytes": 328351,
+      "sha256": "61eef2155f3afcbe7a950543ca0bda2dfd502d7de7e494ffe7f39007078eebb2"
+    },
+    "textures/65869f8eb031600fa0f5c101347665c66e0231a5d912b56fe802bf3d30ea70cb.png": {
+      "bytes": 218214,
+      "sha256": "65869f8eb031600fa0f5c101347665c66e0231a5d912b56fe802bf3d30ea70cb"
+    },
+    "textures/7a9e9df831e3dadabf857ac1e0574f756dcd97b95df197a93e7111beffc37224.png": {
+      "bytes": 522526,
+      "sha256": "7a9e9df831e3dadabf857ac1e0574f756dcd97b95df197a93e7111beffc37224"
+    },
+    "textures/8090c4b78c704444fca611fc61349a81035474924f5a5a0e1b56eed19d24400c.png": {
+      "bytes": 2277769,
+      "sha256": "8090c4b78c704444fca611fc61349a81035474924f5a5a0e1b56eed19d24400c"
+    },
+    "textures/815d02932ec0859a5e2a7881e3de94e57fb1edc6002ef138a4735055b8ec78ba.png": {
+      "bytes": 214995,
+      "sha256": "815d02932ec0859a5e2a7881e3de94e57fb1edc6002ef138a4735055b8ec78ba"
+    },
+    "textures/836f3d06788051a9b9a2f60be5fff87c0f6f7850ce60996825ec704fb8b33024.png": {
+      "bytes": 521162,
+      "sha256": "836f3d06788051a9b9a2f60be5fff87c0f6f7850ce60996825ec704fb8b33024"
+    },
+    "textures/91523ff7462eda9ac52812d6b309b820f610bdcd072622be6887385978b95185.png": {
+      "bytes": 520969,
+      "sha256": "91523ff7462eda9ac52812d6b309b820f610bdcd072622be6887385978b95185"
+    },
+    "textures/962f128fe576ef5f170509c55d48fceb6756b3a8c61d70fc5d23e32db9baadbf.png": {
+      "bytes": 359470,
+      "sha256": "962f128fe576ef5f170509c55d48fceb6756b3a8c61d70fc5d23e32db9baadbf"
+    },
+    "textures/9e30ab303b738a8460755e46959c500f670ed8e648ad703e9e5bfbc3378a0ec4.png": {
+      "bytes": 522102,
+      "sha256": "9e30ab303b738a8460755e46959c500f670ed8e648ad703e9e5bfbc3378a0ec4"
+    },
+    "textures/a1a7c085f39e798f0495435b68ec22d31afe2c6d5cd3ea7a5bd6819447658036.png": {
+      "bytes": 282212,
+      "sha256": "a1a7c085f39e798f0495435b68ec22d31afe2c6d5cd3ea7a5bd6819447658036"
+    },
+    "textures/af56b0f463ddf4c10d0f9be39aa875cdeb5dbcbc5c211f339f3324d5bb9efbe5.png": {
+      "bytes": 521722,
+      "sha256": "af56b0f463ddf4c10d0f9be39aa875cdeb5dbcbc5c211f339f3324d5bb9efbe5"
+    },
+    "textures/b53bd95d9a9b19166cd6db5368ca13d96edef9d47034afa16ec09fe47189b7d6.png": {
+      "bytes": 524043,
+      "sha256": "b53bd95d9a9b19166cd6db5368ca13d96edef9d47034afa16ec09fe47189b7d6"
+    },
+    "textures/b55648af8663ffa96cecc604179c3cc78ab65087cdd8e200224e7ffde7ba8bc7.png": {
+      "bytes": 300545,
+      "sha256": "b55648af8663ffa96cecc604179c3cc78ab65087cdd8e200224e7ffde7ba8bc7"
+    },
+    "textures/b5d73ba7c1dcb64f79a1f7dac96a1281931c5979c6e8bd712811fafd5412ffeb.png": {
+      "bytes": 159055,
+      "sha256": "b5d73ba7c1dcb64f79a1f7dac96a1281931c5979c6e8bd712811fafd5412ffeb"
+    },
+    "textures/c20844ab70e95bbc6db946aa283d6cab8928a3599a21feaa269357002c31a93e.png": {
+      "bytes": 223329,
+      "sha256": "c20844ab70e95bbc6db946aa283d6cab8928a3599a21feaa269357002c31a93e"
+    },
+    "textures/c2dcdd75cc38e137e773dcc26c58d6a3a0ac0707e9366874dd10b52c282dd0a9.png": {
+      "bytes": 129591,
+      "sha256": "c2dcdd75cc38e137e773dcc26c58d6a3a0ac0707e9366874dd10b52c282dd0a9"
+    },
+    "textures/c60c3570e88f932e5c0151137b624e44461ea611bd1c097d2d58237fd9cc2398.png": {
+      "bytes": 302888,
+      "sha256": "c60c3570e88f932e5c0151137b624e44461ea611bd1c097d2d58237fd9cc2398"
+    },
+    "textures/c6b4b22507a67fa5150523895c7191405265733422d25de3fafd74b3ffd4c91c.png": {
+      "bytes": 223017,
+      "sha256": "c6b4b22507a67fa5150523895c7191405265733422d25de3fafd74b3ffd4c91c"
+    },
+    "textures/ca222ef059bfc6cc9bf5235d254b4b1606ab6e0cc1a8afca45206607d04f2823.png": {
+      "bytes": 168061,
+      "sha256": "ca222ef059bfc6cc9bf5235d254b4b1606ab6e0cc1a8afca45206607d04f2823"
+    },
+    "textures/cbaa8a70c6e226e5bbefc67361ce3447bec6ee46ddcc908c9111420d9d870284.png": {
+      "bytes": 523653,
+      "sha256": "cbaa8a70c6e226e5bbefc67361ce3447bec6ee46ddcc908c9111420d9d870284"
+    },
+    "textures/d3730e032b31d7def00a6a8ffc9ed5aeffe753004d3783f4af8ab6de0b89bfa2.png": {
+      "bytes": 1272365,
+      "sha256": "d3730e032b31d7def00a6a8ffc9ed5aeffe753004d3783f4af8ab6de0b89bfa2"
+    },
+    "textures/eb5567c162c4973ef3324a7a96ee938da6d1613c4424fe543009a78b60835d48.png": {
+      "bytes": 447087,
+      "sha256": "eb5567c162c4973ef3324a7a96ee938da6d1613c4424fe543009a78b60835d48"
+    },
+    "textures/f094cdabb93e3a7f7d2ee6278c0881aea6a311ae5743dacb09f15c0087def428.png": {
+      "bytes": 398357,
+      "sha256": "f094cdabb93e3a7f7d2ee6278c0881aea6a311ae5743dacb09f15c0087def428"
+    },
+    "textures/f120c64ed9e56d8f108bc9e6c6c7f29d88f2b1fd435efeb3700efe32fce8a112.png": {
+      "bytes": 217185,
+      "sha256": "f120c64ed9e56d8f108bc9e6c6c7f29d88f2b1fd435efeb3700efe32fce8a112"
+    },
+    "textures/fed996cc4e331f7776fe516e9cda3a464e222b294a4d1d58a70424b2bdf3f5d9.png": {
+      "bytes": 282231,
+      "sha256": "fed996cc4e331f7776fe516e9cda3a464e222b294a4d1d58a70424b2bdf3f5d9"
+    },
+    "assets/shotgun-raider/preview.png": {
+      "bytes": 1180238,
+      "sha256": "26a0d422208b16c969651b1e52cc1e3208e13dae72510f4dd98da1a82274ad22"
+    },
+    "assets/shotgun-raider/shotgun-raider-lod1.bin": {
+      "bytes": 405272,
+      "sha256": "407f13dd6cf38ff5540914cb81323b1a1b19a2ce1013cc09d457af8a01a6429a"
+    },
+    "assets/shotgun-raider/shotgun-raider-lod1.gltf": {
+      "bytes": 24349,
+      "sha256": "2cc5bf6626740a666c1fc229c8f118a5a553eea28c7cfba9ad448836a8b99679"
+    },
+    "assets/shotgun-raider/shotgun-raider.bin": {
+      "bytes": 1271376,
+      "sha256": "01fbb34829efcc54f7d8f0ad77e9fa0c4a8e38ce12d297feb732fb1e9c3ccb7a"
+    },
+    "assets/shotgun-raider/shotgun-raider.gltf": {
+      "bytes": 24453,
+      "sha256": "c78d909014ed5a5f0c985088af34f73aebdca633b2813de31582a4fe35d478fe"
+    },
+    "assets/shotgun-raider/source-verification.json": {
+      "bytes": 950,
+      "sha256": "948336c3461bfd948fe82ae1e187856fd7ab69601f2a7c98b0a7425fb8aeaede"
+    },
+    "assets/signplate-barricade/preview.png": {
+      "bytes": 996230,
+      "sha256": "61ebb010758f9384cce193ffeaa92b01588717fc71466f3625709d8c9ade1e8b"
+    },
+    "assets/signplate-barricade/signplate-barricade-lod1.bin": {
+      "bytes": 546096,
+      "sha256": "586271376e1dec9d625c9329fed52d528b2254f9504290311ba8118971da5521"
+    },
+    "assets/signplate-barricade/signplate-barricade-lod1.gltf": {
+      "bytes": 15050,
+      "sha256": "a9b940ef1b9b9d26f06dbf7ddc6d13fdf8eb226d8bc3c190847c6fd3a22f6a7e"
+    },
+    "assets/signplate-barricade/signplate-barricade.bin": {
+      "bytes": 1514600,
+      "sha256": "74f5a1ddd66bad22a6e324f84588d519e497d42c59f15aaa017f7276b33462bd"
+    },
+    "assets/signplate-barricade/signplate-barricade.gltf": {
+      "bytes": 15121,
+      "sha256": "e3c6519254f9d7c7c3b45b10e65650ce2e81ace47d5ad2b928920e51c47e494d"
+    },
+    "assets/signplate-barricade/source-verification.json": {
+      "bytes": 959,
+      "sha256": "608f09d7708f3e36a28ebc4948ace4235cd8f650dbcb4dfd5be35649c5def0fd"
+    },
+    "assets/sky-tracker-dish/preview.png": {
+      "bytes": 1218321,
+      "sha256": "b8ad23d4674e4aeaea7817f49efaedb81665c6449e867391408d7fc87cb71020"
+    },
+    "assets/sky-tracker-dish/sky-tracker-dish-lod1.bin": {
+      "bytes": 2145388,
+      "sha256": "33493aff1b333c4eebaf67f2a2bc6c1382f59d7b9914013bbf8e9b9252aab05d"
+    },
+    "assets/sky-tracker-dish/sky-tracker-dish-lod1.gltf": {
+      "bytes": 21481,
+      "sha256": "37b140089b52fd034d63f0cb3f97c4cfd16876cec30df6bf00821468e60394b1"
+    },
+    "assets/sky-tracker-dish/sky-tracker-dish.bin": {
+      "bytes": 6326916,
+      "sha256": "d06e59752ea6eaa747b1f4d4f9877bcf9da8e4b38552717ffed051171c018fa7"
+    },
+    "assets/sky-tracker-dish/sky-tracker-dish.gltf": {
+      "bytes": 21500,
+      "sha256": "cdebd586e2248eedc3ca7332441e2a586be2a3b3e7a1e46b6a93237a0fa23d13"
+    },
+    "assets/sky-tracker-dish/source-verification.json": {
+      "bytes": 953,
+      "sha256": "3a56821e3b4d28cfb3102314175520e19a98b28aa79e71e49316e115a65e1538"
+    },
+    "assets/spike-gate/preview.png": {
+      "bytes": 975023,
+      "sha256": "3b4f23d5160ae42e73d5fd9d4e796533ceecc152df44a715cfc1c037cf3e1b42"
+    },
+    "assets/spike-gate/source-verification.json": {
+      "bytes": 949,
+      "sha256": "e88a418664e7b0adeeb4d00b16db2fa19df5c98b0379e51cd1b7e6c9a2919bb0"
+    },
+    "assets/spike-gate/spike-gate-lod1.bin": {
+      "bytes": 475784,
+      "sha256": "0d29db12824c8cace562d6d9600162b5722a30c6cb60dda894b736391a4dfcef"
+    },
+    "assets/spike-gate/spike-gate-lod1.gltf": {
+      "bytes": 13254,
+      "sha256": "f0d2930a624862cb323008aeafcde516f03f6785ba24a285b323cbdd94b8c913"
+    },
+    "assets/spike-gate/spike-gate.bin": {
+      "bytes": 1316544,
+      "sha256": "49b1eb099331560f5081ee1ceb402071f0bcdcbbbf610174d5e19abf845b63a9"
+    },
+    "assets/spike-gate/spike-gate.gltf": {
+      "bytes": 13295,
+      "sha256": "4e9316f992388adee90c1ac3f32b6a698634fa00c50b8b3cc06cce005541334f"
+    },
+    "assets/spotlight-tower/preview.png": {
+      "bytes": 986543,
+      "sha256": "2ed4b0da7315b7b1930573c77ab65736c30392e3a40affff43f669d63bb60bd9"
+    },
+    "assets/spotlight-tower/source-verification.json": {
+      "bytes": 954,
+      "sha256": "a2c66b6e3a1aea9ab945c2bfdc26881b7f7937ce2b753e6ebd54da06baa2a4c1"
+    },
+    "assets/spotlight-tower/spotlight-tower-lod1.bin": {
+      "bytes": 420380,
+      "sha256": "b7cd0a6ea9accd8fda2b6767e855c879bf0592316d26c0ac3e8409d0a0ba4cb4"
+    },
+    "assets/spotlight-tower/spotlight-tower-lod1.gltf": {
+      "bytes": 15614,
+      "sha256": "0a231506f7142f57dee54c2ae56ce849ad97f50db24d2b2d8f5e7503223809e6"
+    },
+    "assets/spotlight-tower/spotlight-tower.bin": {
+      "bytes": 1175096,
+      "sha256": "3faa2106cfe578193c52b1994412c99e6a20ea3a8554d5abf40750410130f905"
+    },
+    "assets/spotlight-tower/spotlight-tower.gltf": {
+      "bytes": 15591,
+      "sha256": "77a53d14310f2a500e69a78996900e4cc8f035427de0256a7891b12cd85d7f23"
+    },
+    "assets/storage-hall/preview.png": {
+      "bytes": 1105580,
+      "sha256": "0c41fdeef9a98cd89f7b0d79073839d0d170bf790cbb29a92c1218d40f58d5c0"
+    },
+    "assets/storage-hall/source-verification.json": {
+      "bytes": 954,
+      "sha256": "e28b232d74a7b4ab83e85efee0ea384efe937be4b7dab225e499c550499185dc"
+    },
+    "assets/storage-hall/storage-hall-lod1.bin": {
+      "bytes": 2102880,
+      "sha256": "f07d289f965ae2c675acef0462a1cfd47ab69595c4dba150a0f04d1526cb3d86"
+    },
+    "assets/storage-hall/storage-hall-lod1.gltf": {
+      "bytes": 24299,
+      "sha256": "c052106f8327735f9b9b47724d381c12de6dba08fa926322394b8de925be26be"
+    },
+    "assets/storage-hall/storage-hall.bin": {
+      "bytes": 6023128,
+      "sha256": "9694809c5625859e9f40ffe021d3902a98839e686c2fcd663cd52be45c20104f"
+    },
+    "assets/storage-hall/storage-hall.gltf": {
+      "bytes": 24367,
+      "sha256": "8a91691fea65d186c0616f55a2a1117e2acfcaa6d7638366e7ab2f2d46fbf3e9"
+    },
+    "assets/strange-late-tech-salvage-structure/preview.png": {
+      "bytes": 1252103,
+      "sha256": "a4ed6290f02457b2c4942932cbea8660b0b129c49bb2f956b6786386b2034aa7"
+    },
+    "assets/strange-late-tech-salvage-structure/source-verification.json": {
+      "bytes": 972,
+      "sha256": "6c0c51422f32194e409a02f099bde855a4f34620e400513f4389689c1766d35c"
+    },
+    "assets/strange-late-tech-salvage-structure/strange-late-tech-salvage-structure-lod1.bin": {
+      "bytes": 1530412,
+      "sha256": "2ff2797fb33937b6e3d35886814a9ef83cd8418ffc9d79a8c4419cd99d4820df"
+    },
+    "assets/strange-late-tech-salvage-structure/strange-late-tech-salvage-structure-lod1.gltf": {
+      "bytes": 21426,
+      "sha256": "961cc1e5de473abc6ca372a8e9e2aad8ed6f93627979fb17ff9608d5b5db7311"
+    },
+    "assets/strange-late-tech-salvage-structure/strange-late-tech-salvage-structure.bin": {
+      "bytes": 4168648,
+      "sha256": "4ec3f17ce460f3785d70da6fc4e9ec188de7aff66913a65b8674359615587808"
+    },
+    "assets/strange-late-tech-salvage-structure/strange-late-tech-salvage-structure.gltf": {
+      "bytes": 21464,
+      "sha256": "e597fc68f721535e4f24913ad13e26f8039a1d358cde77496b49c76906a64dc7"
+    },
+    "assets/survivor-outpost-cluster/preview.png": {
+      "bytes": 1327617,
+      "sha256": "a2f10ac8083954dc1a5fbe4f8d1556b4204559a2dc61f7e0f0001083c19ab9b2"
+    },
+    "assets/survivor-outpost-cluster/source-verification.json": {
+      "bytes": 962,
+      "sha256": "4a2bb62ce351995692520c5178543d1ab6503584a99c0220d5c2d7a45be3c586"
+    },
+    "assets/survivor-outpost-cluster/survivor-outpost-cluster-lod1.bin": {
+      "bytes": 4365968,
+      "sha256": "d5fe23bf5a392a07cd0f419ebd310998db1ed0f6bfb0a55aed37ba751a3658a9"
+    },
+    "assets/survivor-outpost-cluster/survivor-outpost-cluster-lod1.gltf": {
+      "bytes": 26437,
+      "sha256": "9eecbe0dd06e78b2bb68bb4b8e965f350a28c3cd1fb95f0c6ecece4c02077ec3"
+    },
+    "assets/survivor-outpost-cluster/survivor-outpost-cluster.bin": {
+      "bytes": 12761124,
+      "sha256": "9c66dc856801429e7c93cede0439a152e26dcd1fc657c6dc52cdbe12bdd9e61a"
+    },
+    "assets/survivor-outpost-cluster/survivor-outpost-cluster.gltf": {
+      "bytes": 26477,
+      "sha256": "7fcceae66d6f6d0bb28bdf730934e09714df41016eaf00ec961a5d01d7086b23"
+    },
+    "assets/tow-crawler/preview.png": {
+      "bytes": 1246448,
+      "sha256": "139577c2daac450965bf70fc08373ab83e4ca0565a06ad206f6676428bd4894e"
+    },
+    "assets/tow-crawler/source-verification.json": {
+      "bytes": 854,
+      "sha256": "bf2966e951eb7a1ecc9c5466ca46365b2f6658fc49ef23912ac2d6ea216aa1b8"
+    },
+    "assets/tow-crawler/tow-crawler-lod1.bin": {
+      "bytes": 1412840,
+      "sha256": "eea0e98429e7dfdb91543e81eaf8e9ea101091d1c94f38c759b101419eab14bd"
+    },
+    "assets/tow-crawler/tow-crawler-lod1.gltf": {
+      "bytes": 20181,
+      "sha256": "4f9035e3b9243f74727e3ad2e7723eaaf0f192938467570eb7167f013d598b32"
+    },
+    "assets/tow-crawler/tow-crawler.bin": {
+      "bytes": 4140948,
+      "sha256": "4d63fd0c96cf64da873efc16f63b9db445f765ecbbffe33a5307af76edbbdd2d"
+    },
+    "assets/tow-crawler/tow-crawler.gltf": {
+      "bytes": 20249,
+      "sha256": "5b2b8f671decb149e2de815c259783971994168076c40d2f1280bade661406d1"
+    },
+    "assets/track-module/preview.png": {
+      "bytes": 987106,
+      "sha256": "85e7bf93f49ecadbf1286c2af6528b30a877bbc4504b941e7bb1771a75786f24"
+    },
+    "assets/track-module/source-verification.json": {
+      "bytes": 952,
+      "sha256": "f3efec0923675f2d258fc3eeb34beab7a8b6fdc633d0eacd9f0ec10172206743"
+    },
+    "assets/track-module/track-module-lod1.bin": {
+      "bytes": 643684,
+      "sha256": "76190d9efe466b4283b02094dcd5cb5244501e03bf0d4f9c8b9714bb2233e961"
+    },
+    "assets/track-module/track-module-lod1.gltf": {
+      "bytes": 7791,
+      "sha256": "ee993f9d1f4f0400d7c46e5d155ef043ad46102cdefa9a1d4f317d422ec1764b"
+    },
+    "assets/track-module/track-module.bin": {
+      "bytes": 1862856,
+      "sha256": "370e552db22575041322a9b796c79ab580d67ce1d107c233be12436a9d8cc8d2"
+    },
+    "assets/track-module/track-module.gltf": {
+      "bytes": 7818,
+      "sha256": "cbd2443f13c2a5728b23dde3c9a69e533c83dec0519185b1fff16a9d5013c5e2"
+    },
+    "assets/training-yard/preview.png": {
+      "bytes": 1036056,
+      "sha256": "732236aeb748e0a3618d4bca174714d75fac20c361a96dfd3d21a3a04ebe902c"
+    },
+    "assets/training-yard/source-verification.json": {
+      "bytes": 954,
+      "sha256": "6b6af6a89758eb230e66a1ef8b496765f3fc6e42d4d034dfd014609ee02464e4"
+    },
+    "assets/training-yard/training-yard-lod1.bin": {
+      "bytes": 1184176,
+      "sha256": "39f1fd0b4f0fbd3414ee321e4ef592a44ffa45f7bc6fc70c1e4f19647384199e"
+    },
+    "assets/training-yard/training-yard-lod1.gltf": {
+      "bytes": 19861,
+      "sha256": "dd3e5b51e378e00f0fcf3677c14f3816f7162005db9416f464f66f0d382b24bc"
+    },
+    "assets/training-yard/training-yard.bin": {
+      "bytes": 3278104,
+      "sha256": "85f1a62654335e1a66c8fe12415574979d741dcc226ba5e8e4b21cf4d0aae55f"
+    },
+    "assets/training-yard/training-yard.gltf": {
+      "bytes": 19903,
+      "sha256": "057961160577f6535f17de9f6d07a5392cebe89618ea8a9f557711c6dab85d81"
+    },
+    "assets/turret-module/preview.png": {
+      "bytes": 989934,
+      "sha256": "933d69e6c744f55668bd9c881630f32ed7ede28bd9f0814f98301e4cb9fce05c"
+    },
+    "assets/turret-module/source-verification.json": {
+      "bytes": 953,
+      "sha256": "f9e2aaf16bf95aca132d3a4f6e0765cce6f59866b0699276fa8da55df19aa9ed"
+    },
+    "assets/turret-module/turret-module-lod1.bin": {
+      "bytes": 421368,
+      "sha256": "e2cbac1dd40c70a906deebc81fc7ceb0c649292eafbe63611b34f1373ebee51d"
+    },
+    "assets/turret-module/turret-module-lod1.gltf": {
+      "bytes": 18078,
+      "sha256": "033ca15c30a7f3dda1e56e2ac2def08a92306fce571b8adf69cedb7a39afe317"
+    },
+    "assets/turret-module/turret-module.bin": {
+      "bytes": 1199864,
+      "sha256": "9fca23e194bae21e7478919262ce94feb8b4fe9b0541f3b86588275436a3a266"
+    },
+    "assets/turret-module/turret-module.gltf": {
+      "bytes": 18131,
+      "sha256": "f65848e5a1220b294a5b79de11354728ebe5c3e9cfa950917db3cf7ca75b6fda"
+    },
+    "assets/utility-hauler/preview.png": {
+      "bytes": 1203434,
+      "sha256": "6a822da45abd050a698a64e148bea3451cee74acc64b63649b7d7a0c4fcb11c9"
+    },
+    "assets/utility-hauler/source-verification.json": {
+      "bytes": 858,
+      "sha256": "caf164808fa603035251b634709789c392815d8eb038b330cb2e846078a62227"
+    },
+    "assets/utility-hauler/utility-hauler-lod1.bin": {
+      "bytes": 2330812,
+      "sha256": "661b1b60c8ae7967877b1c47e7b43605d1dfa65d3e1cd05059e2d58c62c2ba1b"
+    },
+    "assets/utility-hauler/utility-hauler-lod1.gltf": {
+      "bytes": 21875,
+      "sha256": "d5c605741f32214c68ace6a290aa20a35419efc385e03bf8d2284e7a173f6534"
+    },
+    "assets/utility-hauler/utility-hauler.bin": {
+      "bytes": 6837272,
+      "sha256": "e84023d58fa636c303877cbdf2fa41df8ee8a17e23390c6fd3f9ac0011d32c43"
+    },
+    "assets/utility-hauler/utility-hauler.gltf": {
+      "bytes": 21922,
+      "sha256": "20654b92b2498fd4f206c32ade67e6cd9b08654895b4cc35aa3d2aa4ba45d262"
+    },
+    "assets/water-catcher/preview.png": {
+      "bytes": 1040493,
+      "sha256": "cfa902a20cc891d35e6ccee446851d7cf6ee8d15b3d2cf9593066280064b3f93"
+    },
+    "assets/water-catcher/source-verification.json": {
+      "bytes": 953,
+      "sha256": "17fe208ae321eb963a8b617e01073c60dfd4e6a39d1f83cab27319604a392a65"
+    },
+    "assets/water-catcher/water-catcher-lod1.bin": {
+      "bytes": 955440,
+      "sha256": "6b040d513461801e8bc0690250f4f0a824c652ba25be13a371eb7c9455799b22"
+    },
+    "assets/water-catcher/water-catcher-lod1.gltf": {
+      "bytes": 19860,
+      "sha256": "b4b4bd272c64d1e9094edaf5959e8b2555013992d594dff79f885ecf2943e3c0"
+    },
+    "assets/water-catcher/water-catcher.bin": {
+      "bytes": 2681900,
+      "sha256": "a6bfe30ea4468a7ca4b5877fad49b41760ed4922b77b56aa860945327dd114ea"
+    },
+    "assets/water-catcher/water-catcher.gltf": {
+      "bytes": 19906,
+      "sha256": "09bc9b3a955b77f9adb8c42a1c5d118b04fe9ce43577b6c7da1435559c91bcc2"
+    },
+    "assets/wheel-module/preview.png": {
+      "bytes": 953213,
+      "sha256": "0d9e4c53bad964463c289dd2de9f12f6a237b64811f4db81dc29340c9d49d02b"
+    },
+    "assets/wheel-module/source-verification.json": {
+      "bytes": 952,
+      "sha256": "7167fced711e38d90599451c1befd6e658ec0799045e00c4aaaf78a11be1be06"
+    },
+    "assets/wheel-module/wheel-module-lod1.bin": {
+      "bytes": 437432,
+      "sha256": "f288d5dcfc5a1cc17ba4add393034eb687c1acc16ecd54c8a4e548ddcccc017f"
+    },
+    "assets/wheel-module/wheel-module-lod1.gltf": {
+      "bytes": 12570,
+      "sha256": "1113dacafd61b803e400faac015aaced77f50c93f52f1df76409d6ee71c2cb28"
+    },
+    "assets/wheel-module/wheel-module.bin": {
+      "bytes": 1324032,
+      "sha256": "cc4ab565bd620a2a7aff8d3c64d69fa938c9921c56ff0f615de7f87c395c4208"
+    },
+    "assets/wheel-module/wheel-module.gltf": {
+      "bytes": 12614,
+      "sha256": "f70cce6c183b356e2178efbb9dfa2968c073d14f6c2a7f8efecd8c3597feeae6"
+    }
+  },
+  "status": "FILES_TRANSFERRED_NOT_RUNTIME_INTEGRATED"
+}

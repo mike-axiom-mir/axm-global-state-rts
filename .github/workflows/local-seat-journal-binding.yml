@@ -11,6 +11,8 @@ on:
       - 'src/hosted/world-session-authority.mjs'
       - 'src/hosted/world-http-api.mjs'
       - 'src/session/world-browser-client.mjs'
+      - 'src/session/local-checkpoint-adoption.mjs'
+      - 'src/sim/local-region-sim.mjs'
       - 'game/host-local-seat-checkpoint.mjs'
       - 'game/index.html'
       - 'scripts/serve.mjs'
@@ -18,11 +20,13 @@ on:
       - 'tests/local-seat-journal-authority-selftest.mjs'
       - 'tests/local-seat-restart-continuity-selftest.mjs'
       - 'tests/local-seat-http-authority-selftest.mjs'
+      - 'tests/local-checkpoint-adoption-selftest.mjs'
       - 'tests/browser/local-seat-journal-binding.spec.js'
       - 'tests/browser/world-entry.spec.js'
       - 'docs/LOCAL_SEAT_JOURNAL_BINDING_V0.md'
       - 'docs/HOST_LOCAL_GATHER_COMMAND_V0.md'
       - 'docs/LOCAL_SEAT_RESTART_CONTINUITY_V0.md'
+      - 'docs/HOST_CHECKPOINT_ADOPTION_V0.md'
       - '.github/workflows/local-seat-journal-binding.yml'
   workflow_dispatch:
 
@@ -49,21 +53,25 @@ jobs:
           node --check src/hosted/world-session-authority.mjs
           node --check src/hosted/world-http-api.mjs
           node --check src/session/world-browser-client.mjs
+          node --check src/session/local-checkpoint-adoption.mjs
+          node --check src/sim/local-region-sim.mjs
           node --check game/host-local-seat-checkpoint.mjs
           node --check scripts/serve.mjs
           node --check tests/local-outcome-replay-authority-selftest.mjs
           node --check tests/local-seat-journal-authority-selftest.mjs
           node --check tests/local-seat-restart-continuity-selftest.mjs
           node --check tests/local-seat-http-authority-selftest.mjs
+          node --check tests/local-checkpoint-adoption-selftest.mjs
           node --check tests/browser/local-seat-journal-binding.spec.js
           node --check tests/browser/world-entry.spec.js
-      - name: Exercise replay, chained journal, restart continuity, and bound host command authority
+      - name: Exercise replay, chained journal, restart continuity, adoption, and bound host command authority
         run: |
           node tests/local-outcome-replay-authority-selftest.mjs
           node tests/local-region-command-journal-selftest.mjs
           node tests/local-seat-journal-authority-selftest.mjs
           node tests/local-seat-restart-continuity-selftest.mjs
           node tests/local-seat-http-authority-selftest.mjs
+          node tests/local-checkpoint-adoption-selftest.mjs
           node tests/world-session-authority-selftest.mjs
           node tests/world-http-api-selftest.mjs
           node tests/world-browser-client-selftest.mjs
@@ -103,7 +111,7 @@ jobs:
           done
           cat /tmp/axm-local-seat-host.log
           exit 1
-      - name: Exercise authority-revalidated browser seat through explicit host journal gather
+      - name: Exercise bound browser seat through explicit host gather and checkpoint adoption
         run: npx playwright test tests/browser/local-seat-journal-binding.spec.js --workers=1 --reporter=line
       - name: Preserve browser evidence
         if: always()

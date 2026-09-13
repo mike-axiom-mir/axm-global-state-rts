@@ -37,7 +37,19 @@ An explicit release removes the reservation. Once the reservation reaches zero, 
 
 ## Human / machine equal entry
 
-Controller kind is retained for audit evidence only. It does not alter reservation arithmetic, source validation, persistence semantics, or the repair guard. Equivalent human and machine accounts are required to produce equivalent physical salvage and reservation amounts.
+Controller kind is retained for audit evidence only. It does not alter reservation arithmetic, source validation, persistence semantics, HTTP semantics, browser controls, or the repair guard. Equivalent human and machine accounts use the same host routes and authority methods.
+
+## Player-facing HTTP/browser surface
+
+The hosted world surface now exposes:
+
+- `GET /api/world/local-salvage/reservation?participantId=...` for the host-owned reservation summary;
+- `POST /api/world/local-seat/salvage-reserve` with participant id, seat id, expected host journal revision, and a requested positive milli-scrap amount;
+- `POST /api/world/local-seat/salvage-release` with participant id, seat id, and a requested positive milli-scrap amount.
+
+The bound LOCAL RTS seat exposes explicit **Reserve 1 verified scrap** and **Release 1 reserved scrap** controls. The controls re-read host summaries; they do not supply verified balance, controller identity, state hash, proof hash, or world hour as authority. There is no automatic reservation, automatic release, hidden checkpoint adoption, or silent stale-revision retry.
+
+Player-facing copy states that reservation leaves local storage unchanged and creates no global credit.
 
 ## What this is not
 
@@ -49,7 +61,6 @@ In v0:
 - no shared/global balance is credited;
 - no other account receives value;
 - no reservation can be spent;
-- no browser-facing reservation control or HTTP reservation endpoint is added yet;
 - browser-local simulation remains distinct from host-journal authority;
 - account persistence and LOCAL RTS journal persistence remain separate files/surfaces rather than one atomic transaction;
 - a crash spanning separate persistence writes is not claimed transactionally safe;
@@ -62,4 +73,4 @@ A direct jump from proof to currency would allow the project to describe value a
 
 > value explicitly set aside from a current verified LOCAL RTS checkpoint cannot also be consumed by the host's current repair path unless the reservation is explicitly released.
 
-That invariant can be tested independently before a later lane exposes reservation to the player-facing world API and, after that, attempts a real debit/transfer transaction.
+The player can now operate and inspect that invariant through the hosted world surface. The next economic rung must still establish a real atomic local-debit/global-credit transaction before reserved salvage can become spendable shared-world value.

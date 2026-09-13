@@ -1,4 +1,5 @@
 import { createHostedSharedStateAuthority } from './shared-state-authority.mjs';
+import { createLocalSeatJournalAuthority } from './local-seat-journal-authority.mjs';
 import { createWorldParticipantRegistry } from './world-participant-registry.mjs';
 
 export const WORLD_SESSION_AUTHORITY_SCHEMA = 'axm.global-state-rts.world-session-authority/v0.2';
@@ -27,6 +28,9 @@ export class WorldSessionAuthority {
   constructor({
     participantRegistry = null,
     sharedStateAuthority = null,
+    localSeatAuthority = null,
+    localSeatStoreFactory = undefined,
+    localSeatMaxCommands = undefined,
     accountStore = null,
     worldEpochMs = 0,
     apmCap,
@@ -56,6 +60,12 @@ export class WorldSessionAuthority {
       worldOptions,
       ...(store === undefined ? {} : { store }),
       ...(clock === undefined ? {} : { clock })
+    });
+    this.localSeats = localSeatAuthority || createLocalSeatJournalAuthority({
+      participantRegistry: this.participants,
+      ...(clock === undefined ? {} : { clock }),
+      ...(localSeatStoreFactory === undefined ? {} : { storeFactory: localSeatStoreFactory }),
+      ...(localSeatMaxCommands === undefined ? {} : { maxCommands: localSeatMaxCommands })
     });
   }
 
@@ -88,6 +98,14 @@ export class WorldSessionAuthority {
 
   participant(participantId) {
     return this.participants.participant(participantId);
+  }
+
+  bindLocalSeat(options = {}) {
+    return this.localSeats.bindParticipant(options);
+  }
+
+  localSeatStatus(options = {}) {
+    return this.localSeats.status(options);
   }
 
   accrueChests(participantId, nowMs) {
@@ -211,6 +229,7 @@ export class WorldSessionAuthority {
       schema: WORLD_SESSION_AUTHORITY_SCHEMA,
       participants: this.participants.snapshot(),
       accountPersistence: this.accountPersistenceMeta(),
+      localSeats: this.localSeats.snapshot(),
       sharedState: this.sharedState.authoritativeSnapshot()
     });
   }

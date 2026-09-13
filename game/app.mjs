@@ -153,7 +153,7 @@ function renderSeatSetup() {
         <select data-seat-team="${seat.index}">${teamOptions(seat.teamId, seat.index)}</select>
       </label>
       <div class="binding">Input: ${bindingText}</div>
-      <div class="binding">World: ${worldBinding ? `${worldBinding.displayName} · ${worldBinding.profileKind}` : 'not bound'}</div>
+      <div class="binding">World: ${worldBinding ? 'bound shared-world participant' : 'not bound'}</div>
     `;
     seatSetup.appendChild(card);
   }

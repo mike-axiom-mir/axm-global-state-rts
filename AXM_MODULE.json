@@ -1,0 +1,140 @@
+{
+  "schema_version": "1.4",
+  "module": {
+    "name": "axm-global-state-rts",
+    "purpose": "Deterministic global-state RTS experiment with local multi-seat browser presentation, bounded world/state systems, and evidence-gated external 3D asset integration."
+  },
+  "capabilities": [
+    {
+      "id": "asset.workshop-lod-selection",
+      "description": "Select the evidence-backed workshop runtime LOD tier from the real local RTS camera distance while keeping the far tier on HOLD until a farther handoff distance is proven.",
+      "provides": [
+        "asset.lod-selection",
+        "asset.workshop-lod-role",
+        "evidence.lod-policy"
+      ],
+      "accepts": [
+        "view.camera-distance"
+      ],
+      "tags": [
+        "asset",
+        "lod",
+        "rts",
+        "deterministic",
+        "evidence"
+      ],
+      "evidence": {
+        "status": "target_browser_policy_exercised",
+        "boundary": "automatic tactical/ordinary-RTS selection is grounded by sampled 120 m and 360 m target renders; automatic far handoff remains unproven"
+      },
+      "callable": {
+        "schema": "axm.callable-capability/v0.1",
+        "kind": "module-export",
+        "runtime": "javascript-esm",
+        "path": "src/assets/workshop-lod-policy.mjs",
+        "export": "selectWorkshopRuntimeLod",
+        "input_contract": "axm.global-state-rts.workshop-camera-distance/v0.1",
+        "output_contract": "axm.global-state-rts.workshop-runtime-lod-policy/v0.1",
+        "authority": "none",
+        "network": "none",
+        "notes": "Pure selection function. Declaration does not promote the far tier or prove performance."
+      }
+    },
+    {
+      "id": "asset.workshop-lod-installation",
+      "description": "Install the evidence-selected workshop tactical/ordinary-RTS variant through an externally supplied exact-hash asset installation callback.",
+      "provides": [
+        "asset.runtime-install-receipt",
+        "asset.workshop-runtime"
+      ],
+      "accepts": [
+        "view.camera-distance",
+        "asset.bytes.hash-bound",
+        "runtime.asset-install-callback"
+      ],
+      "tags": [
+        "asset",
+        "lod",
+        "browser",
+        "runtime",
+        "evidence"
+      ],
+      "evidence": {
+        "status": "target_browser_callable_exercised",
+        "boundary": "deterministic fixture proof exercises the callable selector/install seam; real Universal Creation workshop variants have separate target Chromium render evidence"
+      },
+      "callable": {
+        "schema": "axm.callable-capability/v0.1",
+        "kind": "module-export",
+        "runtime": "javascript-esm",
+        "path": "src/assets/workshop-lod-installer.mjs",
+        "export": "installWorkshopLodForView",
+        "input_contract": "axm.global-state-rts.workshop-lod-installer-request/v0.1",
+        "output_contract": "axm.global-state-rts.workshop-lod-installer/v0.1",
+        "authority": "none",
+        "network": "none",
+        "notes": "Requires caller-supplied variant bytes and install callback. It grants no asset acceptance, merge, or CANON authority."
+      }
+    },
+    {
+      "id": "game.global-state-rts",
+      "description": "Global-state RTS simulation and 1-4 seat local browser presentation over canonical game/world state.",
+      "provides": [
+        "artifact.game-build",
+        "state.simulation",
+        "interface.local"
+      ],
+      "accepts": [
+        "game.objective",
+        "state",
+        "input"
+      ],
+      "tags": [
+        "game",
+        "rts",
+        "simulation",
+        "local",
+        "multiseat"
+      ],
+      "evidence": {
+        "status": "experimental_with_regression_and_browser_evidence",
+        "boundary": "individual systems have scoped evidence; this does not claim final balance, production multiplayer, target-device performance, or CANON"
+      }
+    }
+  ],
+  "entrypoints": [
+    {
+      "kind": "node-local-server",
+      "command": "npm start",
+      "path": "scripts/serve.mjs",
+      "purpose": "serve the local Global State RTS browser shell"
+    },
+    {
+      "kind": "browser-local",
+      "command": "open http://127.0.0.1:4174/game/",
+      "path": "game/index.html",
+      "purpose": "1-4 seat local RTS/globe presentation"
+    }
+  ],
+  "tests": [
+    {
+      "kind": "npm-test",
+      "command": "npm test",
+      "scope": "deterministic world, simulation, presentation, input and runtime regression suite"
+    },
+    {
+      "kind": "playwright",
+      "command": "npx playwright test tests/browser/workshop-lod-selector.spec.js --reporter=line",
+      "scope": "evidence-bound workshop LOD selector and hash-checked browser install seam"
+    }
+  ],
+  "truth_boundary": {
+    "not_claimed": [
+      "automatic far-tier handoff before farther-distance evidence exists",
+      "target-device FPS or mass-building performance from hosted CI",
+      "visual equivalence merely from triangle-band membership",
+      "source callable declaration as execution proof in AXM Monolith",
+      "merge, CANON, installation, network, or risk-acceptance authority from a callable descriptor"
+    ]
+  }
+}

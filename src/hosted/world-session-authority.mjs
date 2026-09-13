@@ -92,7 +92,10 @@ export class WorldSessionAuthority {
 
   accrueChests(participantId, nowMs) {
     const result = this.participants.accrueChests(participantId, nowMs);
-    if (this.participants.participant(participantId)?.profileKind === 'world-account') this.#persistWorldAccounts();
+    const changed = (result.result?.added || 0) > 0
+      || (result.result?.discardedByCap || 0) > 0
+      || result.result?.boundWorldHour !== undefined;
+    if (changed && this.participants.participant(participantId)?.profileKind === 'world-account') this.#persistWorldAccounts();
     return result;
   }
 

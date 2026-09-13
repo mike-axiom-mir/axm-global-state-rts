@@ -26,7 +26,7 @@ function concatAligned(parts) {
   return { output, offsets };
 }
 
-export function createStaticGlbFixture({ unsupportedExtension = null } = {}) {
+export function createStaticGlbFixture({ unsupportedExtension = null, tag = '' } = {}) {
   const positions = bytesOf(new Float32Array([
     -10, 0, 0,
     10, 0, 0,
@@ -45,14 +45,15 @@ export function createStaticGlbFixture({ unsupportedExtension = null } = {}) {
   const indices = bytesOf(new Uint16Array([0, 1, 2]));
   const png = base64Bytes(PNG_1X1);
   const { output: binary, offsets } = concatAligned([positions, normals, uvs, indices, png]);
+  const suffix = tag ? `:${String(tag)}` : '';
 
   const json = {
-    asset: { version: '2.0', generator: 'AXM deterministic browser GLB fixture' },
+    asset: { version: '2.0', generator: `AXM deterministic browser GLB fixture${suffix}` },
     scene: 0,
     scenes: [{ nodes: [0] }],
-    nodes: [{ name: 'runtime-fixture-node', mesh: 0 }],
+    nodes: [{ name: `runtime-fixture-node${suffix}`, mesh: 0 }],
     meshes: [{
-      name: 'runtime-fixture-mesh',
+      name: `runtime-fixture-mesh${suffix}`,
       primitives: [{
         attributes: { POSITION: 0, NORMAL: 1, TEXCOORD_0: 2 },
         indices: 3,
@@ -61,7 +62,7 @@ export function createStaticGlbFixture({ unsupportedExtension = null } = {}) {
       }]
     }],
     materials: [{
-      name: 'runtime-fixture-material',
+      name: `runtime-fixture-material${suffix}`,
       doubleSided: true,
       pbrMetallicRoughness: {
         baseColorTexture: { index: 0 },

@@ -31,6 +31,18 @@ const deniedBind = disabled.handle({
 });
 assert.equal(deniedBind.status, 403, 'host local-seat binding obeys the same development write switch');
 
+const deniedCommand = disabled.handle({
+  method: 'POST',
+  pathname: '/api/world/local-seat/command',
+  body: {
+    participantId: 'world:not-created',
+    regionSeatId: 'seat-1',
+    expectedRevision: 0,
+    intent: { actionId: 'gather-scrap', cursorXM: 0, cursorZM: 0, stepCount: 160 }
+  }
+});
+assert.equal(deniedCommand.status, 403, 'host local-seat commands obey the development write switch');
+
 const humanEntry = dev.handle({
   method: 'POST',
   pathname: '/api/world/enter/guest',
@@ -149,6 +161,55 @@ assert.equal(laterStatus.body.binding.boundAtWorldHourIndex, 21);
 assert.equal(laterStatus.body.journal.genesisWorldHourIndex, 21);
 assert.equal(laterStatus.body.journal.stateHash, machineBind.body.journal.stateHash);
 
+const hostGather = dev.handle({
+  method: 'POST',
+  pathname: '/api/world/local-seat/command',
+  body: {
+    participantId: machineId,
+    regionSeatId: 'seat-1',
+    expectedRevision: 0,
+    intent: { actionId: 'gather-scrap', cursorXM: 0, cursorZM: 0, stepCount: 160 },
+    controllerKind: 'human',
+    worldHourIndex: 999999
+  }
+});
+assert.equal(hostGather.status, 200);
+assert.equal(hostGather.body.accepted, true);
+assert.equal(hostGather.body.revision, 1);
+assert.equal(hostGather.body.entry.participantId, machineId);
+assert.equal(hostGather.body.entry.controllerKind, 'machine', 'host participant record remains actor authority');
+assert.equal(hostGather.body.entry.worldHourIndex, 22, 'host clock remains world-time authority');
+assert.equal(hostGather.body.worldTime.worldHourIndex, 22);
+assert.equal(hostGather.body.binding.participantId, machineId);
+assert.equal(
+  hostGather.body.truthBoundary,
+  'host-reproduced-local-journal-command-no-browser-state-equivalence-no-shared-world-promotion'
+);
+
+const stale = dev.handle({
+  method: 'POST',
+  pathname: '/api/world/local-seat/command',
+  body: {
+    participantId: machineId,
+    regionSeatId: 'seat-1',
+    expectedRevision: 0,
+    intent: { actionId: 'gather-scrap', cursorXM: 0, cursorZM: 0, stepCount: 160 }
+  }
+});
+assert.equal(stale.status, 409);
+assert.equal(stale.body.reason, 'local-authority-revision-conflict');
+assert.equal(stale.body.currentRevision, 1);
+
+const afterCommand = disabled.handle({
+  method: 'GET',
+  pathname: '/api/world/local-seat',
+  searchParams: new URLSearchParams({ regionSeatId: 'seat-1', participantId: machineId })
+});
+assert.equal(afterCommand.status, 200);
+assert.equal(afterCommand.body.journal.revision, 1);
+assert.equal(afterCommand.body.journal.stateHash, hostGather.body.stateHash);
+assert.equal(afterCommand.body.continuity.matchesLive, true);
+
 const meta = dev.handle({ method: 'GET', pathname: '/api/world/meta' });
 assert.equal(meta.status, 200);
 assert.equal(meta.body.localSeats.bindingCount, 1);
@@ -160,9 +221,10 @@ console.log(JSON.stringify({
   participantId: machineId,
   regionSeatId: 'seat-1',
   boundAtWorldHourIndex: machineBind.body.binding.boundAtWorldHourIndex,
-  currentWorldHourIndex: laterStatus.body.worldTime.worldHourIndex,
-  journalRevision: laterStatus.body.journal.revision,
-  stateHash: laterStatus.body.journal.stateHash,
-  continuity: laterStatus.body.continuity,
-  truthBoundary: laterStatus.body.truthBoundary
+  currentWorldHourIndex: afterCommand.body.worldTime.worldHourIndex,
+  journalRevision: afterCommand.body.journal.revision,
+  stateHash: afterCommand.body.journal.stateHash,
+  continuity: afterCommand.body.continuity,
+  commandTruthBoundary: hostGather.body.truthBoundary,
+  checkpointTruthBoundary: afterCommand.body.truthBoundary
 }, null, 2));

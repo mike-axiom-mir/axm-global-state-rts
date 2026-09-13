@@ -2,9 +2,10 @@ import { createHostedSharedStateAuthority } from './shared-state-authority.mjs';
 import { createLocalSeatJournalAuthority } from './local-seat-journal-authority.mjs';
 import { createWorldParticipantRegistry } from './world-participant-registry.mjs';
 import { createVerifiedLocalSalvageLedger } from './verified-local-salvage-ledger.mjs';
+import { createVerifiedLocalSalvageReservationLedger } from './verified-local-salvage-reservation-ledger.mjs';
 import { LOCAL_CHECKPOINT_ADOPTION_SCHEMA } from '../session/local-checkpoint-adoption.mjs';
 
-export const WORLD_SESSION_AUTHORITY_SCHEMA = 'axm.global-state-rts.world-session-authority/v0.4';
+export const WORLD_SESSION_AUTHORITY_SCHEMA = 'axm.global-state-rts.world-session-authority/v0.5';
 
 const WORLD_EVENT_ACTION_IDS = Object.freeze({
   'territory.claim': 'world-territory-claim',
@@ -38,6 +39,7 @@ export class WorldSessionAuthority {
     sharedStateAuthority = null,
     localSeatAuthority = null,
     verifiedLocalSalvageLedger = null,
+    verifiedLocalSalvageReservationLedger = null,
     localSeatStoreFactory = undefined,
     localSeatBindingStore = null,
     localSeatMaxCommands = undefined,
@@ -69,6 +71,8 @@ export class WorldSessionAuthority {
     this.verifiedLocalSalvage = verifiedLocalSalvageLedger || createVerifiedLocalSalvageLedger({
       restoredAccounts: accounts
     });
+    this.verifiedLocalSalvageReservations = verifiedLocalSalvageReservationLedger
+      || createVerifiedLocalSalvageReservationLedger({ restoredAccounts: accounts });
     this.sharedState = sharedStateAuthority || createHostedSharedStateAuthority({
       worldOptions,
       ...(store === undefined ? {} : { store }),
@@ -85,7 +89,8 @@ export class WorldSessionAuthority {
 
   #persistWorldAccounts() {
     if (!this.accountStore) return null;
-    const snapshots = this.verifiedLocalSalvage.overlayWorldAccounts(this.participants.exportWorldAccounts());
+    const salvageSnapshots = this.verifiedLocalSalvage.overlayWorldAccounts(this.participants.exportWorldAccounts());
+    const snapshots = this.verifiedLocalSalvageReservations.overlayWorldAccounts(salvageSnapshots);
     return this.accountStore.replaceAll(snapshots);
   }
 
@@ -199,9 +204,35 @@ export class WorldSessionAuthority {
       controllerKind: record.controllerKind,
       profileKind: record.profileKind,
       summary: this.verifiedLocalSalvage.summary(participant),
+      reservation: this.verifiedLocalSalvageReservations.summary(participant),
       accountPersistence: this.accountPersistenceMeta(),
       truthBoundary:
         'persistent-account-record-of-host-local-storage-high-water-not-spendable-shared-world-economy'
+    });
+  }
+
+  verifiedLocalSalvageReservationSummary(participantId) {
+    const participant = participantIdFrom(participantId);
+    const record = this.participants.participant(participant);
+    if (!record) throw new RangeError(`unknown participant: ${participant}`);
+    if (record.profileKind !== 'world-account') {
+      return Object.freeze({
+        accepted: false,
+        reason: 'verified-local-salvage-reservation-requires-world-account',
+        participantId: participant,
+        profileKind: record.profileKind,
+        summary: null
+      });
+    }
+    return Object.freeze({
+      accepted: true,
+      participantId: participant,
+      controllerKind: record.controllerKind,
+      profileKind: record.profileKind,
+      summary: this.verifiedLocalSalvageReservations.summary(participant),
+      accountPersistence: this.accountPersistenceMeta(),
+      truthBoundary:
+        'reservation-is-persistent-account-intent-and-current-repair-guard-not-transfer-credit-or-global-currency'
     });
   }
 
@@ -265,7 +296,130 @@ export class WorldSessionAuthority {
     });
   }
 
+  reserveVerifiedLocalSalvage({ participantId, regionSeatId, expectedRevision, amountMilli } = {}) {
+    const participant = participantIdFrom(participantId);
+    const expected = nonNegativeInteger(expectedRevision, 'expectedRevision');
+    const record = this.participants.participant(participant);
+    if (!record) throw new RangeError(`unknown participant: ${participant}`);
+    if (record.profileKind !== 'world-account') {
+      return Object.freeze({
+        accepted: false,
+        reason: 'verified-local-salvage-reservation-requires-world-account',
+        participantId: participant,
+        profileKind: record.profileKind
+      });
+    }
+
+    const status = this.localSeats.status({ participantId: participant, regionSeatId });
+    if (!status.accepted) return status;
+    if (expected !== status.journal.revision) {
+      return Object.freeze({
+        accepted: false,
+        reason: 'local-authority-revision-conflict',
+        participantId: participant,
+        regionSeatId: status.binding.regionSeatId,
+        expectedRevision: expected,
+        currentRevision: status.journal.revision,
+        headHash: status.journal.headHash,
+        stateHash: status.journal.stateHash
+      });
+    }
+
+    const salvage = this.verifiedLocalSalvage.summary(participant);
+    const source = salvage.sources.find(item => item.regionSeatId === status.binding.regionSeatId) || null;
+    if (!source || source.revision !== status.journal.revision || source.stateHash !== status.journal.stateHash) {
+      return Object.freeze({
+        accepted: false,
+        reason: 'verified-local-salvage-reservation-requires-current-proof',
+        participantId: participant,
+        regionSeatId: status.binding.regionSeatId,
+        currentRevision: status.journal.revision,
+        currentStateHash: status.journal.stateHash,
+        recordedRevision: source?.revision ?? null,
+        recordedStateHash: source?.stateHash ?? null
+      });
+    }
+
+    const result = this.verifiedLocalSalvageReservations.reserve({
+      participantId: participant,
+      controllerKind: record.controllerKind,
+      regionSeatId: status.binding.regionSeatId,
+      sourceRevision: source.revision,
+      sourceStateHash: source.stateHash,
+      verifiedScrapMilli: source.recordedScrapMilli,
+      amountMilli,
+      worldHourIndex: status.worldTime.worldHourIndex
+    });
+    const accountPersistence = result.accepted
+      ? this.#persistWorldAccounts()
+      : this.accountPersistenceMeta();
+    return Object.freeze({
+      ...result,
+      participantId: participant,
+      binding: status.binding,
+      journal: status.journal,
+      accountPersistence,
+      truthBoundary:
+        'explicit-account-reservation-of-current-host-verified-salvage-current-repair-guard-only-no-transfer-or-global-credit'
+    });
+  }
+
+  releaseVerifiedLocalSalvage({ participantId, regionSeatId, amountMilli } = {}) {
+    const participant = participantIdFrom(participantId);
+    const record = this.participants.participant(participant);
+    if (!record) throw new RangeError(`unknown participant: ${participant}`);
+    if (record.profileKind !== 'world-account') {
+      return Object.freeze({
+        accepted: false,
+        reason: 'verified-local-salvage-reservation-requires-world-account',
+        participantId: participant,
+        profileKind: record.profileKind
+      });
+    }
+    const status = this.localSeats.status({ participantId: participant, regionSeatId });
+    if (!status.accepted) return status;
+    const result = this.verifiedLocalSalvageReservations.release({
+      participantId: participant,
+      regionSeatId: status.binding.regionSeatId,
+      amountMilli,
+      worldHourIndex: status.worldTime.worldHourIndex
+    });
+    const accountPersistence = result.accepted
+      ? this.#persistWorldAccounts()
+      : this.accountPersistenceMeta();
+    return Object.freeze({
+      ...result,
+      participantId: participant,
+      binding: status.binding,
+      journal: status.journal,
+      accountPersistence,
+      truthBoundary:
+        'explicit-release-removes-current-repair-guard-reservation-only-no-transfer-or-global-credit'
+    });
+  }
+
   submitLocalSeatCommand(options = {}) {
+    const participantId = String(options?.participantId ?? '').trim();
+    const regionSeatId = String(options?.regionSeatId ?? '').trim();
+    const actionId = String(options?.intent?.actionId ?? '').trim();
+    const participant = participantId ? this.participants.participant(participantId) : null;
+    if (participant?.profileKind === 'world-account' && regionSeatId && actionId === 'repair-core') {
+      const reservation = this.verifiedLocalSalvageReservations.source(participantId, regionSeatId);
+      if (reservation?.reservedScrapMilli > 0) {
+        return Object.freeze({
+          accepted: false,
+          reason: 'verified-local-salvage-reservation-blocks-repair',
+          participantId,
+          regionSeatId,
+          reservedScrapMilli: reservation.reservedScrapMilli,
+          reservedScrap: reservation.reservedScrapMilli / 1000,
+          sourceRevision: reservation.sourceRevision,
+          sourceStateHash: reservation.sourceStateHash,
+          truthBoundary:
+            'current-host-repair-fails-closed-while-verified-salvage-is-reserved-no-broader-future-spend-mechanic-claim'
+        });
+      }
+    }
     return this.localSeats.submitBoundCommand(options);
   }
 
@@ -371,6 +525,7 @@ export class WorldSessionAuthority {
         leaderboardMode: record.leaderboardMode,
         summary: null,
         verifiedLocalSalvage: null,
+        verifiedLocalSalvageReservation: null,
         reason: 'guest-scores-are-run-scoped'
       });
     }
@@ -379,12 +534,14 @@ export class WorldSessionAuthority {
       profileKind: record.profileKind,
       leaderboardMode: record.leaderboardMode,
       summary: this.sharedState.playerSummary(participant),
-      verifiedLocalSalvage: this.verifiedLocalSalvage.summary(participant)
+      verifiedLocalSalvage: this.verifiedLocalSalvage.summary(participant),
+      verifiedLocalSalvageReservation: this.verifiedLocalSalvageReservations.summary(participant)
     });
   }
 
   exportWorldAccounts() {
-    return this.verifiedLocalSalvage.overlayWorldAccounts(this.participants.exportWorldAccounts());
+    const salvageSnapshots = this.verifiedLocalSalvage.overlayWorldAccounts(this.participants.exportWorldAccounts());
+    return this.verifiedLocalSalvageReservations.overlayWorldAccounts(salvageSnapshots);
   }
 
   authoritativeSnapshot() {
@@ -393,6 +550,7 @@ export class WorldSessionAuthority {
       participants: this.participants.snapshot(),
       accountPersistence: this.accountPersistenceMeta(),
       verifiedLocalSalvage: this.verifiedLocalSalvage.snapshot(),
+      verifiedLocalSalvageReservation: this.verifiedLocalSalvageReservations.snapshot(),
       localSeats: this.localSeats.snapshot(),
       sharedState: this.sharedState.authoritativeSnapshot()
     });

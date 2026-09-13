@@ -2,7 +2,7 @@ import { createHostedSharedStateAuthority } from './shared-state-authority.mjs';
 import { createLocalSeatJournalAuthority } from './local-seat-journal-authority.mjs';
 import { createWorldParticipantRegistry } from './world-participant-registry.mjs';
 
-export const WORLD_SESSION_AUTHORITY_SCHEMA = 'axm.global-state-rts.world-session-authority/v0.2';
+export const WORLD_SESSION_AUTHORITY_SCHEMA = 'axm.global-state-rts.world-session-authority/v0.3';
 
 const WORLD_EVENT_ACTION_IDS = Object.freeze({
   'territory.claim': 'world-territory-claim',
@@ -30,6 +30,7 @@ export class WorldSessionAuthority {
     sharedStateAuthority = null,
     localSeatAuthority = null,
     localSeatStoreFactory = undefined,
+    localSeatBindingStore = null,
     localSeatMaxCommands = undefined,
     accountStore = null,
     worldEpochMs = 0,
@@ -65,6 +66,7 @@ export class WorldSessionAuthority {
       participantRegistry: this.participants,
       ...(clock === undefined ? {} : { clock }),
       ...(localSeatStoreFactory === undefined ? {} : { storeFactory: localSeatStoreFactory }),
+      ...(localSeatBindingStore === null ? {} : { bindingStore: localSeatBindingStore }),
       ...(localSeatMaxCommands === undefined ? {} : { maxCommands: localSeatMaxCommands })
     });
   }

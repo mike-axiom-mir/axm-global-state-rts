@@ -16,11 +16,12 @@ export class WorldEntryHttpError extends Error {
 }
 
 export class WorldEntryClient {
-  constructor({ baseUrl = '', fetchImpl = globalThis.fetch } = {}) {
-    if (typeof fetchImpl !== 'function') throw new TypeError('fetch implementation required');
+  constructor({ baseUrl = '', fetchImpl = null } = {}) {
+    const resolvedFetch = fetchImpl || (typeof globalThis.fetch === 'function' ? globalThis.fetch.bind(globalThis) : null);
+    if (typeof resolvedFetch !== 'function') throw new TypeError('fetch implementation required');
     this.schema = WORLD_ENTRY_CLIENT_SCHEMA;
     this.baseUrl = String(baseUrl || '').replace(/\/$/, '');
-    this.fetchImpl = fetchImpl;
+    this.fetchImpl = resolvedFetch;
   }
 
   async #request(pathname, { method = 'GET', body = null } = {}) {

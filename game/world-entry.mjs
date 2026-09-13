@@ -48,7 +48,7 @@ function renderParticipant(record) {
   participantId.textContent = `participant: ${participant.participantId}`;
   profileStatus.textContent = `profile: ${participant.profileKind} · ${participant.controllerKind} · leaderboard ${participant.leaderboardMode}`;
   const cache = participant.dropCache || {};
-  chestStatus.textContent = `chests: ${cache.storedCrates ?? 0} stored · ${cache.openedCrates ?? 0} opened · cap ${cache.cap ?? 24}`;
+  chestStatus.textContent = `chests: ${cache.storedCrates ?? 0} stored · ${cache.openedCrates ?? 0} opened · cap ${cache.cap ?? 24} · accounted through world hour ${cache.anchorWorldHour ?? 'unbound'}`;
   accrueChests.disabled = false;
   openChest.disabled = false;
   continueToRts.disabled = false;
@@ -59,10 +59,27 @@ function errorText(error) {
   return String(error?.message || error);
 }
 
+function entryChestSyncText(result) {
+  const sync = result?.chestAccrual;
+  if (!sync) return '';
+  const added = Number(sync.result?.added || 0);
+  const discarded = Number(sync.result?.discardedByCap || 0);
+  const worldHour = sync.worldTime?.worldHourIndex;
+  const capText = discarded > 0 ? ` · ${discarded} elapsed chest${discarded === 1 ? '' : 's'} beyond cap` : '';
+  return ` · world-time chest sync +${added}${capText} · hour ${worldHour ?? '?'}`;
+}
+
+function worldBoundaryText(worldTime) {
+  const remaining = Number(worldTime?.msUntilNextHour);
+  if (!Number.isFinite(remaining) || remaining < 0) return '';
+  const minutes = Math.max(0, Math.ceil(remaining / 60_000));
+  return ` · next chest boundary ~${minutes}m (host snapshot)`;
+}
+
 async function refreshMeta() {
   try {
     const meta = await client.worldMeta();
-    worldMeta.textContent = `host: ${meta.writeMode} writes · world hour ${meta.worldTime?.worldHourIndex ?? '?'} · participants ${meta.participantCount ?? '?'} · account persistence ${meta.accountPersistence?.enabled ? meta.accountPersistence.kind : 'off'}`;
+    worldMeta.textContent = `host: ${meta.writeMode} writes · world hour ${meta.worldTime?.worldHourIndex ?? '?'}${worldBoundaryText(meta.worldTime)} · participants ${meta.participantCount ?? '?'} · account persistence ${meta.accountPersistence?.enabled ? meta.accountPersistence.kind : 'off'}`;
   } catch (error) {
     worldMeta.textContent = `host unavailable: ${errorText(error)}`;
   }
@@ -80,7 +97,7 @@ async function enter(mode) {
       ? await client.enterGuest({ ...common, sessionId: sessionId() })
       : await client.enterAccount({ ...common, accountId: accountId.value.trim(), credentialMode: 'none' });
     renderParticipant(result.participant);
-    entryStatus.textContent = `Entered shared world as ${result.participant.profileKind}.`;
+    entryStatus.textContent = `Entered shared world as ${result.participant.profileKind}${entryChestSyncText(result)}.`;
     await refreshMeta();
   } catch (error) {
     entryStatus.textContent = `Entry failed: ${errorText(error)}`;
@@ -99,9 +116,10 @@ accrueChests.addEventListener('click', async () => {
     const result = await client.accrueChests(participant.participantId);
     const refreshed = await client.participant(participant.participantId);
     renderParticipant(refreshed.participant);
-    entryStatus.textContent = `Chest sync complete: +${result.result?.added ?? 0}, discarded ${result.result?.discardedByCap ?? 0}.`;
+    entryStatus.textContent = `Chest clock refreshed: +${result.result?.added ?? 0}, beyond cap ${result.result?.discardedByCap ?? 0}, world hour ${result.worldTime?.worldHourIndex ?? '?'}.`;
+    await refreshMeta();
   } catch (error) {
-    entryStatus.textContent = `Chest sync failed: ${errorText(error)}`;
+    entryStatus.textContent = `Chest refresh failed: ${errorText(error)}`;
   } finally {
     setBusy(false);
   }

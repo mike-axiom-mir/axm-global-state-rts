@@ -1,0 +1,30 @@
+name: AXM native callable manifest
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'AXM_MODULE.json'
+      - 'src/assets/workshop-lod-policy.mjs'
+      - 'src/assets/workshop-lod-installer.mjs'
+      - 'tests/axm-module-manifest-selftest.mjs'
+      - '.github/workflows/axm-native-callable-manifest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-callable-manifest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact candidate
+        uses: actions/checkout@v4
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify source-declared callable contract
+        run: node tests/axm-module-manifest-selftest.mjs

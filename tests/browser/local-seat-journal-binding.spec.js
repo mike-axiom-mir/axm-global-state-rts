@@ -181,5 +181,9 @@ test('authority-revalidated machine participant can journal and explicitly adopt
   expect(hostAfterAdoption.body.continuity.matchesLive).toBe(true);
 
   await page.screenshot({ path: 'test-results/global-state-rts-host-local-checkpoint.png', fullPage: true });
-  expect(failures, failures.join('\n')).toEqual([]);
+  const expectedConflictConsole = 'console: Failed to load resource: the server responded with a status of 409 (Conflict)';
+  const expectedConflictFailures = failures.filter(failure => failure === expectedConflictConsole);
+  const unexpectedFailures = failures.filter(failure => failure !== expectedConflictConsole);
+  expect(expectedConflictFailures).toHaveLength(1);
+  expect(unexpectedFailures, unexpectedFailures.join('\n')).toEqual([]);
 });

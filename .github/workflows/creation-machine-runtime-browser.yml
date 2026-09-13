@@ -1,0 +1,79 @@
+name: Creation Machine checked-in workshop runtime
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'assets/creation-machine/prepare_runtime_glb.py'
+      - 'assets/creation-machine/.gitignore'
+      - 'tests/creation-machine-runtime-prep-selftest.mjs'
+      - 'tests/browser/creation-machine-runtime.spec.js'
+      - 'docs/CREATION_MACHINE_RUNTIME_DERIVATIVE_V0.md'
+      - '.github/workflows/creation-machine-runtime-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checked-in-creation-machine-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Check out exact RTS candidate and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Prepare deterministic checked-in Creation Machine runtime derivative
+        run: |
+          python3 assets/creation-machine/prepare_runtime_glb.py \
+            --asset improvised-workshop \
+            --variant far
+          node tests/creation-machine-runtime-prep-selftest.mjs
+
+      - name: Install pinned Playwright browser test route
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start actual Global State RTS shell with prepared derivative in static root
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-creation-machine.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/improvised-workshop-lod1.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/improvised-workshop-lod1.receipt.json > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-creation-machine.log
+          exit 1
+
+      - name: Exercise real checked-in Creation Machine bytes through LOCAL RTS browser seam
+        run: npx playwright test tests/browser/creation-machine-runtime.spec.js --reporter=line
+
+      - name: Preserve runtime evidence without committing generated derivative
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-creation-machine-runtime-evidence
+          path: |
+            assets/creation-machine/runtime-prepared/improvised-workshop-lod1.receipt.json
+            test-results/global-state-rts-creation-machine-workshop-runtime.png
+            /tmp/axm-global-state-rts-creation-machine.log
+          if-no-files-found: warn
+          retention-days: 14

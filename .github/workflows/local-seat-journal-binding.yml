@@ -8,6 +8,7 @@ on:
       - 'src/hosted/local-seat-binding-store.mjs'
       - 'src/hosted/local-seat-journal-authority.mjs'
       - 'src/hosted/local-region-command-journal-authority.mjs'
+      - 'src/hosted/verified-local-salvage-ledger.mjs'
       - 'src/hosted/world-session-authority.mjs'
       - 'src/hosted/world-http-api.mjs'
       - 'src/session/world-browser-client.mjs'
@@ -21,12 +22,14 @@ on:
       - 'tests/local-seat-restart-continuity-selftest.mjs'
       - 'tests/local-seat-http-authority-selftest.mjs'
       - 'tests/local-checkpoint-adoption-selftest.mjs'
+      - 'tests/verified-local-salvage-selftest.mjs'
       - 'tests/browser/local-seat-journal-binding.spec.js'
       - 'tests/browser/world-entry.spec.js'
       - 'docs/LOCAL_SEAT_JOURNAL_BINDING_V0.md'
       - 'docs/HOST_LOCAL_GATHER_COMMAND_V0.md'
       - 'docs/LOCAL_SEAT_RESTART_CONTINUITY_V0.md'
       - 'docs/HOST_CHECKPOINT_ADOPTION_V0.md'
+      - 'docs/VERIFIED_LOCAL_SALVAGE_V0.md'
       - '.github/workflows/local-seat-journal-binding.yml'
   workflow_dispatch:
 
@@ -46,10 +49,11 @@ jobs:
           node-version: '24'
       - name: Full deterministic and source suite
         run: npm test
-      - name: Syntax gate for host local command authority
+      - name: Syntax gate for host local command and salvage authority
         run: |
           node --check src/hosted/local-seat-binding-store.mjs
           node --check src/hosted/local-seat-journal-authority.mjs
+          node --check src/hosted/verified-local-salvage-ledger.mjs
           node --check src/hosted/world-session-authority.mjs
           node --check src/hosted/world-http-api.mjs
           node --check src/session/world-browser-client.mjs
@@ -62,9 +66,10 @@ jobs:
           node --check tests/local-seat-restart-continuity-selftest.mjs
           node --check tests/local-seat-http-authority-selftest.mjs
           node --check tests/local-checkpoint-adoption-selftest.mjs
+          node --check tests/verified-local-salvage-selftest.mjs
           node --check tests/browser/local-seat-journal-binding.spec.js
           node --check tests/browser/world-entry.spec.js
-      - name: Exercise replay, chained journal, restart continuity, adoption, and bound host command authority
+      - name: Exercise replay, chained journal, restart continuity, adoption, verified salvage, and bound host command authority
         run: |
           node tests/local-outcome-replay-authority-selftest.mjs
           node tests/local-region-command-journal-selftest.mjs
@@ -72,6 +77,7 @@ jobs:
           node tests/local-seat-restart-continuity-selftest.mjs
           node tests/local-seat-http-authority-selftest.mjs
           node tests/local-checkpoint-adoption-selftest.mjs
+          node tests/verified-local-salvage-selftest.mjs
           node tests/world-session-authority-selftest.mjs
           node tests/world-http-api-selftest.mjs
           node tests/world-browser-client-selftest.mjs
@@ -111,7 +117,7 @@ jobs:
           done
           cat /tmp/axm-local-seat-host.log
           exit 1
-      - name: Exercise bound browser seat through explicit host gather and checkpoint adoption
+      - name: Exercise bound browser seat through explicit host gather, verified salvage, and checkpoint adoption
         run: npx playwright test tests/browser/local-seat-journal-binding.spec.js --workers=1 --reporter=line
       - name: Preserve browser evidence
         if: always()
@@ -121,6 +127,7 @@ jobs:
           path: |
             test-results/global-state-rts-host-local-checkpoint.png
             /tmp/axm-local-seat-host.log
+            /tmp/axm-local-seat-world-accounts.json
             /tmp/axm-local-seat-bindings.json
             /tmp/axm-local-seat-journals/*.jsonl
           if-no-files-found: warn

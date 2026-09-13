@@ -3,6 +3,8 @@ import { normalizedSplitLayout } from '../src/presentation/split-screen-layout.m
 import { SplitScreenPlanetRenderer } from '../src/presentation/planet-renderer.mjs';
 import { createLocalRoster, activeSeats } from '../src/session/seat-contract.mjs';
 import { LocalSeatRuntime } from '../src/session/local-seat-runtime.mjs';
+import { createWorldBrowserClient } from '../src/session/world-browser-client.mjs';
+import { createWorldSeatBindingRuntime, readWorldSeatHandoff } from '../src/session/world-seat-binding.mjs';
 import { createLocalRegionSimulation } from '../src/sim/local-region-sim.mjs';
 import { createStarterRegion } from '../src/world/starter-region.mjs';
 
@@ -11,6 +13,7 @@ const seatCountSelect = document.getElementById('seatCount');
 const seatSetup = document.getElementById('seatSetup');
 const seatLabels = document.getElementById('seatLabels');
 const inputStatus = document.getElementById('inputStatus');
+const worldIdentityStatus = document.getElementById('worldIdentityStatus');
 const controllerScan = document.getElementById('controllerScan');
 
 const params = new URLSearchParams(location.search);
@@ -19,9 +22,16 @@ seatCountSelect.value = String(initialCount);
 
 const configuredKinds = Array.from({ length: 4 }, (_, index) => params.get(`seat${index + 1}`) === 'machine' ? 'machine' : 'human');
 const configuredTeams = Array.from({ length: 4 }, () => 'coop');
+const pendingWorldHandoff = readWorldSeatHandoff(sessionStorage, { consume: true });
+if (pendingWorldHandoff?.seatId === 'seat-1') {
+  configuredKinds[0] = pendingWorldHandoff.controllerKind;
+  seatCountSelect.value = '1';
+}
 
+const worldClient = createWorldBrowserClient();
 let roster = null;
 let runtime = null;
+let worldSeatRuntime = null;
 let gamepadRouter = null;
 let renderer = new SplitScreenPlanetRenderer(viewport, { seatIds: ['seat-1'] });
 let previousTime = performance.now();
@@ -77,6 +87,22 @@ function simulationLabel(seatId) {
   return ` · core ${Math.round(snapshot.core.integrity)}% · scrap ${Math.floor(snapshot.storage.scrap)} · ${order}${worldLabel}`;
 }
 
+function worldBindingLabel(seatId) {
+  const binding = worldSeatRuntime?.bindingForSeat(seatId);
+  return binding ? ` · world ${binding.displayName}` : '';
+}
+
+function renderWorldIdentity(message = null) {
+  const binding = worldSeatRuntime?.bindingForSeat('seat-1');
+  const prefix = message || (binding
+    ? `World participant: ${binding.displayName} · ${binding.participantId} · ${binding.controllerKind} · ${binding.profileKind}`
+    : 'World participant: local-only seat');
+  const link = document.createElement('a');
+  link.href = './world-entry.html';
+  link.textContent = binding ? 'change participant' : 'enter shared world';
+  worldIdentityStatus.replaceChildren(document.createTextNode(`${prefix} · `), link);
+}
+
 function rebuildSeatLabels() {
   seatLabels.replaceChildren();
   const seats = activeSeats(roster);
@@ -87,7 +113,7 @@ function rebuildSeatLabels() {
     const label = document.createElement('div');
     label.className = 'seat-label';
     label.dataset.seatId = seat.id;
-    label.textContent = `${seat.displayName} · ${seat.kind} · ${seat.teamId} · ${modeLabel(seat.id)}${simulationLabel(seat.id)}`;
+    label.textContent = `${seat.displayName} · ${seat.kind} · ${seat.teamId} · ${modeLabel(seat.id)}${worldBindingLabel(seat.id)}${simulationLabel(seat.id)}`;
     label.style.left = `calc(${rect.x * 100}% + 8px)`;
     label.style.top = `calc(${rect.y * 100}% + 8px)`;
     seatLabels.appendChild(label);
@@ -117,6 +143,7 @@ function renderSeatSetup() {
     const bindingText = bindings.length
       ? bindings.map(binding => binding.sourceKind === 'gamepad' ? `gamepad ${binding.deviceId + 1}` : binding.sourceKind).join(' + ')
       : seat.kind === 'machine' ? 'machine seat awaiting player-AI provider' : 'controller not found';
+    const worldBinding = worldSeatRuntime?.bindingForSeat(seat.id);
     card.innerHTML = `
       <strong>${seat.displayName}</strong>
       <label>Seat type
@@ -126,6 +153,7 @@ function renderSeatSetup() {
         <select data-seat-team="${seat.index}">${teamOptions(seat.teamId, seat.index)}</select>
       </label>
       <div class="binding">Input: ${bindingText}</div>
+      <div class="binding">World: ${worldBinding ? `${worldBinding.displayName} · ${worldBinding.profileKind}` : 'not bound'}</div>
     `;
     seatSetup.appendChild(card);
   }
@@ -166,18 +194,46 @@ function bindAvailableInputs() {
 }
 
 function rebuildRuntime() {
+  const preservedWorldBindings = worldSeatRuntime?.snapshot().bindings || [];
   const count = currentSeatCount();
   const kinds = configuredKinds.slice(0, count);
   const teams = configuredTeams.slice(0, count);
   roster = createLocalRoster({ seatKinds: kinds, teams });
   runtime = new LocalSeatRuntime({ roster });
+  worldSeatRuntime = createWorldSeatBindingRuntime({ roster, client: worldClient });
+  for (const binding of preservedWorldBindings) {
+    const seat = activeSeats(roster).find(candidate => candidate.id === binding.seatId);
+    if (!seat || seat.kind !== binding.controllerKind) continue;
+    worldSeatRuntime.bindResolvedParticipant({ seatId: binding.seatId, participant: binding });
+  }
   bindAvailableInputs();
   gamepadRouter = new GamepadSeatRouter(runtime);
   renderer.setSeatIds(activeSeats(roster).map(seat => seat.id));
   for (const seat of activeSeats(roster)) renderer.syncSeatSimulation(seat.id, simulationForSeat(seat.id).snapshot());
   renderSeatSetup();
+  renderWorldIdentity();
   rebuildSeatLabels();
   setStatus(`${count} seat${count === 1 ? '' : 's'} · ${connectedGamepads().length} controller${connectedGamepads().length === 1 ? '' : 's'} detected`);
+}
+
+async function bindPendingWorldParticipant() {
+  if (!pendingWorldHandoff) return null;
+  try {
+    const binding = await worldSeatRuntime.bindParticipant({
+      seatId: pendingWorldHandoff.seatId,
+      participantId: pendingWorldHandoff.participantId
+    });
+    renderSeatSetup();
+    renderWorldIdentity();
+    rebuildSeatLabels();
+    setStatus(`${binding.seatId} · ${binding.participantId} revalidated and bound to shared world`);
+    return binding;
+  } catch (error) {
+    const message = String(error?.message || error);
+    renderWorldIdentity(`World participant binding failed: ${message}`);
+    setStatus(`shared-world binding failed · ${message}`);
+    return null;
+  }
 }
 
 function issueLocalSimulationAction(event) {
@@ -341,8 +397,22 @@ const publicBridge = {
       apmCap: seat.apmCap,
       observationPolicy: seat.observationPolicy,
       commandSurface: seat.commandSurface,
-      visualOptions: seat.visualOptions
+      visualOptions: seat.visualOptions,
+      worldBinding: worldSeatRuntime?.bindingForSeat(seat.id) || null
     }));
+  },
+  worldBinding(seatId = 'seat-1') {
+    return worldSeatRuntime?.bindingForSeat(seatId) || null;
+  },
+  async bindWorldParticipant({ seatId = 'seat-1', participantId } = {}) {
+    const binding = await worldSeatRuntime.bindParticipant({ seatId, participantId });
+    renderSeatSetup();
+    renderWorldIdentity();
+    rebuildSeatLabels();
+    return binding;
+  },
+  submitBoundWorldCommand({ seatId = 'seat-1', commandId, eventType, payload = {}, expectedRevision = undefined } = {}) {
+    return worldSeatRuntime.submitWorldCommand({ seatId, commandId, eventType, payload, expectedRevision });
   },
   async installExternalStaticAsset({
     seatId = 'seat-1',
@@ -392,4 +462,5 @@ const publicBridge = {
 Object.defineProperty(window, '__AXM_GLOBAL_STATE_RTS__', { value: Object.freeze(publicBridge), configurable: false });
 
 rebuildRuntime();
+await bindPendingWorldParticipant();
 requestAnimationFrame(frame);

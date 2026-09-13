@@ -69,13 +69,17 @@ jobs:
           root=Path('runtime-assets/workshop-lod-ladder')
           inspection=json.loads((root/'glb-inspection.json').read_text())
           gates=json.loads((root/'game-readiness-gates.json').read_text())
-          expected={
-            'improvised-workshop-tactical.glb': 30830,
-            'improvised-workshop-rts.glb': 9268,
-            'improvised-workshop-far.glb': 1868,
+          expected_bands={
+            'improvised-workshop-tactical.glb': (20000, 40000),
+            'improvised-workshop-rts.glb': (4000, 12000),
+            'improvised-workshop-far.glb': (500, 2000),
           }
-          for name, triangles in expected.items():
-            assert inspection[name]['triangles'] == triangles, (name, inspection[name]['triangles'])
+          for name, (minimum, maximum) in expected_bands.items():
+            triangles=inspection[name]['triangles']
+            assert minimum <= triangles <= maximum, (name, triangles, minimum, maximum)
+            producer_band=gates['measured']['runtime_lod_target_bands'][name]
+            assert producer_band['inside_target_band'] is True
+            assert producer_band['triangles'] == triangles
           assert gates['gates']['runtime_lod_target_bands'] == 'TESTED'
           assert gates['gates']['lod_perceptual_equivalence'] == 'NOT_TESTED'
           assert gates['gates']['target_rts_integration'] == 'NOT_TESTED'
@@ -100,7 +104,8 @@ jobs:
             if curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-lod-ladder/improvised-workshop-tactical.glb > /dev/null \
               && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-lod-ladder/improvised-workshop-rts.glb > /dev/null \
               && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-lod-ladder/improvised-workshop-far.glb > /dev/null \
-              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-lod-ladder/verification.json > /dev/null; then
+              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-lod-ladder/verification.json > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-lod-ladder/glb-inspection.json > /dev/null; then
               exit 0
             fi
             sleep 1

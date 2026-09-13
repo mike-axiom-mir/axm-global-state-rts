@@ -27,6 +27,9 @@ const localSeatJournalDir = process.env.AXM_LOCAL_SEAT_JOURNAL_DIR
 if (Boolean(localSeatBindingsPath) !== Boolean(localSeatJournalDir)) {
   throw new Error('AXM_LOCAL_SEAT_BINDINGS_PATH and AXM_LOCAL_SEAT_JOURNAL_DIR must be configured together');
 }
+if (localSeatBindingsPath && !accountPath) {
+  throw new Error('AXM_WORLD_ACCOUNTS_PATH is required when LOCAL RTS seat restart persistence is configured');
+}
 const requestedEpochMs = Number(process.env.AXM_WORLD_EPOCH_MS || 0);
 const worldEpochMs = Number.isFinite(requestedEpochMs) && requestedEpochMs >= 0 ? requestedEpochMs : 0;
 const sharedWriteMode = String(process.env.AXM_SHARED_WRITE_MODE || 'off');

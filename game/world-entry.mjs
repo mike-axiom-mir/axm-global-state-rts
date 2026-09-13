@@ -1,4 +1,5 @@
 import { createWorldBrowserClient, WorldBrowserApiError } from '../src/session/world-browser-client.mjs';
+import { createWorldSeatHandoff, writeWorldSeatHandoff } from '../src/session/world-seat-binding.mjs';
 
 const client = createWorldBrowserClient();
 const worldMeta = document.getElementById('worldMeta');
@@ -9,6 +10,7 @@ const enterGuest = document.getElementById('enterGuest');
 const enterAccount = document.getElementById('enterAccount');
 const accrueChests = document.getElementById('accrueChests');
 const openChest = document.getElementById('openChest');
+const continueToRts = document.getElementById('continueToRts');
 const entryStatus = document.getElementById('entryStatus');
 const participantId = document.getElementById('participantId');
 const profileStatus = document.getElementById('profileStatus');
@@ -29,6 +31,7 @@ function setBusy(busy) {
   enterAccount.disabled = busy;
   accrueChests.disabled = busy || !participant;
   openChest.disabled = busy || !participant;
+  continueToRts.disabled = busy || !participant;
 }
 
 function renderParticipant(record) {
@@ -39,6 +42,7 @@ function renderParticipant(record) {
     chestStatus.textContent = 'chests: —';
     accrueChests.disabled = true;
     openChest.disabled = true;
+    continueToRts.disabled = true;
     return;
   }
   participantId.textContent = `participant: ${participant.participantId}`;
@@ -47,6 +51,7 @@ function renderParticipant(record) {
   chestStatus.textContent = `chests: ${cache.storedCrates ?? 0} stored · ${cache.openedCrates ?? 0} opened · cap ${cache.cap ?? 24}`;
   accrueChests.disabled = false;
   openChest.disabled = false;
+  continueToRts.disabled = false;
 }
 
 function errorText(error) {
@@ -117,6 +122,16 @@ openChest.addEventListener('click', async () => {
   }
 });
 
+continueToRts.addEventListener('click', () => {
+  if (!participant) return;
+  const handoff = createWorldSeatHandoff({ participant, seatId: 'seat-1' });
+  writeWorldSeatHandoff(sessionStorage, handoff);
+  const next = new URL('./', location.href);
+  next.searchParams.set('players', '1');
+  next.searchParams.set('seat1', participant.controllerKind);
+  location.assign(next.href);
+});
+
 Object.defineProperty(window, '__AXM_WORLD_ENTRY__', {
   configurable: false,
   value: Object.freeze({
@@ -125,7 +140,9 @@ Object.defineProperty(window, '__AXM_WORLD_ENTRY__', {
     enterGuest: options => client.enterGuest(options),
     enterAccount: options => client.enterAccount(options),
     accrueChests: id => client.accrueChests(id),
-    openChests: (id, count) => client.openChests(id, count)
+    openChests: (id, count) => client.openChests(id, count),
+    submitCommand: options => client.submitCommand(options),
+    handoff: () => participant ? createWorldSeatHandoff({ participant, seatId: 'seat-1' }) : null
   })
 });
 

@@ -95,7 +95,7 @@ jobs:
 
   chromium-bound-seat:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
         with:
@@ -109,10 +109,10 @@ jobs:
         run: npm install --no-save @playwright/test@1.55.0
       - name: Install Chromium runtime
         run: npx playwright install --with-deps chromium
-      - name: Start clean development world host with paired local-seat persistence
+      - name: Start clean development world host for existing checkpoint regression
         run: |
           rm -rf /tmp/axm-local-seat-journals
-          rm -f /tmp/axm-local-seat-bindings.json
+          rm -f /tmp/axm-local-seat-bindings.json /tmp/axm-local-seat-world-journal.json /tmp/axm-local-seat-world-accounts.json
           AXM_SHARED_WRITE_MODE=dev \
           AXM_WORLD_JOURNAL_PATH=/tmp/axm-local-seat-world-journal.json \
           AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-local-seat-world-accounts.json \
@@ -128,8 +128,36 @@ jobs:
           done
           cat /tmp/axm-local-seat-host.log
           exit 1
-      - name: Exercise bound browser seat through host gather, verified salvage, reservation/release, and checkpoint adoption
-        run: npx playwright test tests/browser/local-seat-journal-binding.spec.js tests/browser/local-salvage-reservation.spec.js --workers=1 --reporter=line
+      - name: Exercise existing bound browser checkpoint regression
+        run: npx playwright test tests/browser/local-seat-journal-binding.spec.js --workers=1 --reporter=line
+      - name: Restart clean host for reservation evidence
+        run: |
+          kill "$(cat /tmp/axm-local-seat-host.pid)" || true
+          for i in {1..20}; do
+            if ! curl --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null 2>&1; then
+              break
+            fi
+            sleep 0.2
+          done
+          rm -rf /tmp/axm-local-seat-journals
+          rm -f /tmp/axm-local-seat-bindings.json /tmp/axm-local-seat-world-journal.json /tmp/axm-local-seat-world-accounts.json
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-local-seat-world-journal.json \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-local-seat-world-accounts.json \
+          AXM_LOCAL_SEAT_BINDINGS_PATH=/tmp/axm-local-seat-bindings.json \
+          AXM_LOCAL_SEAT_JOURNAL_DIR=/tmp/axm-local-seat-journals \
+          node scripts/serve.mjs > /tmp/axm-local-seat-reservation-host.log 2>&1 &
+          echo $! > /tmp/axm-local-seat-host.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-local-seat-reservation-host.log
+          exit 1
+      - name: Exercise explicit reservation and release in Chromium
+        run: npx playwright test tests/browser/local-salvage-reservation.spec.js --workers=1 --reporter=line
       - name: Preserve browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -139,6 +167,7 @@ jobs:
             test-results/global-state-rts-host-local-checkpoint.png
             test-results/global-state-rts-salvage-reservation.png
             /tmp/axm-local-seat-host.log
+            /tmp/axm-local-seat-reservation-host.log
             /tmp/axm-local-seat-world-accounts.json
             /tmp/axm-local-seat-bindings.json
             /tmp/axm-local-seat-journals/*.jsonl

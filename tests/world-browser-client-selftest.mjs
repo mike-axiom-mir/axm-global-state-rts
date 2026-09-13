@@ -47,4 +47,22 @@ await assert.rejects(
 assert.throws(() => client.enterGuest({ sessionId: 'x', controllerKind: 'admin' }), /unsupported controllerKind/);
 assert.throws(() => client.openChests('world:chatgpt', 0), /count must be an integer/);
 
+const originalFetch = globalThis.fetch;
+try {
+  globalThis.fetch = async function(url) {
+    assert.equal(this, globalThis, 'default browser-style fetch must retain the global receiver');
+    assert.equal(url, 'http://example.test/api/world/meta');
+    return {
+      ok: true,
+      status: 200,
+      async json() { return { schema: 'meta', writeMode: 'off' }; }
+    };
+  };
+  const defaultFetchClient = createWorldBrowserClient({ baseUrl: 'http://example.test' });
+  const defaultMeta = await defaultFetchClient.worldMeta();
+  assert.equal(defaultMeta.writeMode, 'off');
+} finally {
+  globalThis.fetch = originalFetch;
+}
+
 console.log('world browser client selftest passed');

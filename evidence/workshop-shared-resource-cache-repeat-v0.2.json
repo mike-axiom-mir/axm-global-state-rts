@@ -1,0 +1,72 @@
+{
+  "schema": "axm.global-state-rts.workshop-shared-resource-cache-repeat/v0.2",
+  "status": "STRUCTURAL_SHARING_VERIFIED_TIMING_EFFECT_INCONCLUSIVE",
+  "asset": "building-workshop-a",
+  "producer_runtime": "Blender 4.3.0 via Universal Creation",
+  "historical_decoded_template_cache_baseline_ms": {
+    "one_seat_detailed": 21216.2,
+    "one_seat_lod1": 17756.4,
+    "four_seat_detailed": 32654.7,
+    "four_seat_lod1": 30691.9
+  },
+  "shared_resource_run_a": {
+    "workflow_run_id": 34726818623,
+    "head_sha": "38404da985c73f01a24ff56509cac88de2c4395b",
+    "artifact_id": 10308150811,
+    "artifact_sha256": "e4ad615a6bce1336ef82aa52ed3bceb51f735f97fce52f5a15b35727f78bad11",
+    "install_ms": {
+      "one_seat_detailed": 15223.5,
+      "one_seat_lod1": 13139.5,
+      "four_seat_detailed": 23855.5,
+      "four_seat_lod1": 22753.0
+    },
+    "four_seat_observed_fraction_vs_historical": {
+      "detailed": 0.7305380236229392,
+      "lod1": 0.7413356618521494
+    }
+  },
+  "shared_resource_run_b_repeat": {
+    "workflow_run_id": 34727259554,
+    "head_sha": "2ce9011c8f9c1de7f116e506f830633040fc44f8",
+    "artifact_id": 10308890240,
+    "artifact_sha256": "cc4e453b146257974a0bc0c8201f683fde7e5e9e7d17e12f5bc2964338a8ebf1",
+    "install_ms": {
+      "one_seat_detailed": 21587.0,
+      "one_seat_lod1": 18044.1,
+      "four_seat_detailed": 32067.0,
+      "four_seat_lod1": 30811.6
+    },
+    "four_seat_observed_fraction_vs_historical": {
+      "detailed": 0.9820025907449766,
+      "lod1": 1.003900051805198
+    }
+  },
+  "structural_sharing_evidence": {
+    "four_seat_cache_misses": 1,
+    "four_seat_cache_hits": 3,
+    "four_seat_hash_builds": 1,
+    "four_seat_hash_hits": 3,
+    "shared_geometries": 19,
+    "shared_materials": 19,
+    "shared_textures": 47,
+    "resource_mode": "SHARED_IMMUTABLE_GEOMETRY_MATERIAL_TEXTURE",
+    "resource_lifetime": "PAGE_CACHE_OWNS_RESOURCES"
+  },
+  "visual_observation": {
+    "detailed_four_seat": "VISUALLY_INSPECTED_RENDER_PRESENT",
+    "lod1_four_seat": "VISUALLY_INSPECTED_RENDER_PRESENT",
+    "scope": "The workshop remains visibly rendered in all four local RTS views. This is not broad perceptual-equivalence certification."
+  },
+  "conclusion": {
+    "structural_resource_sharing": "VERIFIED",
+    "reliable_install_time_speedup": "NOT_ESTABLISHED",
+    "reason": "Two separate GitHub-hosted runs produced materially different timing deltas: the first looked about 26-27% lower in four-seat install time, while the fresh repeat was approximately flat. Runner-to-runner timing variance is therefore large enough that no reliable speedup claim is supported.",
+    "next_focus": "Keep the structurally correct shared-resource path, but pursue deeper geometry LODs and target-device measurement rather than advertising CI install-time improvement."
+  },
+  "nonclaims": [
+    "GitHub-hosted headless timing is not target-device performance certification.",
+    "Shared JavaScript/Three.js object identity does not prove shared GPU residency or reduced GPU memory.",
+    "The first faster run is retained as evidence but is not promoted over the contradictory repeat.",
+    "This receipt does not establish FPS acceptance, final material/texture budgets, or broad LOD visual equivalence."
+  ]
+}

@@ -7,6 +7,8 @@ import { createFileLocalSeatBindingStore } from '../src/hosted/local-seat-bindin
 import { createFileWorldAccountStore, createMemoryWorldAccountStore } from '../src/hosted/world-account-store.mjs';
 import { createWorldHttpApiService } from '../src/hosted/world-http-api.mjs';
 import { createWorldSessionAuthority } from '../src/hosted/world-session-authority.mjs';
+import { createSettlementWorldHttpApiService } from '../src/hosted/settlement-world-http-api.mjs';
+import { createSettlementWorldSessionAuthority } from '../src/hosted/settlement-world-session-authority.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const requestedPort = Number(process.argv[2] || process.env.PORT || 4174);
@@ -24,11 +26,17 @@ const localSeatBindingsPath = process.env.AXM_LOCAL_SEAT_BINDINGS_PATH
 const localSeatJournalDir = process.env.AXM_LOCAL_SEAT_JOURNAL_DIR
   ? path.resolve(process.env.AXM_LOCAL_SEAT_JOURNAL_DIR)
   : null;
+const salvageTransferJournalPath = process.env.AXM_SALVAGE_TRANSFER_JOURNAL_PATH
+  ? path.resolve(process.env.AXM_SALVAGE_TRANSFER_JOURNAL_PATH)
+  : null;
 if (Boolean(localSeatBindingsPath) !== Boolean(localSeatJournalDir)) {
   throw new Error('AXM_LOCAL_SEAT_BINDINGS_PATH and AXM_LOCAL_SEAT_JOURNAL_DIR must be configured together');
 }
 if (localSeatBindingsPath && !accountPath) {
   throw new Error('AXM_WORLD_ACCOUNTS_PATH is required when LOCAL RTS seat restart persistence is configured');
+}
+if (salvageTransferJournalPath && (!localSeatBindingsPath || !localSeatJournalDir || !accountPath)) {
+  throw new Error('AXM_SALVAGE_TRANSFER_JOURNAL_PATH requires durable world accounts, LOCAL seat bindings, and LOCAL seat journals');
 }
 const requestedEpochMs = Number(process.env.AXM_WORLD_EPOCH_MS || 0);
 const worldEpochMs = Number.isFinite(requestedEpochMs) && requestedEpochMs >= 0 ? requestedEpochMs : 0;
@@ -40,18 +48,30 @@ const localSeatBindingStore = localSeatBindingsPath
   ? createFileLocalSeatBindingStore(localSeatBindingsPath)
   : null;
 
-const worldSession = createWorldSessionAuthority({
+const worldSessionOptions = {
   worldEpochMs,
   store: journalPath ? createFileWorldJournalStore(journalPath) : createMemoryWorldJournalStore(),
   accountStore: accountPath ? createFileWorldAccountStore(accountPath) : createMemoryWorldAccountStore(),
   ...(localSeatStoreFactory ? { localSeatStoreFactory } : {}),
   ...(localSeatBindingStore ? { localSeatBindingStore } : {})
-});
-const apiService = createWorldHttpApiService({
-  authority: worldSession,
-  writeMode: sharedWriteMode,
-  clock: () => Date.now()
-});
+};
+const worldSession = salvageTransferJournalPath
+  ? createSettlementWorldSessionAuthority({
+    ...worldSessionOptions,
+    salvageTransferStore: createFileWorldJournalStore(salvageTransferJournalPath)
+  })
+  : createWorldSessionAuthority(worldSessionOptions);
+const apiService = salvageTransferJournalPath
+  ? createSettlementWorldHttpApiService({
+    authority: worldSession,
+    writeMode: sharedWriteMode,
+    clock: () => Date.now()
+  })
+  : createWorldHttpApiService({
+    authority: worldSession,
+    writeMode: sharedWriteMode,
+    clock: () => Date.now()
+  });
 
 const MIME = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -182,5 +202,8 @@ server.listen(port, '127.0.0.1', () => {
   const localSeats = localSeatBindingsPath
     ? `local-seats=${localSeatBindingsPath}; local-seat-journals=${localSeatJournalDir}`
     : 'local-seats=process-only';
-  console.log(`AXM Global State RTS shell: http://127.0.0.1:${port}/game/ (${journal}, ${accounts}, ${localSeats}, shared-writes=${sharedWriteMode})`);
+  const salvageTransfers = salvageTransferJournalPath
+    ? `salvage-transfers=${salvageTransferJournalPath}`
+    : 'salvage-transfers=disabled';
+  console.log(`AXM Global State RTS shell: http://127.0.0.1:${port}/game/ (${journal}, ${accounts}, ${localSeats}, ${salvageTransfers}, shared-writes=${sharedWriteMode})`);
 });

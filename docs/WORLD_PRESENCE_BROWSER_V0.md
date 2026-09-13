@@ -10,7 +10,7 @@ Expose the existing participant/account/world-time chest authority to the playab
 
 - Guest and world-account entry from the same browser control surface.
 - Human and machine controller kinds use the same server participant authority.
-- Existing development world accounts can be rejoined by reading their participant id before attempting creation.
+- World-account entry is idempotent at the host seam: first entry creates the development account, later entry returns the stored participant without silently rewriting its display name or controller kind.
 - World-hour/write-mode/account-store status is visible to the player.
 - Current chest storage/opened counts are visible, with explicit accrue/open controls.
 - A separate read-only world-presence bridge exposes the current browser view for browser evidence without changing the existing game-seat bridge.
@@ -19,7 +19,7 @@ Expose the existing participant/account/world-time chest authority to the playab
 
 - **Truth:** this is a development identity seam, not public authentication. Account ids have no ownership proof. Browser evidence must run against `AXM_SHARED_WRITE_MODE=dev`; write-off hosts remain visibly blocked.
 - **Agency / non-domination:** guest entry remains available; account creation is optional. Human and machine participant kinds receive the same observation policy, command surface and 100-APM authority.
-- **Continuity:** world-account chest state only survives host restart when an account persistence adapter is configured. Guests remain session-best-effort and are not silently promoted.
+- **Continuity:** world-account chest state only survives host restart when an account persistence adapter is configured. Guests remain session-best-effort and are not silently promoted. Re-entry does not silently rewrite an existing account profile.
 - **Wisdom before speed:** no TLS, password system, anti-Sybil layer, distributed database, public deployment or performance/scale claim is added here.
 
 ## Evidence gates

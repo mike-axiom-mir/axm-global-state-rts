@@ -1,7 +1,7 @@
 import { createHostedSharedStateAuthority } from './shared-state-authority.mjs';
 import { createWorldParticipantRegistry } from './world-participant-registry.mjs';
 
-export const WORLD_SESSION_AUTHORITY_SCHEMA = 'axm.global-state-rts.world-session-authority/v0.1';
+export const WORLD_SESSION_AUTHORITY_SCHEMA = 'axm.global-state-rts.world-session-authority/v0.2';
 
 const WORLD_EVENT_ACTION_IDS = Object.freeze({
   'territory.claim': 'world-territory-claim',
@@ -27,20 +27,30 @@ export class WorldSessionAuthority {
   constructor({
     participantRegistry = null,
     sharedStateAuthority = null,
+    accountStore = null,
     worldEpochMs = 0,
     apmCap,
     dropCacheCap,
-    restoredAccounts = [],
+    restoredAccounts = undefined,
     worldOptions = {},
     store,
     clock
   } = {}) {
     this.schema = WORLD_SESSION_AUTHORITY_SCHEMA;
+    if (accountStore && (typeof accountStore.readAll !== 'function' || typeof accountStore.replaceAll !== 'function')) {
+      throw new TypeError('accountStore must provide readAll and replaceAll');
+    }
+    this.accountStore = accountStore;
+    const accounts = participantRegistry
+      ? []
+      : restoredAccounts === undefined
+        ? accountStore?.readAll?.() || []
+        : restoredAccounts;
     this.participants = participantRegistry || createWorldParticipantRegistry({
       worldEpochMs,
       ...(apmCap === undefined ? {} : { apmCap }),
       ...(dropCacheCap === undefined ? {} : { dropCacheCap }),
-      restoredAccounts
+      restoredAccounts: accounts
     });
     this.sharedState = sharedStateAuthority || createHostedSharedStateAuthority({
       worldOptions,
@@ -49,16 +59,31 @@ export class WorldSessionAuthority {
     });
   }
 
+  #persistWorldAccounts() {
+    if (!this.accountStore) return null;
+    return this.accountStore.replaceAll(this.participants.exportWorldAccounts());
+  }
+
+  accountPersistenceMeta() {
+    if (!this.accountStore) return Object.freeze({ enabled: false, kind: 'none' });
+    const meta = typeof this.accountStore.meta === 'function' ? this.accountStore.meta() : {};
+    return Object.freeze({ enabled: true, kind: this.accountStore.kind || 'external', ...meta });
+  }
+
   enterGuest(options = {}) {
     return this.participants.enterGuest(options);
   }
 
   createWorldAccount(options = {}) {
-    return this.participants.createWorldAccount(options);
+    const account = this.participants.createWorldAccount(options);
+    this.#persistWorldAccounts();
+    return account;
   }
 
   promoteGuest(options = {}) {
-    return this.participants.promoteGuest(options);
+    const result = this.participants.promoteGuest(options);
+    if (result.accepted) this.#persistWorldAccounts();
+    return result;
   }
 
   participant(participantId) {
@@ -66,11 +91,15 @@ export class WorldSessionAuthority {
   }
 
   accrueChests(participantId, nowMs) {
-    return this.participants.accrueChests(participantId, nowMs);
+    const result = this.participants.accrueChests(participantId, nowMs);
+    if (this.participants.participant(participantId)?.profileKind === 'world-account') this.#persistWorldAccounts();
+    return result;
   }
 
   openChests(participantId, count = 1, options = {}) {
-    return this.participants.openChests(participantId, count, options);
+    const result = this.participants.openChests(participantId, count, options);
+    if (result.accepted && this.participants.participant(participantId)?.profileKind === 'world-account') this.#persistWorldAccounts();
+    return result;
   }
 
   scoreIdentityForRun(participantId, runId) {
@@ -178,6 +207,7 @@ export class WorldSessionAuthority {
     return Object.freeze({
       schema: WORLD_SESSION_AUTHORITY_SCHEMA,
       participants: this.participants.snapshot(),
+      accountPersistence: this.accountPersistenceMeta(),
       sharedState: this.sharedState.authoritativeSnapshot()
     });
   }

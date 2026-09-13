@@ -3,7 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFileWorldJournalStore, createMemoryWorldJournalStore } from '../src/hosted/journal-store.mjs';
-import { createHostedSharedStateAuthority } from '../src/hosted/shared-state-authority.mjs';
+import { createFileWorldAccountStore, createMemoryWorldAccountStore } from '../src/hosted/world-account-store.mjs';
+import { createWorldHttpApiService } from '../src/hosted/world-http-api.mjs';
+import { createWorldSessionAuthority } from '../src/hosted/world-session-authority.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const requestedPort = Number(process.argv[2] || process.env.PORT || 4174);
@@ -12,9 +14,22 @@ const port = Number.isInteger(requestedPort) && requestedPort > 0 && requestedPo
 const journalPath = process.env.AXM_WORLD_JOURNAL_PATH
   ? path.resolve(process.env.AXM_WORLD_JOURNAL_PATH)
   : null;
+const accountPath = process.env.AXM_WORLD_ACCOUNTS_PATH
+  ? path.resolve(process.env.AXM_WORLD_ACCOUNTS_PATH)
+  : null;
+const requestedEpochMs = Number(process.env.AXM_WORLD_EPOCH_MS || 0);
+const worldEpochMs = Number.isFinite(requestedEpochMs) && requestedEpochMs >= 0 ? requestedEpochMs : 0;
 const sharedWriteMode = String(process.env.AXM_SHARED_WRITE_MODE || 'off');
-const sharedState = createHostedSharedStateAuthority({
-  store: journalPath ? createFileWorldJournalStore(journalPath) : createMemoryWorldJournalStore()
+
+const worldSession = createWorldSessionAuthority({
+  worldEpochMs,
+  store: journalPath ? createFileWorldJournalStore(journalPath) : createMemoryWorldJournalStore(),
+  accountStore: accountPath ? createFileWorldAccountStore(accountPath) : createMemoryWorldAccountStore()
+});
+const apiService = createWorldHttpApiService({
+  authority: worldSession,
+  writeMode: sharedWriteMode,
+  clock: () => Date.now()
 });
 
 const MIME = new Map([
@@ -76,61 +91,22 @@ function readJsonBody(request, { maxBytes = 64 * 1024 } = {}) {
 }
 
 async function handleApi(request, response, url) {
-  if (request.method === 'GET' && url.pathname === '/api/global-state/meta') {
-    json(response, 200, sharedState.meta());
-    return true;
-  }
-
-  if (request.method === 'GET' && url.pathname === '/api/global-state/leaderboard') {
-    const metric = url.searchParams.get('metric') || 'dominance';
-    const limit = Number(url.searchParams.get('limit') || 100);
+  let body = {};
+  if (request.method === 'POST') {
     try {
-      json(response, 200, {
-        metric,
-        revision: sharedState.meta().revision,
-        entries: sharedState.leaderboard(metric, limit)
-      });
+      body = await readJsonBody(request);
     } catch (error) {
       json(response, 400, { error: error.message });
+      return;
     }
-    return true;
   }
-
-  if (request.method === 'GET' && url.pathname === '/api/global-state/player') {
-    const playerId = url.searchParams.get('playerId');
-    if (!playerId) {
-      json(response, 400, { error: 'playerId query parameter required' });
-      return true;
-    }
-    json(response, 200, {
-      revision: sharedState.meta().revision,
-      playerId,
-      summary: sharedState.playerSummary(playerId)
-    });
-    return true;
-  }
-
-  if (request.method === 'POST' && url.pathname === '/api/global-state/command') {
-    // Deliberately disabled by default. This is a development proof of the website-hosted write path,
-    // not an invitation to trust arbitrary public browser score/world mutations before command proofs exist.
-    if (sharedWriteMode !== 'dev') {
-      json(response, 403, { error: 'shared writes disabled', writeMode: sharedWriteMode });
-      return true;
-    }
-    try {
-      const body = await readJsonBody(request);
-      const result = sharedState.submit(body.command, {
-        expectedRevision: body.expectedRevision === undefined ? sharedState.meta().revision : Number(body.expectedRevision)
-      });
-      const conflict = !result.accepted && String(result.reason || '').includes('conflict');
-      json(response, result.accepted ? 200 : conflict ? 409 : 400, result);
-    } catch (error) {
-      json(response, 400, { error: error.message });
-    }
-    return true;
-  }
-
-  return false;
+  const result = apiService.handle({
+    method: request.method,
+    pathname: url.pathname,
+    searchParams: url.searchParams,
+    body
+  });
+  json(response, result.status, result.body);
 }
 
 const server = http.createServer(async (request, response) => {
@@ -141,8 +117,7 @@ const server = http.createServer(async (request, response) => {
 
   const url = new URL(request.url, `http://${request.headers.host || '127.0.0.1'}`);
   if (url.pathname.startsWith('/api/')) {
-    if (await handleApi(request, response, url)) return;
-    json(response, 404, { error: 'API route not found' });
+    await handleApi(request, response, url);
     return;
   }
 
@@ -181,6 +156,7 @@ const server = http.createServer(async (request, response) => {
 });
 
 server.listen(port, '127.0.0.1', () => {
-  const persistence = journalPath ? `journal=${journalPath}` : 'journal=memory-only';
-  console.log(`AXM Global State RTS shell: http://127.0.0.1:${port}/game/ (${persistence}, shared-writes=${sharedWriteMode})`);
+  const journal = journalPath ? `journal=${journalPath}` : 'journal=memory-only';
+  const accounts = accountPath ? `accounts=${accountPath}` : 'accounts=memory-only';
+  console.log(`AXM Global State RTS shell: http://127.0.0.1:${port}/game/ (${journal}, ${accounts}, shared-writes=${sharedWriteMode})`);
 });

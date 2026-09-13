@@ -1,0 +1,60 @@
+name: Global State RTS world HTTP authority
+
+on:
+  pull_request:
+    paths:
+      - src/hosted/world-account-store.mjs
+      - src/hosted/world-http-api.mjs
+      - src/hosted/world-session-authority.mjs
+      - src/hosted/world-participant-registry.mjs
+      - src/hosted/shared-state-authority.mjs
+      - src/hosted/world-clock.mjs
+      - src/input/action-rate-gate.mjs
+      - src/sim/hourly-drop-cache.mjs
+      - src/sim/run-leaderboard.mjs
+      - scripts/serve.mjs
+      - tests/world-account-store-selftest.mjs
+      - tests/world-http-api-selftest.mjs
+      - package.json
+      - .github/workflows/world-http-api.yml
+  push:
+    branches:
+      - main
+    paths:
+      - src/hosted/world-account-store.mjs
+      - src/hosted/world-http-api.mjs
+      - src/hosted/world-session-authority.mjs
+      - src/hosted/world-participant-registry.mjs
+      - src/hosted/shared-state-authority.mjs
+      - src/hosted/world-clock.mjs
+      - src/input/action-rate-gate.mjs
+      - src/sim/hourly-drop-cache.mjs
+      - src/sim/run-leaderboard.mjs
+      - scripts/serve.mjs
+      - tests/world-account-store-selftest.mjs
+      - tests/world-http-api-selftest.mjs
+      - package.json
+      - .github/workflows/world-http-api.yml
+
+permissions:
+  contents: read
+
+jobs:
+  world-http-authority:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run deterministic/source foundation
+        run: npm test
+      - name: Verify hosted world API syntax
+        run: node --check src/hosted/world-account-store.mjs && node --check src/hosted/world-http-api.mjs && node --check src/hosted/world-session-authority.mjs && node --check scripts/serve.mjs
+      - name: Exercise account persistence and participant-bound HTTP authority
+        run: node tests/world-account-store-selftest.mjs && node tests/world-http-api-selftest.mjs

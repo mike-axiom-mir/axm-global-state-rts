@@ -22,6 +22,7 @@ const WORLD_BOUNDARY_MAX_DELAY_MS = 60 * 60 * 1000;
 
 let participant = null;
 let guestSessionId = null;
+let controlsBusy = false;
 let worldBoundaryTimer = null;
 let worldBoundarySyncInFlight = null;
 let lastBoundarySyncEvidence = null;
@@ -34,11 +35,12 @@ function sessionId() {
 }
 
 function setBusy(busy) {
-  enterGuest.disabled = busy;
-  enterAccount.disabled = busy;
-  accrueChests.disabled = busy || !participant;
-  openChest.disabled = busy || !participant;
-  continueToRts.disabled = busy || !participant;
+  controlsBusy = Boolean(busy);
+  enterGuest.disabled = controlsBusy;
+  enterAccount.disabled = controlsBusy;
+  accrueChests.disabled = controlsBusy || !participant;
+  openChest.disabled = controlsBusy || !participant;
+  continueToRts.disabled = controlsBusy || !participant;
 }
 
 function renderParticipant(record) {
@@ -56,9 +58,9 @@ function renderParticipant(record) {
   profileStatus.textContent = `profile: ${participant.profileKind} · ${participant.controllerKind} · leaderboard ${participant.leaderboardMode}`;
   const cache = participant.dropCache || {};
   chestStatus.textContent = `chests: ${cache.storedCrates ?? 0} stored · ${cache.openedCrates ?? 0} opened · cap ${cache.cap ?? 24} · accounted through world hour ${cache.anchorWorldHour ?? 'unbound'} · host-hour accounting auto-checks while this page is open; opening remains manual`;
-  accrueChests.disabled = false;
-  openChest.disabled = false;
-  continueToRts.disabled = false;
+  accrueChests.disabled = controlsBusy;
+  openChest.disabled = controlsBusy;
+  continueToRts.disabled = controlsBusy;
 }
 
 function errorText(error) {

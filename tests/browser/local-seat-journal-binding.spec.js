@@ -37,11 +37,15 @@ test('authority-revalidated machine participant can explicitly journal one host-
   expect(initial.checkpoint.binding.participantId).toBe('world:checkpoint-machine');
   expect(initial.checkpoint.binding.controllerKind).toBe('machine');
   expect(initial.checkpoint.binding.regionSeatId).toBe('seat-1');
+  expect(initial.checkpoint.binding.ownershipPersistence).toBe('restart-durable-host-storage');
   expect(initial.checkpoint.journal.revision).toBe(0);
   expect(initial.checkpoint.journal.headHash).toBe(null);
-  expect(initial.checkpoint.journal.storeKind).toBe('memory');
+  expect(initial.checkpoint.journal.storeKind).toBe('jsonl-file');
   expect(initial.checkpoint.journal.stateHash).toMatch(/^[a-f0-9]{64}$/);
   expect(initial.checkpoint.continuity.matchesLive).toBe(true);
+  expect(initial.checkpoint.bindingPersistence.enabled).toBe(true);
+  expect(initial.checkpoint.bindingPersistence.kind).toBe('json-file');
+  expect(initial.checkpoint.bindingPersistence.bindingCount).toBe(1);
   expect(initial.checkpoint.truthBoundary).toBe('binding-and-host-journal-checkpoint-only-no-live-browser-state-equivalence');
   await expect(page.locator('#hostLocalCheckpointStatus')).toContainText('journal r0');
   await expect(page.locator('#hostLocalCheckpointStatus')).toContainText('browser simulation is not claimed identical');

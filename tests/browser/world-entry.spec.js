@@ -36,8 +36,19 @@ test('human guest and machine world-account use the same browser world-entry sur
 
   const participant = await page.evaluate(() => window.__AXM_WORLD_ENTRY__.participant());
   expect(participant.participantId).toBe('world:browser-chatgpt');
+  expect(participant.displayName).toBe('ChatGPT Browser');
   expect(participant.controllerKind).toBe('machine');
   expect(participant.credentialMode).toBe('none');
+
+  await page.locator('#controllerKind').selectOption('human');
+  await page.locator('#displayName').fill('Silent Browser Rewrite Attempt');
+  await page.locator('#enterAccount').click();
+  await expect(page.locator('#entryStatus')).toContainText('Entered shared world as world-account');
+  await expect(page.locator('#profileStatus')).toContainText('world-account · machine · leaderboard career-linked');
+  const reentered = await page.evaluate(() => window.__AXM_WORLD_ENTRY__.participant());
+  expect(reentered.participantId).toBe('world:browser-chatgpt');
+  expect(reentered.displayName).toBe('ChatGPT Browser');
+  expect(reentered.controllerKind).toBe('machine');
 
   await page.locator('#accrueChests').click();
   await expect(page.locator('#entryStatus')).toContainText('Chest sync complete');
@@ -47,6 +58,7 @@ test('human guest and machine world-account use the same browser world-entry sur
     return { status: response.status, body: await response.json() };
   });
   expect(apiParticipant.status).toBe(200);
+  expect(apiParticipant.body.participant.displayName).toBe('ChatGPT Browser');
   expect(apiParticipant.body.participant.controllerKind).toBe('machine');
   expect(apiParticipant.body.participant.profileKind).toBe('world-account');
 

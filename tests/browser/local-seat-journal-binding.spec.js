@@ -93,7 +93,7 @@ test('authority-revalidated machine participant can journal, record verified sal
 
   const hostCommand = await page.evaluate(() => window.__AXM_HOST_LOCAL_SEAT__.submitGatherAtCursor({
     seatId: 'seat-1',
-    stepCount: 160
+    stepCount: 800
   }));
   expect(hostCommand.accepted).toBe(true);
   expect(hostCommand.expectedRevision).toBe(0);
@@ -104,6 +104,7 @@ test('authority-revalidated machine participant can journal, record verified sal
   expect(hostCommand.result.entry.controllerKind).toBe('machine');
   expect(hostCommand.result.stateHash).toMatch(/^[a-f0-9]{64}$/);
   expect(hostCommand.result.stateHash).not.toBe(initial.checkpoint.journal.stateHash);
+  expect(hostCommand.result.outcome.storage.scrap).toBeGreaterThan(0);
   expect(hostCommand.result.truthBoundary).toBe('host-reproduced-local-journal-command-no-browser-state-equivalence-no-shared-world-promotion');
   expect(hostCommand.checkpoint.journal.revision).toBe(1);
   expect(hostCommand.checkpoint.journal.stateHash).toBe(hostCommand.result.stateHash);

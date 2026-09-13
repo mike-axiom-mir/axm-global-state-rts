@@ -1,6 +1,6 @@
 import { DEFAULT_BLUEPRINT_CATALOG } from './blueprint-ledger.mjs';
 
-export const HOURLY_DROP_CACHE_SCHEMA = 'axm.global-state-rts.hourly-drop-cache/v0.1';
+export const HOURLY_DROP_CACHE_SCHEMA = 'axm.global-state-rts.hourly-drop-cache/v0.2';
 export const DROP_CACHE_HOUR_MS = 60 * 60 * 1000;
 export const DEFAULT_DROP_CACHE_CAP = 24;
 
@@ -15,6 +15,11 @@ const STARTING_ITEMS = Object.freeze([
 
 function finite(value, label) {
   if (!Number.isFinite(value)) throw new TypeError(`${label} must be finite`);
+  return value;
+}
+
+function worldHour(value, label = 'worldHourIndex') {
+  if (!Number.isInteger(value) || value < 0) throw new RangeError(`${label} must be a non-negative integer`);
   return value;
 }
 
@@ -87,6 +92,7 @@ export class HourlyDropCache {
   constructor({
     playerSeed,
     anchorMs = 0,
+    anchorWorldHour = null,
     storedCrates = 0,
     openedCrates = 0,
     cap = DEFAULT_DROP_CACHE_CAP,
@@ -96,6 +102,7 @@ export class HourlyDropCache {
     if (!seed) throw new TypeError('playerSeed required');
     finite(anchorMs, 'anchorMs');
     if (anchorMs < 0) throw new RangeError('anchorMs must be non-negative');
+    if (anchorWorldHour !== null) worldHour(anchorWorldHour, 'anchorWorldHour');
     if (!Number.isInteger(cap) || cap < 1) throw new RangeError('cap must be a positive integer');
     if (!Number.isInteger(storedCrates) || storedCrates < 0 || storedCrates > cap) throw new RangeError('storedCrates must fit the cap');
     if (!Number.isInteger(openedCrates) || openedCrates < 0) throw new RangeError('openedCrates must be a non-negative integer');
@@ -104,6 +111,7 @@ export class HourlyDropCache {
     this.schema = HOURLY_DROP_CACHE_SCHEMA;
     this.playerSeed = seed;
     this.anchorMs = anchorMs;
+    this.anchorWorldHour = anchorWorldHour;
     this.storedCrates = storedCrates;
     this.openedCrates = openedCrates;
     this.cap = cap;
@@ -111,21 +119,37 @@ export class HourlyDropCache {
     this.revision = 0;
   }
 
-  accrue(nowMs) {
-    finite(nowMs, 'nowMs');
-    if (nowMs < this.anchorMs) throw new RangeError('nowMs cannot move backward');
-    const elapsedHours = Math.floor((nowMs - this.anchorMs) / DROP_CACHE_HOUR_MS);
+  #applyElapsedHours(elapsedHours) {
     if (elapsedHours < 1) {
       return Object.freeze({ added: 0, discardedByCap: 0, storedCrates: this.storedCrates });
     }
-
-    this.anchorMs += elapsedHours * DROP_CACHE_HOUR_MS;
     const room = this.cap - this.storedCrates;
     const added = Math.min(room, elapsedHours);
     const discardedByCap = elapsedHours - added;
     this.storedCrates += added;
     this.revision += 1;
     return Object.freeze({ added, discardedByCap, storedCrates: this.storedCrates });
+  }
+
+  accrue(nowMs) {
+    finite(nowMs, 'nowMs');
+    if (nowMs < this.anchorMs) throw new RangeError('nowMs cannot move backward');
+    const elapsedHours = Math.floor((nowMs - this.anchorMs) / DROP_CACHE_HOUR_MS);
+    if (elapsedHours >= 1) this.anchorMs += elapsedHours * DROP_CACHE_HOUR_MS;
+    return this.#applyElapsedHours(elapsedHours);
+  }
+
+  accrueWorldHour(worldHourIndex) {
+    const current = worldHour(worldHourIndex);
+    if (this.anchorWorldHour === null) {
+      this.anchorWorldHour = current;
+      this.revision += 1;
+      return Object.freeze({ added: 0, discardedByCap: 0, storedCrates: this.storedCrates, boundWorldHour: current });
+    }
+    if (current < this.anchorWorldHour) throw new RangeError('worldHourIndex cannot move backward');
+    const elapsedHours = current - this.anchorWorldHour;
+    if (elapsedHours >= 1) this.anchorWorldHour = current;
+    return Object.freeze({ ...this.#applyElapsedHours(elapsedHours), worldHourIndex: current });
   }
 
   open(count = 1, { blueprintLedger = null } = {}) {
@@ -162,7 +186,9 @@ export class HourlyDropCache {
       cap: this.cap,
       openedCrates: this.openedCrates,
       anchorMs: this.anchorMs,
-      nextAccrualAtMs: this.anchorMs + DROP_CACHE_HOUR_MS
+      nextAccrualAtMs: this.anchorMs + DROP_CACHE_HOUR_MS,
+      anchorWorldHour: this.anchorWorldHour,
+      nextAccrualWorldHour: this.anchorWorldHour === null ? null : this.anchorWorldHour + 1
     });
   }
 }

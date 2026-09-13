@@ -45,7 +45,8 @@ const gather = authority.submitLocalSeatCommand({
 });
 assert.equal(gather.accepted, true);
 assert.equal(gather.revision, 1);
-assert.ok(gather.outcome.storage.scrap > 0);
+assert.notEqual(gather.stateHash, binding.journal.stateHash);
+assert.equal(gather.outcome.order?.type, 'gather-scrap');
 
 const stale = authority.localSeatAdoptionCheckpoint({
   participantId: participant.participantId,
@@ -123,8 +124,8 @@ console.log(JSON.stringify({
   checkpointId: issued.checkpoint.checkpointId,
   revision: issued.checkpoint.revision,
   stateHash: issued.checkpoint.stateHash,
-  beforeScrap: adopted.before.storage.scrap,
-  afterScrap: adopted.after.storage.scrap,
+  beforeLocalRevision: adopted.before.revision,
+  adoptedLocalRevision: adopted.after.revision,
   staleReason: stale.reason,
   tamperReason: rejectedTamper.reason,
   truthBoundary: adopted.truthBoundary

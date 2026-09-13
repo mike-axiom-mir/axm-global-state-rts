@@ -46,7 +46,10 @@ function localSeatMutationStatus(result) {
   if (result?.reason === 'local-seat-not-bound') return 404;
   if ([
     'participant-local-seat-binding-mismatch',
-    'local-authority-revision-conflict'
+    'local-authority-revision-conflict',
+    'verified-local-salvage-stale-source-revision',
+    'verified-local-salvage-same-revision-mismatch',
+    'verified-local-salvage-source-regressed'
   ].includes(result?.reason)) return 409;
   return 400;
 }
@@ -117,6 +120,11 @@ export class WorldHttpApiService {
             persistence: snapshot.localSeats?.persistence || 'unavailable',
             truthBoundary: snapshot.localSeats?.truthBoundary || 'unavailable'
           }),
+          verifiedLocalSalvage: Object.freeze({
+            accountCount: snapshot.verifiedLocalSalvage?.accountCount || 0,
+            revision: snapshot.verifiedLocalSalvage?.revision || 0,
+            truthBoundary: snapshot.verifiedLocalSalvage?.truthBoundary || 'unavailable'
+          }),
           sharedState: this.authority.sharedState.meta()
         });
       }
@@ -134,6 +142,16 @@ export class WorldHttpApiService {
         const participantId = queryValue(searchParams, 'participantId');
         if (!participantId) return response(400, { error: 'participantId query parameter required' });
         return response(200, this.authority.participantCareerSummary(participantId));
+      }
+
+      if (verb === 'GET' && route === '/api/world/local-salvage') {
+        if (typeof this.authority.verifiedLocalSalvageSummary !== 'function') {
+          return response(501, { error: 'verified local salvage authority unavailable' });
+        }
+        const participantId = queryValue(searchParams, 'participantId');
+        if (!participantId) return response(400, { error: 'participantId query parameter required' });
+        const result = this.authority.verifiedLocalSalvageSummary(participantId);
+        return response(result.accepted ? 200 : 400, result);
       }
 
       if (verb === 'GET' && route === '/api/world/local-seat') {
@@ -253,6 +271,18 @@ export class WorldHttpApiService {
             participantId: body.participantId,
             regionSeatId: body.regionSeatId,
             intent: body.intent,
+            expectedRevision: body.expectedRevision
+          });
+          return response(localSeatMutationStatus(result), result);
+        }
+
+        if (route === '/api/world/local-seat/salvage-record') {
+          if (typeof this.authority.recordVerifiedLocalSalvage !== 'function') {
+            return response(501, { error: 'verified local salvage authority unavailable' });
+          }
+          const result = this.authority.recordVerifiedLocalSalvage({
+            participantId: body.participantId,
+            regionSeatId: body.regionSeatId,
             expectedRevision: body.expectedRevision
           });
           return response(localSeatMutationStatus(result), result);

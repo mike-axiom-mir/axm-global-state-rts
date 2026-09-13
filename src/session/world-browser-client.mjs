@@ -28,10 +28,11 @@ export class WorldBrowserApiError extends Error {
 }
 
 export class WorldBrowserClient {
-  constructor({ fetchImpl = globalThis.fetch, baseUrl = '' } = {}) {
-    if (typeof fetchImpl !== 'function') throw new TypeError('fetch implementation required');
+  constructor({ fetchImpl = null, baseUrl = '' } = {}) {
+    const resolvedFetch = fetchImpl || (typeof globalThis.fetch === 'function' ? globalThis.fetch.bind(globalThis) : null);
+    if (typeof resolvedFetch !== 'function') throw new TypeError('fetch implementation required');
     this.schema = WORLD_BROWSER_CLIENT_SCHEMA;
-    this.fetchImpl = fetchImpl;
+    this.fetchImpl = resolvedFetch;
     this.baseUrl = String(baseUrl || '').replace(/\/$/, '');
   }
 

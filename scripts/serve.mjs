@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFileWorldJournalStore, createMemoryWorldJournalStore } from '../src/hosted/journal-store.mjs';
+import { createFileLocalSeatBindingStore } from '../src/hosted/local-seat-binding-store.mjs';
 import { createFileWorldAccountStore, createMemoryWorldAccountStore } from '../src/hosted/world-account-store.mjs';
 import { createWorldHttpApiService } from '../src/hosted/world-http-api.mjs';
 import { createWorldSessionAuthority } from '../src/hosted/world-session-authority.mjs';
@@ -17,14 +18,31 @@ const journalPath = process.env.AXM_WORLD_JOURNAL_PATH
 const accountPath = process.env.AXM_WORLD_ACCOUNTS_PATH
   ? path.resolve(process.env.AXM_WORLD_ACCOUNTS_PATH)
   : null;
+const localSeatBindingsPath = process.env.AXM_LOCAL_SEAT_BINDINGS_PATH
+  ? path.resolve(process.env.AXM_LOCAL_SEAT_BINDINGS_PATH)
+  : null;
+const localSeatJournalDir = process.env.AXM_LOCAL_SEAT_JOURNAL_DIR
+  ? path.resolve(process.env.AXM_LOCAL_SEAT_JOURNAL_DIR)
+  : null;
+if (Boolean(localSeatBindingsPath) !== Boolean(localSeatJournalDir)) {
+  throw new Error('AXM_LOCAL_SEAT_BINDINGS_PATH and AXM_LOCAL_SEAT_JOURNAL_DIR must be configured together');
+}
 const requestedEpochMs = Number(process.env.AXM_WORLD_EPOCH_MS || 0);
 const worldEpochMs = Number.isFinite(requestedEpochMs) && requestedEpochMs >= 0 ? requestedEpochMs : 0;
 const sharedWriteMode = String(process.env.AXM_SHARED_WRITE_MODE || 'off');
+const localSeatStoreFactory = localSeatJournalDir
+  ? regionSeatId => createFileWorldJournalStore(path.join(localSeatJournalDir, `${regionSeatId}.jsonl`))
+  : undefined;
+const localSeatBindingStore = localSeatBindingsPath
+  ? createFileLocalSeatBindingStore(localSeatBindingsPath)
+  : null;
 
 const worldSession = createWorldSessionAuthority({
   worldEpochMs,
   store: journalPath ? createFileWorldJournalStore(journalPath) : createMemoryWorldJournalStore(),
-  accountStore: accountPath ? createFileWorldAccountStore(accountPath) : createMemoryWorldAccountStore()
+  accountStore: accountPath ? createFileWorldAccountStore(accountPath) : createMemoryWorldAccountStore(),
+  ...(localSeatStoreFactory ? { localSeatStoreFactory } : {}),
+  ...(localSeatBindingStore ? { localSeatBindingStore } : {})
 });
 const apiService = createWorldHttpApiService({
   authority: worldSession,
@@ -158,5 +176,8 @@ const server = http.createServer(async (request, response) => {
 server.listen(port, '127.0.0.1', () => {
   const journal = journalPath ? `journal=${journalPath}` : 'journal=memory-only';
   const accounts = accountPath ? `accounts=${accountPath}` : 'accounts=memory-only';
-  console.log(`AXM Global State RTS shell: http://127.0.0.1:${port}/game/ (${journal}, ${accounts}, shared-writes=${sharedWriteMode})`);
+  const localSeats = localSeatBindingsPath
+    ? `local-seats=${localSeatBindingsPath}; local-seat-journals=${localSeatJournalDir}`
+    : 'local-seats=process-only';
+  console.log(`AXM Global State RTS shell: http://127.0.0.1:${port}/game/ (${journal}, ${accounts}, ${localSeats}, shared-writes=${sharedWriteMode})`);
 });

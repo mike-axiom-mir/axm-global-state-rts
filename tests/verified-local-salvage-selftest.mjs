@@ -12,7 +12,7 @@ const gatherIntent = Object.freeze({
   actionId: 'gather-scrap',
   cursorXM: 0,
   cursorZM: 0,
-  stepCount: 160
+  stepCount: 800
 });
 
 function runAccountScenario(controllerKind, accountId) {

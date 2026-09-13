@@ -13,11 +13,13 @@ on:
       - 'src/session/world-browser-client.mjs'
       - 'src/session/world-seat-binding.mjs'
       - 'src/session/local-world-claim.mjs'
+      - 'src/session/world-time-local-sync.mjs'
       - 'src/hosted/**'
       - 'scripts/serve.mjs'
       - 'tests/local-world-claim-selftest.mjs'
       - 'tests/world-browser-client-selftest.mjs'
       - 'tests/world-seat-binding-selftest.mjs'
+      - 'tests/world-time-local-sync-selftest.mjs'
       - 'tests/browser/world-entry.spec.js'
       - '.github/workflows/world-browser-entry.yml'
   workflow_dispatch:
@@ -46,15 +48,18 @@ jobs:
           node --check src/session/world-browser-client.mjs
           node --check src/session/world-seat-binding.mjs
           node --check src/session/local-world-claim.mjs
+          node --check src/session/world-time-local-sync.mjs
           node --check game/app.mjs
           node --check game/persistent-world-claim.mjs
           node --check game/world-entry.mjs
           node --check tests/local-world-claim-selftest.mjs
           node --check tests/world-seat-binding-selftest.mjs
+          node --check tests/world-time-local-sync-selftest.mjs
           node --check tests/browser/world-entry.spec.js
           node tests/local-world-claim-selftest.mjs
           node tests/world-browser-client-selftest.mjs
           node tests/world-seat-binding-selftest.mjs
+          node tests/world-time-local-sync-selftest.mjs
 
       - name: Install pinned Playwright test runner
         run: npm install --no-save @playwright/test@1.55.0
@@ -77,7 +82,7 @@ jobs:
           cat /tmp/axm-global-state-rts-world-entry.log
           exit 1
 
-      - name: Exercise human/machine entry and authority-bound local world claim in Chromium
+      - name: Exercise human/machine entry, physical world-time sync, and authority-bound local world claim in Chromium
         run: npx playwright test tests/browser/world-entry.spec.js --reporter=line
 
       - name: Preserve browser evidence

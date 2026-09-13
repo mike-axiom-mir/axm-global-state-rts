@@ -1,0 +1,8 @@
+{
+  "status": "PASS",
+  "asset_count": 83,
+  "gltf_count": 166,
+  "all_extracted_members_equal_original_archive": true,
+  "all_external_buffer_and_image_uris_resolve": true,
+  "runtime_game_integration_tested": false
+}

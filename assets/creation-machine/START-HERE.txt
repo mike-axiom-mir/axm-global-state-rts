@@ -1,0 +1,15 @@
+AXM RTS — plate-directed 3D reconstruction
+
+Open assets/<asset-id>/<asset-id>.gltf in Blender or a glTF-compatible engine.
+Keep the .gltf, .bin and ../../textures directory together. Files use standard glTF 2.0, Y-up.
+Each asset has a lower-detail -lod1 version. The exporter verifies relocated geometry and image bytes.
+Previews are Cycles renders of freshly imported GLBs, not painted concept images.
+
+These are static, individually authored approximations of the plates, not exact image-to-mesh reconstructions.
+Visible construction and comedy-survivor motifs were rebuilt; forms, colors, clutter and some proportions still differ.
+No new rigs, animation clips, colliders, sockets or target-game integration are claimed.
+Do not replace working gameplay assemblies blindly: attach these as visual models and fit your existing collision/navigation data.
+Source diorama bases are included. Editable Blender files allow separating props, bases and movable parts.
+Units and pivots need fitting to your game. The earlier animated pack remains a separate delivery.
+
+The folder manifest reports coverage; complete=true requires all 83 catalog IDs.

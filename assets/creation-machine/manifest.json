@@ -1,0 +1,3185 @@
+{
+  "assets": {
+    "open-crop-terrace": {
+      "family": "industry",
+      "files": [
+        "assets/open-crop-terrace/open-crop-terrace.gltf",
+        "assets/open-crop-terrace/open-crop-terrace-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "bd20819c92408714cb8b20e35c61b49e042011f4a62575865d21787789f2a97f",
+          "gltf_sha256": "5bee72454c86935b920603af33b45082d54e56a07c45eba9eccd85b7d2626b64",
+          "bin_sha256": "7469ed7deba24e8fada45722f8706db23c0da7cdc22ac5c818961a2b5063fea4",
+          "geometry_views": 47,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 15154476,
+          "geometry_bytes": 5154848
+        },
+        "-lod1": {
+          "source_glb_sha256": "f03cc5a654dd940c0ba3007a806f6c80b403f773977a13b3644c10f63a403405",
+          "gltf_sha256": "7c188528aebad595d9618fd347690026aac4e41ea6b0f49410b90b0649a40878",
+          "bin_sha256": "e60ee1486bf6d511c1cbed3b29ee56133d77e40a691da318762dde9f50155f4b",
+          "geometry_views": 47,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 11900076,
+          "geometry_bytes": 1900500
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:open-crop-terrace/open-crop-terrace.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000413.png",
+        "sha256": "2996a04974dca9073a556e030351717eb31b7a707aeb817550409312309b5898"
+      }
+    },
+    "bus-window-greenhouse": {
+      "family": "industry",
+      "files": [
+        "assets/bus-window-greenhouse/bus-window-greenhouse.gltf",
+        "assets/bus-window-greenhouse/bus-window-greenhouse-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "48ac80ba1c18bf2f35dcbbf548a2fbf3de2339857cd207304e993a78976ec102",
+          "gltf_sha256": "885ae7c71230a3cf7b64866487e4050288b93565b0501430196c8107b7835d90",
+          "bin_sha256": "9fc6b1c158e308e4fd53602d56146f789a9ae9935ffffdb106031042e80a8fa3",
+          "geometry_views": 60,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 16713188,
+          "geometry_bytes": 5602108
+        },
+        "-lod1": {
+          "source_glb_sha256": "726f1a1c2c6eebceda4cc56e9e12cc0017134ad4288ee5a123522c41de278566",
+          "gltf_sha256": "8b54f788355bbe19c937b687acca21036e85337396f91262c03fad6b2be69a02",
+          "bin_sha256": "95832e242cdbc27e01fd65f0e5b8d2db88610179d20ab63d10eaa9e3304ef1ad",
+          "geometry_views": 60,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 13053872,
+          "geometry_bytes": 1942856
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:bus-window-greenhouse/bus-window-greenhouse.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000413.png",
+        "sha256": "2996a04974dca9073a556e030351717eb31b7a707aeb817550409312309b5898"
+      }
+    },
+    "fungal-shed": {
+      "family": "industry",
+      "files": [
+        "assets/fungal-shed/fungal-shed.gltf",
+        "assets/fungal-shed/fungal-shed-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "06eecb95439c869d090b959d5b6931c3f8f86e621ae5a7b6b5965576cb36b98d",
+          "gltf_sha256": "909fe86c922434e12b1417aaba1947caeb7c559534a54f4c011e2a11e051c4e9",
+          "bin_sha256": "0bbc0d358dc4f626c6dd7657363d7311c55ffbbb821e0ade8581aab81bfd14e2",
+          "geometry_views": 63,
+          "image_occurrences": 39,
+          "lossless_views_verified": true,
+          "source_bytes": 18363904,
+          "geometry_bytes": 5391048
+        },
+        "-lod1": {
+          "source_glb_sha256": "37eeb51335c0b7e26f7798b29e444dc20b95bb20809c2b976b8266a42c7875ee",
+          "gltf_sha256": "d1a781dbcb64d4f8c25ac8ee5c5df67dca8355402787152e9b927a89329f4b11",
+          "bin_sha256": "a71b334d66a38bb0f0364c42568b8ced3ed754309ee74e5ccc5298940d95f984",
+          "geometry_views": 63,
+          "image_occurrences": 39,
+          "lossless_views_verified": true,
+          "source_bytes": 14811928,
+          "geometry_bytes": 1839108
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:fungal-shed/fungal-shed.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000413.png",
+        "sha256": "2996a04974dca9073a556e030351717eb31b7a707aeb817550409312309b5898"
+      }
+    },
+    "livestock-pen": {
+      "family": "industry",
+      "files": [
+        "assets/livestock-pen/livestock-pen.gltf",
+        "assets/livestock-pen/livestock-pen-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "9d59729806bc8655d3a0300fec9179502130b29d174135b6542a159a1c28847e",
+          "gltf_sha256": "2fa407cb6ea2f3c379b4364979e5561df6cc23dfdacf9ed8dc4dc917cfe2ed36",
+          "bin_sha256": "5b658be8a44f9ddc48d08f294dca02e43615fe9a87f988d58822aeb7241d0efa",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 14052404,
+          "geometry_bytes": 3106764
+        },
+        "-lod1": {
+          "source_glb_sha256": "70fe2a5f30bb0f3a0abce5e19dbec216fd48765196a50729f7f567001644aa79",
+          "gltf_sha256": "8845919073b605bab92dc9cbd277dafb72cb5c86b6bb80b43b2b01a3d3236ec4",
+          "bin_sha256": "064514db1c206f4cc9a63baac6de89658b912fcfc15e431df861377304f8c2d6",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 12030132,
+          "geometry_bytes": 1084560
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:livestock-pen/livestock-pen.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000413.png",
+        "sha256": "2996a04974dca9073a556e030351717eb31b7a707aeb817550409312309b5898"
+      }
+    },
+    "water-catcher": {
+      "family": "industry",
+      "files": [
+        "assets/water-catcher/water-catcher.gltf",
+        "assets/water-catcher/water-catcher-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "d7666ddafe5847b3c4333f1b18757d0ac9b7992cc086e3bf2d665340c781f556",
+          "gltf_sha256": "09bc9b3a955b77f9adb8c42a1c5d118b04fe9ce43577b6c7da1435559c91bcc2",
+          "bin_sha256": "a6bfe30ea4468a7ca4b5877fad49b41760ed4922b77b56aa860945327dd114ea",
+          "geometry_views": 51,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 13599784,
+          "geometry_bytes": 2681900
+        },
+        "-lod1": {
+          "source_glb_sha256": "b8b064f51bf0656d3785d2b4e807e6ed841dbbff6af40ab09d3a28114f4010a5",
+          "gltf_sha256": "b4b4bd272c64d1e9094edaf5959e8b2555013992d594dff79f885ecf2943e3c0",
+          "bin_sha256": "6b040d513461801e8bc0690250f4f0a824c652ba25be13a371eb7c9455799b22",
+          "geometry_views": 51,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 11873300,
+          "geometry_bytes": 955440
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:water-catcher/water-catcher.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000413.png",
+        "sha256": "2996a04974dca9073a556e030351717eb31b7a707aeb817550409312309b5898"
+      }
+    },
+    "scrap-sorting-yard": {
+      "family": "industry",
+      "files": [
+        "assets/scrap-sorting-yard/scrap-sorting-yard.gltf",
+        "assets/scrap-sorting-yard/scrap-sorting-yard-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "cbc8c344dc87b13da48d0a3820461bd9de2ab6b7aa6b195c756ec754a08ff1f4",
+          "gltf_sha256": "92ae67d2e41d79b01022ffdcf45fe341eafb21479243d6963459226cb7bad0f4",
+          "bin_sha256": "4b7a53d0e2c5bbeab701fbcd226ef3da1b25969e21c6608effff7a5240ef89ba",
+          "geometry_views": 52,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 15627224,
+          "geometry_bytes": 4518308
+        },
+        "-lod1": {
+          "source_glb_sha256": "7afc2dd854185dcd3848ec28651a64184d71b4b3c2b3da7feb2437b964dced02",
+          "gltf_sha256": "2666c2ceef33fcf572a5b09385f13f65993e1cc7e5920b463499ab36107f3c06",
+          "bin_sha256": "d605a9141b1afb0b021e65306a7cb0a6d819bbf5ec1ceb9734a1bf762638b989",
+          "geometry_views": 52,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 12803972,
+          "geometry_bytes": 1695108
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:scrap-sorting-yard/scrap-sorting-yard.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000413.png",
+        "sha256": "2996a04974dca9073a556e030351717eb31b7a707aeb817550409312309b5898"
+      }
+    },
+    "shallow-mine-entrance": {
+      "family": "industry",
+      "files": [
+        "assets/shallow-mine-entrance/shallow-mine-entrance.gltf",
+        "assets/shallow-mine-entrance/shallow-mine-entrance-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "74c1cee098300a290531e825975d4dbadd67a02fb764c7971ee5df50cc0b46f5",
+          "gltf_sha256": "293856bd3256c3e09c9b7d4b670256529268f8f5f247830e81ec6aec3a9b42a5",
+          "bin_sha256": "25e6a82de080f1905ac92c6821ab2bcaa2803bb8646fe204ee3e6ec4297f194d",
+          "geometry_views": 59,
+          "image_occurrences": 36,
+          "lossless_views_verified": true,
+          "source_bytes": 16258876,
+          "geometry_bytes": 4189080
+        },
+        "-lod1": {
+          "source_glb_sha256": "5a2ec0ac176dbe255421f20260b6e3d26ec92576904b633a4b5fb21ad98972f1",
+          "gltf_sha256": "e455751d7af62ba7ac9d227830e858d84d45347b98d09ea85aeb3063157c75a7",
+          "bin_sha256": "e27f3d32c07e7626b569bf6a2b61be9ef1f629bd85f360db45be898e5b0b5696",
+          "geometry_views": 59,
+          "image_occurrences": 36,
+          "lossless_views_verified": true,
+          "source_bytes": 13571708,
+          "geometry_bytes": 1501964
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:shallow-mine-entrance/shallow-mine-entrance.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000413.png",
+        "sha256": "2996a04974dca9073a556e030351717eb31b7a707aeb817550409312309b5898"
+      }
+    },
+    "deep-mine-head": {
+      "family": "industry",
+      "files": [
+        "assets/deep-mine-head/deep-mine-head.gltf",
+        "assets/deep-mine-head/deep-mine-head-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "63d017744fdfff26bad8096dba76f68d3df40775aee24bde7876b44638bce3d6",
+          "gltf_sha256": "a048a6f338bf6b74938d2a84b3d3aa55f8ead03a2a58b240f76cf97b3136eda5",
+          "bin_sha256": "3f634489d2b0769c60a7594bee55490634061b9093b16ed14f5f0d935ff0f62c",
+          "geometry_views": 59,
+          "image_occurrences": 36,
+          "lossless_views_verified": true,
+          "source_bytes": 16294048,
+          "geometry_bytes": 4265680
+        },
+        "-lod1": {
+          "source_glb_sha256": "4e01f3273a384cee0dfbc493db54ac700eb71931a0a1a1a6b547a71b916c6ef8",
+          "gltf_sha256": "3b238d78cabd913a01caf963d9013df92844f8681d43590cbd812c77ebbacc7b",
+          "bin_sha256": "ee7e969ae7cae00754fd6039d7ba10e66947c38532303742a42cdb8ab4c80c1e",
+          "geometry_views": 59,
+          "image_occurrences": 36,
+          "lossless_views_verified": true,
+          "source_bytes": 13547104,
+          "geometry_bytes": 1518804
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:deep-mine-head/deep-mine-head.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000413.png",
+        "sha256": "2996a04974dca9073a556e030351717eb31b7a707aeb817550409312309b5898"
+      }
+    },
+    "asteroid-extraction-rig": {
+      "family": "industry",
+      "files": [
+        "assets/asteroid-extraction-rig/asteroid-extraction-rig.gltf",
+        "assets/asteroid-extraction-rig/asteroid-extraction-rig-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "cc64bd9173428e24aec403e22048cbfb3ae14436a2a5d3fb7b2bc8787645a659",
+          "gltf_sha256": "d0e005524ff50b3ebdb52f65645fb92052c6a20f051104341b1c44fe955ef6ee",
+          "bin_sha256": "f02fb3f0772a348e111b6eb0cee6716697abf9690848b7be47c1cffbf2aac2f3",
+          "geometry_views": 47,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 13603780,
+          "geometry_bytes": 3620992
+        },
+        "-lod1": {
+          "source_glb_sha256": "13460224e56a4a652823d1bbd92a5853c3fb137a68f424a50ef0ea3471263739",
+          "gltf_sha256": "e010a1460358e4ee724da03146180a5ef54c9611f3b2575c0b95f5f62aca11ed",
+          "bin_sha256": "0a7d070cded6e86877c3ecaaecec92c9a44ff8c6bfd00435f23b09c1e73a3a25",
+          "geometry_views": 47,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 11262180,
+          "geometry_bytes": 1279424
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:asteroid-extraction-rig/asteroid-extraction-rig.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000413.png",
+        "sha256": "2996a04974dca9073a556e030351717eb31b7a707aeb817550409312309b5898"
+      }
+    },
+    "battery-fuel-station": {
+      "family": "industry",
+      "files": [
+        "assets/battery-fuel-station/battery-fuel-station.gltf",
+        "assets/battery-fuel-station/battery-fuel-station-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "195862234fc3bbe857d99beee4f6e722e99715027fd310bf687af42f16293946",
+          "gltf_sha256": "470d3c46237797e3d92143d8b0b0ef652204f55a06b43de7ac9a44fed415e488",
+          "bin_sha256": "e47c655d100ca8dcdb64af97a54df52bf52a872558d0db4ba9633c20a99ff2c6",
+          "geometry_views": 60,
+          "image_occurrences": 36,
+          "lossless_views_verified": true,
+          "source_bytes": 14866252,
+          "geometry_bytes": 2961044
+        },
+        "-lod1": {
+          "source_glb_sha256": "27e1bc551bfdaf1c7a72590cdf8b1b4b1021155492507c175f8a3b2444b4183e",
+          "gltf_sha256": "f782418d3a0914f75041bc79c570edece550cb6da9d04c63c278eb3e809f15d2",
+          "bin_sha256": "22e72c9b6ae75f13b1461e8a029c6cfe15c9c2bbe47f97358a8014d7cfbe89e9",
+          "geometry_views": 60,
+          "image_occurrences": 36,
+          "lossless_views_verified": true,
+          "source_bytes": 12976928,
+          "geometry_bytes": 1071752
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:battery-fuel-station/battery-fuel-station.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000413.png",
+        "sha256": "2996a04974dca9073a556e030351717eb31b7a707aeb817550409312309b5898"
+      }
+    },
+    "clustered-storage-bins": {
+      "family": "industry",
+      "files": [
+        "assets/clustered-storage-bins/clustered-storage-bins.gltf",
+        "assets/clustered-storage-bins/clustered-storage-bins-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "d51ce92c9d254c1d8f884888dfb85c563b7397e9c8dd28bb2e38983c06d7b66f",
+          "gltf_sha256": "91818d24477ce44a4f102135c6dd4d3e1514495f19447816cac4ae2ccccd5360",
+          "bin_sha256": "af82614515bcd21ed0245188e587698e05314fffd74e0390322fa8124cf6636d",
+          "geometry_views": 52,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 14266872,
+          "geometry_bytes": 3175684
+        },
+        "-lod1": {
+          "source_glb_sha256": "8d87317697feddf54244c1326dd41ba15a1e31c5f12aea137001c00930dfef96",
+          "gltf_sha256": "dedf1e9f6c80c39607e98b88df2d9a0ac819ec8b43cc9d6cae9df5f5dec113d4",
+          "bin_sha256": "e630b6cfccd64ab8845940d79fe9f5d2e170c9498d166550d8e81c77b64d5623",
+          "geometry_views": 52,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 12225396,
+          "geometry_bytes": 1134206
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:clustered-storage-bins/clustered-storage-bins.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000413.png",
+        "sha256": "2996a04974dca9073a556e030351717eb31b7a707aeb817550409312309b5898"
+      }
+    },
+    "crew-worker": {
+      "family": "crew",
+      "files": [
+        "assets/crew-worker/crew-worker.gltf",
+        "assets/crew-worker/crew-worker-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "4ac92e53a9a9fc2a555bff35885e0545bfa26dc9c19d588d71dfa75e7c840a32",
+          "gltf_sha256": "95ffe7fe4575d73b0dbeda89c1d198cfd516ee18db62eb294740bfa89ec85048",
+          "bin_sha256": "be2f940c1cb4dffeecaab70dd715678613eceedf4e2e6197f0597bd1a3668cbd",
+          "geometry_views": 64,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 10249492,
+          "geometry_bytes": 1476992
+        },
+        "-lod1": {
+          "source_glb_sha256": "749da5fd0f739f1e4c426bb350abef80cff1d6f55f9fcb3b5abfdb214d86d677",
+          "gltf_sha256": "8e47a08402a04e29cdd47faf472b33b3fe08d504d3f261bc99e1dd91fa3a9500",
+          "bin_sha256": "aae0a7839027860595a400ee042668872285caea8d63b7b2ffbe3a968ce327ac",
+          "geometry_views": 64,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 9259004,
+          "geometry_bytes": 486572
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:crew-worker/crew-worker.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000414.png",
+        "sha256": "feb38008c9786aec8b5fec366aa40a61e4404bfb40007fe7588d834bf3c8f53a"
+      }
+    },
+    "scavenger": {
+      "family": "crew",
+      "files": [
+        "assets/scavenger/scavenger.gltf",
+        "assets/scavenger/scavenger-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "4de8d3e1a1a1d432d58721d9c02ad40d52558ded3c303c587db9cf95975da237",
+          "gltf_sha256": "5c61f726c5b991ad1b0e225a794d73a74c57902c2d10f6422918ef0cdc92bfa2",
+          "bin_sha256": "dbde161e2f08376c865a9d00df6ad68787d7804748a97cb938722df6738f716b",
+          "geometry_views": 48,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 7197992,
+          "geometry_bytes": 1139248
+        },
+        "-lod1": {
+          "source_glb_sha256": "cc814df7c0c478aaa6219fbe91aad4004430b2a5fd1c178fe814126665856624",
+          "gltf_sha256": "b7ce4c371e0fbd02cf841009c72b45950bc2bdeef031a634bb1ecc4486fc1c4a",
+          "bin_sha256": "008a81d7bf95322bf98d2f5d674b31d18e220f3fd28817310f8733ee9d938c3d",
+          "geometry_views": 48,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 6410024,
+          "geometry_bytes": 351332
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:scavenger/scavenger.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000414.png",
+        "sha256": "feb38008c9786aec8b5fec366aa40a61e4404bfb40007fe7588d834bf3c8f53a"
+      }
+    },
+    "citizen-harvester": {
+      "family": "crew",
+      "files": [
+        "assets/citizen-harvester/citizen-harvester.gltf",
+        "assets/citizen-harvester/citizen-harvester-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "5acb9c5c01e25955e0e712d5e54be782247dc4b031b7ca71efdf04ece45fe917",
+          "gltf_sha256": "476c6c9787d1b41064eaa7ab60d26bad20581a3ef8008b8ef5fc6be58b134ff5",
+          "bin_sha256": "4540918aaab9cc5192eb2daac05d11330169722cea1c97595f986f0f19be3ce2",
+          "geometry_views": 52,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 9121296,
+          "geometry_bytes": 1503616
+        },
+        "-lod1": {
+          "source_glb_sha256": "0f939f816eb964b9f85860d7df4091550cb5f72e310625954e94fa13d2f19537",
+          "gltf_sha256": "bf0e21078c2fae72443a3613fd53c8df96722cb39a5d32fb8f4507c2d08acd9c",
+          "bin_sha256": "75d9087701f23e52d36c1b10f92e936a5bfa8057e598fde960e061a4a305e6c2",
+          "geometry_views": 52,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8086720,
+          "geometry_bytes": 469092
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:citizen-harvester/citizen-harvester.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000414.png",
+        "sha256": "feb38008c9786aec8b5fec366aa40a61e4404bfb40007fe7588d834bf3c8f53a"
+      }
+    },
+    "rifle-guard": {
+      "family": "crew",
+      "files": [
+        "assets/rifle-guard/rifle-guard.gltf",
+        "assets/rifle-guard/rifle-guard-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "1e9358268c44a3f3757cf4055416842755434082eb4a884ca61a9cdfe1998e29",
+          "gltf_sha256": "d2467590801492b1b0732cfeac7fe614fa9bf2ec888a05013093f0d9004336c7",
+          "bin_sha256": "03ac27c1dae21e6181e517d6eef1f270f8efa6588063d52a2a7923ffa3100982",
+          "geometry_views": 60,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8978328,
+          "geometry_bytes": 1292640
+        },
+        "-lod1": {
+          "source_glb_sha256": "48f4e3cf7c9620f262ea4706f52be90c8e8e1cfa10300b11340b54e2641b7756",
+          "gltf_sha256": "462564b40d10abd21f50413e88b44559698a6a5c88adc0922c6f177738dbfcc6",
+          "bin_sha256": "434cab3ddff26394380fc94f324a574f50270bfcc175e76e0f41deff23ac3125",
+          "geometry_views": 60,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8090836,
+          "geometry_bytes": 405216
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:rifle-guard/rifle-guard.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000414.png",
+        "sha256": "feb38008c9786aec8b5fec366aa40a61e4404bfb40007fe7588d834bf3c8f53a"
+      }
+    },
+    "shotgun-raider": {
+      "family": "crew",
+      "files": [
+        "assets/shotgun-raider/shotgun-raider.gltf",
+        "assets/shotgun-raider/shotgun-raider-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "eaab9ad4f9a02dfbc908cbdf3c1808cc2cff1a2637c3211049d7167488ec75b5",
+          "gltf_sha256": "c78d909014ed5a5f0c985088af34f73aebdca633b2813de31582a4fe35d478fe",
+          "bin_sha256": "01fbb34829efcc54f7d8f0ad77e9fa0c4a8e38ce12d297feb732fb1e9c3ccb7a",
+          "geometry_views": 68,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 10896184,
+          "geometry_bytes": 1271376
+        },
+        "-lod1": {
+          "source_glb_sha256": "249e22e43de268c4e7b5def6334993916cace7b355742d0ce160524d60b65193",
+          "gltf_sha256": "2cc5bf6626740a666c1fc229c8f118a5a553eea28c7cfba9ad448836a8b99679",
+          "bin_sha256": "407f13dd6cf38ff5540914cb81323b1a1b19a2ce1013cc09d457af8a01a6429a",
+          "geometry_views": 68,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 10030008,
+          "geometry_bytes": 405272
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:shotgun-raider/shotgun-raider.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000414.png",
+        "sha256": "feb38008c9786aec8b5fec366aa40a61e4404bfb40007fe7588d834bf3c8f53a"
+      }
+    },
+    "mechanic-repair-crew": {
+      "family": "crew",
+      "files": [
+        "assets/mechanic-repair-crew/mechanic-repair-crew.gltf",
+        "assets/mechanic-repair-crew/mechanic-repair-crew-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "c65a15b95795cee19f557f6863a8b8fbd481cebcc63e267d643fb84222a29e71",
+          "gltf_sha256": "b1245dc8e263278f1c889e8d88069542b5c0e60ee3ec9cff4c35a22396de12f6",
+          "bin_sha256": "08e794f775a2dac1fb1666a77549d5857011ed9eda807a52e4dfc1ff71e010de",
+          "geometry_views": 60,
+          "image_occurrences": 21,
+          "lossless_views_verified": true,
+          "source_bytes": 8129736,
+          "geometry_bytes": 1167264
+        },
+        "-lod1": {
+          "source_glb_sha256": "8ccf38daf341d0622e02a2ca8dc4946525f9fe05bbd301279e573dd5e5cd102a",
+          "gltf_sha256": "22896e89739e8b1195101bf2092e3da1b18090f6a02a6559999f1f67c756c154",
+          "bin_sha256": "d9dad285d709528b3ca10397aaffb18379e95875c279a6dcfcb025a816fa6004",
+          "geometry_views": 60,
+          "image_occurrences": 21,
+          "lossless_views_verified": true,
+          "source_bytes": 7325092,
+          "geometry_bytes": 362672
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:mechanic-repair-crew/mechanic-repair-crew.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000414.png",
+        "sha256": "feb38008c9786aec8b5fec366aa40a61e4404bfb40007fe7588d834bf3c8f53a"
+      }
+    },
+    "field-medic": {
+      "family": "crew",
+      "files": [
+        "assets/field-medic/field-medic.gltf",
+        "assets/field-medic/field-medic-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "a95306550ee9e39963a39f1cf5d8700cf461a1dcb15adec56fd8896e7ec41aac",
+          "gltf_sha256": "224b4330845072301e26c0520e041b224733973da5f305dea6ca902cedad2cad",
+          "bin_sha256": "ceb17dac135284b7d013d3484119f25bccd5b8af03da144c260b3f6409f34ae8",
+          "geometry_views": 52,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 7302272,
+          "geometry_bytes": 1193952
+        },
+        "-lod1": {
+          "source_glb_sha256": "2b21bb8d5baf4acd3f76b0a3729a877c31355de441be2fbecc84944b6fc5acc1",
+          "gltf_sha256": "470e81f1496c5c0c02a68d6b1bb8d92e114ca8cd6f875699d5c93ecc4be54c8c",
+          "bin_sha256": "aa9bbd57724feb6eca4f96f7e335d048bfc7222219596e17bc557cde10bbed3e",
+          "geometry_views": 52,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 6487936,
+          "geometry_bytes": 379672
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:field-medic/field-medic.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000414.png",
+        "sha256": "feb38008c9786aec8b5fec366aa40a61e4404bfb40007fe7588d834bf3c8f53a"
+      }
+    },
+    "settlement-hub": {
+      "family": "buildings",
+      "files": [
+        "assets/settlement-hub/settlement-hub.gltf",
+        "assets/settlement-hub/settlement-hub-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "b0bd4be51e952b558a3d34d075484d6e4849c55e045a7e24f5b0128fbb94caa4",
+          "gltf_sha256": "56c0e4d5105e363a244eaae38e8e33a7fb72d1fd49982b89b2cf4f3ad0ab4833",
+          "bin_sha256": "f7331f5394770f27d97bd82bad31d8300fe7552e318f3440641a2822e9f49680",
+          "geometry_views": 64,
+          "image_occurrences": 39,
+          "lossless_views_verified": true,
+          "source_bytes": 21720128,
+          "geometry_bytes": 8747176
+        },
+        "-lod1": {
+          "source_glb_sha256": "bba21222e3b9d314ba87d293dc989302131529cf7231d12c3503654ef8950c3a",
+          "gltf_sha256": "29f7d3ad31e1cedc014cab12e1880f6c9b1d29f0bfc63405a9fc6444b8a10dc6",
+          "bin_sha256": "d9266f5bf0f7a6975ac218fa6113ef7cc67abca104ad6ebc91876b38410cfddf",
+          "geometry_views": 64,
+          "image_occurrences": 39,
+          "lossless_views_verified": true,
+          "source_bytes": 15932272,
+          "geometry_bytes": 2959412
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:settlement-hub/settlement-hub.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000415.png",
+        "sha256": "4e154be2ff7451318b09abc6d2153297ab9f1b51bae4ad94599d5901dfd7368f"
+      }
+    },
+    "civic-shelter": {
+      "family": "buildings",
+      "files": [
+        "assets/civic-shelter/civic-shelter.gltf",
+        "assets/civic-shelter/civic-shelter-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "84a0ff8e12b3983e885431a29186555ebfc6b84753ba02bd8f52631592be2ef1",
+          "gltf_sha256": "83a1c805787edd12bb4f132b85103841704ac25e5c61bf3247e63a4d2230c599",
+          "bin_sha256": "2acf3b9dbcd6f91fe2fc6f14c2f07ca45af408b4b8a3acdcbbb4284e81eaa22d",
+          "geometry_views": 64,
+          "image_occurrences": 39,
+          "lossless_views_verified": true,
+          "source_bytes": 19007900,
+          "geometry_bytes": 6052392
+        },
+        "-lod1": {
+          "source_glb_sha256": "042f7de865dc75e3d3c3ede441ee73ba34c8077d32e3d562df1ffc709c663035",
+          "gltf_sha256": "7895be683788cab28248ab935cecc2d9d306679b0e0573fccd9d5dffe9f6b5ec",
+          "bin_sha256": "3fb3e69b7250491a6ecc5f36cb52dd32ec0cd971acca322973a9b6d96ce8e1a5",
+          "geometry_views": 64,
+          "image_occurrences": 39,
+          "lossless_views_verified": true,
+          "source_bytes": 15071600,
+          "geometry_bytes": 2116176
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:civic-shelter/civic-shelter.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000415.png",
+        "sha256": "4e154be2ff7451318b09abc6d2153297ab9f1b51bae4ad94599d5901dfd7368f"
+      }
+    },
+    "improvised-workshop": {
+      "family": "buildings",
+      "files": [
+        "assets/improvised-workshop/improvised-workshop.gltf",
+        "assets/improvised-workshop/improvised-workshop-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "6798857c5d49b4244e5941fbbedbec4651eacf1b7d851cde62c7cda8145180a1",
+          "gltf_sha256": "2985a43df7f8fa84cd49ac60da9c1ab159302257ebc6c6b4b73e1e28e9388e07",
+          "bin_sha256": "6976cc95552e5b39be07c1aa32f32b693374c493d8dd594e4ec584dcc58d2257",
+          "geometry_views": 72,
+          "image_occurrences": 47,
+          "lossless_views_verified": true,
+          "source_bytes": 28353480,
+          "geometry_bytes": 9778634
+        },
+        "-lod1": {
+          "source_glb_sha256": "f1bf449b1c4c77aa92a50cb13afe0c3491427f1a975959e2dc6efc54795da723",
+          "gltf_sha256": "78d3c90d66cd8f8e303b5f4f98838e61dab554ccfa791c83775a89c53777f18a",
+          "bin_sha256": "76c7d6f85eecb3ce5b86a3891303d7f8e25d834307516826b92baf31be26ef4a",
+          "geometry_views": 72,
+          "image_occurrences": 47,
+          "lossless_views_verified": true,
+          "source_bytes": 22322864,
+          "geometry_bytes": 3748080
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:improvised-workshop/improvised-workshop.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000415.png",
+        "sha256": "4e154be2ff7451318b09abc6d2153297ab9f1b51bae4ad94599d5901dfd7368f"
+      }
+    },
+    "command-signal-hall": {
+      "family": "buildings",
+      "files": [
+        "assets/command-signal-hall/command-signal-hall.gltf",
+        "assets/command-signal-hall/command-signal-hall-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "c73bd8d8b4dea710f13816eccd9690fc5fbefbd0be8a92932be7b5c94e37ff07",
+          "gltf_sha256": "3986eaa143c7552aba364de4e5b319414738bfe0727bf03eec53ded8faa7d9a4",
+          "bin_sha256": "9949d98e12dd729412045c3ad0016b570eef6c5395b97da587e0b764b3096bef",
+          "geometry_views": 64,
+          "image_occurrences": 39,
+          "lossless_views_verified": true,
+          "source_bytes": 19596568,
+          "geometry_bytes": 6623304
+        },
+        "-lod1": {
+          "source_glb_sha256": "9e9ad6c07ffff3922243000d2de42d05bcf138da72766e7322107f98ea9d68dd",
+          "gltf_sha256": "75e53a53e18f76cc165cd095337c8f93ab3e54a92868e1d9efd91fbf1797ae45",
+          "bin_sha256": "372bc4ac62ee1c2bed8c909f672de1d264309ec95e3ee057cced6b8c6544a6d0",
+          "geometry_views": 64,
+          "image_occurrences": 39,
+          "lossless_views_verified": true,
+          "source_bytes": 15325756,
+          "geometry_bytes": 2352570
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:command-signal-hall/command-signal-hall.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000415.png",
+        "sha256": "4e154be2ff7451318b09abc6d2153297ab9f1b51bae4ad94599d5901dfd7368f"
+      }
+    },
+    "training-yard": {
+      "family": "buildings",
+      "files": [
+        "assets/training-yard/training-yard.gltf",
+        "assets/training-yard/training-yard-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "9618951598ceaf410bc1af382ba742be4226753d00049b7ec0e020a36acf8ea0",
+          "gltf_sha256": "057961160577f6535f17de9f6d07a5392cebe89618ea8a9f557711c6dab85d81",
+          "bin_sha256": "85f1a62654335e1a66c8fe12415574979d741dcc226ba5e8e4b21cf4d0aae55f",
+          "geometry_views": 51,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 14237264,
+          "geometry_bytes": 3278104
+        },
+        "-lod1": {
+          "source_glb_sha256": "2de20c169056956db6568e1791110f747bed1a9f142ef7a465cf2b707de7b261",
+          "gltf_sha256": "dd3e5b51e378e00f0fcf3677c14f3816f7162005db9416f464f66f0d382b24bc",
+          "bin_sha256": "39f1fd0b4f0fbd3414ee321e4ef592a44ffa45f7bc6fc70c1e4f19647384199e",
+          "geometry_views": 51,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 12143304,
+          "geometry_bytes": 1184176
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:training-yard/training-yard.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000415.png",
+        "sha256": "4e154be2ff7451318b09abc6d2153297ab9f1b51bae4ad94599d5901dfd7368f"
+      }
+    },
+    "repair-garage": {
+      "family": "buildings",
+      "files": [
+        "assets/repair-garage/repair-garage.gltf",
+        "assets/repair-garage/repair-garage-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "e810800bf7a250997b1cce766f7cebd692cf815ecdcb457e5700c39e2e9e33c0",
+          "gltf_sha256": "4d3e23c38ec90e88280a94edb6b8caf07fd9adbe525d2a456ff154cc96ea1d69",
+          "bin_sha256": "8a61155a951ea7768250a9bff77c2e3e4e31e31bcf1847bf7165b2948c582e8d",
+          "geometry_views": 68,
+          "image_occurrences": 42,
+          "lossless_views_verified": true,
+          "source_bytes": 21122208,
+          "geometry_bytes": 7189104
+        },
+        "-lod1": {
+          "source_glb_sha256": "c82ca288d35265b639485d1c2c7263c9ad39d8d4517dfb8bbba0ab0d7aaf6116",
+          "gltf_sha256": "1a567d77f6450a4bad1edb99144676bd13318556cf4330897e4fa13f9fca7e4c",
+          "bin_sha256": "c83f2098224f6e12effcaaec89c07800ae73611020b7e8ec6865fde4659b6841",
+          "geometry_views": 68,
+          "image_occurrences": 42,
+          "lossless_views_verified": true,
+          "source_bytes": 16471216,
+          "geometry_bytes": 2538196
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:repair-garage/repair-garage.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000415.png",
+        "sha256": "4e154be2ff7451318b09abc6d2153297ab9f1b51bae4ad94599d5901dfd7368f"
+      }
+    },
+    "storage-hall": {
+      "family": "buildings",
+      "files": [
+        "assets/storage-hall/storage-hall.gltf",
+        "assets/storage-hall/storage-hall-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "65f3c155eff8532602825033cc8086893ce46b9d6dfd7a00b3dcbf0cde152a9c",
+          "gltf_sha256": "8a91691fea65d186c0616f55a2a1117e2acfcaa6d7638366e7ab2f2d46fbf3e9",
+          "bin_sha256": "9694809c5625859e9f40ffe021d3902a98839e686c2fcd663cd52be45c20104f",
+          "geometry_views": 64,
+          "image_occurrences": 39,
+          "lossless_views_verified": true,
+          "source_bytes": 18978636,
+          "geometry_bytes": 6023128
+        },
+        "-lod1": {
+          "source_glb_sha256": "bec3d9f5d5ebe50daa43d305eb308a54439e9b549df29a8d5122e56c842437cd",
+          "gltf_sha256": "c052106f8327735f9b9b47724d381c12de6dba08fa926322394b8de925be26be",
+          "bin_sha256": "f07d289f965ae2c675acef0462a1cfd47ab69595c4dba150a0f04d1526cb3d86",
+          "geometry_views": 64,
+          "image_occurrences": 39,
+          "lossless_views_verified": true,
+          "source_bytes": 15058304,
+          "geometry_bytes": 2102880
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:storage-hall/storage-hall.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000415.png",
+        "sha256": "4e154be2ff7451318b09abc6d2153297ab9f1b51bae4ad94599d5901dfd7368f"
+      }
+    },
+    "refinery-shack": {
+      "family": "buildings",
+      "files": [
+        "assets/refinery-shack/refinery-shack.gltf",
+        "assets/refinery-shack/refinery-shack-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "bbbc2ec09a103843512446e0c196491683190f5ac8505b34af4f014a7d084344",
+          "gltf_sha256": "349653e29b0df5f072db0f6526136055abb645bdc0890bd0197d7bbc465786a1",
+          "bin_sha256": "bda818f04183d169faa6c4d77a8793553533c6cc2570a5ce14c5df9e3e58dd4b",
+          "geometry_views": 48,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 13255648,
+          "geometry_bytes": 3255944
+        },
+        "-lod1": {
+          "source_glb_sha256": "b2cc48ede8bdf7ccee80fdfbde245504c80c45b8c1195f8e409a42c9bced81e9",
+          "gltf_sha256": "a8cc01362dc3603a13ce8a7919d7a7c3842f81347207df41bf3500e31bdf1df1",
+          "bin_sha256": "617c40b4bf99585d29ea2bf5cbf37a7c9a8154751657a3607233c42c0f1c09a3",
+          "geometry_views": 48,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 11155248,
+          "geometry_bytes": 1155588
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:refinery-shack/refinery-shack.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000415.png",
+        "sha256": "4e154be2ff7451318b09abc6d2153297ab9f1b51bae4ad94599d5901dfd7368f"
+      }
+    },
+    "power-core-building": {
+      "family": "buildings",
+      "files": [
+        "assets/power-core-building/power-core-building.gltf",
+        "assets/power-core-building/power-core-building-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "814ac84c335bc67607ca7bd5e69aee6d1fe5fb177c8ecc86d70e372e403a2503",
+          "gltf_sha256": "b8f72172a7bc63462b14fbf54d1abb865c7f24653237db1037bc281eb7155faa",
+          "bin_sha256": "449e26aa900e44b15fa28d6849864c6be7fbc291e6ad7f4aef7cfa3fcd47ca11",
+          "geometry_views": 60,
+          "image_occurrences": 36,
+          "lossless_views_verified": true,
+          "source_bytes": 17577124,
+          "geometry_bytes": 5375464
+        },
+        "-lod1": {
+          "source_glb_sha256": "44449936e9a3039aabc1cbeb35b425ca44834271695eda27a7ed507e158000d2",
+          "gltf_sha256": "7a6496a14b3b25672b67a13383a822827af68b9d08a53cb86c7ff60512739307",
+          "bin_sha256": "673f06b8e3fd39c2e31593c1c4bde24e8f0029181072cbe9358ab8168a73235d",
+          "geometry_views": 60,
+          "image_occurrences": 36,
+          "lossless_views_verified": true,
+          "source_bytes": 14111232,
+          "geometry_bytes": 1909608
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:power-core-building/power-core-building.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000415.png",
+        "sha256": "4e154be2ff7451318b09abc6d2153297ab9f1b51bae4ad94599d5901dfd7368f"
+      }
+    },
+    "machine-shop": {
+      "family": "buildings",
+      "files": [
+        "assets/machine-shop/machine-shop.gltf",
+        "assets/machine-shop/machine-shop-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "371d50a8588988cc3b1ae758736a3b228ea8811d111b240ac04d24d809e42d5d",
+          "gltf_sha256": "2ed07c06d9f2660399d5e1d2161c334b9b6342708887e9343899b5f90efd3d5f",
+          "bin_sha256": "115abf496858522985c04f828978b6901b3abc238afd9c15f7fff141a6581bb6",
+          "geometry_views": 64,
+          "image_occurrences": 39,
+          "lossless_views_verified": true,
+          "source_bytes": 18788604,
+          "geometry_bytes": 5815344
+        },
+        "-lod1": {
+          "source_glb_sha256": "0520a108d3fd91bf7847660bee8a3c8a0de238a8500bdbe6c07f1146990e5b06",
+          "gltf_sha256": "e10260a330cfeff996cca5864201d58f7b66e8c0492932f979876a99ed537412",
+          "bin_sha256": "4b7b9d594fa66693c277dfc16efb3b5b16070ac741bcd41653591f8c6ebfbd20",
+          "geometry_views": 64,
+          "image_occurrences": 39,
+          "lossless_views_verified": true,
+          "source_bytes": 15041348,
+          "geometry_bytes": 2068162
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:machine-shop/machine-shop.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000415.png",
+        "sha256": "4e154be2ff7451318b09abc6d2153297ab9f1b51bae4ad94599d5901dfd7368f"
+      }
+    },
+    "comic-book-wall": {
+      "family": "defenses",
+      "files": [
+        "assets/comic-book-wall/comic-book-wall.gltf",
+        "assets/comic-book-wall/comic-book-wall-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "c9dee14474f0191e05c69ca40e7b8d4d439b41e38e8580739896fd0d56bea3a4",
+          "gltf_sha256": "6f8bc82192ad6ad0560303da6a0bbb933b699e26e4a44e631f34e63dfc243f5b",
+          "bin_sha256": "0a29636bffedfc5187401aed6e0f01f79591b856e02d2326a6142965d472add7",
+          "geometry_views": 40,
+          "image_occurrences": 21,
+          "lossless_views_verified": true,
+          "source_bytes": 9357200,
+          "geometry_bytes": 2002432
+        },
+        "-lod1": {
+          "source_glb_sha256": "7e841b3b03d270cebf0be5baafe8ec4c4878e8dafc98d1846b8fe992f5d00094",
+          "gltf_sha256": "1f2060644708bcaf06f098b0bb413683cd74efc96f1e7d236faa0e53686037ea",
+          "bin_sha256": "092acf9d71fb2aa7760a5ec6b2d261ce9df73e9efc99c3b9b957d2d71a979a5f",
+          "geometry_views": 40,
+          "image_occurrences": 21,
+          "lossless_views_verified": true,
+          "source_bytes": 8064272,
+          "geometry_bytes": 709544
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:comic-book-wall/comic-book-wall.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000416.png",
+        "sha256": "6d11d0fe75710515ecb8466cb0d9aae4add8c99ad4c3549a69b552967eef344c"
+      }
+    },
+    "car-door-wall": {
+      "family": "defenses",
+      "files": [
+        "assets/car-door-wall/car-door-wall.gltf",
+        "assets/car-door-wall/car-door-wall-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "799e845266867af45c347a646b59a9025d254de33acb07f5c07266d599b23843",
+          "gltf_sha256": "0b9dc68f232963b3508ce9ac807939d095613b11f824be2362b9c1430901e526",
+          "bin_sha256": "1def4f3dd41ca4c012a33c49780f0dc74b098fcfb285e7c5a6329d56430d98d7",
+          "geometry_views": 51,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 10881908,
+          "geometry_bytes": 1601732
+        },
+        "-lod1": {
+          "source_glb_sha256": "f7eee15a79cc8b241c8d2035cb1c445f00d0bab08009d522368c9df677602cb5",
+          "gltf_sha256": "250617c8bf1f49eba10c77e81df6b73ac4609acb8b6a1b3c51503a8b3d38e7fa",
+          "bin_sha256": "57244981dddd65427ff4509793218d83a6eac219ea034b0f32615d2a3713ae0a",
+          "geometry_views": 51,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 9866972,
+          "geometry_bytes": 586844
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:car-door-wall/car-door-wall.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000416.png",
+        "sha256": "6d11d0fe75710515ecb8466cb0d9aae4add8c99ad4c3549a69b552967eef344c"
+      }
+    },
+    "fridge-barricade": {
+      "family": "defenses",
+      "files": [
+        "assets/fridge-barricade/fridge-barricade.gltf",
+        "assets/fridge-barricade/fridge-barricade-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "a84555ac17b478d36e819c16c49c766e95a32225fdfaed80f81d3113fb153a96",
+          "gltf_sha256": "294e2203a9fe3153c8b4852bc8d390e7eca5201f74bad92ad93c2d8e5a32bbb6",
+          "bin_sha256": "f3e0177187ff0e0d3f720aeed398ed8e2194e8285cd102f885e54720b1af1d19",
+          "geometry_views": 40,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 9610580,
+          "geometry_bytes": 1355592
+        },
+        "-lod1": {
+          "source_glb_sha256": "2d8cdc3b0eac718b977db2bc199e8cfd337166ae92b253038d6ea7afde4af78b",
+          "gltf_sha256": "4d571cc144d0c2d9183e56afe8d066e63cb710a660f67904ae4323545fdad01d",
+          "bin_sha256": "62d1e412f69e99dd20a21d00930cb86c3ea0ed80c89a6151f53248defd2fbca8",
+          "geometry_views": 40,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8759928,
+          "geometry_bytes": 504984
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:fridge-barricade/fridge-barricade.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000416.png",
+        "sha256": "6d11d0fe75710515ecb8466cb0d9aae4add8c99ad4c3549a69b552967eef344c"
+      }
+    },
+    "signplate-barricade": {
+      "family": "defenses",
+      "files": [
+        "assets/signplate-barricade/signplate-barricade.gltf",
+        "assets/signplate-barricade/signplate-barricade-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "d26eb83219e7380aa3f88e28a05219a805ddbd370c0dd0c926b6c836f79ecba0",
+          "gltf_sha256": "e3c6519254f9d7c7c3b45b10e65650ce2e81ace47d5ad2b928920e51c47e494d",
+          "bin_sha256": "74f5a1ddd66bad22a6e324f84588d519e497d42c59f15aaa017f7276b33462bd",
+          "geometry_views": 40,
+          "image_occurrences": 21,
+          "lossless_views_verified": true,
+          "source_bytes": 8849092,
+          "geometry_bytes": 1514600
+        },
+        "-lod1": {
+          "source_glb_sha256": "11a1561f24a1e243f6b379f0f4e28b740526f60c49bfc4d046097f80d1312541",
+          "gltf_sha256": "a9b940ef1b9b9d26f06dbf7ddc6d13fdf8eb226d8bc3c190847c6fd3a22f6a7e",
+          "bin_sha256": "586271376e1dec9d625c9329fed52d528b2254f9504290311ba8118971da5521",
+          "geometry_views": 40,
+          "image_occurrences": 21,
+          "lossless_views_verified": true,
+          "source_bytes": 7880536,
+          "geometry_bytes": 546096
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:signplate-barricade/signplate-barricade.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000416.png",
+        "sha256": "6d11d0fe75710515ecb8466cb0d9aae4add8c99ad4c3549a69b552967eef344c"
+      }
+    },
+    "scrap-bunker": {
+      "family": "defenses",
+      "files": [
+        "assets/scrap-bunker/scrap-bunker.gltf",
+        "assets/scrap-bunker/scrap-bunker-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "27e21d52da68c12a9b8618a0100a8cb5bbda42505e33202163d1275ff94d8916",
+          "gltf_sha256": "95e887670cba06375efd83d700d38cd73ffbc68172a3630a65e67a51ec1280bb",
+          "bin_sha256": "28f3217da312ee0952f9ce74eca63370a41c8e6723c647bcee553c14569c3139",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 14846804,
+          "geometry_bytes": 3993552
+        },
+        "-lod1": {
+          "source_glb_sha256": "42cfdb4c3ec02a316aa5e35871888edc73b8666f292d22e1d4367e43938cbae2",
+          "gltf_sha256": "ae964cce39e3f16edfa4720274665129f2e3dd30b6861b479be0d9eb2acad731",
+          "bin_sha256": "ec21ebf60dcdc85e9afd2d486947b8bae8a87a7124678f336eb4ea9236505d33",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 12223804,
+          "geometry_bytes": 1370600
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:scrap-bunker/scrap-bunker.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000416.png",
+        "sha256": "6d11d0fe75710515ecb8466cb0d9aae4add8c99ad4c3549a69b552967eef344c"
+      }
+    },
+    "crane-section-watchtower": {
+      "family": "defenses",
+      "files": [
+        "assets/crane-section-watchtower/crane-section-watchtower.gltf",
+        "assets/crane-section-watchtower/crane-section-watchtower-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "dde9383aaa4bae151cb46a5ed788eb97f1bd806c87252c1fc0b4ee8bec50bb35",
+          "gltf_sha256": "382c7160030448a45a3c917f0f748c09e2ef5013a67fdd588b474186cd35d728",
+          "bin_sha256": "adf9b1fd752a73f19a674ff4bea5ca35df9595e0d71b0d7b64596f4b01ba97c4",
+          "geometry_views": 44,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 11638704,
+          "geometry_bytes": 3608380
+        },
+        "-lod1": {
+          "source_glb_sha256": "39c8a462488fae606bf0a2d5a482e39c78d9be42f7cbfa391002d0a3fec1646c",
+          "gltf_sha256": "0930c04d337eeeb6328f6c6abe14126c1a2c096ee604b128ca7fd1891f8ca847",
+          "bin_sha256": "16473e2021a724e6312d29840334f1671387fcd9a6fa1c69854703e855b13f30",
+          "geometry_views": 44,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 9268260,
+          "geometry_bytes": 1237988
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:crane-section-watchtower/crane-section-watchtower.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000416.png",
+        "sha256": "6d11d0fe75710515ecb8466cb0d9aae4add8c99ad4c3549a69b552967eef344c"
+      }
+    },
+    "bathtub-turret": {
+      "family": "defenses",
+      "files": [
+        "assets/bathtub-turret/bathtub-turret.gltf",
+        "assets/bathtub-turret/bathtub-turret-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "f2eb1d71a952942f9988cf9c950d888594144e326a8cd11dc4a22be197f0b49a",
+          "gltf_sha256": "3b0e11a5923a65b0809aef9ac611e4bc9c33aa9d06b6d7f27db064f6d5e89d8e",
+          "bin_sha256": "dfe2bff2e094a23a6b6d414dbcad362ff20d4d38f877fd573fe09cb983d70259",
+          "geometry_views": 48,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 11742064,
+          "geometry_bytes": 1340064
+        },
+        "-lod1": {
+          "source_glb_sha256": "27d07f1afa27c2c8edb3a47e99affa76aa5e63ae6adff831caa0ec2c8fc971cd",
+          "gltf_sha256": "9d16865c3ae201e9e0fe8e48be546533cc7f5683735711345dd51c305ada1f60",
+          "bin_sha256": "a27f65f23ef47832b6f0bf86a6667113ecd30ebe4cbf01e42add9162559e22f4",
+          "geometry_views": 48,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 10879312,
+          "geometry_bytes": 477372
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:bathtub-turret/bathtub-turret.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000416.png",
+        "sha256": "6d11d0fe75710515ecb8466cb0d9aae4add8c99ad4c3549a69b552967eef344c"
+      }
+    },
+    "spotlight-tower": {
+      "family": "defenses",
+      "files": [
+        "assets/spotlight-tower/spotlight-tower.gltf",
+        "assets/spotlight-tower/spotlight-tower-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "cb68f0b47848672065c05a63b0c26b79abbea2c5d7d1491f2c894bf9b7dd71d7",
+          "gltf_sha256": "77a53d14310f2a500e69a78996900e4cc8f035427de0256a7891b12cd85d7f23",
+          "bin_sha256": "3faa2106cfe578193c52b1994412c99e6a20ea3a8554d5abf40750410130f905",
+          "geometry_views": 40,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 9166644,
+          "geometry_bytes": 1175096
+        },
+        "-lod1": {
+          "source_glb_sha256": "4077ffd550bd1b5a76f7e73c1ce62cf3c7e40f84ec99cc94d32ec1567b1e50cf",
+          "gltf_sha256": "0a231506f7142f57dee54c2ae56ce849ad97f50db24d2b2d8f5e7503223809e6",
+          "bin_sha256": "b7cd0a6ea9accd8fda2b6767e855c879bf0592316d26c0ac3e8409d0a0ba4cb4",
+          "geometry_views": 40,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8411960,
+          "geometry_bytes": 420380
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:spotlight-tower/spotlight-tower.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000416.png",
+        "sha256": "6d11d0fe75710515ecb8466cb0d9aae4add8c99ad4c3549a69b552967eef344c"
+      }
+    },
+    "spike-gate": {
+      "family": "defenses",
+      "files": [
+        "assets/spike-gate/spike-gate.gltf",
+        "assets/spike-gate/spike-gate-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "8746c26fa684d9a5197aa2d3f58e6366abd3a6c72cef2aefeca06f2e88b4b71c",
+          "gltf_sha256": "4e9316f992388adee90c1ac3f32b6a698634fa00c50b8b3cc06cce005541334f",
+          "bin_sha256": "49b1eb099331560f5081ee1ceb402071f0bcdcbbbf610174d5e19abf845b63a9",
+          "geometry_views": 36,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 7564720,
+          "geometry_bytes": 1316544
+        },
+        "-lod1": {
+          "source_glb_sha256": "7d3da1c80d7c6261060ad544c0a9f92abef4b56644277fc5a8e9d5b1a27a71b7",
+          "gltf_sha256": "f0d2930a624862cb323008aeafcde516f03f6785ba24a285b323cbdd94b8c913",
+          "bin_sha256": "0d29db12824c8cace562d6d9600162b5722a30c6cb60dda894b736391a4dfcef",
+          "geometry_views": 36,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 6723932,
+          "geometry_bytes": 475784
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:spike-gate/spike-gate.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000416.png",
+        "sha256": "6d11d0fe75710515ecb8466cb0d9aae4add8c99ad4c3549a69b552967eef344c"
+      }
+    },
+    "mine-marker": {
+      "family": "defenses",
+      "files": [
+        "assets/mine-marker/mine-marker.gltf",
+        "assets/mine-marker/mine-marker-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "c40e2ff62a669e10a81154c59fbba381b2a62d9ab37f2448f74fb12f6db18788",
+          "gltf_sha256": "1e19eed0e72b0120146a72eea84afbc9a54377583518941292f6e1b3b8c3a464",
+          "bin_sha256": "d4a28c0819ce53d5354abd1ac13a512648382f3a24735e11f6fda44384ea3316",
+          "geometry_views": 44,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 9271652,
+          "geometry_bytes": 1230216
+        },
+        "-lod1": {
+          "source_glb_sha256": "9239d8d0b2a9c596e0561096de7c2e06c89d1d1c308d12d717ff641fb0e8f744",
+          "gltf_sha256": "ab551ce895c3326903d5be0d90df416518ee881c950f283ee57267f00d73eed1",
+          "bin_sha256": "1afd38b5f530185cf56734817040fab59c0d6195558fbd9bda7fcfb0052131ba",
+          "geometry_views": 44,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8481744,
+          "geometry_bytes": 440344
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:mine-marker/mine-marker.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000416.png",
+        "sha256": "6d11d0fe75710515ecb8466cb0d9aae4add8c99ad4c3549a69b552967eef344c"
+      }
+    },
+    "sandbag-scrap-firing-nest": {
+      "family": "defenses",
+      "files": [
+        "assets/sandbag-scrap-firing-nest/sandbag-scrap-firing-nest.gltf",
+        "assets/sandbag-scrap-firing-nest/sandbag-scrap-firing-nest-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "e3e1f2632c3e40292c64bc02af18931b0726f3fc9a005b0bdf7078a9edbc54b4",
+          "gltf_sha256": "96243630c9178edbba8418c3193a284997bf3468544e7373b4612cfb28d8294b",
+          "bin_sha256": "6c7b6043e1118fffcdc80e56503cb489af0b3b7ab9a09cfb930fc83f235022f3",
+          "geometry_views": 40,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 9464860,
+          "geometry_bytes": 1792376
+        },
+        "-lod1": {
+          "source_glb_sha256": "27e4225c6b0b7eb37b38077e1ed81ca0fbb969a1a0686ce7582ca998022a8e5c",
+          "gltf_sha256": "c124d1fb94a3a812f093d93cb55f5856f0c5719ce5d6164fa5ca223f1861149f",
+          "bin_sha256": "2523b63aa7fe74c59a9c7e951873a243195484478bf229d0553acd16a11b34be",
+          "geometry_views": 40,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8281044,
+          "geometry_bytes": 608600
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:sandbag-scrap-firing-nest/sandbag-scrap-firing-nest.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000416.png",
+        "sha256": "6d11d0fe75710515ecb8466cb0d9aae4add8c99ad4c3549a69b552967eef344c"
+      }
+    },
+    "improvised-anti-vehicle-barrier": {
+      "family": "defenses",
+      "files": [
+        "assets/improvised-anti-vehicle-barrier/improvised-anti-vehicle-barrier.gltf",
+        "assets/improvised-anti-vehicle-barrier/improvised-anti-vehicle-barrier-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "26417a67d1bb6b1a85eb976b2059fb31216ff8c944cf9d3b77a910ab03d72c65",
+          "gltf_sha256": "2abb70502081c71afa6d93a659ae0259cd971d95a5e6f9e10a0820b68b4eae17",
+          "bin_sha256": "9a94624dcfd7f8485a8daf1cfd336b16af31cc6a7e4c295fc830ad7f5eb29f80",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 10978584,
+          "geometry_bytes": 1809680
+        },
+        "-lod1": {
+          "source_glb_sha256": "32e06aed558eea97a70bd1e99ff321195165c6caf44141fb4ae59acb6ef435c8",
+          "gltf_sha256": "f6c3ae9630d44c3be51209abd6cc0be0063996e7e077de5e633e3bd872c6cfb5",
+          "bin_sha256": "719abe04b5f27d167d7c7ce4a370c17ea630e474bf9fe1f7a3c7dcc80c2d8ca7",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 9805040,
+          "geometry_bytes": 636188
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:improvised-anti-vehicle-barrier/improvised-anti-vehicle-barrier.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000416.png",
+        "sha256": "6d11d0fe75710515ecb8466cb0d9aae4add8c99ad4c3549a69b552967eef344c"
+      }
+    },
+    "push-cart": {
+      "family": "vehicles",
+      "files": [
+        "assets/push-cart/push-cart.gltf",
+        "assets/push-cart/push-cart-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "4473da5fab53b2aeb48ed2c955993d68f89d26e8620cc1753b3f93380510c93a",
+          "gltf_sha256": "4967cc64fa7b51a63cd3a6740bdfe9bc4ca8afe37ed53d5b3a0b20bd31f6800a",
+          "bin_sha256": "a0348f670d88a99644dc6ab5a450719f146e586349e72ec1bf937e7c5a987735",
+          "geometry_views": 40,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 11759548,
+          "geometry_bytes": 2620444
+        },
+        "-lod1": {
+          "source_glb_sha256": "15914754298e85ee5583b8282f4bcc044801fdbb047c70d16d97dc3b7296fe4b",
+          "gltf_sha256": "3e8f7dd667b21a8626ded5cc1606b9d48f22f6af61c67febaee595a4980e5427",
+          "bin_sha256": "5dddd704214761afbbb5717da08c972ab395094bda3430bbd161d6496cdca331",
+          "geometry_views": 40,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 10130972,
+          "geometry_bytes": 991896
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:push-cart/push-cart.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000417.png",
+        "sha256": "c2e6748508aaff509bca3e40c6c8dbe34644b81ebd593f56f074f703c6b14eea"
+      }
+    },
+    "utility-hauler": {
+      "family": "vehicles",
+      "files": [
+        "assets/utility-hauler/utility-hauler.gltf",
+        "assets/utility-hauler/utility-hauler-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "97fe4275fec5c8cd3cba96a683823439c597d0135e7b7ca8e2e0525f1f2b23df",
+          "gltf_sha256": "20654b92b2498fd4f206c32ade67e6cd9b08654895b4cc35aa3d2aa4ba45d262",
+          "bin_sha256": "e84023d58fa636c303877cbdf2fa41df8ee8a17e23390c6fd3f9ac0011d32c43",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 18038080,
+          "geometry_bytes": 6837272
+        },
+        "-lod1": {
+          "source_glb_sha256": "24c63f6ef5c7e07a03f6ec375ab6949053401f656b735f8bc0cac9c3e7654021",
+          "gltf_sha256": "d5c605741f32214c68ace6a290aa20a35419efc385e03bf8d2284e7a173f6534",
+          "bin_sha256": "661b1b60c8ae7967877b1c47e7b43605d1dfa65d3e1cd05059e2d58c62c2ba1b",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 13531540,
+          "geometry_bytes": 2330812
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:utility-hauler/utility-hauler.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000417.png",
+        "sha256": "c2e6748508aaff509bca3e40c6c8dbe34644b81ebd593f56f074f703c6b14eea"
+      }
+    },
+    "scrap-buggy": {
+      "family": "vehicles",
+      "files": [
+        "assets/scrap-buggy/scrap-buggy.gltf",
+        "assets/scrap-buggy/scrap-buggy-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "ede0a277250dfcd5533b576fa5dcbf381f9ba2e7e35d3e683a43694d324e8943",
+          "gltf_sha256": "27b1d31c61eb3089c77bccf3cc9f5ca0b867b6422d10494eea3bdacf210758d4",
+          "bin_sha256": "3e57984fb355780d255c6993ffd0fd19fb27a38db79b82fb205bbfcbae4616f4",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 13629660,
+          "geometry_bytes": 4454968
+        },
+        "-lod1": {
+          "source_glb_sha256": "02b30cc62c6563c8171f6e7df073b3eb6bbe3e78f29b7dd861a6c94fb399923f",
+          "gltf_sha256": "de645897ba9d4ae1ecc872964e210761d4702f08ea5971a78870fdb36eaeef80",
+          "bin_sha256": "eaacbe4cb73188301a32eb8252917d024d80c3f47dc19121d5eb205f20d6d865",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 10672864,
+          "geometry_bytes": 1498224
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:scrap-buggy/scrap-buggy.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000417.png",
+        "sha256": "c2e6748508aaff509bca3e40c6c8dbe34644b81ebd593f56f074f703c6b14eea"
+      }
+    },
+    "scrap-rifle": {
+      "family": "equipment",
+      "files": [
+        "assets/scrap-rifle/scrap-rifle.gltf",
+        "assets/scrap-rifle/scrap-rifle-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "c8f6f60ee269a26e1987f500f63c366df82f691080f4b0d5ce44297d45bd81cd",
+          "gltf_sha256": "2904275c1fffe3941929bb3f988f2b922e94a091cfa245721126d4bdf9c3300e",
+          "bin_sha256": "61f919ded926c70ce1da692f4809ead1ebd627fc4d4d4beebadcfe2b4db62f1b",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 9743956,
+          "geometry_bytes": 911236
+        },
+        "-lod1": {
+          "source_glb_sha256": "32dae68aa3b50a7fdc10d4439527a896187e9bf2649a852da38acf6b04684b84",
+          "gltf_sha256": "94f1e072b333258d5d4d9e00e177aa9e673dff7917312a8ecba537e7e667370f",
+          "bin_sha256": "9b5a1d763f470d22ca2269caf89f598c5e52d2795049d43625f3381a7c298b98",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 9145620,
+          "geometry_bytes": 312940
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:scrap-rifle/scrap-rifle.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "pipe-shotgun": {
+      "family": "equipment",
+      "files": [
+        "assets/pipe-shotgun/pipe-shotgun.gltf",
+        "assets/pipe-shotgun/pipe-shotgun-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "bfb996a5e6f285a2c1f00460fb5332f4828d7c4a7e3b5834fd1e00c25879c366",
+          "gltf_sha256": "d70914f0934d2f59cd56e7dbe363100b57f2f67d743313870461c0432fbc1f94",
+          "bin_sha256": "aaa02ae0600020036e8ac48284427c28e38d0c9ae61b1e19aade4250a327ac22",
+          "geometry_views": 48,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 10799272,
+          "geometry_bytes": 880360
+        },
+        "-lod1": {
+          "source_glb_sha256": "4bba1b09ded3eed560b46081a738df943fc9afcb30b93f583117038f0cdfe125",
+          "gltf_sha256": "2bbb2a11ea17d44184708c453ff584a2b962dbd2362218b2e3471079b31e8239",
+          "bin_sha256": "1870144569535bdfe0a69311206c2511ababb7e9712df218cdd1af7e2740f30a",
+          "geometry_views": 48,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 10226696,
+          "geometry_bytes": 307828
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:pipe-shotgun/pipe-shotgun.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "compact-smg": {
+      "family": "equipment",
+      "files": [
+        "assets/compact-smg/compact-smg.gltf",
+        "assets/compact-smg/compact-smg-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "a65552f671c2182f56bbac607dc3c6286405351e4aa5cfde9b419a20d8891fdb",
+          "gltf_sha256": "885fe422d73492ff1e9c7da52380f6a70e77b88fc79335224bf5b40962a4dae5",
+          "bin_sha256": "21015e8c9a4ab5f0d3c740779bd05174b0c2f9d604a4a894077e8deb63f37338",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 9765904,
+          "geometry_bytes": 933184
+        },
+        "-lod1": {
+          "source_glb_sha256": "aa1dbccd4b154632e161d02424dcf7a6eb8be5043f5b21cad16e71c1897fdf92",
+          "gltf_sha256": "3e3b46376bd45acfa0a3740f66785c7ef6614be8c198bc8edaf07eb3d709300b",
+          "bin_sha256": "40863ca3cce38689f7c6900ced3fbef84449c93a8deee2566789aacb483d5371",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 9152612,
+          "geometry_bytes": 319932
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:compact-smg/compact-smg.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "engine-block": {
+      "family": "equipment",
+      "files": [
+        "assets/engine-block/engine-block.gltf",
+        "assets/engine-block/engine-block-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "0bc24f032bb568280c0e257dd36c02518fe4ce766be8813f5921c9ef8fe0ec00",
+          "gltf_sha256": "9332aea9071768af1b64ab159d9473530441fc0dfe78fec167e9bb3114783f6d",
+          "bin_sha256": "6fa5d7963c6e81e314d9e55d9187e63839a1a5389cc3488009c80f1b37de273a",
+          "geometry_views": 36,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 9262732,
+          "geometry_bytes": 1155728
+        },
+        "-lod1": {
+          "source_glb_sha256": "7049c22fc8d28360c34b5fb31b351f2d22fe1f5dd9f8db5ddf0218bd17173eb9",
+          "gltf_sha256": "60eb9989933304ce1bfb71a5748f0d5234c0ce21482a22003b5acb4d9b5753cd",
+          "bin_sha256": "ef89380d2d8c2e108e978e441e089cc4488f22cd62094158dfd46b81e6851287",
+          "geometry_views": 36,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8495144,
+          "geometry_bytes": 388164
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:engine-block/engine-block.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "turret-module": {
+      "family": "equipment",
+      "files": [
+        "assets/turret-module/turret-module.gltf",
+        "assets/turret-module/turret-module-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "6580c1a8c69c42bc785306fa57cb28d72b926b0dc4ca2ec38cabcb20f1e05104",
+          "gltf_sha256": "f65848e5a1220b294a5b79de11354728ebe5c3e9cfa950917db3cf7ca75b6fda",
+          "bin_sha256": "9fca23e194bae21e7478919262ce94feb8b4fe9b0541f3b86588275436a3a266",
+          "geometry_views": 48,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 10129956,
+          "geometry_bytes": 1199864
+        },
+        "-lod1": {
+          "source_glb_sha256": "d577bdfd980de53c0c7ad676a1f8251e7789faa7e913f4c4b38e0ac58711dfbc",
+          "gltf_sha256": "033ca15c30a7f3dda1e56e2ac2def08a92306fce571b8adf69cedb7a39afe317",
+          "bin_sha256": "e2cbac1dd40c70a906deebc81fc7ceb0c649292eafbe63611b34f1373ebee51d",
+          "geometry_views": 48,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 9351412,
+          "geometry_bytes": 421368
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:turret-module/turret-module.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "meteor-power-cell": {
+      "family": "equipment",
+      "files": [
+        "assets/meteor-power-cell/meteor-power-cell.gltf",
+        "assets/meteor-power-cell/meteor-power-cell-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "05e576a2636cdb4141959d1667dc5de5c53d5212c186229589880460377be522",
+          "gltf_sha256": "61d962931688c164add67cf6df63226037f66c5bc275fb0583dff2bb9b38c3d8",
+          "bin_sha256": "0443179e6a8de603c415357142bdc8f41f39f59b00ab6aa3c65ae0c644b226a2",
+          "geometry_views": 32,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 6889248,
+          "geometry_bytes": 676544
+        },
+        "-lod1": {
+          "source_glb_sha256": "4f9ae8d6518de2999f3b4906e5ec7f6c0213c18f47ec8c761f183565020fb1c0",
+          "gltf_sha256": "612f43a12558951a815e7ca07a4861391ecaa39134c4e9f7683ef3dd1c78217f",
+          "bin_sha256": "7fb5a9a6d3c252381e5d4de193cdf7cc55ab6b0396ed03917787bc9323f75a2e",
+          "geometry_views": 32,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 6432952,
+          "geometry_bytes": 220284
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:meteor-power-cell/meteor-power-cell.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "light-tower": {
+      "family": "utilities",
+      "files": [
+        "assets/light-tower/light-tower.gltf",
+        "assets/light-tower/light-tower-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "bb41bbc9eef9683dd82bfb0457b2c9f2f75c31c5afda3a241fdf5852f1ae7cc3",
+          "gltf_sha256": "529a0edbf5ae642e23ba793ab1742a88043f59c5a07cc56e2297fe58bdea1ab2",
+          "bin_sha256": "8a768b3c6823ee3ab913ab458c99b0136b611e464877572716fb3dadeabd8998",
+          "geometry_views": 40,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 9166644,
+          "geometry_bytes": 1175096
+        },
+        "-lod1": {
+          "source_glb_sha256": "4a9e19a186087959e38e9574c5d33fd1a02188c9380b7db59a9f7c886c5ff1ba",
+          "gltf_sha256": "94f3b859a18d6fc2987113112f9011255806a0b80b07a89ae391861f83cd219f",
+          "bin_sha256": "71b8972d372bc235851eae842860bf4c92f320b9a7a9d39889654692193e395c",
+          "geometry_views": 40,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8411960,
+          "geometry_bytes": 420380
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:light-tower/light-tower.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000412.png",
+        "sha256": "d92613ef92ec86df378a91aa837512488c9bb35af53ca15c49766aceb156c9e3"
+      }
+    },
+    "scout": {
+      "family": "crew",
+      "files": [
+        "assets/scout/scout.gltf",
+        "assets/scout/scout-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "49bf05d40345604785be61eea852bb1158a00fb675631b494abd4f61d36ed563",
+          "gltf_sha256": "4dec1f3851a3fdb84bd68f23c0cc2979086f2c377d5444a387b18d9d42ee41c6",
+          "bin_sha256": "0f709d71bf02125172ad8212f179678b27a02e0ce74440607bb80d3a6ce18016",
+          "geometry_views": 52,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 7305964,
+          "geometry_bytes": 1245916
+        },
+        "-lod1": {
+          "source_glb_sha256": "a598a461b04d5d7aefb499e897b9d5b27082cab0d2361e6286b843baad0d7fd3",
+          "gltf_sha256": "56adf9389f2c9c9480fbaac3ef29c55ab7d61ddd96d5506265280d8851995bf6",
+          "bin_sha256": "08ba58e7b61f16094fab3d50eddcde5a734d2a4fec106217e3be5dc326fa176e",
+          "geometry_views": 52,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 6456856,
+          "geometry_bytes": 396864
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:scout/scout.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000414.png",
+        "sha256": "feb38008c9786aec8b5fec366aa40a61e4404bfb40007fe7588d834bf3c8f53a"
+      }
+    },
+    "licensed-driver": {
+      "family": "crew",
+      "files": [
+        "assets/licensed-driver/licensed-driver.gltf",
+        "assets/licensed-driver/licensed-driver-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "e42a1a61736dd940120af0268f869512c835a91f8ebb53069daffeea6e3e5492",
+          "gltf_sha256": "531716f94cb4394cff82e2f4bf942b1d11278ecae9396da9946ceda0074407df",
+          "bin_sha256": "0edbd80bb550a5ed6893ba5529deac71d9c97e468b42ce7cee23bf8ceafa8781",
+          "geometry_views": 48,
+          "image_occurrences": 15,
+          "lossless_views_verified": true,
+          "source_bytes": 6166968,
+          "geometry_bytes": 1144744
+        },
+        "-lod1": {
+          "source_glb_sha256": "a0d9c0c83d9d167c40100e4ddea0dbc3fc6715be3e1b4ecbad58a0576bccb4ab",
+          "gltf_sha256": "b446ce156855214f5bcb26a3d63280dafa534ef1633d2ecf65a2a000089d24a6",
+          "bin_sha256": "7a39b3115d968f43a562d9d7321c62c7651513063a17ac1b3fb38ef2725f6e51",
+          "geometry_views": 48,
+          "image_occurrences": 15,
+          "lossless_views_verified": true,
+          "source_bytes": 5375080,
+          "geometry_bytes": 352904
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:licensed-driver/licensed-driver.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000414.png",
+        "sha256": "feb38008c9786aec8b5fec366aa40a61e4404bfb40007fe7588d834bf3c8f53a"
+      }
+    },
+    "heavy-vehicle-operator": {
+      "family": "crew",
+      "files": [
+        "assets/heavy-vehicle-operator/heavy-vehicle-operator.gltf",
+        "assets/heavy-vehicle-operator/heavy-vehicle-operator-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "f3c3cb160919d1ad0fd31bb5ea1825448a8663e1bb0f07f99aa4fec60389f193",
+          "gltf_sha256": "fdfe135f338186ee5ad91315809b2540a3ccdc508dd0548cdc2f60679de68649",
+          "bin_sha256": "655d74a66c5decf8828391f337e6f1ff8a9480aad83adc255da2b408cd145cd3",
+          "geometry_views": 52,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 7265520,
+          "geometry_bytes": 1090856
+        },
+        "-lod1": {
+          "source_glb_sha256": "20331037b958548040e3310c3bf9dad8e92d2335432c70779d1b7d49eeabd029",
+          "gltf_sha256": "e10189a4ab1fb585412292d43431e0e107256145b2e3b29c30472359bc8e14e1",
+          "bin_sha256": "fa705775d86e5bd90f2b860efcda649a84eacb2cfe7406eee221c686d12565ff",
+          "geometry_views": 52,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 6509584,
+          "geometry_bytes": 334976
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:heavy-vehicle-operator/heavy-vehicle-operator.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000414.png",
+        "sha256": "feb38008c9786aec8b5fec366aa40a61e4404bfb40007fe7588d834bf3c8f53a"
+      }
+    },
+    "mercenary-ex-mil": {
+      "family": "crew",
+      "files": [
+        "assets/mercenary-ex-mil/mercenary-ex-mil.gltf",
+        "assets/mercenary-ex-mil/mercenary-ex-mil-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "49374f6b93cfce416a95fa5e4d1211b1691f5ffe0aedacdbebd15c11dfe66bc2",
+          "gltf_sha256": "091b41914f36580b9a5b500dfde14b48f785bf9c9aee6c949bab51bd6c9a1742",
+          "bin_sha256": "98214f3a85446e858f93ff1a05c9bce2ceb7ea218ba66bb1fe9a0f32a9d09fa2",
+          "geometry_views": 60,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8997304,
+          "geometry_bytes": 1311616
+        },
+        "-lod1": {
+          "source_glb_sha256": "fe3b61e96589469d620a4be1fa53e204df403f2e50ea1dcb4b7e3e95f3c90791",
+          "gltf_sha256": "87daf176394135d40be65c2009b3f8bd05c2b828f3e050283cefa770160b1ea7",
+          "bin_sha256": "bd830594c7b6bdb88f2076771d4b867902f50d1e4a01eb7bed0ddc6fa247fa84",
+          "geometry_views": 60,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8096872,
+          "geometry_bytes": 411252
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:mercenary-ex-mil/mercenary-ex-mil.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000414.png",
+        "sha256": "feb38008c9786aec8b5fec366aa40a61e4404bfb40007fe7588d834bf3c8f53a"
+      }
+    },
+    "scout-trike": {
+      "family": "vehicles",
+      "files": [
+        "assets/scout-trike/scout-trike.gltf",
+        "assets/scout-trike/scout-trike-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "816800ab7c20378dbc1f7d78c305cb4675d2c744f15ba24866956e004f0bb7f4",
+          "gltf_sha256": "09d896794739aa073f08cfdeddfef103139a043fbf116488a116354166c8bcb7",
+          "bin_sha256": "48a5e0a0829e3c8d40e3ec544d15275806aa9005a9ba5238846edf793e3b272e",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 12035844,
+          "geometry_bytes": 2861232
+        },
+        "-lod1": {
+          "source_glb_sha256": "05abd48648d6cff94bacd90bc5851e9be22947959b25dc885a03ce890ef68100",
+          "gltf_sha256": "73564909cc3f047dad5725464792d91aa1ac6629ab7e4737e1c5e8efdd20222c",
+          "bin_sha256": "2ea8e41349651c3bb5bf377256413b45143d7805907c1e16ee0775e67f80546a",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 10207476,
+          "geometry_bytes": 1032912
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:scout-trike/scout-trike.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000417.png",
+        "sha256": "c2e6748508aaff509bca3e40c6c8dbe34644b81ebd593f56f074f703c6b14eea"
+      }
+    },
+    "improvised-launcher": {
+      "family": "equipment",
+      "files": [
+        "assets/improvised-launcher/improvised-launcher.gltf",
+        "assets/improvised-launcher/improvised-launcher-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "21ee87160e7fcf65079fee5842070386e8583c32272aa0548bce0e700056964f",
+          "gltf_sha256": "5b7617faf6889ec7bc8273496ec06379b1d69ac9b227b927a2fb00eeecfc3a13",
+          "bin_sha256": "ea4519c56a4ba2c0d28840a4218b7a23f3f7e036efc64e3ad10fd07cfe33349e",
+          "geometry_views": 56,
+          "image_occurrences": 36,
+          "lossless_views_verified": true,
+          "source_bytes": 12712324,
+          "geometry_bytes": 833804
+        },
+        "-lod1": {
+          "source_glb_sha256": "76b13051e0f40893caa2358101a8bfa919fe638f68e01cc4d0b611668e7454a9",
+          "gltf_sha256": "5f2306f29d7556682f6b8aa098ac21ff7e861db3d8c4aa5639bb257c7d8a0d88",
+          "bin_sha256": "9c07e98b6178d13c9cdc0819503a54692ce6227c01f238328b59e7d6568e03b5",
+          "geometry_views": 56,
+          "image_occurrences": 36,
+          "lossless_views_verified": true,
+          "source_bytes": 12166828,
+          "geometry_bytes": 288372
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:improvised-launcher/improvised-launcher.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "rotary-gun": {
+      "family": "equipment",
+      "files": [
+        "assets/rotary-gun/rotary-gun.gltf",
+        "assets/rotary-gun/rotary-gun-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "6d387127d440d604c8c2c0238ffd23476699490f98d8e9edc1a1685018cbc4d1",
+          "gltf_sha256": "deecfd28777ee9e7ea10f38995348ae0ac88ac5e94f59620e2e1bfce18e0ae7e",
+          "bin_sha256": "0a1c3ed6cdcba8e5680bfa993e88857fcecea5986943e94e4df42cd18a4c0916",
+          "geometry_views": 40,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8975400,
+          "geometry_bytes": 1245728
+        },
+        "-lod1": {
+          "source_glb_sha256": "5768f834944559a43c82a6d871f81698a46f44934d77aacd38ad47d4c80365ca",
+          "gltf_sha256": "7cc7502d0da27d7580b3998c99dc4435019c6ea1a9c9e65dd26b9e6cf1e65103",
+          "bin_sha256": "226c6f8f582bbb84b8c6763c3c3953dd0dc1746f8c9f0b09170d0ce9c5165096",
+          "geometry_views": 40,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8174356,
+          "geometry_bytes": 444692
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:rotary-gun/rotary-gun.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "repair-welder": {
+      "family": "equipment",
+      "files": [
+        "assets/repair-welder/repair-welder.gltf",
+        "assets/repair-welder/repair-welder-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "f69003c78c0e4fb02fa5bc935a57fa25efb330e7a85ed5f22fc407075e30336f",
+          "gltf_sha256": "aea8fe8395297936ea1b1d28c9653d87d3261cb89c65abc8d499f51d95307d84",
+          "bin_sha256": "a720de38b568c5ec79352ccad9de72824754e688261e88ce2693d636151d736b",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 9514508,
+          "geometry_bytes": 802236
+        },
+        "-lod1": {
+          "source_glb_sha256": "034c997d79c5ee30998dd8fbb0a21dc7dcd6f8eb7a3183b1b9c4abef019bfefc",
+          "gltf_sha256": "4da8d8b959dd52886adee68e6e67110fbe79d339bb48b406e5742f13e552f6ca",
+          "bin_sha256": "6bf428271329cc03d694a88a7f566736289fb278a4906d29b0044701e58a63b2",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 8983740,
+          "geometry_bytes": 271504
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:repair-welder/repair-welder.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "mining-drill": {
+      "family": "equipment",
+      "files": [
+        "assets/mining-drill/mining-drill.gltf",
+        "assets/mining-drill/mining-drill-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "4a9a941fdfee6ade743be655d7b00ba589462fb83445d7636301c728803b8566",
+          "gltf_sha256": "355d3c188995ff497d993ee2e00ea5a43355673112bb291b676eee2dc9a32e6c",
+          "bin_sha256": "7b20f06422b1b4053cdb5278c829e20dfe1c1c988f0c03a194d4d0d3aa262f21",
+          "geometry_views": 40,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 9538020,
+          "geometry_bytes": 1512552
+        },
+        "-lod1": {
+          "source_glb_sha256": "2abe6797974517446cf8a701efd8e0143e6477c28ed2d3cdca8da2d8e3d71be8",
+          "gltf_sha256": "b23add3a833f74c549e457a1a604dc38c4948996d6f1874b113d96b932748b65",
+          "bin_sha256": "b046bb94283c2bd9a5b833caa24dfc4bcdda0ca7307b4592f34a7af47cf9a7c5",
+          "geometry_views": 40,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8577208,
+          "geometry_bytes": 551780
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:mining-drill/mining-drill.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "mercenary-free-agent": {
+      "family": "crew",
+      "files": [
+        "assets/mercenary-free-agent/mercenary-free-agent.gltf",
+        "assets/mercenary-free-agent/mercenary-free-agent-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "79dcd71a4211b09664c3667b7efa1108f39fd76e520f0ed411e9011aa3217811",
+          "gltf_sha256": "192414089e16f293bd334f4e9cebe40fbe45e9a7f92700c658e87ccd4c4f491f",
+          "bin_sha256": "07ae563e55146e3e931d69786470d669355a8f4f880d77b3bbdcb9f9e4a854c9",
+          "geometry_views": 56,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8979808,
+          "geometry_bytes": 1295320
+        },
+        "-lod1": {
+          "source_glb_sha256": "c8d8e2dc27e614c2a976d01669643e4ec50dc0aedced59fac19aaa681baf8ea7",
+          "gltf_sha256": "ea32e26be2caf9b1697e4dca6a8784ebff5589b59169db2ac6c38ea150c299f2",
+          "bin_sha256": "221894c7722d7c0ad6db8862e59c911c128694c48aaa7ae2d4d89ee018c95759",
+          "geometry_views": 56,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8088264,
+          "geometry_bytes": 403840
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:mercenary-free-agent/mercenary-free-agent.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000414.png",
+        "sha256": "feb38008c9786aec8b5fec366aa40a61e4404bfb40007fe7588d834bf3c8f53a"
+      }
+    },
+    "flatbed-convoy-truck": {
+      "family": "vehicles",
+      "files": [
+        "assets/flatbed-convoy-truck/flatbed-convoy-truck.gltf",
+        "assets/flatbed-convoy-truck/flatbed-convoy-truck-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "14ac01716e0090f06533ac5b188f79e0ccfa618fd1313c653f5c5fcf22ace257",
+          "gltf_sha256": "088c7581ebbf22d539241f656f18e300752db188f4d80d8b09c0328f234b831e",
+          "bin_sha256": "94c53eae9a3d4ba3ff3ab9c63ae797600af6d5b3b5d6bcee8e09bc58e3a9ad66",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 19919952,
+          "geometry_bytes": 8719132
+        },
+        "-lod1": {
+          "source_glb_sha256": "e807125b75dafe257670ab1ff58b904cc0dddf9e67bc13f67886bd6e326e7725",
+          "gltf_sha256": "a7cd30640fccf7b4492ff097794f59a7c031d1a22184bd0e365572456daae4be",
+          "bin_sha256": "0fba99f9c541578058080e51fb653aa17e453935f1496ece04a1bafd3a38bcd6",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 14110756,
+          "geometry_bytes": 2910024
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:flatbed-convoy-truck/flatbed-convoy-truck.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000417.png",
+        "sha256": "c2e6748508aaff509bca3e40c6c8dbe34644b81ebd593f56f074f703c6b14eea"
+      }
+    },
+    "armored-bus": {
+      "family": "vehicles",
+      "files": [
+        "assets/armored-bus/armored-bus.gltf",
+        "assets/armored-bus/armored-bus-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "ba5456caea9c6103fac9cfdeab505bd06f1cfb2540a6dae5655d5f41aab1f44f",
+          "gltf_sha256": "b221ce490fe26b102f385a916e561abbca96a155a5c4946a6d7300871da4dd70",
+          "bin_sha256": "d7e3f0eec21ba7251db368e9aed280bbed98f2a01ffd1f18524f57765b821a40",
+          "geometry_views": 55,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 19328544,
+          "geometry_bytes": 7954844
+        },
+        "-lod1": {
+          "source_glb_sha256": "396460d29bb7c4550aac32e73b2244aee4997331957123ab3f9b45e1e7b0b181",
+          "gltf_sha256": "2b83731f92c5aac0b95a99bf0260bd03ebcf89799658b531d4a0abc56628bad3",
+          "bin_sha256": "99a56f6986fa628efcda1d6c6f379976656395b3d48b4995a7bcf649b653af80",
+          "geometry_views": 55,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 14048184,
+          "geometry_bytes": 2674516
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:armored-bus/armored-bus.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000417.png",
+        "sha256": "c2e6748508aaff509bca3e40c6c8dbe34644b81ebd593f56f074f703c6b14eea"
+      }
+    },
+    "tow-crawler": {
+      "family": "vehicles",
+      "files": [
+        "assets/tow-crawler/tow-crawler.gltf",
+        "assets/tow-crawler/tow-crawler-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "5b9ada7b3b33c89df7ed0e5c9c1aa4236be5f13c185868c9164c9cbd2d155e27",
+          "gltf_sha256": "5b2b8f671decb149e2de815c259783971994168076c40d2f1280bade661406d1",
+          "bin_sha256": "4d63fd0c96cf64da873efc16f63b9db445f765ecbbffe33a5307af76edbbdd2d",
+          "geometry_views": 52,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 14232692,
+          "geometry_bytes": 4140948
+        },
+        "-lod1": {
+          "source_glb_sha256": "dff461afcb3e263b67bd6da6af76e4957faa1e482a946791e3edc04dccfaafbc",
+          "gltf_sha256": "4f9035e3b9243f74727e3ad2e7723eaaf0f192938467570eb7167f013d598b32",
+          "bin_sha256": "eea0e98429e7dfdb91543e81eaf8e9ea101091d1c94f38c759b101419eab14bd",
+          "geometry_views": 52,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 11504508,
+          "geometry_bytes": 1412840
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:tow-crawler/tow-crawler.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000417.png",
+        "sha256": "c2e6748508aaff509bca3e40c6c8dbe34644b81ebd593f56f074f703c6b14eea"
+      }
+    },
+    "lantern-scanner": {
+      "family": "equipment",
+      "files": [
+        "assets/lantern-scanner/lantern-scanner.gltf",
+        "assets/lantern-scanner/lantern-scanner-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "4401a7defb0864989abc7ac0822c8b06fca8135beb14f9a8679cb17b8d65a0fc",
+          "gltf_sha256": "4f596dc2fb99939d2ecc99658d7ca5da078fc905c4d9ceb839c6bc428cf41408",
+          "bin_sha256": "e9a5e9f92e4859800b496bc05f308d290961f0236811595ca38422d6e5bb0844",
+          "geometry_views": 44,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 9113644,
+          "geometry_bytes": 949124
+        },
+        "-lod1": {
+          "source_glb_sha256": "b9ac4048051bb43922a1eb523da7c9b6d47bc4ac6ce0089ec42bd69fd26cf981",
+          "gltf_sha256": "c5f6fe283b34aeb126a68b661b4757425fa832479c6c369c319f93775e91879b",
+          "bin_sha256": "537dd0b811b4d5004429dc2de1ba965ae99507c3731776f9738c73c96c0069dd",
+          "geometry_views": 44,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8499452,
+          "geometry_bytes": 334984
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:lantern-scanner/lantern-scanner.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "bridge-kit": {
+      "family": "equipment",
+      "files": [
+        "assets/bridge-kit/bridge-kit.gltf",
+        "assets/bridge-kit/bridge-kit-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "d31bfd7c3dd901e65a1748fcb9b655e00a933dd9e8a0b3b7243387407e86d2ac",
+          "gltf_sha256": "47ea2b4fb0699a4f8a37c880a39fafa94dd4f4d42c6dab5d083c1642f449684f",
+          "bin_sha256": "8c0da2d5755c3e7c5b6deeaea07a294db7f13b0575aba07b5d525a76ae8a136f",
+          "geometry_views": 28,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 7277088,
+          "geometry_bytes": 1783676
+        },
+        "-lod1": {
+          "source_glb_sha256": "0b9c5f362111d5867c94159b5761872ade5e79227e32d8170e5c8c74970d3709",
+          "gltf_sha256": "df4075cfbf047fa86faf72f591b75f4b41e449c421df3896a5e6e3d84c9909d1",
+          "bin_sha256": "53ab9906c353a2b65a96da29ebb750bc991ac33f3b2e6b9b85f89279f5d67ba7",
+          "geometry_views": 28,
+          "image_occurrences": 18,
+          "lossless_views_verified": true,
+          "source_bytes": 6187836,
+          "geometry_bytes": 694452
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:bridge-kit/bridge-kit.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "wheel-module": {
+      "family": "equipment",
+      "files": [
+        "assets/wheel-module/wheel-module.gltf",
+        "assets/wheel-module/wheel-module-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "58f588c872cb7c61a737ab2ea1001a95d5bd047556805630ca6846df4bd91f35",
+          "gltf_sha256": "f70cce6c183b356e2178efbb9dfa2968c073d14f6c2a7f8efecd8c3597feeae6",
+          "bin_sha256": "cc4ab565bd620a2a7aff8d3c64d69fa938c9921c56ff0f615de7f87c395c4208",
+          "geometry_views": 32,
+          "image_occurrences": 21,
+          "lossless_views_verified": true,
+          "source_bytes": 7779696,
+          "geometry_bytes": 1324032
+        },
+        "-lod1": {
+          "source_glb_sha256": "b58d835bae10702311f36874e791d39613e0d3bebd9da38dc54dc9f461063a3e",
+          "gltf_sha256": "1113dacafd61b803e400faac015aaced77f50c93f52f1df76409d6ee71c2cb28",
+          "bin_sha256": "f288d5dcfc5a1cc17ba4add393034eb687c1acc16ecd54c8a4e548ddcccc017f",
+          "geometry_views": 32,
+          "image_occurrences": 21,
+          "lossless_views_verified": true,
+          "source_bytes": 6893064,
+          "geometry_bytes": 437432
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:wheel-module/wheel-module.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "track-module": {
+      "family": "equipment",
+      "files": [
+        "assets/track-module/track-module.gltf",
+        "assets/track-module/track-module-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "f5845430d1d53b3bd1b2abf0c95a07903722c3593dbe4b8100ca21c7cc9b705a",
+          "gltf_sha256": "cbd2443f13c2a5728b23dde3c9a69e533c83dec0519185b1fff16a9d5013c5e2",
+          "bin_sha256": "370e552db22575041322a9b796c79ab580d67ce1d107c233be12436a9d8cc8d2",
+          "geometry_views": 20,
+          "image_occurrences": 12,
+          "lossless_views_verified": true,
+          "source_bytes": 5542688,
+          "geometry_bytes": 1862856
+        },
+        "-lod1": {
+          "source_glb_sha256": "1d5eb2cdd9fc6f863e2ecae020adc617b94639a3d3616449bf94c6dd7a8c2489",
+          "gltf_sha256": "ee993f9d1f4f0400d7c46e5d155ef043ad46102cdefa9a1d4f317d422ec1764b",
+          "bin_sha256": "76190d9efe466b4283b02094dcd5cb5244501e03bf0d4f9c8b9714bb2233e961",
+          "geometry_views": 20,
+          "image_occurrences": 12,
+          "lossless_views_verified": true,
+          "source_bytes": 4323488,
+          "geometry_bytes": 643684
+        }
+      },
+      "editable_source": "axm-rts-editable-equipment-defenses.zip:track-module/track-module.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000418.png",
+        "sha256": "46737346c8a6bb3c8bde361b0f76d6793e4d71748c637bc13d292df223aecf09"
+      }
+    },
+    "ruined-town-block": {
+      "family": "world",
+      "files": [
+        "assets/ruined-town-block/ruined-town-block.gltf",
+        "assets/ruined-town-block/ruined-town-block-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "fd5a55557564f6ef1cd520ae69c2b6c9f69d0b36cf36da89083b84c034e6da33",
+          "gltf_sha256": "efa022b48a6344f8e2d6efaf8f39443ee079b601acf0a388f926e0fbd0170dc0",
+          "bin_sha256": "87666d41b3820c00df89a1afe5716864cdf668ad44efd28359449c5805e2b580",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 12277480,
+          "geometry_bytes": 3628128
+        },
+        "-lod1": {
+          "source_glb_sha256": "61940832f784a68161e9bd225ce7455e462f5c298d54bfa0945600e4f8e39463",
+          "gltf_sha256": "7377f21c6efb02adc581ea4b3d24d0cd554dcfe970035a54425a333c32f015df",
+          "bin_sha256": "6129c2aa9917a470a6d092590812dcf74eb89f62cd7a575407c55cb1abee78ab",
+          "geometry_views": 44,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 9949688,
+          "geometry_bytes": 1300372
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:ruined-town-block/ruined-town-block.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000419.png",
+        "sha256": "4678eebbb3fad10051957b08af1da0e742c1fbeb511cad5126817559a6d6ecd8"
+      }
+    },
+    "survivor-outpost-cluster": {
+      "family": "world",
+      "files": [
+        "assets/survivor-outpost-cluster/survivor-outpost-cluster.gltf",
+        "assets/survivor-outpost-cluster/survivor-outpost-cluster-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "c4c989113982e814bbfe6e1ed1ff65718cbcbd421d1151367b1386af009812c8",
+          "gltf_sha256": "7fcceae66d6f6d0bb28bdf730934e09714df41016eaf00ec961a5d01d7086b23",
+          "bin_sha256": "9c66dc856801429e7c93cede0439a152e26dcd1fc657c6dc52cdbe12bdd9e61a",
+          "geometry_views": 68,
+          "image_occurrences": 42,
+          "lossless_views_verified": true,
+          "source_bytes": 26826088,
+          "geometry_bytes": 12761124
+        },
+        "-lod1": {
+          "source_glb_sha256": "bbecd9e0e54d87dbadc89c36541b44af66de87c93c36ed3d0d7a0fe15301b622",
+          "gltf_sha256": "9eecbe0dd06e78b2bb68bb4b8e965f350a28c3cd1fb95f0c6ecece4c02077ec3",
+          "bin_sha256": "d5fe23bf5a392a07cd0f419ebd310998db1ed0f6bfb0a55aed37ba751a3658a9",
+          "geometry_views": 68,
+          "image_occurrences": 42,
+          "lossless_views_verified": true,
+          "source_bytes": 18430900,
+          "geometry_bytes": 4365968
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:survivor-outpost-cluster/survivor-outpost-cluster.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000419.png",
+        "sha256": "4678eebbb3fad10051957b08af1da0e742c1fbeb511cad5126817559a6d6ecd8"
+      }
+    },
+    "regional-scrap-market-gate": {
+      "family": "world",
+      "files": [
+        "assets/regional-scrap-market-gate/regional-scrap-market-gate.gltf",
+        "assets/regional-scrap-market-gate/regional-scrap-market-gate-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "8c19a52dfe151dbc9a485f8a004e8a8d3c00fd1f1dd4a32f73484b2acb39daf5",
+          "gltf_sha256": "945939a8f0c714262c70f80c3fdc558d8af0f89086e80a9894abb6955f2bb31b",
+          "bin_sha256": "093543ba3a6d7c4928115d8957ee3fd4efe4576a2267662c6f56e70b7d34220a",
+          "geometry_views": 52,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 18912248,
+          "geometry_bytes": 7803560
+        },
+        "-lod1": {
+          "source_glb_sha256": "84da7a081cf8ffc982f3f6463105b66b11922c0eff18382c8a21f60a58aafb69",
+          "gltf_sha256": "d73e0a48b55d0124de3c4340991c8f55e802df0aa63353a6558a7921998eb744",
+          "bin_sha256": "52a4b94b86af665d01e4f5cf7e90fd44944bc619ec5c8bb08a5592c9ae5380f0",
+          "geometry_views": 52,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 13759984,
+          "geometry_bytes": 2651348
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:regional-scrap-market-gate/regional-scrap-market-gate.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000419.png",
+        "sha256": "4678eebbb3fad10051957b08af1da0e742c1fbeb511cad5126817559a6d6ecd8"
+      }
+    },
+    "crane-truck": {
+      "family": "vehicles",
+      "files": [
+        "assets/crane-truck/crane-truck.gltf",
+        "assets/crane-truck/crane-truck-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "ddddd7adae45987896ded5f9fc49121268b6e306467481b83b9908a78f021b54",
+          "gltf_sha256": "2a87decfad08c44ab318dadc26c3d47ba5e7e7818856a3c7782661577933df95",
+          "bin_sha256": "6942bc8efeb96dfd365cc15de241dc39b9f9df19f6d2d615964fd288136f59f5",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 19063696,
+          "geometry_bytes": 7862868
+        },
+        "-lod1": {
+          "source_glb_sha256": "68faa4c5fd1648e27f7e669462876773bf0215c4d5fc430a04ccdda10e2bd324",
+          "gltf_sha256": "8053ca29396d8bbf19db4c596c03b08e1f34b7329882e828bf289b3e4bf3064c",
+          "bin_sha256": "def34afec96c67b15a53babb4aee8b1cbfefde7943226f629e933b6d8433160c",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 13789604,
+          "geometry_bytes": 2588876
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:crane-truck/crane-truck.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000417.png",
+        "sha256": "c2e6748508aaff509bca3e40c6c8dbe34644b81ebd593f56f074f703c6b14eea"
+      }
+    },
+    "rail-checkpoint": {
+      "family": "world",
+      "files": [
+        "assets/rail-checkpoint/rail-checkpoint.gltf",
+        "assets/rail-checkpoint/rail-checkpoint-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "fb7da8e7d22a4e3c76657fcba9d2701442a6afe8bc42a2b518cd11fe9c43fc1e",
+          "gltf_sha256": "73c9a6be33cc02497ef1c2eb65551f7c5070f4dbb200509c29fb95a491e34baa",
+          "bin_sha256": "7ccea3d0d5a669ed07bb0590fb0ae90b026e216c2cfafb2530a202f086046ea4",
+          "geometry_views": 52,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 18027548,
+          "geometry_bytes": 6918472
+        },
+        "-lod1": {
+          "source_glb_sha256": "89e7b003e6c5a04a88aeac95af9abba120857c31b8b88b2d60b3a951294471b7",
+          "gltf_sha256": "bc3947372b4bc135f04e713f1413c9dea575da572b796f65c375ea94ff77a4ac",
+          "bin_sha256": "c47e27f7590622ae338bb2265fe5505ea2551b27785539a91515a5f5ad4175b6",
+          "geometry_views": 52,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 13531900,
+          "geometry_bytes": 2422876
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:rail-checkpoint/rail-checkpoint.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000419.png",
+        "sha256": "4678eebbb3fad10051957b08af1da0e742c1fbeb511cad5126817559a6d6ecd8"
+      }
+    },
+    "bridge-fragment": {
+      "family": "world",
+      "files": [
+        "assets/bridge-fragment/bridge-fragment.gltf",
+        "assets/bridge-fragment/bridge-fragment-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "213a6df23e8712be23ec60250b26f6ff58af3a91a87af537a3aa737274253095",
+          "gltf_sha256": "60db67190f6e67e431a89cf9e2f1c90ce3f7bb95ba62ae14891979c5fc5b627a",
+          "bin_sha256": "17362cd449ed6447707b26c904e31a4bb86bde0689eb87ec1b8b71dac2c74880",
+          "geometry_views": 35,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 10945640,
+          "geometry_bytes": 3257328
+        },
+        "-lod1": {
+          "source_glb_sha256": "c21561dfc4cad68c39da7384b4a6d7d3e4f433331cee06d73395d493ce5fb73c",
+          "gltf_sha256": "d5ba51af153edbf482a8a5caaf76d411c4bfd1eaa92835167e678304ef3b735c",
+          "bin_sha256": "5f5b70b5d43bd771c3a1b66f784023da5ff6eee80656e165f7bd5ab13b343c1b",
+          "geometry_views": 35,
+          "image_occurrences": 24,
+          "lossless_views_verified": true,
+          "source_bytes": 8867032,
+          "geometry_bytes": 1178732
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:bridge-fragment/bridge-fragment.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000419.png",
+        "sha256": "4678eebbb3fad10051957b08af1da0e742c1fbeb511cad5126817559a6d6ecd8"
+      }
+    },
+    "major-city-wall-section": {
+      "family": "world",
+      "files": [
+        "assets/major-city-wall-section/major-city-wall-section.gltf",
+        "assets/major-city-wall-section/major-city-wall-section-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "b80b2d81b422343e3f663fda3e7cba348b021cebbedd7772ad4c705b07d9d273",
+          "gltf_sha256": "f51c043a8ef66ebab9d9b6e2afd36798f16f6221c14462505202a5ee2c3334b5",
+          "bin_sha256": "f621f23ad90c1041758b386107cf3eb47bbb69beba5a2121f53b8a4ee0533d1a",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 19862500,
+          "geometry_bytes": 8752396
+        },
+        "-lod1": {
+          "source_glb_sha256": "724b527cd4e7d03492cc5ca9ebf9045ed0ad58411f012ea8f033bf719c72a50a",
+          "gltf_sha256": "c29d2f798f5c8266f909e2709038ea46006ccebf580083fb820fea51c0584c83",
+          "bin_sha256": "9262e4464cb42d7afa27bc73b4b8af3de6890fc6e62c7fa7ffe0a8ab0b7b9fce",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 14069540,
+          "geometry_bytes": 2959448
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:major-city-wall-section/major-city-wall-section.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000419.png",
+        "sha256": "4678eebbb3fad10051957b08af1da0e742c1fbeb511cad5126817559a6d6ecd8"
+      }
+    },
+    "drill-rig-vehicle": {
+      "family": "vehicles",
+      "files": [
+        "assets/drill-rig-vehicle/drill-rig-vehicle.gltf",
+        "assets/drill-rig-vehicle/drill-rig-vehicle-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "ea3ee8c4f93d7086b3f5867c0dd69d44095131c2a0ce82b300cd025d46f3d478",
+          "gltf_sha256": "e457bcba2525b4868ab3c4bedb8f9613ec7e7a3590ec935f3b6fbdbc3aa57274",
+          "bin_sha256": "0e8a05e6afe89c64e44b439f44d9210dd8c33b20a19ca49dc1588a8da0eb7198",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 19142536,
+          "geometry_bytes": 7941720
+        },
+        "-lod1": {
+          "source_glb_sha256": "b3c055d89750890089af83a1c090e2fc8feb61c445ca2fea428c3077090ec8f3",
+          "gltf_sha256": "cd1db8aa31a3783d42ff164e5665bc62f48ce91737818110d59756b2ce7f5d00",
+          "bin_sha256": "246a35ee44ddf7baee5b49ef62137ea18063f5b478ca6c772cb2f9e4f51491ab",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 13784788,
+          "geometry_bytes": 2584072
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:drill-rig-vehicle/drill-rig-vehicle.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000417.png",
+        "sha256": "c2e6748508aaff509bca3e40c6c8dbe34644b81ebd593f56f074f703c6b14eea"
+      }
+    },
+    "major-city-tower-district": {
+      "family": "world",
+      "files": [
+        "assets/major-city-tower-district/major-city-tower-district.gltf",
+        "assets/major-city-tower-district/major-city-tower-district-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "0ab3c50e0e3df8b6dbb590c2360b68322981759da930923524bdc0d81e6d807b",
+          "gltf_sha256": "1f2074e3278634d83068a857220b252b9ad2b2e2c61904d1239aee6ad1c0aea9",
+          "bin_sha256": "13ac42af8b9b222be5d5d41e0eadf4ffebcbbaa2d43a9092869e01c1b016d042",
+          "geometry_views": 68,
+          "image_occurrences": 42,
+          "lossless_views_verified": true,
+          "source_bytes": 29127512,
+          "geometry_bytes": 15062488
+        },
+        "-lod1": {
+          "source_glb_sha256": "ad01f557c96132ee8fdc5d8a5b970cc4901463a0a47c656f62df4afbee09a14c",
+          "gltf_sha256": "3dff3f31439cdfbfb52162728bc02bf8d5d6308c4eed5bca69274bac58126c33",
+          "bin_sha256": "5a7631b3fc752da13e97f1e496aa547a5e58a728a118d14be6b6ced7dcc98495",
+          "geometry_views": 68,
+          "image_occurrences": 42,
+          "lossless_views_verified": true,
+          "source_bytes": 19106828,
+          "geometry_bytes": 5041832
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:major-city-tower-district/major-city-tower-district.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000419.png",
+        "sha256": "4678eebbb3fad10051957b08af1da0e742c1fbeb511cad5126817559a6d6ecd8"
+      }
+    },
+    "asteroid-impact-crater-rig": {
+      "family": "world",
+      "files": [
+        "assets/asteroid-impact-crater-rig/asteroid-impact-crater-rig.gltf",
+        "assets/asteroid-impact-crater-rig/asteroid-impact-crater-rig-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "d383294fd57c9b21d36fd48b231e9c21a1510a32e1061c51916f2603de6f1391",
+          "gltf_sha256": "74ecaf55c972eb94c4a567ef54157a81a76af32f38d25ea31bdff9a2c9e43a40",
+          "bin_sha256": "5f9bbc93f2edfe03521df008a8acd8381e96145aba2597f701c74194025f8db5",
+          "geometry_views": 43,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 13299228,
+          "geometry_bytes": 4457128
+        },
+        "-lod1": {
+          "source_glb_sha256": "ced456bb59a3f4d07144d079fcbedaac9cec174272dc8407cb883a0cd3a4e62f",
+          "gltf_sha256": "515a0d7ecb4d65999d761599fcd7c13af5ae6f4c937b6214662ead6b91388cf7",
+          "bin_sha256": "5b1df7d7cea1069ada3a908e0a06ab7e9c3c661d6d6431134406c750dee927c0",
+          "geometry_views": 43,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 10421412,
+          "geometry_bytes": 1579332
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:asteroid-impact-crater-rig/asteroid-impact-crater-rig.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000419.png",
+        "sha256": "4678eebbb3fad10051957b08af1da0e742c1fbeb511cad5126817559a6d6ecd8"
+      }
+    },
+    "cargo-trailer": {
+      "family": "vehicles",
+      "files": [
+        "assets/cargo-trailer/cargo-trailer.gltf",
+        "assets/cargo-trailer/cargo-trailer-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "4cc73de18dee14d8138dfda2815a2105a3af58099a27f3e15503ed0cc54cf06d",
+          "gltf_sha256": "08b5d7d260b6d47fd80f9674b5b15c7870cbfaaaafc42294fd4ef8d5ae04f950",
+          "bin_sha256": "02cd56c4969c0216eb322af0d3679c96cd59659bf04511a840d7601a3b003bfd",
+          "geometry_views": 40,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 14522144,
+          "geometry_bytes": 5590576
+        },
+        "-lod1": {
+          "source_glb_sha256": "39bde2e02583379ba4edd2c7ce710ba9f6ffefb86e2c37c42878675b6829918f",
+          "gltf_sha256": "1a50e098a706909b3cf78323d2f3417cd7f5ddc1a836dc0eab16a7e64488468e",
+          "bin_sha256": "4cff8a7d540b55bd03aad7602087142bbaa885e502c6365d89f51acba0a37d8c",
+          "geometry_views": 40,
+          "image_occurrences": 27,
+          "lossless_views_verified": true,
+          "source_bytes": 10799256,
+          "geometry_bytes": 1867744
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:cargo-trailer/cargo-trailer.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000417.png",
+        "sha256": "c2e6748508aaff509bca3e40c6c8dbe34644b81ebd593f56f074f703c6b14eea"
+      }
+    },
+    "meteor-reactor": {
+      "family": "world",
+      "files": [
+        "assets/meteor-reactor/meteor-reactor.gltf",
+        "assets/meteor-reactor/meteor-reactor-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "5ac0395f7ba6903395b34574df05be88856dee09002c32aaadba3039901877ba",
+          "gltf_sha256": "b038109a1a8d88420db2c5dd7366bcc5bf1a7b83d0d0c598640dbbea127fcb92",
+          "bin_sha256": "a2665ea755b661b22a6912d2b4659491af4636c433bd58dee33075f61e35b273",
+          "geometry_views": 48,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 16301100,
+          "geometry_bytes": 6318272
+        },
+        "-lod1": {
+          "source_glb_sha256": "5d8089f93c3b57f58d301b027471720768ff56b208bfc95cdc2362c7eda9280c",
+          "gltf_sha256": "8a24dba36eab8738d5de2bc4f5a2d259d40a8e38ad1a99a13ecefca05fc4566d",
+          "bin_sha256": "49bd34d4d787756318ba902d822f071c15a6a00b5c7fbca2ffec37cdced546c5",
+          "geometry_views": 48,
+          "image_occurrences": 30,
+          "lossless_views_verified": true,
+          "source_bytes": 12165092,
+          "geometry_bytes": 2182296
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:meteor-reactor/meteor-reactor.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000419.png",
+        "sha256": "4678eebbb3fad10051957b08af1da0e742c1fbeb511cad5126817559a6d6ecd8"
+      }
+    },
+    "sky-tracker-dish": {
+      "family": "world",
+      "files": [
+        "assets/sky-tracker-dish/sky-tracker-dish.gltf",
+        "assets/sky-tracker-dish/sky-tracker-dish-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "adf94079e271b3b612b804c93f2d7a9486e6cdc1433b5375e5552b2f0e2f34e0",
+          "gltf_sha256": "cdebd586e2248eedc3ca7332441e2a586be2a3b3e7a1e46b6a93237a0fa23d13",
+          "bin_sha256": "d06e59752ea6eaa747b1f4d4f9877bcf9da8e4b38552717ffed051171c018fa7",
+          "geometry_views": 55,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 17436916,
+          "geometry_bytes": 6326916
+        },
+        "-lod1": {
+          "source_glb_sha256": "9e495b21a2236c61f7744c33dc64264e671aa6eebe1e67f9a03ec50380a66363",
+          "gltf_sha256": "37b140089b52fd034d63f0cb3f97c4cfd16876cec30df6bf00821468e60394b1",
+          "bin_sha256": "33493aff1b333c4eebaf67f2a2bc6c1382f59d7b9914013bbf8e9b9252aab05d",
+          "geometry_views": 55,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 13255336,
+          "geometry_bytes": 2145388
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:sky-tracker-dish/sky-tracker-dish.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000419.png",
+        "sha256": "4678eebbb3fad10051957b08af1da0e742c1fbeb511cad5126817559a6d6ecd8"
+      }
+    },
+    "field-ambulance-van": {
+      "family": "vehicles",
+      "files": [
+        "assets/field-ambulance-van/field-ambulance-van.gltf",
+        "assets/field-ambulance-van/field-ambulance-van-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "2f02d49273650756f0a3d7f00e8e5272e4778cd3426e77d0bb334a36a82934b5",
+          "gltf_sha256": "00e678e369f124623bec0fb29ba910c5b13b167e1cc783cb763a4204b995b71c",
+          "bin_sha256": "163c1792a0c9c69121cbc5108cdb80e15c6f28257a77700113c47efbef44c770",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 17282080,
+          "geometry_bytes": 5908212
+        },
+        "-lod1": {
+          "source_glb_sha256": "ce41a580f4ae98d4939e2e7151e15fb2c678adbbce8e5f9ae1c7b1deadcfad6f",
+          "gltf_sha256": "fab0545502acac7563f0cdbd33b80225c424e993429054ee1d1177ca171730e6",
+          "bin_sha256": "9be1f2d9552d1e040392254acd2c3a2c561680d778eac3a7bbeb9b514aff75a5",
+          "geometry_views": 56,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 13398408,
+          "geometry_bytes": 2024588
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:field-ambulance-van/field-ambulance-van.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000417.png",
+        "sha256": "c2e6748508aaff509bca3e40c6c8dbe34644b81ebd593f56f074f703c6b14eea"
+      }
+    },
+    "strange-late-tech-salvage-structure": {
+      "family": "world",
+      "files": [
+        "assets/strange-late-tech-salvage-structure/strange-late-tech-salvage-structure.gltf",
+        "assets/strange-late-tech-salvage-structure/strange-late-tech-salvage-structure-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "ba14acc223220157c09c750033a9afec8cd925acbd25d1e1efb93271166d10f7",
+          "gltf_sha256": "e597fc68f721535e4f24913ad13e26f8039a1d358cde77496b49c76906a64dc7",
+          "bin_sha256": "4ec3f17ce460f3785d70da6fc4e9ec188de7aff66913a65b8674359615587808",
+          "geometry_views": 55,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 14892080,
+          "geometry_bytes": 4168648
+        },
+        "-lod1": {
+          "source_glb_sha256": "cd32dbb949f621346ce3c6bcfd2b2de73cba2a52da3bae65a5a34965d0eb4a6a",
+          "gltf_sha256": "961cc1e5de473abc6ca372a8e9e2aad8ed6f93627979fb17ff9608d5b5db7311",
+          "bin_sha256": "2ff2797fb33937b6e3d35886814a9ef83cd8418ffc9d79a8c4419cd99d4820df",
+          "geometry_views": 55,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 12253812,
+          "geometry_bytes": 1530412
+        }
+      },
+      "editable_source": "axm-rts-editable-structures.zip:strange-late-tech-salvage-structure/strange-late-tech-salvage-structure.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000419.png",
+        "sha256": "4678eebbb3fad10051957b08af1da0e742c1fbeb511cad5126817559a6d6ecd8"
+      }
+    },
+    "mercenary-carrier": {
+      "family": "vehicles",
+      "files": [
+        "assets/mercenary-carrier/mercenary-carrier.gltf",
+        "assets/mercenary-carrier/mercenary-carrier-lod1.gltf"
+      ],
+      "packing": {
+        "near": {
+          "source_glb_sha256": "86c63a1c0ec8d8f29906aee318a44ca207fffb184ceebd3e0a84415906df683e",
+          "gltf_sha256": "3b6628e8f06e096016118e8bdf9b00b49fb4748f7f503c4416c709afeebdf889",
+          "bin_sha256": "cceb0c7827e40ea507702d7ede7575e6726c2b1cabb658c98ba817ae5bad7718",
+          "geometry_views": 55,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 19422264,
+          "geometry_bytes": 8048564
+        },
+        "-lod1": {
+          "source_glb_sha256": "b1f8c8a3211e8e8ce71b03133e3cb7f83b800efcf3a1a2860a4d93b02c5ca04b",
+          "gltf_sha256": "ea0adb2c374c22f0bd14ccd50ca4ae1339b228806378e7c6491f6351d6844044",
+          "bin_sha256": "b6ada21749a850f1ef4805d782b2e6ed96b4cf3fc21bac12c14dd6da663d0487",
+          "geometry_views": 55,
+          "image_occurrences": 33,
+          "lossless_views_verified": true,
+          "source_bytes": 14087152,
+          "geometry_bytes": 2713476
+        }
+      },
+      "editable_source": "axm-rts-editable-people-vehicles.zip:mercenary-carrier/mercenary-carrier.blend",
+      "status": "static_authored_reconstruction",
+      "visual_match": "not_exact",
+      "animation_clips": 0,
+      "collision_certified": false,
+      "reference": {
+        "file": "1000000417.png",
+        "sha256": "c2e6748508aaff509bca3e40c6c8dbe34644b81ebd593f56f074f703c6b14eea"
+      }
+    }
+  },
+  "schema": "axm.rts-plate-reconstruction/v1",
+  "asset_count": 83,
+  "expected_assets": 83,
+  "complete": true,
+  "scope": "82 newly authored static models plus retained detailed workshop. References guide visible construction; not exact reconstructions. Hidden surfaces inferred. Target RTS integration, animation, collision and runtime performance are not certified.",
+  "texture_count": 47,
+  "source_archives": [
+    {
+      "file": "axm-rts-editable-structures.zip",
+      "assets": 32,
+      "bytes": 620409320,
+      "sha256": "11dbc9f699c55c47e1f4d95a0185eaf53c7f7e90b3fb23c31ff506f4de87da09"
+    },
+    {
+      "file": "axm-rts-editable-people-vehicles.zip",
+      "assets": 24,
+      "bytes": 464577454,
+      "sha256": "570ea79281cd7a8bbfdf60b0d2db1c0bc7762cc97e59873a8247d2f984bcff9d"
+    },
+    {
+      "file": "axm-rts-editable-equipment-defenses.zip",
+      "assets": 27,
+      "bytes": 514808473,
+      "sha256": "d6dd80a9ae713a96e8195da8f561a49aca1fd8ee956a5e5df0ce7a6435a134d3"
+    }
+  ],
+  "machine_commit": "3e65e7ad461568a418ed3befb3b6590eb3a3494d"
+}

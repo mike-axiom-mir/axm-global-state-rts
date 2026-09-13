@@ -1,4 +1,4 @@
-export const WORLD_BROWSER_CLIENT_SCHEMA = 'axm.global-state-rts.world-browser-client/v0.1';
+export const WORLD_BROWSER_CLIENT_SCHEMA = 'axm.global-state-rts.world-browser-client/v0.2';
 
 function nonEmpty(value, label) {
   const text = String(value ?? '').trim();
@@ -119,6 +119,21 @@ export class WorldBrowserClient {
     return this.#request('POST', '/api/world/chests/open', {
       body: { participantId: nonEmpty(participantId, 'participantId'), count: requested }
     });
+  }
+
+  submitCommand({ participantId, commandId, eventType, payload = {}, expectedRevision = undefined } = {}) {
+    const body = {
+      participantId: nonEmpty(participantId, 'participantId'),
+      commandId: nonEmpty(commandId, 'commandId'),
+      eventType: nonEmpty(eventType, 'eventType'),
+      payload: payload && typeof payload === 'object' ? payload : {}
+    };
+    if (expectedRevision !== undefined) {
+      const revision = Number(expectedRevision);
+      if (!Number.isInteger(revision) || revision < 0) throw new RangeError('expectedRevision must be a non-negative integer');
+      body.expectedRevision = revision;
+    }
+    return this.#request('POST', '/api/world/command', { body });
   }
 }
 

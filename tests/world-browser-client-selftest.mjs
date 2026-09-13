@@ -7,6 +7,7 @@ const responses = [
   { status: 200, body: { participant: { participantId: 'guest:g1', profileKind: 'guest', controllerKind: 'human' } } },
   { status: 200, body: { participant: { participantId: 'world:chatgpt', profileKind: 'world-account', controllerKind: 'machine' } } },
   { status: 200, body: { participantId: 'world:chatgpt', result: { added: 0 }, dropCache: { storedCrates: 0 } } },
+  { status: 200, body: { accepted: true, participantId: 'world:chatgpt', actorId: 'world:chatgpt', eventType: 'territory.claim' } },
   { status: 400, body: { error: 'not enough stored crates' } }
 ];
 
@@ -40,12 +41,29 @@ assert.deepEqual(JSON.parse(calls[2].options.body), {
 const accrued = await client.accrueChests('world:chatgpt');
 assert.equal(accrued.dropCache.storedCrates, 0);
 
+const submitted = await client.submitCommand({
+  participantId: 'world:chatgpt',
+  commandId: 'browser-claim-1',
+  eventType: 'territory.claim',
+  payload: { latDeg: 3, lonDeg: 4 },
+  expectedRevision: 5
+});
+assert.equal(submitted.actorId, 'world:chatgpt');
+assert.deepEqual(JSON.parse(calls[4].options.body), {
+  participantId: 'world:chatgpt',
+  commandId: 'browser-claim-1',
+  eventType: 'territory.claim',
+  payload: { latDeg: 3, lonDeg: 4 },
+  expectedRevision: 5
+});
+
 await assert.rejects(
   () => client.openChests('world:chatgpt', 1),
   error => error instanceof WorldBrowserApiError && error.status === 400 && error.message === 'not enough stored crates'
 );
 assert.throws(() => client.enterGuest({ sessionId: 'x', controllerKind: 'admin' }), /unsupported controllerKind/);
 assert.throws(() => client.openChests('world:chatgpt', 0), /count must be an integer/);
+assert.throws(() => client.submitCommand({ participantId: 'world:chatgpt', commandId: 'x', eventType: 'territory.claim', expectedRevision: -1 }), /expectedRevision/);
 
 const originalFetch = globalThis.fetch;
 try {

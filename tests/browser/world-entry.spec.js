@@ -13,7 +13,7 @@ function captureRuntimeFailures(page, { allowConsole = [] } = {}) {
   return failures;
 }
 
-test('human guest and machine world-account use the same browser world-entry surface', async ({ page }) => {
+test('human guest and machine world-account use the same browser world-entry surface and machine account binds into the RTS seat', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/world-entry.html', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);
@@ -25,6 +25,7 @@ test('human guest and machine world-account use the same browser world-entry sur
   await expect(page.locator('#participantId')).toContainText('participant: guest:browser-');
   await expect(page.locator('#profileStatus')).toContainText('guest · human');
   await expect(page.locator('#chestStatus')).toContainText('stored');
+  await expect(page.locator('#continueToRts')).toBeEnabled();
 
   await page.locator('#controllerKind').selectOption('machine');
   await page.locator('#displayName').fill('ChatGPT Browser');
@@ -63,6 +64,34 @@ test('human guest and machine world-account use the same browser world-entry sur
   expect(apiParticipant.body.participant.profileKind).toBe('world-account');
 
   await page.screenshot({ path: 'test-results/global-state-rts-world-entry.png', fullPage: true });
+
+  await page.locator('#continueToRts').click();
+  await page.waitForURL(url => url.pathname === '/game/' && url.searchParams.get('seat1') === 'machine');
+  await page.waitForFunction(() => Boolean(window.__AXM_GLOBAL_STATE_RTS__?.worldBinding('seat-1')));
+  await expect(page.locator('#worldIdentityStatus')).toContainText('world:browser-chatgpt');
+  await expect(page.locator('#worldIdentityStatus')).toContainText('machine');
+
+  const boundState = await page.evaluate(() => ({
+    binding: window.__AXM_GLOBAL_STATE_RTS__.worldBinding('seat-1'),
+    seat: window.__AXM_GLOBAL_STATE_RTS__.listSeats()[0]
+  }));
+  expect(boundState.seat.kind).toBe('machine');
+  expect(boundState.binding.participantId).toBe('world:browser-chatgpt');
+  expect(boundState.binding.controllerKind).toBe('machine');
+  expect(boundState.seat.worldBinding.participantId).toBe('world:browser-chatgpt');
+
+  const claim = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitBoundWorldCommand({
+    seatId: 'seat-1',
+    commandId: 'browser-bound-claim-1',
+    eventType: 'territory.claim',
+    payload: { latDeg: 6, lonDeg: 7, ownerId: 'browser-spoof-attempt' }
+  }));
+  expect(claim.accepted).toBe(true);
+  expect(claim.participantId).toBe('world:browser-chatgpt');
+  expect(claim.actorId).toBe('world:browser-chatgpt');
+  expect(claim.entry.payload.ownerId).toBe('world:browser-chatgpt');
+
+  await page.screenshot({ path: 'test-results/global-state-rts-world-bound-seat.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);
 });
 

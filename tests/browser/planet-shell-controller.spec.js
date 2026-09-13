@@ -84,7 +84,9 @@ test('four local controller seats get independent globe/local views and local ma
   await expect(page.locator('#inputStatus')).toContainText('4 seats');
   await expect(page.locator('#inputStatus')).toContainText('4 controllers detected');
 
-  const bindingTexts = await page.locator('#seatSetup .seat-card .binding').allTextContents();
+  const bindingTexts = (await page.locator('#seatSetup .seat-card .binding').allTextContents())
+    .filter(text => text.startsWith('Input:'));
+  expect(bindingTexts).toHaveLength(4);
   expect(bindingTexts[0]).toContain('keyboard-pointer');
   expect(bindingTexts[0]).toContain('gamepad 1');
   expect(bindingTexts[1]).toContain('gamepad 2');
@@ -137,7 +139,7 @@ test('machine user seat uses the same globe/local and local macro action surface
   await expect(page.locator('#seatSetup .seat-card')).toHaveCount(3);
   await expect(page.locator('#seatLabels .seat-label')).toHaveCount(3);
   await expect(page.locator('#seatLabels .seat-label').nth(2)).toContainText('Machine 3 · machine');
-  await expect(page.locator('#seatSetup .seat-card').nth(2).locator('.binding')).toContainText('machine');
+  await expect(page.locator('#seatSetup .seat-card').nth(2).locator('.binding').first()).toContainText('machine');
 
   const seatTypeValues = await page.locator('[data-seat-kind]').evaluateAll(selects => selects.map(select => select.value));
   expect(seatTypeValues).toEqual(['human', 'human', 'machine']);

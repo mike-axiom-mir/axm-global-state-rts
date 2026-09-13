@@ -1,10 +1,13 @@
 import { expect, test } from '@playwright/test';
 
-function captureRuntimeFailures(page) {
+function captureRuntimeFailures(page, { allowConsole = [] } = {}) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() !== 'error') return;
+    const text = message.text();
+    if (allowConsole.some(pattern => pattern.test(text))) return;
+    failures.push(`console: ${text}`);
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -52,7 +55,9 @@ test('human guest and machine world-account use the same browser world-entry sur
 });
 
 test('world entry tells the truth when hosted writes are unavailable through API error shape', async ({ page }) => {
-  const failures = captureRuntimeFailures(page);
+  const failures = captureRuntimeFailures(page, {
+    allowConsole: [/Failed to load resource:.*403 \(Forbidden\)/]
+  });
   await page.route('**/api/world/enter/guest', async route => {
     await route.fulfill({
       status: 403,

@@ -4,13 +4,13 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
 }
 
-test('authority-revalidated machine participant can explicitly journal one host-reproduced gather without conflating browser-local state', async ({ page }) => {
+test('authority-revalidated machine participant can journal and explicitly adopt a host checkpoint without silent reconciliation', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/world-entry.html', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);
@@ -48,8 +48,9 @@ test('authority-revalidated machine participant can explicitly journal one host-
   expect(initial.checkpoint.bindingPersistence.bindingCount).toBe(1);
   expect(initial.checkpoint.truthBoundary).toBe('binding-and-host-journal-checkpoint-only-no-live-browser-state-equivalence');
   await expect(page.locator('#hostLocalCheckpointStatus')).toContainText('journal r0');
-  await expect(page.locator('#hostLocalCheckpointStatus')).toContainText('browser simulation is not claimed identical');
+  await expect(page.locator('#hostLocalCheckpointStatus')).toContainText('browser simulation is separate until explicit adoption');
   await expect(page.locator('#hostLocalGather')).toBeDisabled();
+  await expect(page.locator('#hostLocalAdopt')).toBeDisabled();
 
   const localToggle = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitMachineAction({
     seatId: 'seat-1',
@@ -59,6 +60,7 @@ test('authority-revalidated machine participant can explicitly journal one host-
   expect(localToggle.accepted).toBe(true);
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
   await expect(page.locator('#hostLocalGather')).toBeEnabled();
+  await expect(page.locator('#hostLocalAdopt')).toBeEnabled();
 
   const localGather = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitMachineAction({
     seatId: 'seat-1',
@@ -106,7 +108,7 @@ test('authority-revalidated machine participant can explicitly journal one host-
   expect(hostCommand.checkpoint.continuity.matchesLive).toBe(true);
   await expect(page.locator('#hostLocalCheckpointStatus')).toContainText('journal r1');
   await expect(page.locator('#hostLocalCommandStatus')).toContainText('host journal gather accepted');
-  await expect(page.locator('#hostLocalCommandStatus')).toContainText('browser-local state remains separate');
+  await expect(page.locator('#hostLocalCommandStatus')).toContainText('browser-local state remains separate until adoption');
 
   const directAfterHostCommand = await page.evaluate(async () => {
     const response = await fetch('/api/world/local-seat?regionSeatId=seat-1&participantId=world%3Acheckpoint-machine');
@@ -118,6 +120,62 @@ test('authority-revalidated machine participant can explicitly journal one host-
   expect(directAfterHostCommand.body.journal.stateHash).toBe(hostCommand.result.stateHash);
   expect(directAfterHostCommand.body.continuity.matchesLive).toBe(true);
   expect(directAfterHostCommand.browserSimulation.order.type).toBe('gather-scrap');
+
+  const stalePreview = await page.evaluate(() => window.__AXM_HOST_LOCAL_SEAT__.previewAdoption());
+  expect(stalePreview.accepted).toBe(true);
+  expect(stalePreview.expectedRevision).toBe(1);
+
+  const advanceHostBehindBrowser = await page.evaluate(async () => {
+    const response = await fetch('/api/world/local-seat/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        participantId: 'world:checkpoint-machine',
+        regionSeatId: 'seat-1',
+        expectedRevision: 1,
+        intent: { actionId: 'gather-scrap', cursorXM: 0, cursorZM: 0, stepCount: 40 }
+      })
+    });
+    return { status: response.status, body: await response.json() };
+  });
+  expect(advanceHostBehindBrowser.status).toBe(200);
+  expect(advanceHostBehindBrowser.body.revision).toBe(2);
+
+  const browserBeforeStaleAdoption = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'));
+  const staleAdoption = await page.evaluate(() => window.__AXM_HOST_LOCAL_SEAT__.adoptHostCheckpoint());
+  expect(staleAdoption.accepted).toBe(false);
+  expect(staleAdoption.status).toBe(409);
+  expect(staleAdoption.body.reason).toBe('local-authority-revision-conflict');
+  const browserAfterStaleAdoption = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'));
+  expect(browserAfterStaleAdoption).toEqual(browserBeforeStaleAdoption);
+  await expect(page.locator('#hostLocalAdoptionStatus')).toContainText('checkpoint adoption rejected');
+  await expect(page.locator('#hostLocalCheckpointStatus')).toContainText('journal r2');
+
+  const adopted = await page.evaluate(() => window.__AXM_HOST_LOCAL_SEAT__.adoptHostCheckpoint());
+  expect(adopted.accepted).toBe(true);
+  expect(adopted.expectedRevision).toBe(2);
+  expect(adopted.issued.accepted).toBe(true);
+  expect(adopted.issued.checkpoint.revision).toBe(2);
+  expect(adopted.issued.checkpoint.commands).toHaveLength(2);
+  expect(adopted.issued.checkpoint.truthBoundary).toBe('host-issued-replay-package-for-explicit-browser-adoption-no-hidden-resource-disclosure-no-shared-world-promotion');
+  expect(adopted.adopted.accepted).toBe(true);
+  expect(adopted.adopted.revision).toBe(2);
+  expect(adopted.adopted.truthBoundary).toBe('explicit-browser-local-replacement-from-host-replay-package-no-host-or-global-mutation');
+  expect(adopted.adopted.after).toEqual(adopted.issued.checkpoint.publicState);
+
+  const browserAfterAdoption = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'));
+  expect(browserAfterAdoption).toEqual(adopted.issued.checkpoint.publicState);
+  await expect(page.locator('#hostLocalAdoptionStatus')).toContainText('adopted seat-1:r2:');
+  await expect(page.locator('#hostLocalAdoptionStatus')).toContainText('explicit replacement only');
+
+  const hostAfterAdoption = await page.evaluate(async () => {
+    const response = await fetch('/api/world/local-seat?regionSeatId=seat-1&participantId=world%3Acheckpoint-machine');
+    return { status: response.status, body: await response.json() };
+  });
+  expect(hostAfterAdoption.status).toBe(200);
+  expect(hostAfterAdoption.body.journal.revision).toBe(2);
+  expect(hostAfterAdoption.body.journal.stateHash).toBe(adopted.issued.checkpoint.stateHash);
+  expect(hostAfterAdoption.body.continuity.matchesLive).toBe(true);
 
   await page.screenshot({ path: 'test-results/global-state-rts-host-local-checkpoint.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);

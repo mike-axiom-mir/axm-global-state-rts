@@ -6,7 +6,7 @@ Status: **EXPERIMENTAL / HOST RESTART CONTINUITY RUNG**
 
 PR #78 proved that a bound human or machine participant can ask the host to reproduce and journal one `gather-scrap` command against an explicit host checkpoint. The remaining continuity gap was that participant → LOCAL RTS seat ownership still lived only in process memory.
 
-This rung makes world-account seat ownership restart-restorable when the host is explicitly configured with both a durable binding file and durable per-seat command journals.
+This rung makes world-account seat ownership restart-restorable when the host is explicitly configured with a durable world-account file, a durable binding file, and durable per-seat command journals.
 
 ## Durable scope
 
@@ -32,14 +32,13 @@ A guest can still bind and play during the current host process. After host rest
 
 ## Host configuration
 
-The development server accepts paired configuration:
+The development server accepts:
 
+- `AXM_WORLD_ACCOUNTS_PATH` — durable world-account snapshots;
 - `AXM_LOCAL_SEAT_BINDINGS_PATH` — JSON binding/checkpoint file;
 - `AXM_LOCAL_SEAT_JOURNAL_DIR` — directory containing one JSONL journal per region seat.
 
-They must be configured together. Supplying only one is rejected at startup so the host does not advertise durable ownership while the associated command journal is knowingly process-local.
-
-World-account persistence remains separately configured through `AXM_WORLD_ACCOUNTS_PATH`.
+The two LOCAL RTS paths must be configured together, and `AXM_WORLD_ACCOUNTS_PATH` is required whenever LOCAL RTS restart persistence is enabled. Supplying an incomplete set is rejected at startup so the host cannot advertise durable seat ownership while either the participant identity or its command journal is knowingly process-local.
 
 ## Crash boundary
 
@@ -63,7 +62,7 @@ The focused deterministic test covers:
 - guest binding remaining session-scoped;
 - fail-closed startup when the persisted binding checkpoint is tampered away from the replayed journal state.
 
-The browser gate starts the real development host with paired local-seat persistence configured and exercises the existing authority-revalidated bound-seat → explicit host gather flow. The controller gate remains a separate real-Chromium regression.
+The browser gate starts the real development host with the complete durable account/binding/journal configuration and exercises the existing authority-revalidated bound-seat → explicit host gather flow. A separate world-entry Chromium regression protects human/machine entry behavior, and the controller gate remains a separate real-Chromium regression.
 
 ## Truth boundary
 

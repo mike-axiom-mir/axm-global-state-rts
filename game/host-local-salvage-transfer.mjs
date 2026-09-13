@@ -147,7 +147,7 @@ function render(message = null) {
     return;
   }
   if (activeTransfer?.phase === 'prepared') {
-    statusElement.textContent = `Prepared ${activeTransfer.transferId} · 1.000 scrap remains local until you explicitly debit · reservation is locked · no global credit exists.`;
+    statusElement.textContent = `Prepared ${activeTransfer.transferId} · local storage unchanged; 1.000 scrap remains local until you explicitly debit · reservation is locked · no global credit exists.`;
     return;
   }
   if (activeTransfer?.phase === 'local-debited') {

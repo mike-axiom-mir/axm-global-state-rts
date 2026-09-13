@@ -148,6 +148,24 @@ export class WorldHttpApiService {
         return response(localSeatStatusCode(result), result);
       }
 
+      if (verb === 'GET' && route === '/api/world/local-seat/adoption') {
+        if (typeof this.authority.localSeatAdoptionCheckpoint !== 'function') {
+          return response(501, { error: 'local seat checkpoint adoption authority unavailable' });
+        }
+        const regionSeatId = queryValue(searchParams, 'regionSeatId');
+        const participantId = queryValue(searchParams, 'participantId');
+        const expectedRevision = queryValue(searchParams, 'expectedRevision');
+        if (!regionSeatId) return response(400, { error: 'regionSeatId query parameter required' });
+        if (!participantId) return response(400, { error: 'participantId query parameter required' });
+        if (expectedRevision === null) return response(400, { error: 'expectedRevision query parameter required' });
+        const result = this.authority.localSeatAdoptionCheckpoint({
+          participantId,
+          regionSeatId,
+          expectedRevision: Number(expectedRevision)
+        });
+        return response(localSeatMutationStatus(result), result);
+      }
+
       if (verb === 'POST' && route === '/api/global-state/command') {
         if (!this.#canWrite()) return writeBlocked(this.writeMode);
         return response(410, {

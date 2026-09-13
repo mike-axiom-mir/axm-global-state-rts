@@ -206,7 +206,7 @@ const notYetEnabled = authority.submitBoundCommand({
 });
 assert.equal(notYetEnabled.accepted, false);
 assert.equal(notYetEnabled.reason, 'host-local-action-not-enabled');
-assert.deepEqual(notYetEnabled.enabledActionIds, ['gather-scrap']);
+assert.deepEqual(notYetEnabled.enabledActionIds, ['gather-scrap', 'repair-core']);
 
 const afterHostGather = authority.status({
   regionSeatId: 'seat-1',

@@ -14,6 +14,12 @@ const gatherIntent = Object.freeze({
   cursorZM: 0,
   stepCount: 800
 });
+const repairIntent = Object.freeze({
+  actionId: 'repair-core',
+  cursorXM: 0,
+  cursorZM: 0,
+  stepCount: 1
+});
 
 function runAccountScenario(controllerKind, accountId) {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), `axm-verified-salvage-${controllerKind}-`));
@@ -70,6 +76,43 @@ function runAccountScenario(controllerKind, accountId) {
       'host-journal-storage-high-water-recorded-on-world-account-no-local-debit-no-spendable-global-currency'
     );
 
+    const reserveAmountMilli = Math.max(1, Math.floor(recorded.summary.scrapMilli / 2));
+    const reserved = authority.reserveVerifiedLocalSalvage({
+      participantId: account.participantId,
+      regionSeatId: 'seat-1',
+      expectedRevision: 1,
+      amountMilli: reserveAmountMilli
+    });
+    assert.equal(reserved.accepted, true);
+    assert.equal(reserved.controllerKind, controllerKind);
+    assert.equal(reserved.source.sourceRevision, 1);
+    assert.equal(reserved.source.sourceStateHash, command.stateHash);
+    assert.equal(reserved.source.reservedScrapMilli, reserveAmountMilli);
+    assert.equal(reserved.summary.reservedScrapMilli, reserveAmountMilli);
+    assert.equal(
+      reserved.truthBoundary,
+      'explicit-account-reservation-of-current-host-verified-salvage-current-repair-guard-only-no-transfer-or-global-credit'
+    );
+
+    const blockedRepair = authority.submitLocalSeatCommand({
+      participantId: account.participantId,
+      regionSeatId: 'seat-1',
+      intent: repairIntent,
+      expectedRevision: 1
+    });
+    assert.equal(blockedRepair.accepted, false);
+    assert.equal(blockedRepair.reason, 'verified-local-salvage-reservation-blocks-repair');
+    assert.equal(blockedRepair.reservedScrapMilli, reserveAmountMilli);
+    assert.equal(authority.localSeatStatus({
+      participantId: account.participantId,
+      regionSeatId: 'seat-1'
+    }).journal.revision, 1, 'blocked repair must not mutate the host journal');
+
+    const reservationSummary = authority.verifiedLocalSalvageReservationSummary(account.participantId);
+    assert.equal(reservationSummary.accepted, true);
+    assert.equal(reservationSummary.controllerKind, controllerKind);
+    assert.equal(reservationSummary.summary.reservedScrapMilli, reserveAmountMilli);
+
     const duplicate = authority.recordVerifiedLocalSalvage({
       participantId: account.participantId,
       regionSeatId: 'seat-1',
@@ -87,6 +130,7 @@ function runAccountScenario(controllerKind, accountId) {
     assert.equal(summary.summary.scrapMilli, recorded.summary.scrapMilli);
     assert.equal(summary.summary.sources[0].revision, 1);
     assert.equal(summary.summary.sources[0].stateHash, command.stateHash);
+    assert.equal(summary.reservation.reservedScrapMilli, reserveAmountMilli);
     assert.equal(
       summary.summary.persistenceMeaning,
       'highest-host-verified-local-storage-scrap-per-seat-not-spendable-shared-economy'
@@ -100,6 +144,10 @@ function runAccountScenario(controllerKind, accountId) {
       persisted[0].verifiedLocalSalvage.sourcesBySeat['seat-1'].recordedScrapMilli,
       recorded.summary.scrapMilli
     );
+    assert.equal(
+      persisted[0].verifiedLocalSalvageReservation.sourcesBySeat['seat-1'].reservedScrapMilli,
+      reserveAmountMilli
+    );
 
     const restartedStore = createFileWorldAccountStore(accountPath);
     const restarted = createWorldSessionAuthority({
@@ -111,6 +159,12 @@ function runAccountScenario(controllerKind, accountId) {
     assert.equal(restoredSummary.accepted, true);
     assert.equal(restoredSummary.summary.scrapMilli, recorded.summary.scrapMilli);
     assert.equal(restoredSummary.summary.sources[0].stateHash, command.stateHash);
+    assert.equal(restoredSummary.reservation.reservedScrapMilli, reserveAmountMilli);
+    assert.equal(
+      restarted.verifiedLocalSalvageReservationSummary(account.participantId).summary.reservedScrapMilli,
+      reserveAmountMilli,
+      'reservation must survive a newly constructed account store/authority'
+    );
     assert.equal(restarted.accountPersistenceMeta().kind, 'json-file');
 
     const secondCommand = authority.submitLocalSeatCommand({
@@ -119,8 +173,17 @@ function runAccountScenario(controllerKind, accountId) {
       intent: { ...gatherIntent, stepCount: 40 },
       expectedRevision: 1
     });
-    assert.equal(secondCommand.accepted, true);
+    assert.equal(secondCommand.accepted, true, 'reservation does not block non-spending gather progress');
     assert.equal(secondCommand.revision, 2);
+
+    const staleReserve = authority.reserveVerifiedLocalSalvage({
+      participantId: account.participantId,
+      regionSeatId: 'seat-1',
+      expectedRevision: 2,
+      amountMilli: 1
+    });
+    assert.equal(staleReserve.accepted, false);
+    assert.equal(staleReserve.reason, 'verified-local-salvage-reservation-requires-current-proof');
 
     const staleRecord = authority.recordVerifiedLocalSalvage({
       participantId: account.participantId,
@@ -142,6 +205,24 @@ function runAccountScenario(controllerKind, accountId) {
     assert.equal(advancedRecord.source.revision, 2);
     assert.ok(advancedRecord.summary.scrapMilli >= recorded.summary.scrapMilli);
 
+    const released = authority.releaseVerifiedLocalSalvage({
+      participantId: account.participantId,
+      regionSeatId: 'seat-1',
+      amountMilli: reserveAmountMilli
+    });
+    assert.equal(released.accepted, true);
+    assert.equal(released.releasedNowMilli, reserveAmountMilli);
+    assert.equal(released.summary.reservedScrapMilli, 0);
+
+    const repairAfterRelease = authority.submitLocalSeatCommand({
+      participantId: account.participantId,
+      regionSeatId: 'seat-1',
+      intent: repairIntent,
+      expectedRevision: 2
+    });
+    assert.equal(repairAfterRelease.accepted, true, 'explicit release restores the current host repair path');
+    assert.equal(repairAfterRelease.revision, 3);
+
     const finalRestart = createWorldSessionAuthority({
       accountStore: createFileWorldAccountStore(accountPath),
       worldEpochMs: 0,
@@ -151,12 +232,17 @@ function runAccountScenario(controllerKind, accountId) {
       finalRestart.verifiedLocalSalvageSummary(account.participantId).summary.scrapMilli,
       advancedRecord.summary.scrapMilli
     );
+    assert.equal(
+      finalRestart.verifiedLocalSalvageReservationSummary(account.participantId).summary.reservedScrapMilli,
+      0
+    );
 
     return Object.freeze({
       controllerKind,
       firstStateHash: command.stateHash,
       firstScrapMilli: recorded.summary.scrapMilli,
-      advancedScrapMilli: advancedRecord.summary.scrapMilli
+      advancedScrapMilli: advancedRecord.summary.scrapMilli,
+      reserveAmountMilli
     });
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
@@ -168,6 +254,7 @@ const machine = runAccountScenario('machine', 'verified-salvage-machine');
 assert.equal(machine.firstStateHash, human.firstStateHash);
 assert.equal(machine.firstScrapMilli, human.firstScrapMilli);
 assert.equal(machine.advancedScrapMilli, human.advancedScrapMilli);
+assert.equal(machine.reserveAmountMilli, human.reserveAmountMilli);
 
 const guestAuthority = createWorldSessionAuthority({ worldEpochMs: 0, clock });
 const guest = guestAuthority.enterGuest({
@@ -183,5 +270,13 @@ const guestRecord = guestAuthority.recordVerifiedLocalSalvage({
 });
 assert.equal(guestRecord.accepted, false);
 assert.equal(guestRecord.reason, 'verified-local-salvage-requires-world-account');
+const guestReserve = guestAuthority.reserveVerifiedLocalSalvage({
+  participantId: guest.participantId,
+  regionSeatId: 'seat-1',
+  expectedRevision: 0,
+  amountMilli: 1
+});
+assert.equal(guestReserve.accepted, false);
+assert.equal(guestReserve.reason, 'verified-local-salvage-reservation-requires-world-account');
 
-console.log('verified local salvage selftest: PASS');
+console.log('verified local salvage proof + restart-persistent reservation/repair-guard selftest: PASS');

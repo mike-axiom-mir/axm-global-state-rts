@@ -68,21 +68,9 @@ export class WorldEntryClient {
     });
   }
 
-  async enterAccount({ accountId, displayName = null, controllerKind = 'human' } = {}) {
+  enterAccount({ accountId, displayName = null, controllerKind = 'human' } = {}) {
     const account = nonEmpty(accountId, 'accountId');
-    const participantId = `world:${account}`;
-    try {
-      const existing = await this.participant(participantId);
-      return Object.freeze({
-        participant: existing.participant,
-        reused: true,
-        accountPersistence: null
-      });
-    } catch (error) {
-      if (!(error instanceof WorldEntryHttpError) || error.status !== 404) throw error;
-    }
-
-    const created = await this.#request('/api/world/enter/account', {
+    return this.#request('/api/world/enter/account', {
       method: 'POST',
       body: {
         accountId: account,
@@ -91,7 +79,6 @@ export class WorldEntryClient {
         credentialMode: 'none'
       }
     });
-    return Object.freeze({ ...created, reused: false });
   }
 
   accrueChests(participantId) {

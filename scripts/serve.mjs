@@ -9,6 +9,8 @@ import { createWorldHttpApiService } from '../src/hosted/world-http-api.mjs';
 import { createWorldSessionAuthority } from '../src/hosted/world-session-authority.mjs';
 import { createSettlementWorldHttpApiService } from '../src/hosted/settlement-world-http-api.mjs';
 import { createSettlementWorldSessionAuthority } from '../src/hosted/settlement-world-session-authority.mjs';
+import { createFinalizedSettlementWorldHttpApiService } from '../src/hosted/finalized-settlement-world-http-api.mjs';
+import { createFinalizedSettlementWorldSessionAuthority } from '../src/hosted/finalized-settlement-world-session-authority.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const requestedPort = Number(process.argv[2] || process.env.PORT || 4174);
@@ -29,6 +31,9 @@ const localSeatJournalDir = process.env.AXM_LOCAL_SEAT_JOURNAL_DIR
 const salvageTransferJournalPath = process.env.AXM_SALVAGE_TRANSFER_JOURNAL_PATH
   ? path.resolve(process.env.AXM_SALVAGE_TRANSFER_JOURNAL_PATH)
   : null;
+const globalSalvageCreditJournalPath = process.env.AXM_GLOBAL_SALVAGE_CREDIT_JOURNAL_PATH
+  ? path.resolve(process.env.AXM_GLOBAL_SALVAGE_CREDIT_JOURNAL_PATH)
+  : null;
 if (Boolean(localSeatBindingsPath) !== Boolean(localSeatJournalDir)) {
   throw new Error('AXM_LOCAL_SEAT_BINDINGS_PATH and AXM_LOCAL_SEAT_JOURNAL_DIR must be configured together');
 }
@@ -37,6 +42,9 @@ if (localSeatBindingsPath && !accountPath) {
 }
 if (salvageTransferJournalPath && (!localSeatBindingsPath || !localSeatJournalDir || !accountPath)) {
   throw new Error('AXM_SALVAGE_TRANSFER_JOURNAL_PATH requires durable world accounts, LOCAL seat bindings, and LOCAL seat journals');
+}
+if (globalSalvageCreditJournalPath && !salvageTransferJournalPath) {
+  throw new Error('AXM_GLOBAL_SALVAGE_CREDIT_JOURNAL_PATH requires AXM_SALVAGE_TRANSFER_JOURNAL_PATH');
 }
 const requestedEpochMs = Number(process.env.AXM_WORLD_EPOCH_MS || 0);
 const worldEpochMs = Number.isFinite(requestedEpochMs) && requestedEpochMs >= 0 ? requestedEpochMs : 0;
@@ -55,23 +63,37 @@ const worldSessionOptions = {
   ...(localSeatStoreFactory ? { localSeatStoreFactory } : {}),
   ...(localSeatBindingStore ? { localSeatBindingStore } : {})
 };
-const worldSession = salvageTransferJournalPath
-  ? createSettlementWorldSessionAuthority({
+let worldSession;
+let apiService;
+if (globalSalvageCreditJournalPath) {
+  worldSession = createFinalizedSettlementWorldSessionAuthority({
     ...worldSessionOptions,
-    salvageTransferStore: createFileWorldJournalStore(salvageTransferJournalPath)
-  })
-  : createWorldSessionAuthority(worldSessionOptions);
-const apiService = salvageTransferJournalPath
-  ? createSettlementWorldHttpApiService({
-    authority: worldSession,
-    writeMode: sharedWriteMode,
-    clock: () => Date.now()
-  })
-  : createWorldHttpApiService({
+    salvageTransferStore: createFileWorldJournalStore(salvageTransferJournalPath),
+    globalSalvageCreditStore: createFileWorldJournalStore(globalSalvageCreditJournalPath)
+  });
+  apiService = createFinalizedSettlementWorldHttpApiService({
     authority: worldSession,
     writeMode: sharedWriteMode,
     clock: () => Date.now()
   });
+} else if (salvageTransferJournalPath) {
+  worldSession = createSettlementWorldSessionAuthority({
+    ...worldSessionOptions,
+    salvageTransferStore: createFileWorldJournalStore(salvageTransferJournalPath)
+  });
+  apiService = createSettlementWorldHttpApiService({
+    authority: worldSession,
+    writeMode: sharedWriteMode,
+    clock: () => Date.now()
+  });
+} else {
+  worldSession = createWorldSessionAuthority(worldSessionOptions);
+  apiService = createWorldHttpApiService({
+    authority: worldSession,
+    writeMode: sharedWriteMode,
+    clock: () => Date.now()
+  });
+}
 
 const MIME = new Map([
   ['.html', 'text/html; charset=utf-8'],
@@ -205,5 +227,8 @@ server.listen(port, '127.0.0.1', () => {
   const salvageTransfers = salvageTransferJournalPath
     ? `salvage-transfers=${salvageTransferJournalPath}`
     : 'salvage-transfers=disabled';
-  console.log(`AXM Global State RTS shell: http://127.0.0.1:${port}/game/ (${journal}, ${accounts}, ${localSeats}, ${salvageTransfers}, shared-writes=${sharedWriteMode})`);
+  const globalSalvageCredits = globalSalvageCreditJournalPath
+    ? `global-salvage-credits=${globalSalvageCreditJournalPath}`
+    : 'global-salvage-credits=disabled';
+  console.log(`AXM Global State RTS shell: http://127.0.0.1:${port}/game/ (${journal}, ${accounts}, ${localSeats}, ${salvageTransfers}, ${globalSalvageCredits}, shared-writes=${sharedWriteMode})`);
 });

@@ -87,6 +87,26 @@ test('human guest and machine world-account use the same browser world-entry sur
   expect(boundState.binding.controllerKind).toBe('machine');
   expect(boundState.seat.worldBinding.participantId).toBe('world:browser-chatgpt');
 
+  const worldTimeEvidence = await page.evaluate(async () => {
+    const sync = await window.__AXM_GLOBAL_STATE_RTS__.refreshBoundWorldTime({ seatId: 'seat-1' });
+    return {
+      sync,
+      retained: window.__AXM_GLOBAL_STATE_RTS__.worldTimeSync('seat-1'),
+      simulation: window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1')
+    };
+  });
+  expect(worldTimeEvidence.sync.participantId).toBe('world:browser-chatgpt');
+  expect(worldTimeEvidence.sync.controllerKind).toBe('machine');
+  expect(worldTimeEvidence.sync.source).toBe('host-authoritative-world-time');
+  expect(worldTimeEvidence.sync.scope).toBe('bound-seat-local-simulation-lighting-and-vision-v0');
+  expect(worldTimeEvidence.sync.weatherAuthority).toBe('unchanged-separate-system');
+  expect(worldTimeEvidence.sync.worldHourIndex).toBeGreaterThanOrEqual(0);
+  expect(['day', 'night']).toContain(worldTimeEvidence.sync.lightingPhase);
+  expect(worldTimeEvidence.retained.worldHourIndex).toBe(worldTimeEvidence.sync.worldHourIndex);
+  expect(worldTimeEvidence.simulation.environment.lightingPhase).toBe(worldTimeEvidence.sync.lightingPhase);
+  await expect(page.locator('#worldIdentityStatus')).toContainText(`world H${worldTimeEvidence.sync.worldHourIndex}`);
+  await expect(page.locator('#worldIdentityStatus')).toContainText(worldTimeEvidence.sync.lightingPhase);
+
   const localToggle = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitMachineAction({
     seatId: 'seat-1',
     actionId: 'map-toggle',
@@ -94,6 +114,8 @@ test('human guest and machine world-account use the same browser world-entry sur
   }));
   expect(localToggle.accepted).toBe(true);
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
+  await expect(page.locator('[data-seat-id="seat-1"]')).toContainText(`H${worldTimeEvidence.sync.worldHourIndex}`);
+  await expect(page.locator('[data-seat-id="seat-1"]')).toContainText(`light ${worldTimeEvidence.sync.lightingPhase}`);
   await expect(page.locator('#worldClaimCursor')).toBeEnabled();
 
   const preview = await page.evaluate(() => window.__AXM_PERSISTENT_WORLD__.previewSeatCursor('seat-1'));

@@ -5,6 +5,7 @@ import { createLocalRoster, activeSeats } from '../src/session/seat-contract.mjs
 import { LocalSeatRuntime } from '../src/session/local-seat-runtime.mjs';
 import { createWorldBrowserClient } from '../src/session/world-browser-client.mjs';
 import { createWorldSeatBindingRuntime, readWorldSeatHandoff } from '../src/session/world-seat-binding.mjs';
+import { describeBoundLocalWorldTime } from '../src/session/world-time-local-sync.mjs';
 import { createLocalRegionSimulation } from '../src/sim/local-region-sim.mjs';
 import { createStarterRegion } from '../src/world/starter-region.mjs';
 
@@ -39,6 +40,8 @@ let nextHudRefreshAt = 0;
 let drag = null;
 const keys = new Set();
 const simulations = new Map();
+const worldTimeSyncBySeat = new Map();
+const worldTimeRefreshTimers = new Map();
 
 const KEYBOARD_ACTIONS = new Map([
   ['Enter', 'confirm'],
@@ -84,18 +87,23 @@ function simulationLabel(seatId) {
   const order = snapshot.order?.type || 'idle';
   const world = renderer.describeSeatView(seatId)?.local?.world;
   const worldLabel = world ? ` · vision ${world.visibleCells} · features ${world.visibleFeatures}` : '';
-  return ` · core ${Math.round(snapshot.core.integrity)}% · scrap ${Math.floor(snapshot.storage.scrap)} · ${order}${worldLabel}`;
+  return ` · core ${Math.round(snapshot.core.integrity)}% · scrap ${Math.floor(snapshot.storage.scrap)} · ${order} · light ${snapshot.environment.lightingPhase}${worldLabel}`;
 }
 
 function worldBindingLabel(seatId) {
   const binding = worldSeatRuntime?.bindingForSeat(seatId);
-  return binding ? ` · world ${binding.displayName}` : '';
+  if (!binding) return '';
+  const sync = worldTimeSyncBySeat.get(seatId);
+  const timeLabel = sync ? ` · H${sync.worldHourIndex} ${sync.lightingPhase}` : '';
+  return ` · world ${binding.displayName}${timeLabel}`;
 }
 
 function renderWorldIdentity(message = null) {
   const binding = worldSeatRuntime?.bindingForSeat('seat-1');
+  const sync = worldTimeSyncBySeat.get('seat-1');
+  const timeLabel = binding && sync ? ` · world H${sync.worldHourIndex} ${sync.lightingPhase}` : '';
   const prefix = message || (binding
-    ? `World participant: ${binding.displayName} · ${binding.participantId} · ${binding.controllerKind} · ${binding.profileKind}`
+    ? `World participant: ${binding.displayName} · ${binding.participantId} · ${binding.controllerKind} · ${binding.profileKind}${timeLabel}`
     : 'World participant: local-only seat');
   const link = document.createElement('a');
   link.href = './world-entry.html';
@@ -193,6 +201,43 @@ function bindAvailableInputs() {
   }
 }
 
+function clearWorldTimeRefresh(seatId) {
+  const timer = worldTimeRefreshTimers.get(seatId);
+  if (timer !== undefined) clearTimeout(timer);
+  worldTimeRefreshTimers.delete(seatId);
+}
+
+function scheduleWorldTimeRefresh(seatId, sync) {
+  clearWorldTimeRefresh(seatId);
+  const delayMs = Math.max(1000, Math.min(60 * 60 * 1000, Math.floor(sync.msUntilNextHour) + 250));
+  const timer = setTimeout(() => {
+    void synchronizeBoundSeatWorldTime(seatId).catch(error => {
+      setStatus(`${seatId} · shared world-time refresh failed · ${String(error?.message || error)}`);
+    });
+  }, delayMs);
+  worldTimeRefreshTimers.set(seatId, timer);
+}
+
+async function synchronizeBoundSeatWorldTime(seatId = 'seat-1') {
+  const binding = worldSeatRuntime?.bindingForSeat(seatId);
+  if (!binding) throw new Error(`${seatId} has no bound shared-world participant`);
+  const meta = await worldClient.worldMeta();
+  const sync = describeBoundLocalWorldTime(meta.worldTime);
+  const simulation = simulationForSeat(seatId);
+  simulation.setLightingPhase(sync.lightingPhase);
+  renderer.syncSeatSimulation(seatId, simulation.snapshot());
+  const evidence = Object.freeze({
+    ...sync,
+    participantId: binding.participantId,
+    controllerKind: binding.controllerKind
+  });
+  worldTimeSyncBySeat.set(seatId, evidence);
+  renderWorldIdentity();
+  rebuildSeatLabels();
+  scheduleWorldTimeRefresh(seatId, evidence);
+  return evidence;
+}
+
 function rebuildRuntime() {
   const preservedWorldBindings = worldSeatRuntime?.snapshot().bindings || [];
   const count = currentSeatCount();
@@ -205,6 +250,11 @@ function rebuildRuntime() {
     const seat = activeSeats(roster).find(candidate => candidate.id === binding.seatId);
     if (!seat || seat.kind !== binding.controllerKind) continue;
     worldSeatRuntime.bindResolvedParticipant({ seatId: binding.seatId, participant: binding });
+  }
+  for (const [seatId] of worldTimeSyncBySeat) {
+    if (worldSeatRuntime.bindingForSeat(seatId)) continue;
+    worldTimeSyncBySeat.delete(seatId);
+    clearWorldTimeRefresh(seatId);
   }
   bindAvailableInputs();
   gamepadRouter = new GamepadSeatRouter(runtime);
@@ -223,10 +273,18 @@ async function bindPendingWorldParticipant() {
       seatId: pendingWorldHandoff.seatId,
       participantId: pendingWorldHandoff.participantId
     });
+    let worldTimeSync = null;
+    try {
+      worldTimeSync = await synchronizeBoundSeatWorldTime(binding.seatId);
+    } catch (error) {
+      setStatus(`${binding.seatId} · ${binding.participantId} bound · world-time sync failed · ${String(error?.message || error)}`);
+    }
     renderSeatSetup();
     renderWorldIdentity();
     rebuildSeatLabels();
-    setStatus(`${binding.seatId} · ${binding.participantId} revalidated and bound to shared world`);
+    if (worldTimeSync) {
+      setStatus(`${binding.seatId} · ${binding.participantId} revalidated and bound · world H${worldTimeSync.worldHourIndex} ${worldTimeSync.lightingPhase}`);
+    }
     return binding;
   } catch (error) {
     const message = String(error?.message || error);
@@ -398,14 +456,26 @@ const publicBridge = {
       observationPolicy: seat.observationPolicy,
       commandSurface: seat.commandSurface,
       visualOptions: seat.visualOptions,
-      worldBinding: worldSeatRuntime?.bindingForSeat(seat.id) || null
+      worldBinding: worldSeatRuntime?.bindingForSeat(seat.id) || null,
+      worldTimeSync: worldTimeSyncBySeat.get(seat.id) || null
     }));
   },
   worldBinding(seatId = 'seat-1') {
     return worldSeatRuntime?.bindingForSeat(seatId) || null;
   },
+  worldTimeSync(seatId = 'seat-1') {
+    return worldTimeSyncBySeat.get(seatId) || null;
+  },
+  refreshBoundWorldTime({ seatId = 'seat-1' } = {}) {
+    return synchronizeBoundSeatWorldTime(seatId);
+  },
   async bindWorldParticipant({ seatId = 'seat-1', participantId } = {}) {
     const binding = await worldSeatRuntime.bindParticipant({ seatId, participantId });
+    try {
+      await synchronizeBoundSeatWorldTime(seatId);
+    } catch (error) {
+      setStatus(`${seatId} · ${binding.participantId} bound · world-time sync failed · ${String(error?.message || error)}`);
+    }
     renderSeatSetup();
     renderWorldIdentity();
     rebuildSeatLabels();

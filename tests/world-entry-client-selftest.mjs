@@ -18,6 +18,17 @@ function fakeFetch(url, options = {}) {
   });
 }
 
+const originalFetch = globalThis.fetch;
+let defaultFetchReceiver = null;
+globalThis.fetch = function defaultReceiverProbe() {
+  defaultFetchReceiver = this;
+  return Promise.resolve({ ok: true, status: 200, json: async () => ({ writeMode: 'dev' }) });
+};
+const defaultClient = createWorldEntryClient();
+assert.equal((await defaultClient.meta()).writeMode, 'dev');
+assert.equal(defaultFetchReceiver, globalThis, 'default browser-style fetch remains bound to globalThis');
+globalThis.fetch = originalFetch;
+
 const client = createWorldEntryClient({ fetchImpl: fakeFetch });
 set('GET', '/api/world/meta', 200, { writeMode: 'dev', participantCount: 0 });
 assert.equal((await client.meta()).writeMode, 'dev');

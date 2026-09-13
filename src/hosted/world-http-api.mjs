@@ -44,6 +44,14 @@ export class WorldHttpApiService {
     return this.writeMode === 'dev';
   }
 
+  #syncEntryChests(participantId, nowMs) {
+    const chestAccrual = this.authority.accrueChests(participantId, nowMs);
+    return Object.freeze({
+      participant: this.authority.participant(participantId),
+      chestAccrual
+    });
+  }
+
   handle({ method = 'GET', pathname, searchParams = null, body = {} } = {}) {
     const verb = String(method || 'GET').toUpperCase();
     const route = String(pathname || '');
@@ -113,13 +121,14 @@ export class WorldHttpApiService {
         const nowMs = finiteHostTime(this.clock);
 
         if (route === '/api/world/enter/guest') {
-          const participant = this.authority.enterGuest({
+          const entered = this.authority.enterGuest({
             sessionId: body.sessionId,
             displayName: body.displayName,
             controllerKind: body.controllerKind,
             nowMs
           });
-          return response(200, { participant });
+          const synced = this.#syncEntryChests(entered.participantId, nowMs);
+          return response(200, synced);
         }
 
         if (route === '/api/world/enter/account') {
@@ -127,21 +136,23 @@ export class WorldHttpApiService {
           if (!accountId) return response(400, { error: 'accountId required' });
           const existing = this.authority.participant(`world:${accountId}`);
           if (existing) {
+            const synced = this.#syncEntryChests(existing.participantId, nowMs);
             return response(200, {
-              participant: existing,
+              ...synced,
               accountPersistence: this.authority.accountPersistenceMeta(),
               reused: true
             });
           }
-          const participant = this.authority.createWorldAccount({
+          const created = this.authority.createWorldAccount({
             accountId,
             displayName: body.displayName,
             controllerKind: body.controllerKind,
             credentialMode: body.credentialMode,
             nowMs
           });
+          const synced = this.#syncEntryChests(created.participantId, nowMs);
           return response(200, {
-            participant,
+            ...synced,
             accountPersistence: this.authority.accountPersistenceMeta(),
             reused: false
           });

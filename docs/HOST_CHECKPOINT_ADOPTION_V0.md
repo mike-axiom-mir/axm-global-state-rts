@@ -10,7 +10,7 @@ A bound human or machine participant may choose **Adopt host checkpoint** while 
 
 ## Authority and stale-state boundary
 
-The browser cannot choose a journal revision and force the host to resurrect it. The adoption request carries the displayed `expectedRevision`; if the host journal advanced meanwhile, the request fails with `local-authority-revision-conflict`, the browser refreshes the checkpoint display, and the local simulation is left unchanged.
+The browser cannot choose a journal revision and force the host to resurrect it. The adoption request carries the displayed `expectedRevision`; if the host journal advanced meanwhile, the request fails with `local-authority-revision-conflict`, the browser refreshes the checkpoint display, and no checkpoint replacement is applied to the local simulation. The ordinary local simulation may still continue advancing under its normal frame loop; a rejection is a claim about **no reconciliation mutation**, not a claim that local time was frozen.
 
 The host package includes only the deterministic replay material needed by this v0 seam:
 
@@ -32,7 +32,7 @@ Adoption is explicit and records both sides of the replacement in browser eviden
 - number of replayed host commands;
 - host state hash carried by the package.
 
-The running simulation object is replaced in place so the existing renderer/input loop continues to use the adopted state rather than creating a second disconnected browser simulation.
+The running simulation object is replaced in place so the existing renderer/input loop continues to use the adopted state rather than creating a second disconnected browser simulation. This is **point-in-time convergence**: immediately after replacement the browser state equals the verified host public checkpoint, then the ordinary local frame loop may advance it again. This rung does not claim continuous lockstep between browser and host journal.
 
 ## Human / machine parity
 
@@ -40,6 +40,6 @@ The adoption endpoint, expected-revision rule, deterministic replay, and replace
 
 ## Truth boundary / non-claims
 
-This proves an explicitly requested browser-local replacement can be reconstructed from the currently named host journal checkpoint and that a stale host checkpoint is rejected before replacement. It does **not** make browser-local actions authoritative, automatically journal local gather/explore/repair, promote host-journal scrap into shared/global economy, establish distributed consensus, provide cryptographic client authentication, or prove deployment/performance/visual-quality targets.
+This proves an explicitly requested browser-local replacement can be reconstructed from the currently named host journal checkpoint and that a stale host checkpoint is rejected before replacement. It does **not** make browser-local actions authoritative, automatically journal local gather/explore/repair, promote host-journal scrap into shared/global economy, establish continuous host/browser lockstep, establish distributed consensus, provide cryptographic client authentication, or prove deployment/performance/visual-quality targets.
 
 The package is trusted as a same-origin host-authority response in this development rung. The browser verifies deterministic replay against the host's public snapshot but does not independently recompute the Node-side SHA-256 state hash. Global economy promotion should remain blocked until the project deliberately defines which adopted host outcomes cross that separate authority boundary.

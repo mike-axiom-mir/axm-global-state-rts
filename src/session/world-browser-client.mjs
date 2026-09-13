@@ -90,6 +90,16 @@ export class WorldBrowserClient {
     });
   }
 
+  localSeatAdoptionCheckpoint({ participantId, regionSeatId = 'seat-1', expectedRevision } = {}) {
+    return this.#request('GET', '/api/world/local-seat/adoption', {
+      query: {
+        participantId: nonEmpty(participantId, 'participantId'),
+        regionSeatId: nonEmpty(regionSeatId, 'regionSeatId'),
+        expectedRevision: nonNegativeInteger(expectedRevision, 'expectedRevision')
+      }
+    });
+  }
+
   enterGuest({ sessionId, displayName = 'Guest', controllerKind: requestedKind = 'human' } = {}) {
     return this.#request('POST', '/api/world/enter/guest', {
       body: {

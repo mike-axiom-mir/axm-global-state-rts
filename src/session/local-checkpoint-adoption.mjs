@@ -1,6 +1,7 @@
 import {
   LOCAL_REGION_DEFAULT_STEP_MS,
-  createLocalRegionSimulation
+  LocalRegionSimulation,
+  activeLocalRegionSimulation
 } from '../sim/local-region-sim.mjs';
 import { lightingPhaseForWorldHour } from './world-time-local-sync.mjs';
 import { createStarterRegion } from '../world/starter-region.mjs';
@@ -98,7 +99,7 @@ export function replayLocalCheckpointForAdoption(checkpoint, {
       });
     }
 
-    const simulation = createLocalRegionSimulation(createStarterRegion(regionSeatId), {
+    const simulation = new LocalRegionSimulation(createStarterRegion(regionSeatId), {
       initialLightingPhase: genesisLightingPhase
     });
 
@@ -162,4 +163,28 @@ export function replayLocalCheckpointForAdoption(checkpoint, {
   } catch (error) {
     return rejection('checkpoint-invalid', { detail: String(error?.message || error) });
   }
+}
+
+export function adoptLocalCheckpointIntoActiveSimulation(checkpoint, {
+  expectedRegionSeatId = null
+} = {}) {
+  const replay = replayLocalCheckpointForAdoption(checkpoint, { expectedRegionSeatId });
+  if (!replay.accepted) return replay;
+  const target = activeLocalRegionSimulation(replay.regionSeatId);
+  if (!target) return rejection('active-local-simulation-not-found', { regionSeatId: replay.regionSeatId });
+  const replacement = target.adoptStateFrom(replay.simulation);
+  return Object.freeze({
+    accepted: true,
+    checkpointId: replay.checkpointId,
+    regionSeatId: replay.regionSeatId,
+    revision: replay.revision,
+    headHash: replay.headHash,
+    stateHash: replay.stateHash,
+    replayedCommands: replay.replayedCommands,
+    before: replacement.before,
+    after: replacement.after,
+    replacement: replacement.replacement,
+    truthBoundary:
+      'explicit-browser-local-replacement-from-host-replay-package-no-host-or-global-mutation'
+  });
 }

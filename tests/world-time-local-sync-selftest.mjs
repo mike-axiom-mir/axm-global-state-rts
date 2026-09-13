@@ -34,11 +34,12 @@ assert.equal(sync.weatherAuthority, 'unchanged-separate-system');
 assert.equal(sync.persistence, 'world-clock-read-only-local-expression');
 
 const simulation = createLocalRegionSimulation(createStarterRegion('seat-1'));
-assert.equal(simulation.snapshot().environment.lightingPhase, 'day');
+const daySnapshot = simulation.snapshot();
+assert.equal(daySnapshot.environment.lightingPhase, 'day');
 simulation.setLightingPhase(sync.lightingPhase);
 const nightSnapshot = simulation.snapshot();
 assert.equal(nightSnapshot.environment.lightingPhase, 'night');
-assert.ok(nightSnapshot.environment.visionRadiusM < nightSnapshot.tuning.dayVisionRadiusM);
+assert.ok(nightSnapshot.environment.crewVisionRadiusM < daySnapshot.environment.crewVisionRadiusM);
 
 assert.throws(() => worldClockHour(-1), /non-negative integer/);
 assert.throws(() => lightingPhaseForWorldHour(1.5), /non-negative integer/);

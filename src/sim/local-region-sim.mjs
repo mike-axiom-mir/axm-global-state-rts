@@ -13,6 +13,7 @@ export const LOCAL_REGION_DEFAULT_STEP_MS = 250;
 const EPSILON = 1e-9;
 const WORKSHOP_CREW_CLEARANCE_M = 0.45;
 const LIGHTING_PHASES = Object.freeze(['day', 'night']);
+const activeSimulationsBySeat = new Map();
 
 function finite(value, label) {
   if (!Number.isFinite(value)) throw new TypeError(`${label} must be finite`);
@@ -481,6 +482,38 @@ export class LocalRegionSimulation {
     }
   }
 
+  adoptStateFrom(otherSimulation) {
+    if (!(otherSimulation instanceof LocalRegionSimulation)) throw new TypeError('LocalRegionSimulation required for adoption');
+    if (otherSimulation.region.id !== this.region.id || otherSimulation.region.seatId !== this.region.seatId) {
+      throw new Error('local checkpoint simulation region mismatch');
+    }
+    if (otherSimulation.stepMs !== this.stepMs) throw new Error('local checkpoint simulation step mismatch');
+    if (JSON.stringify(otherSimulation.tuning) !== JSON.stringify(this.tuning)) {
+      throw new Error('local checkpoint simulation tuning mismatch');
+    }
+
+    const before = this.snapshot();
+    this.elapsedMs = otherSimulation.elapsedMs;
+    this.revision = otherSimulation.revision;
+    this.accumulatorMs = otherSimulation.accumulatorMs;
+    this.orderSequence = otherSimulation.orderSequence;
+    this.order = otherSimulation.order ? { ...otherSimulation.order } : null;
+    this.environment = { ...otherSimulation.environment };
+    this.core = { ...otherSimulation.core };
+    this.storage = { ...otherSimulation.storage };
+    this.lightTower = { ...otherSimulation.lightTower };
+    this.resources = otherSimulation.resources.map(resource => ({ ...resource }));
+    this.crew = otherSimulation.crew.map(crew => ({ ...crew }));
+    const after = this.snapshot();
+    return Object.freeze({
+      accepted: true,
+      seatId: this.region.seatId,
+      before,
+      after,
+      replacement: 'explicit-in-place-local-simulation-replacement'
+    });
+  }
+
   snapshot() {
     return Object.freeze({
       schema: LOCAL_REGION_SNAPSHOT_SCHEMA,
@@ -532,5 +565,11 @@ export class LocalRegionSimulation {
 }
 
 export function createLocalRegionSimulation(region, options = {}) {
-  return new LocalRegionSimulation(region, options);
+  const simulation = new LocalRegionSimulation(region, options);
+  activeSimulationsBySeat.set(region.seatId, simulation);
+  return simulation;
+}
+
+export function activeLocalRegionSimulation(regionSeatId = 'seat-1') {
+  return activeSimulationsBySeat.get(String(regionSeatId)) || null;
 }

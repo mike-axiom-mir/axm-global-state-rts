@@ -42,10 +42,10 @@ assert.deepEqual(calls.at(-1).body, {
   controllerKind: 'human'
 });
 
-set('GET', '/api/world/participant?participantId=world%3Amachine-a', 404, { error: 'participant not found' });
 set('POST', '/api/world/enter/account', 200, {
   participant: { participantId: 'world:machine-a', controllerKind: 'machine' },
-  accountPersistence: { enabled: true }
+  accountPersistence: { enabled: true },
+  reused: false
 });
 const created = await client.enterAccount({ accountId: 'machine-a', displayName: 'Machine A', controllerKind: 'machine' });
 assert.equal(created.reused, false);
@@ -57,12 +57,22 @@ assert.deepEqual(calls.at(-1).body, {
   credentialMode: 'none'
 });
 
-set('GET', '/api/world/participant?participantId=world%3Amachine-a', 200, {
-  participant: { participantId: 'world:machine-a', controllerKind: 'machine', dropCache: { storedCrates: 2 } }
+set('POST', '/api/world/enter/account', 200, {
+  participant: {
+    participantId: 'world:machine-a',
+    displayName: 'Machine A',
+    controllerKind: 'machine',
+    dropCache: { storedCrates: 2 }
+  },
+  accountPersistence: { enabled: true },
+  reused: true
 });
 const reused = await client.enterAccount({ accountId: 'machine-a', displayName: 'Ignored', controllerKind: 'human' });
 assert.equal(reused.reused, true);
+assert.equal(reused.participant.displayName, 'Machine A');
+assert.equal(reused.participant.controllerKind, 'machine');
 assert.equal(reused.participant.dropCache.storedCrates, 2);
+assert.equal(calls.at(-1).method, 'POST', 'account re-entry uses one idempotent write endpoint without a failing GET probe');
 
 set('POST', '/api/world/chests/accrue', 200, { participantId: 'world:machine-a', dropCache: { storedCrates: 3 } });
 assert.equal((await client.accrueChests('world:machine-a')).dropCache.storedCrates, 3);

@@ -7,7 +7,9 @@ on:
       - src/input/**
       - src/session/**
       - src/presentation/**
-      - tests/browser/planet-shell-controller.spec.js
+      - src/client/**
+      - tests/browser/**
+      - tests/world-entry-client-selftest.mjs
       - .github/workflows/planet-shell-controller.yml
       - package.json
   push:
@@ -31,14 +33,18 @@ jobs:
         with:
           node-version: "24"
       - name: Run deterministic/source gates
-        run: npm test
+        run: |
+          npm test
+          node tests/world-entry-client-selftest.mjs
+          node --check game/world-presence.mjs
+          node --check tests/browser/world-presence.spec.js
       - name: Install pinned Playwright test runner
         run: npm install --no-save @playwright/test@1.55.0
       - name: Install Chromium runtime
         run: npx playwright install --with-deps chromium
       - name: Start local browser shell
         run: |
-          node scripts/serve.mjs > /tmp/axm-global-state-rts-server.log 2>&1 &
+          AXM_SHARED_WRITE_MODE=dev node scripts/serve.mjs > /tmp/axm-global-state-rts-server.log 2>&1 &
           echo $! > /tmp/axm-global-state-rts-server.pid
           for i in {1..30}; do
             if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null; then
@@ -48,8 +54,8 @@ jobs:
           done
           cat /tmp/axm-global-state-rts-server.log
           exit 1
-      - name: Exercise four controllers and machine seat in Chromium
-        run: npx playwright test tests/browser/planet-shell-controller.spec.js --reporter=line
+      - name: Exercise controllers, machine seat, and world presence in Chromium
+        run: npx playwright test tests/browser/planet-shell-controller.spec.js tests/browser/world-presence.spec.js --reporter=line
       - name: Preserve browser evidence
         if: always()
         uses: actions/upload-artifact@v4

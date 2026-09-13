@@ -1,0 +1,99 @@
+name: Host local seat journal binding
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/hosted/local-seat-journal-authority.mjs'
+      - 'src/hosted/local-region-command-journal-authority.mjs'
+      - 'src/hosted/world-session-authority.mjs'
+      - 'src/hosted/world-http-api.mjs'
+      - 'src/session/world-browser-client.mjs'
+      - 'game/host-local-seat-checkpoint.mjs'
+      - 'game/index.html'
+      - 'tests/local-seat-journal-authority-selftest.mjs'
+      - 'tests/local-seat-http-authority-selftest.mjs'
+      - 'tests/browser/local-seat-journal-binding.spec.js'
+      - 'docs/LOCAL_SEAT_JOURNAL_BINDING_V0.md'
+      - '.github/workflows/local-seat-journal-binding.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-authority:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Full deterministic and source suite
+        run: npm test
+      - name: Syntax gate for new authority surface
+        run: |
+          node --check src/hosted/local-seat-journal-authority.mjs
+          node --check src/hosted/world-session-authority.mjs
+          node --check src/hosted/world-http-api.mjs
+          node --check src/session/world-browser-client.mjs
+          node --check game/host-local-seat-checkpoint.mjs
+          node --check tests/local-seat-journal-authority-selftest.mjs
+          node --check tests/local-seat-http-authority-selftest.mjs
+          node --check tests/browser/local-seat-journal-binding.spec.js
+      - name: Exercise chained journal and host seat binding authority
+        run: |
+          node tests/local-region-command-journal-selftest.mjs
+          node tests/local-seat-journal-authority-selftest.mjs
+          node tests/local-seat-http-authority-selftest.mjs
+          node tests/world-session-authority-selftest.mjs
+          node tests/world-http-api-selftest.mjs
+          node tests/world-browser-client-selftest.mjs
+
+  chromium-bound-seat:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Deterministic/source prerequisite
+        run: npm test
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start clean development world host
+        run: |
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-local-seat-world-journal.json \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-local-seat-world-accounts.json \
+          node scripts/serve.mjs > /tmp/axm-local-seat-host.log 2>&1 &
+          echo $! > /tmp/axm-local-seat-host.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-local-seat-host.log
+          exit 1
+      - name: Exercise authority-revalidated browser seat to host checkpoint boundary
+        run: npx playwright test tests/browser/local-seat-journal-binding.spec.js --workers=1 --reporter=line
+      - name: Preserve browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-local-seat-journal-binding
+          path: |
+            test-results/global-state-rts-host-local-checkpoint.png
+            /tmp/axm-local-seat-host.log
+          if-no-files-found: warn
+          retention-days: 14

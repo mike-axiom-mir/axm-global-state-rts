@@ -8,6 +8,8 @@ on:
       - 'game/world-entry.html'
       - 'game/world-entry.mjs'
       - 'src/session/world-browser-client.mjs'
+      - 'src/hosted/**'
+      - 'scripts/serve.mjs'
       - 'tests/world-browser-client-selftest.mjs'
       - 'tests/browser/world-entry.spec.js'
       - '.github/workflows/world-browser-entry.yml'

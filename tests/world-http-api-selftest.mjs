@@ -52,11 +52,29 @@ const accountEntry = api.handle({
   }
 });
 assert.equal(accountEntry.status, 200);
+assert.equal(accountEntry.body.reused, false);
 const accountId = accountEntry.body.participant.participantId;
 assert.equal(accountId, 'world:ai-chatgpt-sol');
 assert.equal(accountEntry.body.participant.createdAtWorldHour, 10);
 assert.equal(accountEntry.body.participant.controllerKind, 'machine');
 assert.equal(accountStore.readAll().length, 1, 'world account is persisted immediately');
+
+const accountReentry = api.handle({
+  method: 'POST',
+  pathname: '/api/world/enter/account',
+  body: {
+    accountId: 'ai-chatgpt-sol',
+    displayName: 'Silent Rewrite Attempt',
+    controllerKind: 'human',
+    credentialMode: 'none'
+  }
+});
+assert.equal(accountReentry.status, 200);
+assert.equal(accountReentry.body.reused, true, 'existing world account re-enters without a failing lookup probe');
+assert.equal(accountReentry.body.participant.participantId, accountId);
+assert.equal(accountReentry.body.participant.displayName, 'ChatGPT Sol', 're-entry cannot silently rewrite stored display identity');
+assert.equal(accountReentry.body.participant.controllerKind, 'machine', 're-entry cannot silently rewrite stored controller kind');
+assert.equal(accountStore.readAll().length, 1, 'idempotent re-entry does not duplicate persisted accounts');
 
 nowMs = 13 * WORLD_HOUR_MS;
 const accrued = api.handle({

@@ -44,8 +44,9 @@ This rung intentionally stops after the real LOCAL storage debit.
 - It does **not** consume or release the verified-salvage reservation ledger entry.
 - It does **not** create shared/global credit, spendable currency, escrow, trade value, or a world-account balance.
 - The low-level LOCAL journal method does not independently prove that a reservation/prepare record exists; the settlement integrator must bind those existing authorities before calling it.
+- It is **not yet wired through `LocalSeatJournalAuthority`**. A raw debit of a journal belonging to a durable bound seat would advance that journal without automatically refreshing the separate durable seat-binding checkpoint. The next coordinator must perform the debit through a bound-seat authority path that also checkpoints ownership continuity, rather than bypassing that layer.
 - The LOCAL journal and transfer transaction journal are still separate persistence surfaces. A crash can occur between their writes; transfer-id idempotence makes recovery possible, but this is not a claim of filesystem/distributed atomicity.
 - No browser control is added in this rung.
 - No new deployment, secure-authentication, performance, scale, balance, Creation Machine asset-runtime, or visual-quality claim is made.
 
-The next safe rung is a host settlement coordinator that derives a prepared transfer from the existing reservation and transaction authorities, invokes this real LOCAL debit, records/reconciles the debit evidence, and only then considers a separately persistent global credit step. Reservation consumption must be designed so a crash cannot make the same salvage locally usable again while global value exists.
+The next safe rung is a host settlement coordinator/bound-seat authority path that derives a prepared transfer from the existing reservation and transaction authorities, invokes this real LOCAL debit, refreshes the durable seat checkpoint, records/reconciles the debit evidence, and only then considers a separately persistent global credit step. Reservation consumption must be designed so a crash cannot make the same salvage locally usable again while global value exists.

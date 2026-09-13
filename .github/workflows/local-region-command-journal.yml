@@ -1,0 +1,67 @@
+name: Local region command journal authority
+
+on:
+  pull_request:
+    paths:
+      - 'src/hosted/local-region-command-journal-authority.mjs'
+      - 'src/hosted/journal-store.mjs'
+      - 'src/hosted/local-outcome-replay-authority.mjs'
+      - 'src/sim/local-region-sim.mjs'
+      - 'src/session/world-time-local-sync.mjs'
+      - 'src/world/starter-region.mjs'
+      - 'tests/local-region-command-journal-selftest.mjs'
+      - 'tests/local-outcome-replay-authority-selftest.mjs'
+      - 'tests/browser/planet-shell-controller.spec.js'
+      - 'docs/LOCAL_REGION_COMMAND_JOURNAL_V0.md'
+      - '.github/workflows/local-region-command-journal.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Full deterministic/source suite
+        run: npm test
+      - name: Syntax gate
+        run: |
+          node --check src/hosted/local-region-command-journal-authority.mjs
+          node --check tests/local-region-command-journal-selftest.mjs
+      - name: Prior single-outcome replay regression
+        run: node tests/local-outcome-replay-authority-selftest.mjs
+      - name: Chained host continuity selftest
+        run: node tests/local-region-command-journal-selftest.mjs
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start local browser shell
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-server.log 2>&1 &
+          echo $! > /tmp/axm-global-state-rts-server.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-server.log
+          exit 1
+      - name: Controller regression in Chromium
+        run: npx playwright test tests/browser/planet-shell-controller.spec.js --reporter=line
+      - name: Preserve controller evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-region-journal-controller-regression
+          path: |
+            test-results/global-state-rts-*.png
+            /tmp/axm-global-state-rts-server.log
+          if-no-files-found: warn
+          retention-days: 14

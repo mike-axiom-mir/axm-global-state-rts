@@ -19,6 +19,7 @@ on:
       - 'tests/local-seat-restart-continuity-selftest.mjs'
       - 'tests/local-seat-http-authority-selftest.mjs'
       - 'tests/browser/local-seat-journal-binding.spec.js'
+      - 'tests/browser/world-entry.spec.js'
       - 'docs/LOCAL_SEAT_JOURNAL_BINDING_V0.md'
       - 'docs/HOST_LOCAL_GATHER_COMMAND_V0.md'
       - 'docs/LOCAL_SEAT_RESTART_CONTINUITY_V0.md'
@@ -55,6 +56,7 @@ jobs:
           node --check tests/local-seat-restart-continuity-selftest.mjs
           node --check tests/local-seat-http-authority-selftest.mjs
           node --check tests/browser/local-seat-journal-binding.spec.js
+          node --check tests/browser/world-entry.spec.js
       - name: Exercise replay, chained journal, restart continuity, and bound host command authority
         run: |
           node tests/local-outcome-replay-authority-selftest.mjs
@@ -113,5 +115,53 @@ jobs:
             /tmp/axm-local-seat-host.log
             /tmp/axm-local-seat-bindings.json
             /tmp/axm-local-seat-journals/*.jsonl
+          if-no-files-found: warn
+          retention-days: 14
+
+  chromium-world-entry-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Deterministic/source prerequisite
+        run: npm test
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start clean development world host with durable local-seat configuration
+        run: |
+          rm -rf /tmp/axm-world-entry-local-seat-journals
+          rm -f /tmp/axm-world-entry-local-seat-bindings.json
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-world-entry-world-journal.json \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-world-entry-world-accounts.json \
+          AXM_LOCAL_SEAT_BINDINGS_PATH=/tmp/axm-world-entry-local-seat-bindings.json \
+          AXM_LOCAL_SEAT_JOURNAL_DIR=/tmp/axm-world-entry-local-seat-journals \
+          node scripts/serve.mjs > /tmp/axm-world-entry-host.log 2>&1 &
+          echo $! > /tmp/axm-world-entry-host.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-world-entry-host.log
+          exit 1
+      - name: Exercise human and machine world entry regression in Chromium
+        run: npx playwright test tests/browser/world-entry.spec.js --workers=1 --reporter=line
+      - name: Preserve world-entry evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: host-local-seat-world-entry-regression
+          path: |
+            test-results/global-state-rts-world-entry*.png
+            /tmp/axm-world-entry-host.log
           if-no-files-found: warn
           retention-days: 14

@@ -1,0 +1,48 @@
+name: Global State RTS world session authority
+
+on:
+  pull_request:
+    paths:
+      - src/hosted/world-session-authority.mjs
+      - src/hosted/world-participant-registry.mjs
+      - src/hosted/shared-state-authority.mjs
+      - src/hosted/world-clock.mjs
+      - src/input/action-rate-gate.mjs
+      - src/sim/run-leaderboard.mjs
+      - tests/world-session-authority-selftest.mjs
+      - .github/workflows/world-session-authority.yml
+  push:
+    branches:
+      - main
+    paths:
+      - src/hosted/world-session-authority.mjs
+      - src/hosted/world-participant-registry.mjs
+      - src/hosted/shared-state-authority.mjs
+      - src/hosted/world-clock.mjs
+      - src/input/action-rate-gate.mjs
+      - src/sim/run-leaderboard.mjs
+      - tests/world-session-authority-selftest.mjs
+      - .github/workflows/world-session-authority.yml
+
+permissions:
+  contents: read
+
+jobs:
+  world-session-authority:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run existing deterministic/source gates
+        run: npm test
+      - name: Verify world-session authority syntax
+        run: node --check src/hosted/world-session-authority.mjs && node --check tests/world-session-authority-selftest.mjs
+      - name: Exercise participant-bound shared-world commands
+        run: node tests/world-session-authority-selftest.mjs

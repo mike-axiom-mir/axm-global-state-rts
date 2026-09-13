@@ -1,0 +1,139 @@
+name: Bound-seat salvage transfer settlement coordinator
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/hosted/salvage-transfer-settlement-coordinator.mjs'
+      - 'src/hosted/local-region-command-journal-authority.mjs'
+      - 'src/hosted/local-seat-journal-authority.mjs'
+      - 'src/hosted/local-seat-binding-store.mjs'
+      - 'src/hosted/salvage-transfer-transaction-journal.mjs'
+      - 'src/hosted/verified-local-salvage-reservation-ledger.mjs'
+      - 'tests/salvage-transfer-settlement-coordinator-selftest.mjs'
+      - 'docs/SALVAGE_TRANSFER_SETTLEMENT_COORDINATOR_V0.md'
+      - '.github/workflows/salvage-transfer-settlement-coordinator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-settlement-coordinator:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run repository deterministic/source gates
+        run: npm test
+      - name: Check settlement coordinator syntax
+        run: |
+          node --check src/hosted/salvage-transfer-settlement-coordinator.mjs
+          node --check tests/salvage-transfer-settlement-coordinator-selftest.mjs
+      - name: Exercise bound-seat settlement, crash recovery, parity, and fail-closed recovery scope
+        run: node tests/salvage-transfer-settlement-coordinator-selftest.mjs
+      - name: Re-run existing local seat restart continuity gate
+        run: node tests/local-seat-restart-continuity-selftest.mjs
+      - name: Re-run existing LOCAL salvage debit gate
+        run: node tests/local-salvage-debit-selftest.mjs
+      - name: Re-run existing salvage transfer transaction gate
+        run: node tests/salvage-transfer-transaction-journal-selftest.mjs
+
+  chromium-world-entry-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run deterministic/source prerequisite
+        run: npm test
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start clean development world host
+        run: |
+          rm -rf /tmp/axm-settlement-seat-journals
+          rm -f /tmp/axm-settlement-seat-bindings.json /tmp/axm-settlement-world-journal.json /tmp/axm-settlement-world-accounts.json
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-settlement-world-journal.json \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-settlement-world-accounts.json \
+          AXM_LOCAL_SEAT_BINDINGS_PATH=/tmp/axm-settlement-seat-bindings.json \
+          AXM_LOCAL_SEAT_JOURNAL_DIR=/tmp/axm-settlement-seat-journals \
+          node scripts/serve.mjs > /tmp/axm-settlement-world-entry.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-settlement-world-entry.log
+          exit 1
+      - name: Exercise human and machine world entry in Chromium
+        run: npx playwright test tests/browser/world-entry.spec.js --workers=1 --reporter=line
+      - name: Preserve world-entry regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: salvage-settlement-world-entry-regression
+          path: |
+            test-results/global-state-rts-world-entry*.png
+            /tmp/axm-settlement-world-entry.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  chromium-controller-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run deterministic/source prerequisite
+        run: npm test
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start local browser shell
+        run: |
+          node scripts/serve.mjs > /tmp/axm-settlement-controller.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-settlement-controller.log
+          exit 1
+      - name: Exercise four controllers and machine seat in Chromium
+        run: npx playwright test tests/browser/planet-shell-controller.spec.js --workers=1 --reporter=line
+      - name: Preserve controller regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: salvage-settlement-controller-regression
+          path: |
+            test-results/global-state-rts-*.png
+            /tmp/axm-settlement-controller.log
+          if-no-files-found: warn
+          retention-days: 14

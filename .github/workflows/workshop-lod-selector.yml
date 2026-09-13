@@ -1,0 +1,72 @@
+name: Workshop evidence-bound LOD selector
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/assets/workshop-lod-policy.mjs'
+      - 'src/assets/workshop-lod-installer.mjs'
+      - 'tests/presentation-selftest.mjs'
+      - 'tests/helpers/static-glb-fixture.mjs'
+      - 'tests/browser/workshop-lod-installer.spec.js'
+      - '.github/workflows/workshop-lod-selector.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  workshop-lod-selector:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Verify deterministic LOD policy contract
+        run: |
+          node --check src/assets/workshop-lod-policy.mjs
+          node --check src/assets/workshop-lod-installer.mjs
+          node --check tests/helpers/static-glb-fixture.mjs
+          node --check tests/browser/workshop-lod-installer.spec.js
+          npm run test:presentation
+
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start local RTS shell
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-workshop-lod-selector.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-workshop-lod-selector.log
+          exit 1
+
+      - name: Exercise camera-bound LOD selection in Chromium
+        run: npx playwright test tests/browser/workshop-lod-installer.spec.js --reporter=line
+
+      - name: Preserve selector evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workshop-evidence-bound-lod-selector
+          path: |
+            test-results/workshop-lod-installer-close.png
+            /tmp/axm-global-state-rts-workshop-lod-selector.log
+          if-no-files-found: warn
+          retention-days: 14

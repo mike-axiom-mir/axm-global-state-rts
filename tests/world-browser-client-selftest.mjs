@@ -7,6 +7,7 @@ const responses = [
   { status: 200, body: { participant: { participantId: 'guest:g1', profileKind: 'guest', controllerKind: 'human' } } },
   { status: 200, body: { participant: { participantId: 'world:chatgpt', profileKind: 'world-account', controllerKind: 'machine' } } },
   { status: 200, body: { participantId: 'world:chatgpt', result: { added: 0 }, dropCache: { storedCrates: 0 } } },
+  { status: 200, body: { accepted: true, participantId: 'world:chatgpt', regionSeatId: 'seat-1', revision: 1 } },
   { status: 200, body: { accepted: true, participantId: 'world:chatgpt', actorId: 'world:chatgpt', eventType: 'territory.claim' } },
   { status: 400, body: { error: 'not enough stored crates' } }
 ];
@@ -41,6 +42,21 @@ assert.deepEqual(JSON.parse(calls[2].options.body), {
 const accrued = await client.accrueChests('world:chatgpt');
 assert.equal(accrued.dropCache.storedCrates, 0);
 
+const localSubmitted = await client.submitLocalSeatCommand({
+  participantId: 'world:chatgpt',
+  regionSeatId: 'seat-1',
+  expectedRevision: 0,
+  intent: { actionId: 'gather-scrap', cursorXM: 3, cursorZM: 4, stepCount: 160 }
+});
+assert.equal(localSubmitted.revision, 1);
+assert.equal(new URL(calls[4].url).pathname, '/api/world/local-seat/command');
+assert.deepEqual(JSON.parse(calls[4].options.body), {
+  participantId: 'world:chatgpt',
+  regionSeatId: 'seat-1',
+  intent: { actionId: 'gather-scrap', cursorXM: 3, cursorZM: 4, stepCount: 160 },
+  expectedRevision: 0
+});
+
 const submitted = await client.submitCommand({
   participantId: 'world:chatgpt',
   commandId: 'browser-claim-1',
@@ -49,7 +65,7 @@ const submitted = await client.submitCommand({
   expectedRevision: 5
 });
 assert.equal(submitted.actorId, 'world:chatgpt');
-assert.deepEqual(JSON.parse(calls[4].options.body), {
+assert.deepEqual(JSON.parse(calls[5].options.body), {
   participantId: 'world:chatgpt',
   commandId: 'browser-claim-1',
   eventType: 'territory.claim',
@@ -64,6 +80,8 @@ await assert.rejects(
 assert.throws(() => client.enterGuest({ sessionId: 'x', controllerKind: 'admin' }), /unsupported controllerKind/);
 assert.throws(() => client.openChests('world:chatgpt', 0), /count must be an integer/);
 assert.throws(() => client.submitCommand({ participantId: 'world:chatgpt', commandId: 'x', eventType: 'territory.claim', expectedRevision: -1 }), /expectedRevision/);
+assert.throws(() => client.submitLocalSeatCommand({ participantId: 'world:chatgpt', intent: {}, expectedRevision: -1 }), /expectedRevision/);
+assert.throws(() => client.submitLocalSeatCommand({ participantId: 'world:chatgpt', intent: null, expectedRevision: 0 }), /intent object required/);
 
 const originalFetch = globalThis.fetch;
 try {

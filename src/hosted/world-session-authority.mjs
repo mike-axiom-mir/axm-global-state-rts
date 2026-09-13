@@ -108,6 +108,10 @@ export class WorldSessionAuthority {
     return this.localSeats.status(options);
   }
 
+  submitLocalSeatCommand(options = {}) {
+    return this.localSeats.submitBoundCommand(options);
+  }
+
   accrueChests(participantId, nowMs) {
     const result = this.participants.accrueChests(participantId, nowMs);
     const changed = (result.result?.added || 0) > 0

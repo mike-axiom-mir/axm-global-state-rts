@@ -40,6 +40,17 @@ function localSeatStatusCode(result) {
   return 400;
 }
 
+function localSeatMutationStatus(result) {
+  if (result?.accepted) return 200;
+  if (result?.reason === 'participant-action-rate-limited') return 429;
+  if (result?.reason === 'local-seat-not-bound') return 404;
+  if ([
+    'participant-local-seat-binding-mismatch',
+    'local-authority-revision-conflict'
+  ].includes(result?.reason)) return 409;
+  return 400;
+}
+
 export class WorldHttpApiService {
   constructor({ authority, writeMode = 'off', clock = () => Date.now() } = {}) {
     if (!authority?.participants || !authority?.sharedState || typeof authority.submitParticipantCommand !== 'function') {
@@ -216,6 +227,17 @@ export class WorldHttpApiService {
             expectedControllerKind: body.expectedControllerKind
           });
           return response(localSeatStatusCode(result), result);
+        }
+
+        if (route === '/api/world/local-seat/command') {
+          if (typeof this.authority.submitLocalSeatCommand !== 'function') return response(501, { error: 'local seat command authority unavailable' });
+          const result = this.authority.submitLocalSeatCommand({
+            participantId: body.participantId,
+            regionSeatId: body.regionSeatId,
+            intent: body.intent,
+            expectedRevision: body.expectedRevision
+          });
+          return response(localSeatMutationStatus(result), result);
         }
 
         if (route === '/api/world/command') {

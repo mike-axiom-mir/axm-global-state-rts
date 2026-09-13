@@ -12,6 +12,12 @@ function controllerKind(value) {
   return kind;
 }
 
+function nonNegativeInteger(value, label) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 0) throw new RangeError(`${label} must be a non-negative integer`);
+  return number;
+}
+
 function freezeJson(value) {
   if (value === null || value === undefined || typeof value !== 'object') return value;
   if (Array.isArray(value)) return Object.freeze(value.map(freezeJson));
@@ -55,7 +61,7 @@ export class WorldBrowserClient {
       payload = null;
     }
     if (!response.ok) {
-      throw new WorldBrowserApiError(payload?.error || `world API request failed (${response.status})`, {
+      throw new WorldBrowserApiError(payload?.error || payload?.reason || `world API request failed (${response.status})`, {
         status: response.status,
         body: payload
       });
@@ -138,6 +144,18 @@ export class WorldBrowserClient {
         ...(expectedControllerKind === null
           ? {}
           : { expectedControllerKind: controllerKind(expectedControllerKind) })
+      }
+    });
+  }
+
+  submitLocalSeatCommand({ participantId, regionSeatId = 'seat-1', intent, expectedRevision } = {}) {
+    if (!intent || typeof intent !== 'object' || Array.isArray(intent)) throw new TypeError('intent object required');
+    return this.#request('POST', '/api/world/local-seat/command', {
+      body: {
+        participantId: nonEmpty(participantId, 'participantId'),
+        regionSeatId: nonEmpty(regionSeatId, 'regionSeatId'),
+        intent,
+        expectedRevision: nonNegativeInteger(expectedRevision, 'expectedRevision')
       }
     });
   }

@@ -15,11 +15,15 @@ export const LOCAL_REGION_COMMAND_JOURNAL_AUTHORITY_SCHEMA =
   'axm.global-state-rts.local-region-command-journal-authority/v0.1';
 export const LOCAL_REGION_COMMAND_JOURNAL_ENTRY_SCHEMA =
   'axm.global-state-rts.local-region-command-journal-entry/v0.1';
+export const LOCAL_REGION_SALVAGE_DEBIT_JOURNAL_ENTRY_SCHEMA =
+  'axm.global-state-rts.local-region-salvage-debit-entry/v0.1';
 export const LOCAL_REGION_COMMAND_JOURNAL_MAX_COMMANDS = 128;
 
 const ACTIONS = Object.freeze(['gather-scrap', 'explore', 'repair-core']);
 const CONTROLLER_KINDS = Object.freeze(['human', 'machine']);
 const INTENT_KEYS = Object.freeze(['actionId', 'cursorXM', 'cursorZM', 'stepCount']);
+const SCRAP_MILLI_PER_UNIT = 1000;
+const SCRAP_EPSILON = 1e-9;
 
 function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -52,6 +56,12 @@ function finite(value, label) {
 function nonNegativeInteger(value, label) {
   const number = Number(value);
   if (!Number.isInteger(number) || number < 0) throw new RangeError(`${label} must be a non-negative integer`);
+  return number;
+}
+
+function positiveInteger(value, label) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number <= 0) throw new RangeError(`${label} must be a positive integer`);
   return number;
 }
 
@@ -130,9 +140,28 @@ function physicalCommandDigest({ previousStateHash, intent, regionSeatId, worldH
   });
 }
 
+function salvageDebitDigest({ previousStateHash, transferId, amountMilli, regionSeatId, worldHourIndex, lightingPhase }) {
+  return sha256Canonical({
+    schema: LOCAL_REGION_SALVAGE_DEBIT_JOURNAL_ENTRY_SCHEMA,
+    previousStateHash,
+    transferId,
+    amountMilli,
+    regionSeatId,
+    worldHourIndex,
+    lightingPhase
+  });
+}
+
 function admissionDigest(physicalDigest, participant) {
   return sha256Canonical({
     physicalCommandDigest: physicalDigest,
+    participant
+  });
+}
+
+function salvageDebitAdmissionDigest(localDebitDigest, participant) {
+  return sha256Canonical({
+    localDebitDigest,
     participant
   });
 }
@@ -158,6 +187,28 @@ function entryHashInput(entry) {
   };
 }
 
+function salvageDebitEntryHashInput(entry) {
+  return {
+    schema: entry.schema,
+    revision: entry.revision,
+    commandId: entry.commandId,
+    participantId: entry.participantId,
+    controllerKind: entry.controllerKind,
+    regionSeatId: entry.regionSeatId,
+    genesisDigest: entry.genesisDigest,
+    worldHourIndex: entry.worldHourIndex,
+    lightingPhase: entry.lightingPhase,
+    transferId: entry.transferId,
+    amountMilli: entry.amountMilli,
+    localDebitDigest: entry.localDebitDigest,
+    admissionDigest: entry.admissionDigest,
+    recordedAtMs: entry.recordedAtMs,
+    previousStateHash: entry.previousStateHash,
+    stateHash: entry.stateHash,
+    previousHash: entry.previousHash
+  };
+}
+
 function applyPhysicalCommand(simulation, intent, worldHourIndex) {
   const lightingPhase = lightingPhaseForWorldHour(worldHourIndex);
   simulation.setLightingPhase(lightingPhase);
@@ -170,6 +221,34 @@ function applyPhysicalCommand(simulation, intent, worldHourIndex) {
   return Object.freeze({ accepted: true, action, lightingPhase });
 }
 
+function availableStoredScrapMilli(simulation) {
+  return Math.max(0, Math.floor((simulation.storage.scrap + SCRAP_EPSILON) * SCRAP_MILLI_PER_UNIT));
+}
+
+function applySalvageDebit(simulation, amountMilli, worldHourIndex) {
+  const lightingPhase = lightingPhaseForWorldHour(worldHourIndex);
+  simulation.setLightingPhase(lightingPhase);
+  const availableScrapMilli = availableStoredScrapMilli(simulation);
+  if (amountMilli > availableScrapMilli) {
+    return Object.freeze({
+      accepted: false,
+      reason: 'insufficient-local-scrap-for-transfer',
+      amountMilli,
+      availableScrapMilli,
+      lightingPhase
+    });
+  }
+  simulation.storage.scrap = Math.max(0, simulation.storage.scrap - amountMilli / SCRAP_MILLI_PER_UNIT);
+  simulation.revision += 1;
+  return Object.freeze({
+    accepted: true,
+    amountMilli,
+    availableBeforeMilli: availableScrapMilli,
+    availableAfterMilli: availableStoredScrapMilli(simulation),
+    lightingPhase
+  });
+}
+
 function replayEntries(entries, { regionSeatId, genesisWorldHourIndex }) {
   const genesis = createGenesis(regionSeatId, genesisWorldHourIndex);
   const simulation = genesis.simulation;
@@ -180,7 +259,9 @@ function replayEntries(entries, { regionSeatId, genesisWorldHourIndex }) {
     const entry = entries[index];
     const revision = index + 1;
     if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new TypeError(`local journal entry ${revision} must be an object`);
-    if (entry.schema !== LOCAL_REGION_COMMAND_JOURNAL_ENTRY_SCHEMA) throw new Error(`local journal schema mismatch at revision ${revision}`);
+    const physicalEntry = entry.schema === LOCAL_REGION_COMMAND_JOURNAL_ENTRY_SCHEMA;
+    const salvageDebitEntry = entry.schema === LOCAL_REGION_SALVAGE_DEBIT_JOURNAL_ENTRY_SCHEMA;
+    if (!physicalEntry && !salvageDebitEntry) throw new Error(`local journal schema mismatch at revision ${revision}`);
     if (entry.revision !== revision) throw new Error(`local journal revision mismatch at ${revision}`);
     if ((entry.previousHash ?? null) !== (previousHash ?? null)) throw new Error(`local journal chain broken at revision ${revision}`);
     if (entry.regionSeatId !== genesis.regionSeatId) throw new Error(`local journal seat mismatch at revision ${revision}`);
@@ -191,32 +272,57 @@ function replayEntries(entries, { regionSeatId, genesisWorldHourIndex }) {
       participantId: entry.participantId,
       controllerKind: entry.controllerKind
     });
-    const intent = normalizeIntent(entry.physicalIntent);
     const worldHourIndex = nonNegativeInteger(entry.worldHourIndex, `entry ${revision} worldHourIndex`);
     const lightingPhase = lightingPhaseForWorldHour(worldHourIndex);
     if (entry.lightingPhase !== lightingPhase) throw new Error(`local journal lighting mismatch at revision ${revision}`);
 
-    const actualPhysicalDigest = physicalCommandDigest({
-      previousStateHash: currentStateHash,
-      intent,
-      regionSeatId: genesis.regionSeatId,
-      worldHourIndex,
-      lightingPhase
-    });
-    if (entry.physicalCommandDigest !== actualPhysicalDigest) throw new Error(`local journal physical command digest mismatch at revision ${revision}`);
-    const actualAdmissionDigest = admissionDigest(actualPhysicalDigest, participant);
-    if (entry.admissionDigest !== actualAdmissionDigest) throw new Error(`local journal admission digest mismatch at revision ${revision}`);
+    if (physicalEntry) {
+      const intent = normalizeIntent(entry.physicalIntent);
+      const actualPhysicalDigest = physicalCommandDigest({
+        previousStateHash: currentStateHash,
+        intent,
+        regionSeatId: genesis.regionSeatId,
+        worldHourIndex,
+        lightingPhase
+      });
+      if (entry.physicalCommandDigest !== actualPhysicalDigest) throw new Error(`local journal physical command digest mismatch at revision ${revision}`);
+      const actualAdmissionDigest = admissionDigest(actualPhysicalDigest, participant);
+      if (entry.admissionDigest !== actualAdmissionDigest) throw new Error(`local journal admission digest mismatch at revision ${revision}`);
 
-    const applied = applyPhysicalCommand(simulation, intent, worldHourIndex);
-    if (!applied.accepted) throw new Error(`persisted local command rejected during replay at revision ${revision}: ${applied.reason}`);
-    const actualStateHash = stateHash(simulation);
-    if (entry.stateHash !== actualStateHash) throw new Error(`local journal state hash mismatch at revision ${revision}`);
+      const applied = applyPhysicalCommand(simulation, intent, worldHourIndex);
+      if (!applied.accepted) throw new Error(`persisted local command rejected during replay at revision ${revision}: ${applied.reason}`);
+      const actualStateHash = stateHash(simulation);
+      if (entry.stateHash !== actualStateHash) throw new Error(`local journal state hash mismatch at revision ${revision}`);
 
-    const actualEntryHash = sha256Canonical(entryHashInput(entry));
-    if (entry.entryHash !== actualEntryHash) throw new Error(`local journal entry hash mismatch at revision ${revision}`);
+      const actualEntryHash = sha256Canonical(entryHashInput(entry));
+      if (entry.entryHash !== actualEntryHash) throw new Error(`local journal entry hash mismatch at revision ${revision}`);
+      currentStateHash = actualStateHash;
+    } else {
+      const transferId = nonEmpty(entry.transferId, `entry ${revision} transferId`);
+      const amountMilli = positiveInteger(entry.amountMilli, `entry ${revision} amountMilli`);
+      const actualLocalDebitDigest = salvageDebitDigest({
+        previousStateHash: currentStateHash,
+        transferId,
+        amountMilli,
+        regionSeatId: genesis.regionSeatId,
+        worldHourIndex,
+        lightingPhase
+      });
+      if (entry.localDebitDigest !== actualLocalDebitDigest) throw new Error(`local journal salvage debit digest mismatch at revision ${revision}`);
+      const actualAdmissionDigest = salvageDebitAdmissionDigest(actualLocalDebitDigest, participant);
+      if (entry.admissionDigest !== actualAdmissionDigest) throw new Error(`local journal salvage debit admission digest mismatch at revision ${revision}`);
+
+      const applied = applySalvageDebit(simulation, amountMilli, worldHourIndex);
+      if (!applied.accepted) throw new Error(`persisted local salvage debit rejected during replay at revision ${revision}: ${applied.reason}`);
+      const actualStateHash = stateHash(simulation);
+      if (entry.stateHash !== actualStateHash) throw new Error(`local journal state hash mismatch at revision ${revision}`);
+
+      const actualEntryHash = sha256Canonical(salvageDebitEntryHashInput(entry));
+      if (entry.entryHash !== actualEntryHash) throw new Error(`local journal entry hash mismatch at revision ${revision}`);
+      currentStateHash = actualStateHash;
+    }
 
     previousHash = entry.entryHash;
-    currentStateHash = actualStateHash;
   }
 
   return {
@@ -395,6 +501,195 @@ export class LocalRegionCommandJournalAuthority {
       admissionDigest: actorAdmissionDigest,
       entry,
       outcome: this.simulation.snapshot()
+    });
+  }
+
+  submitSalvageDebit({ transferId, amountMilli } = {}, {
+    participant,
+    worldHourIndex,
+    expectedRevision = this.revision,
+    expectedStateHash,
+    recordedAtMs = this.clock()
+  } = {}) {
+    const id = nonEmpty(transferId, 'transferId');
+    const amount = positiveInteger(amountMilli, 'amountMilli');
+    const actor = normalizeParticipant(participant);
+    const hostWorldHour = nonNegativeInteger(worldHourIndex, 'worldHourIndex');
+    const expected = nonNegativeInteger(expectedRevision, 'expectedRevision');
+    const expectedState = nonEmpty(expectedStateHash, 'expectedStateHash');
+    const recorded = finite(recordedAtMs, 'recordedAtMs');
+    if (recorded < 0) throw new RangeError('recordedAtMs must be non-negative');
+
+    const entries = this.store.readAll();
+    const replay = replayEntries(entries, {
+      regionSeatId: this.regionSeatId,
+      genesisWorldHourIndex: this.genesisWorldHourIndex
+    });
+    const existing = entries.find(entry =>
+      entry?.schema === LOCAL_REGION_SALVAGE_DEBIT_JOURNAL_ENTRY_SCHEMA
+      && entry.transferId === id
+    ) || null;
+    if (existing) {
+      this.#applyReplay(replay);
+      const sameRequest = existing.participantId === actor.participantId
+        && existing.controllerKind === actor.controllerKind
+        && existing.amountMilli === amount;
+      return Object.freeze({
+        accepted: sameRequest,
+        reused: sameRequest,
+        reason: sameRequest ? null : 'local-salvage-debit-transfer-id-conflict',
+        authority: 'host-owned-local-rts-salvage-debit-v0',
+        persistence: 'host-journaled-local-storage-debit-no-global-credit',
+        transferId: id,
+        amountMilli: amount,
+        sourceRevision: existing.revision - 1,
+        sourceStateHash: existing.previousStateHash,
+        resultingLocalRevision: existing.revision,
+        resultingLocalStateHash: existing.stateHash,
+        localDebitDigest: existing.localDebitDigest,
+        admissionDigest: existing.admissionDigest,
+        entry: existing,
+        currentRevision: replay.revision,
+        currentStateHash: replay.stateHash
+      });
+    }
+
+    if (expected !== replay.revision) {
+      this.#applyReplay(replay);
+      return Object.freeze({
+        accepted: false,
+        reason: 'local-authority-revision-conflict',
+        transferId: id,
+        expectedRevision: expected,
+        currentRevision: replay.revision,
+        headHash: replay.headHash,
+        stateHash: replay.stateHash
+      });
+    }
+    if (expectedState !== replay.stateHash) {
+      this.#applyReplay(replay);
+      return Object.freeze({
+        accepted: false,
+        reason: 'local-authority-state-conflict',
+        transferId: id,
+        expectedStateHash: expectedState,
+        currentStateHash: replay.stateHash,
+        currentRevision: replay.revision,
+        headHash: replay.headHash
+      });
+    }
+    if (replay.revision >= this.maxCommands) {
+      this.#applyReplay(replay);
+      return Object.freeze({
+        accepted: false,
+        reason: 'local-journal-cap-reached',
+        transferId: id,
+        revision: replay.revision,
+        maxCommands: this.maxCommands,
+        headHash: replay.headHash,
+        stateHash: replay.stateHash
+      });
+    }
+
+    const sourceRevision = replay.revision;
+    const sourceStateHash = replay.stateHash;
+    const lightingPhase = lightingPhaseForWorldHour(hostWorldHour);
+    const localDebitDigest = salvageDebitDigest({
+      previousStateHash: sourceStateHash,
+      transferId: id,
+      amountMilli: amount,
+      regionSeatId: this.regionSeatId,
+      worldHourIndex: hostWorldHour,
+      lightingPhase
+    });
+    const actorAdmissionDigest = salvageDebitAdmissionDigest(localDebitDigest, actor);
+    const applied = applySalvageDebit(replay.simulation, amount, hostWorldHour);
+    if (!applied.accepted) {
+      this.#rehydrate();
+      return Object.freeze({
+        accepted: false,
+        reason: applied.reason,
+        transferId: id,
+        amountMilli: amount,
+        availableScrapMilli: applied.availableScrapMilli,
+        revision: this.revision,
+        stateHash: this.stateHash,
+        lightingPhase
+      });
+    }
+
+    const nextRevision = replay.revision + 1;
+    const nextStateHash = stateHash(replay.simulation);
+    const draft = {
+      schema: LOCAL_REGION_SALVAGE_DEBIT_JOURNAL_ENTRY_SCHEMA,
+      revision: nextRevision,
+      commandId: `local:${this.regionSeatId}:salvage-debit:${id}:r${nextRevision}`,
+      participantId: actor.participantId,
+      controllerKind: actor.controllerKind,
+      regionSeatId: this.regionSeatId,
+      genesisDigest: replay.genesis.digest,
+      worldHourIndex: hostWorldHour,
+      lightingPhase,
+      transferId: id,
+      amountMilli: amount,
+      localDebitDigest,
+      admissionDigest: actorAdmissionDigest,
+      recordedAtMs: recorded,
+      previousStateHash: sourceStateHash,
+      stateHash: nextStateHash,
+      previousHash: replay.headHash
+    };
+    const entry = Object.freeze({
+      ...draft,
+      entryHash: sha256Canonical(salvageDebitEntryHashInput(draft))
+    });
+
+    let append;
+    try {
+      append = this.store.append(entry, {
+        expectedRevision: replay.revision,
+        expectedHeadHash: replay.headHash
+      });
+    } catch (error) {
+      this.#rehydrate();
+      throw error;
+    }
+    if (!append.accepted) {
+      this.#rehydrate();
+      return Object.freeze({
+        accepted: false,
+        reason: append.reason,
+        transferId: id,
+        currentRevision: this.revision,
+        headHash: this.headHash,
+        stateHash: this.stateHash
+      });
+    }
+
+    this.genesis = replay.genesis;
+    this.simulation = replay.simulation;
+    this.revision = nextRevision;
+    this.headHash = entry.entryHash;
+    this.stateHash = nextStateHash;
+
+    return Object.freeze({
+      accepted: true,
+      reused: false,
+      authority: 'host-owned-local-rts-salvage-debit-v0',
+      persistence: 'host-journaled-local-storage-debit-no-global-credit',
+      transferId: id,
+      amountMilli: amount,
+      amountScrap: amount / SCRAP_MILLI_PER_UNIT,
+      sourceRevision,
+      sourceStateHash,
+      resultingLocalRevision: this.revision,
+      resultingLocalStateHash: this.stateHash,
+      headHash: this.headHash,
+      localDebitDigest,
+      admissionDigest: actorAdmissionDigest,
+      entry,
+      outcome: this.simulation.snapshot(),
+      truthBoundary: 'real-host-local-storage-debit-only-no-reservation-consumption-no-global-credit'
     });
   }
 

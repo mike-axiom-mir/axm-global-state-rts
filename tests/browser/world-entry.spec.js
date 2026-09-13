@@ -28,6 +28,8 @@ test('human guest and machine world-account use the same browser world-entry sur
   await expect(page.locator('#profileStatus')).toContainText('guest · human');
   await expect(page.locator('#chestStatus')).toContainText('stored');
   await expect(page.locator('#chestStatus')).toContainText('accounted through world hour');
+  await expect(page.locator('#chestStatus')).toContainText('host-hour accounting auto-checks while this page is open');
+  await expect(page.locator('#chestStatus')).toContainText('opening remains manual');
   await expect(page.locator('#continueToRts')).toBeEnabled();
 
   await page.locator('#controllerKind').selectOption('machine');
@@ -152,6 +154,62 @@ test('human guest and machine world-account use the same browser world-entry sur
   expect(worldMetaAfterClaim.body.sharedState.revision).toBe(1);
 
   await page.screenshot({ path: 'test-results/global-state-rts-world-bound-seat.png', fullPage: true });
+  expect(failures, failures.join('\n')).toEqual([]);
+});
+
+test('active participant auto-checks host chest accounting at a world-hour boundary without auto-opening', async ({ page }) => {
+  const failures = captureRuntimeFailures(page);
+  let metaCalls = 0;
+  let accrueRequests = 0;
+  let openRequests = 0;
+
+  page.on('request', request => {
+    const pathname = new URL(request.url()).pathname;
+    if (pathname === '/api/world/chests/accrue') accrueRequests += 1;
+    if (pathname === '/api/world/chests/open') openRequests += 1;
+  });
+
+  await page.route('**/api/world/meta', async route => {
+    const response = await route.fetch();
+    const body = await response.json();
+    metaCalls += 1;
+    const remaining = metaCalls === 2 ? 30 : 60_000;
+    await route.fulfill({
+      response,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ...body,
+        worldTime: {
+          ...body.worldTime,
+          msUntilNextHour: remaining
+        }
+      })
+    });
+  });
+
+  const response = await page.goto('http://127.0.0.1:4174/game/world-entry.html', { waitUntil: 'networkidle' });
+  expect(response?.ok()).toBe(true);
+  await page.locator('#controllerKind').selectOption('machine');
+  await page.locator('#displayName').fill('Boundary Machine');
+  await page.locator('#accountId').fill('boundary-machine');
+  await page.locator('#enterAccount').click();
+  await expect(page.locator('#entryStatus')).toContainText('Entered shared world as world-account');
+  await expect(page.locator('#chestStatus')).toContainText('host-hour accounting auto-checks while this page is open');
+  await expect(page.locator('#chestStatus')).toContainText('opening remains manual');
+
+  await expect.poll(() => accrueRequests, { timeout: 5000 }).toBeGreaterThanOrEqual(1);
+  expect(openRequests).toBe(0);
+  await expect(page.locator('#entryStatus')).toContainText('Host boundary chest sync');
+  await expect(page.locator('#entryStatus')).toContainText('opening remains manual');
+
+  const evidence = await page.evaluate(() => window.__AXM_WORLD_ENTRY__.boundarySyncEvidence());
+  expect(evidence.accepted).toBe(true);
+  expect(evidence.participantId).toBe('world:boundary-machine');
+  expect(evidence.accrued).toBe(true);
+  expect(evidence.openedAutomatically).toBe(false);
+  expect(evidence.authority).toBe('host-world-time-chest-accounting');
+  expect(Number.isInteger(evidence.worldHourIndex)).toBe(true);
+  expect(openRequests).toBe(0);
   expect(failures, failures.join('\n')).toEqual([]);
 });
 

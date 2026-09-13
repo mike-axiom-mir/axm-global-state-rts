@@ -1,0 +1,75 @@
+name: Global State RTS browser world entry
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'game/world-entry.html'
+      - 'game/world-entry.mjs'
+      - 'src/session/world-browser-client.mjs'
+      - 'tests/world-browser-client-selftest.mjs'
+      - 'tests/browser/world-entry.spec.js'
+      - '.github/workflows/world-browser-entry.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  world-browser-entry:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run deterministic and source gates
+        run: |
+          npm test
+          node --check src/session/world-browser-client.mjs
+          node --check game/world-entry.mjs
+          node --check tests/browser/world-entry.spec.js
+          node tests/world-browser-client-selftest.mjs
+
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start development world host
+        run: |
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-world-entry-journal.json \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-world-entry-accounts.json \
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-world-entry.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-world-entry.log
+          exit 1
+
+      - name: Exercise human and machine world entry in Chromium
+        run: npx playwright test tests/browser/world-entry.spec.js --reporter=line
+
+      - name: Preserve browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-world-entry
+          path: |
+            test-results/global-state-rts-world-entry.png
+            /tmp/axm-global-state-rts-world-entry.log
+          if-no-files-found: warn
+          retention-days: 14

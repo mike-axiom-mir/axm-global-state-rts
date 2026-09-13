@@ -1,0 +1,132 @@
+name: Workshop runtime LOD ladder target render
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'tests/browser/workshop-runtime-lod-ladder.spec.js'
+      - '.github/workflows/workshop-runtime-lod-ladder.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  workshop-runtime-lod-ladder:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    env:
+      UC_SOURCE_COMMIT: 2b9c55e9c77fa77767fbd1e739b25edc9298a233
+    steps:
+      - name: Check out exact RTS candidate and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Fetch exact merged Universal Creation LOD source
+        run: |
+          rm -rf /tmp/axm-universal-creation
+          git init /tmp/axm-universal-creation
+          git -C /tmp/axm-universal-creation remote add origin https://github.com/mike-axiom-mir/axm-universal-creation.git
+          git -C /tmp/axm-universal-creation fetch --depth=1 origin "$UC_SOURCE_COMMIT"
+          git -C /tmp/axm-universal-creation checkout --detach FETCH_HEAD
+          test "$(git -C /tmp/axm-universal-creation rev-parse HEAD)" = "$UC_SOURCE_COMMIT"
+
+      - name: Provision Universal Creation Blender route
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'numpy==1.26.4' 'Pillow>=10,<12' 'bpy==4.3.0'
+          python - <<'PY'
+          import bpy
+          assert bpy.app.version[:2] == (4, 3)
+          print('bpy', bpy.app.version_string)
+          PY
+
+      - name: Rebuild full merged workshop LOD ladder
+        run: |
+          rm -rf "$GITHUB_WORKSPACE/runtime-assets/workshop-lod-ladder"
+          mkdir -p "$GITHUB_WORKSPACE/runtime-assets"
+          cd /tmp/axm-universal-creation
+          PYTHONPATH=src python -m axm_uc rts-workshop-polish "$GITHUB_WORKSPACE/runtime-assets/workshop-lod-ladder" \
+            --python "$(command -v python)" \
+            --font /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf \
+            --resolution 512 \
+            --samples 8
+
+      - name: Independently verify producer LOD ladder before target render
+        run: |
+          PYTHONPATH=/tmp/axm-universal-creation/tools/blender \
+            python /tmp/axm-universal-creation/tools/blender/verify_rts_workshop.py "$GITHUB_WORKSPACE/runtime-assets/workshop-lod-ladder"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root=Path('runtime-assets/workshop-lod-ladder')
+          inspection=json.loads((root/'glb-inspection.json').read_text())
+          gates=json.loads((root/'game-readiness-gates.json').read_text())
+          expected={
+            'improvised-workshop-tactical.glb': 30830,
+            'improvised-workshop-rts.glb': 9268,
+            'improvised-workshop-far.glb': 1868,
+          }
+          for name, triangles in expected.items():
+            assert inspection[name]['triangles'] == triangles, (name, inspection[name]['triangles'])
+          assert gates['gates']['runtime_lod_target_bands'] == 'TESTED'
+          assert gates['gates']['lod_perceptual_equivalence'] == 'NOT_TESTED'
+          assert gates['gates']['target_rts_integration'] == 'NOT_TESTED'
+          print(json.dumps(gates['measured']['runtime_lod_target_bands'], indent=2))
+          PY
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install pinned Playwright browser route
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start target with all new runtime tiers
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-workshop-lod-ladder.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-lod-ladder/improvised-workshop-tactical.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-lod-ladder/improvised-workshop-rts.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-lod-ladder/improvised-workshop-far.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-lod-ladder/verification.json > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-workshop-lod-ladder.log
+          exit 1
+
+      - name: Render tactical RTS and far tiers in target Chromium
+        run: npx playwright test tests/browser/workshop-runtime-lod-ladder.spec.js --reporter=line
+
+      - name: Preserve target LOD visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workshop-runtime-lod-ladder-target-evidence
+          path: |
+            test-results/workshop-runtime-lod-ladder-evidence.json
+            test-results/workshop-runtime-tactical-1seat.png
+            test-results/workshop-runtime-rts-1seat.png
+            test-results/workshop-runtime-far-1seat.png
+            test-results/workshop-runtime-tactical-4seat.png
+            test-results/workshop-runtime-rts-4seat.png
+            test-results/workshop-runtime-far-4seat.png
+            runtime-assets/workshop-lod-ladder/glb-inspection.json
+            runtime-assets/workshop-lod-ladder/game-readiness-gates.json
+            runtime-assets/workshop-lod-ladder/verification.json
+            /tmp/axm-global-state-rts-workshop-lod-ladder.log
+          if-no-files-found: warn
+          retention-days: 14

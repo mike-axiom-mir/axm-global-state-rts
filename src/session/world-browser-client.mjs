@@ -81,6 +81,12 @@ export class WorldBrowserClient {
     return this.#request('GET', '/api/world/career', { query: { participantId: nonEmpty(participantId, 'participantId') } });
   }
 
+  verifiedLocalSalvage(participantId) {
+    return this.#request('GET', '/api/world/local-salvage', {
+      query: { participantId: nonEmpty(participantId, 'participantId') }
+    });
+  }
+
   localSeatStatus({ regionSeatId = 'seat-1', participantId = null } = {}) {
     return this.#request('GET', '/api/world/local-seat', {
       query: {
@@ -165,6 +171,16 @@ export class WorldBrowserClient {
         participantId: nonEmpty(participantId, 'participantId'),
         regionSeatId: nonEmpty(regionSeatId, 'regionSeatId'),
         intent,
+        expectedRevision: nonNegativeInteger(expectedRevision, 'expectedRevision')
+      }
+    });
+  }
+
+  recordVerifiedLocalSalvage({ participantId, regionSeatId = 'seat-1', expectedRevision } = {}) {
+    return this.#request('POST', '/api/world/local-seat/salvage-record', {
+      body: {
+        participantId: nonEmpty(participantId, 'participantId'),
+        regionSeatId: nonEmpty(regionSeatId, 'regionSeatId'),
         expectedRevision: nonNegativeInteger(expectedRevision, 'expectedRevision')
       }
     });

@@ -8,6 +8,8 @@ const responses = [
   { status: 200, body: { participant: { participantId: 'world:chatgpt', profileKind: 'world-account', controllerKind: 'machine' } } },
   { status: 200, body: { participantId: 'world:chatgpt', result: { added: 0 }, dropCache: { storedCrates: 0 } } },
   { status: 200, body: { accepted: true, participantId: 'world:chatgpt', regionSeatId: 'seat-1', revision: 1 } },
+  { status: 200, body: { accepted: true, participantId: 'world:chatgpt', summary: { scrapMilli: 24000 } } },
+  { status: 200, body: { accepted: true, participantId: 'world:chatgpt', regionSeatId: 'seat-1', source: { revision: 1 }, summary: { scrapMilli: 24000 } } },
   { status: 200, body: { accepted: true, participantId: 'world:chatgpt', actorId: 'world:chatgpt', eventType: 'territory.claim' } },
   { status: 400, body: { error: 'not enough stored crates' } }
 ];
@@ -57,6 +59,24 @@ assert.deepEqual(JSON.parse(calls[4].options.body), {
   expectedRevision: 0
 });
 
+const salvageSummary = await client.verifiedLocalSalvage('world:chatgpt');
+assert.equal(salvageSummary.summary.scrapMilli, 24000);
+assert.equal(new URL(calls[5].url).pathname, '/api/world/local-salvage');
+assert.equal(new URL(calls[5].url).searchParams.get('participantId'), 'world:chatgpt');
+
+const salvageRecord = await client.recordVerifiedLocalSalvage({
+  participantId: 'world:chatgpt',
+  regionSeatId: 'seat-1',
+  expectedRevision: 1
+});
+assert.equal(salvageRecord.source.revision, 1);
+assert.equal(new URL(calls[6].url).pathname, '/api/world/local-seat/salvage-record');
+assert.deepEqual(JSON.parse(calls[6].options.body), {
+  participantId: 'world:chatgpt',
+  regionSeatId: 'seat-1',
+  expectedRevision: 1
+});
+
 const submitted = await client.submitCommand({
   participantId: 'world:chatgpt',
   commandId: 'browser-claim-1',
@@ -65,7 +85,7 @@ const submitted = await client.submitCommand({
   expectedRevision: 5
 });
 assert.equal(submitted.actorId, 'world:chatgpt');
-assert.deepEqual(JSON.parse(calls[5].options.body), {
+assert.deepEqual(JSON.parse(calls[7].options.body), {
   participantId: 'world:chatgpt',
   commandId: 'browser-claim-1',
   eventType: 'territory.claim',
@@ -82,6 +102,7 @@ assert.throws(() => client.openChests('world:chatgpt', 0), /count must be an int
 assert.throws(() => client.submitCommand({ participantId: 'world:chatgpt', commandId: 'x', eventType: 'territory.claim', expectedRevision: -1 }), /expectedRevision/);
 assert.throws(() => client.submitLocalSeatCommand({ participantId: 'world:chatgpt', intent: {}, expectedRevision: -1 }), /expectedRevision/);
 assert.throws(() => client.submitLocalSeatCommand({ participantId: 'world:chatgpt', intent: null, expectedRevision: 0 }), /intent object required/);
+assert.throws(() => client.recordVerifiedLocalSalvage({ participantId: 'world:chatgpt', expectedRevision: -1 }), /expectedRevision/);
 
 const originalFetch = globalThis.fetch;
 try {

@@ -43,6 +43,17 @@ const deniedCommand = disabled.handle({
 });
 assert.equal(deniedCommand.status, 403, 'host local-seat commands obey the development write switch');
 
+const deniedSalvageRecord = disabled.handle({
+  method: 'POST',
+  pathname: '/api/world/local-seat/salvage-record',
+  body: {
+    participantId: 'world:not-created',
+    regionSeatId: 'seat-1',
+    expectedRevision: 0
+  }
+});
+assert.equal(deniedSalvageRecord.status, 403, 'verified salvage recording obeys the development write switch');
+
 const humanEntry = dev.handle({
   method: 'POST',
   pathname: '/api/world/enter/guest',
@@ -67,6 +78,18 @@ const machineEntry = dev.handle({
 });
 assert.equal(machineEntry.status, 200);
 const machineId = machineEntry.body.participant.participantId;
+
+const guestSalvage = dev.handle({
+  method: 'POST',
+  pathname: '/api/world/local-seat/salvage-record',
+  body: {
+    participantId: humanId,
+    regionSeatId: 'seat-2',
+    expectedRevision: 0
+  }
+});
+assert.equal(guestSalvage.status, 400);
+assert.equal(guestSalvage.body.reason, 'verified-local-salvage-requires-world-account');
 
 const spoofKind = dev.handle({
   method: 'POST',
@@ -168,7 +191,7 @@ const hostGather = dev.handle({
     participantId: machineId,
     regionSeatId: 'seat-1',
     expectedRevision: 0,
-    intent: { actionId: 'gather-scrap', cursorXM: 0, cursorZM: 0, stepCount: 160 },
+    intent: { actionId: 'gather-scrap', cursorXM: 0, cursorZM: 0, stepCount: 800 },
     controllerKind: 'human',
     worldHourIndex: 999999
   }
@@ -181,9 +204,68 @@ assert.equal(hostGather.body.entry.controllerKind, 'machine', 'host participant 
 assert.equal(hostGather.body.entry.worldHourIndex, 22, 'host clock remains world-time authority');
 assert.equal(hostGather.body.worldTime.worldHourIndex, 22);
 assert.equal(hostGather.body.binding.participantId, machineId);
+assert.ok(hostGather.body.outcome.storage.scrap > 0, 'host-replayed gather must reach storage before recording positive salvage proof');
 assert.equal(
   hostGather.body.truthBoundary,
   'host-reproduced-local-journal-command-no-browser-state-equivalence-no-shared-world-promotion'
+);
+
+const salvageBeforeRecord = disabled.handle({
+  method: 'GET',
+  pathname: '/api/world/local-salvage',
+  searchParams: new URLSearchParams({ participantId: machineId })
+});
+assert.equal(salvageBeforeRecord.status, 200);
+assert.equal(salvageBeforeRecord.body.accepted, true);
+assert.equal(salvageBeforeRecord.body.summary.scrapMilli, 0);
+
+const salvageRecord = dev.handle({
+  method: 'POST',
+  pathname: '/api/world/local-seat/salvage-record',
+  body: {
+    participantId: machineId,
+    regionSeatId: 'seat-1',
+    expectedRevision: 1,
+    storageScrap: 999999,
+    controllerKind: 'human'
+  }
+});
+assert.equal(salvageRecord.status, 200);
+assert.equal(salvageRecord.body.accepted, true);
+assert.equal(salvageRecord.body.reused, false);
+assert.equal(salvageRecord.body.controllerKind, 'machine', 'controller kind is derived from the host participant record');
+assert.equal(salvageRecord.body.source.revision, 1);
+assert.equal(salvageRecord.body.source.stateHash, hostGather.body.stateHash);
+assert.equal(salvageRecord.body.summary.scrapMilli, Math.round(hostGather.body.outcome.storage.scrap * 1000));
+assert.equal(
+  salvageRecord.body.truthBoundary,
+  'host-journal-storage-high-water-recorded-on-world-account-no-local-debit-no-spendable-global-currency'
+);
+
+const duplicateSalvageRecord = dev.handle({
+  method: 'POST',
+  pathname: '/api/world/local-seat/salvage-record',
+  body: {
+    participantId: machineId,
+    regionSeatId: 'seat-1',
+    expectedRevision: 1
+  }
+});
+assert.equal(duplicateSalvageRecord.status, 200);
+assert.equal(duplicateSalvageRecord.body.reused, true);
+assert.equal(duplicateSalvageRecord.body.creditedScrapMilli, 0);
+assert.equal(duplicateSalvageRecord.body.summary.scrapMilli, salvageRecord.body.summary.scrapMilli);
+
+const salvageAfterRecord = disabled.handle({
+  method: 'GET',
+  pathname: '/api/world/local-salvage',
+  searchParams: new URLSearchParams({ participantId: machineId })
+});
+assert.equal(salvageAfterRecord.status, 200, 'verified salvage evidence stays readable when mutations are disabled');
+assert.equal(salvageAfterRecord.body.summary.scrapMilli, salvageRecord.body.summary.scrapMilli);
+assert.equal(
+  salvageAfterRecord.body.summary.persistenceMeaning,
+  'highest-host-verified-local-storage-scrap-per-seat-not-spendable-shared-economy'
 );
 
 const stale = dev.handle({
@@ -214,6 +296,8 @@ const meta = dev.handle({ method: 'GET', pathname: '/api/world/meta' });
 assert.equal(meta.status, 200);
 assert.equal(meta.body.localSeats.bindingCount, 1);
 assert.equal(meta.body.localSeats.persistence, 'host-process-binding-with-per-seat-journal-store');
+assert.equal(meta.body.verifiedLocalSalvage.accountCount, 1);
+assert.equal(meta.body.verifiedLocalSalvage.revision, 1);
 assert.equal(authority.authoritativeSnapshot().localSeats.bindingCount, 1);
 
 console.log(JSON.stringify({
@@ -224,7 +308,9 @@ console.log(JSON.stringify({
   currentWorldHourIndex: afterCommand.body.worldTime.worldHourIndex,
   journalRevision: afterCommand.body.journal.revision,
   stateHash: afterCommand.body.journal.stateHash,
+  verifiedSalvageMilli: salvageAfterRecord.body.summary.scrapMilli,
   continuity: afterCommand.body.continuity,
   commandTruthBoundary: hostGather.body.truthBoundary,
+  salvageTruthBoundary: salvageRecord.body.truthBoundary,
   checkpointTruthBoundary: afterCommand.body.truthBoundary
 }, null, 2));

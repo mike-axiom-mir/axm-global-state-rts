@@ -4,13 +4,13 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
 }
 
-test('authority-revalidated machine participant can journal and explicitly adopt a host checkpoint without silent reconciliation', async ({ page }) => {
+test('authority-revalidated machine participant can journal, record verified salvage, and explicitly adopt a host checkpoint without silent reconciliation', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/world-entry.html', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);
@@ -51,6 +51,7 @@ test('authority-revalidated machine participant can journal and explicitly adopt
   await expect(page.locator('#hostLocalCheckpointStatus')).toContainText('browser simulation is separate until explicit adoption');
   await expect(page.locator('#hostLocalGather')).toBeDisabled();
   await expect(page.locator('#hostLocalAdopt')).toBeDisabled();
+  await expect(page.locator('#hostLocalSalvage')).toBeDisabled();
 
   const localToggle = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitMachineAction({
     seatId: 'seat-1',
@@ -61,6 +62,7 @@ test('authority-revalidated machine participant can journal and explicitly adopt
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
   await expect(page.locator('#hostLocalGather')).toBeEnabled();
   await expect(page.locator('#hostLocalAdopt')).toBeEnabled();
+  await expect(page.locator('#hostLocalSalvage')).toBeDisabled();
 
   const localGather = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitMachineAction({
     seatId: 'seat-1',
@@ -109,6 +111,42 @@ test('authority-revalidated machine participant can journal and explicitly adopt
   await expect(page.locator('#hostLocalCheckpointStatus')).toContainText('journal r1');
   await expect(page.locator('#hostLocalCommandStatus')).toContainText('host journal gather accepted');
   await expect(page.locator('#hostLocalCommandStatus')).toContainText('browser-local state remains separate until adoption');
+  await expect(page.locator('#hostLocalSalvage')).toBeEnabled();
+
+  const salvageRecord = await page.evaluate(() => window.__AXM_HOST_LOCAL_SEAT__.recordVerifiedLocalSalvage());
+  expect(salvageRecord.accepted).toBe(true);
+  expect(salvageRecord.expectedRevision).toBe(1);
+  expect(salvageRecord.result.accepted).toBe(true);
+  expect(salvageRecord.result.reused).toBe(false);
+  expect(salvageRecord.result.controllerKind).toBe('machine');
+  expect(salvageRecord.result.source.revision).toBe(1);
+  expect(salvageRecord.result.source.stateHash).toBe(hostCommand.result.stateHash);
+  expect(salvageRecord.result.creditedScrapMilli).toBeGreaterThan(0);
+  expect(salvageRecord.result.summary.scrapMilli).toBe(salvageRecord.result.creditedScrapMilli);
+  expect(salvageRecord.result.truthBoundary).toBe('host-journal-storage-high-water-recorded-on-world-account-no-local-debit-no-spendable-global-currency');
+  expect(salvageRecord.summary.accepted).toBe(true);
+  expect(salvageRecord.summary.summary.scrapMilli).toBe(salvageRecord.result.summary.scrapMilli);
+  await expect(page.locator('#hostLocalSalvageStatus')).toContainText('persistent verified salvage');
+  await expect(page.locator('#hostLocalSalvageStatus')).toContainText('not spendable currency');
+  await expect(page.locator('#hostLocalSalvageStatus')).toContainText('local storage not debited');
+
+  const duplicateSalvage = await page.evaluate(() => window.__AXM_HOST_LOCAL_SEAT__.recordVerifiedLocalSalvage());
+  expect(duplicateSalvage.accepted).toBe(true);
+  expect(duplicateSalvage.result.accepted).toBe(true);
+  expect(duplicateSalvage.result.reused).toBe(true);
+  expect(duplicateSalvage.result.creditedScrapMilli).toBe(0);
+  expect(duplicateSalvage.summary.summary.scrapMilli).toBe(salvageRecord.summary.summary.scrapMilli);
+
+  const directSalvage = await page.evaluate(async () => {
+    const response = await fetch('/api/world/local-salvage?participantId=world%3Acheckpoint-machine');
+    return { status: response.status, body: await response.json() };
+  });
+  expect(directSalvage.status).toBe(200);
+  expect(directSalvage.body.accepted).toBe(true);
+  expect(directSalvage.body.profileKind).toBe('world-account');
+  expect(directSalvage.body.controllerKind).toBe('machine');
+  expect(directSalvage.body.summary.scrapMilli).toBe(salvageRecord.summary.summary.scrapMilli);
+  expect(directSalvage.body.summary.persistenceMeaning).toBe('highest-host-verified-local-storage-scrap-per-seat-not-spendable-shared-economy');
 
   const directAfterHostCommand = await page.evaluate(async () => {
     const response = await fetch('/api/world/local-seat?regionSeatId=seat-1&participantId=world%3Acheckpoint-machine');

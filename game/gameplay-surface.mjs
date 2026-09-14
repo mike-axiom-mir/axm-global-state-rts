@@ -72,6 +72,7 @@ const summary = root.querySelector('#gameplaySummary');
 const actions = root.querySelector('#gameplayActions');
 const feedback = root.querySelector('#gameplayFeedback');
 let lastSeatSignature = '';
+let lastActionSignature = '';
 let selectedSeatId = 'seat-1';
 
 function seatById(seatId) {
@@ -100,6 +101,9 @@ function canClickSeat(seat) {
 }
 
 function renderActions(seat, mode) {
+  const signature = `${seat?.id || 'none'}:${seat?.kind || 'none'}:${mode}:${canClickSeat(seat) ? 'clickable' : 'view-only'}`;
+  if (signature === lastActionSignature) return;
+  lastActionSignature = signature;
   actions.replaceChildren(...ACTIONS.map(definition => {
     const button = document.createElement('button');
     button.type = 'button';

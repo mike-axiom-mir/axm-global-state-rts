@@ -132,6 +132,9 @@ const bridgeAccount = bridgeRegistry.createWorldAccount({
 bridgeRegistry.accrueChests(bridgeAccount.participantId, 3 * WORLD_HOUR_MS);
 assert.equal(bridgeRegistry.openChests(bridgeAccount.participantId, 2).accepted, true);
 const heldRewards = bridgeRegistry.participant(bridgeAccount.participantId).dropCache.pendingNextDropRewards;
+const heldPositiveItemCounts = Object.fromEntries(
+  Object.entries(heldRewards.itemCounts).filter(([, count]) => Number(count) > 0)
+);
 assert.ok(heldRewards.food > 0);
 assert.ok(heldRewards.scrap > 0);
 
@@ -164,7 +167,7 @@ assert.equal(startedFromClaim.reusedClaim, true, 'retry uses the already-held cl
 assert.equal(startedFromClaim.claim.status, 'applied');
 assert.ok(startedFromClaim.run.stockpile.resources.food >= 50 + heldRewards.food);
 assert.ok(startedFromClaim.run.stockpile.resources.scrap >= 20 + heldRewards.scrap);
-assert.deepEqual(startedFromClaim.run.startingItems, heldRewards.itemCounts);
+assert.deepEqual(startedFromClaim.run.startingItems, heldPositiveItemCounts);
 
 const reconcileSameActiveRun = beginClaimedNextDropRun({
   participantRegistry: bridgeRegistry,

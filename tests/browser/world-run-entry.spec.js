@@ -10,7 +10,7 @@ function captureRuntimeFailures(page) {
   return failures;
 }
 
-test('world account can explicitly apply pending next-drop value to one host run, enter LOCAL RTS, and explicitly close/score that host run', async ({ page }) => {
+test('world account reaches LOCAL RTS and can explicitly close one host civilization run', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/world-entry.html', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);
@@ -61,7 +61,10 @@ test('world account can explicitly apply pending next-drop value to one host run
 
   await page.locator('#continueToRts').click();
   await page.waitForURL(url => url.pathname === '/game/' && url.searchParams.get('seat1') === 'human');
-  await page.waitForFunction(() => window.__AXM_GLOBAL_STATE_RTS__?.worldBinding('seat-1')?.participantId === 'world:browser-run-lifecycle');
+  await page.waitForFunction(() => {
+    const binding = window.__AXM_GLOBAL_STATE_RTS__ && window.__AXM_GLOBAL_STATE_RTS__.worldBinding('seat-1');
+    return binding && binding.participantId === 'world:browser-run-lifecycle';
+  });
 
   const shellEvidence = await page.evaluate(async () => {
     const binding = window.__AXM_GLOBAL_STATE_RTS__.worldBinding('seat-1');
@@ -70,8 +73,8 @@ test('world account can explicitly apply pending next-drop value to one host run
     return {
       binding,
       runStatus: runResponse.status,
-      activeRunId: run.progression?.activeRun?.runId || null,
-      hostRunScrap: run.progression?.activeRun?.stockpile?.resources?.scrap ?? null,
+      activeRunId: run.progression && run.progression.activeRun ? run.progression.activeRun.runId : null,
+      hostRunScrap: run.progression && run.progression.activeRun ? run.progression.activeRun.stockpile.resources.scrap : null,
       localSimulation: window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'),
       localCivilization: window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1')
     };
@@ -88,9 +91,9 @@ test('world account can explicitly apply pending next-drop value to one host run
   expect(shellEvidence.binding.runBootstrap.combinedStartingScrap).toBe(shellEvidence.hostRunScrap + 100);
   expect(shellEvidence.binding.runBootstrap.populationParity).toBe(true);
   expect(shellEvidence.localSimulation.regionId).toBeTruthy();
-  expect(shellEvidence.localSimulation.storage.scrap).toBe(shellEvidence.hostRunScrap + 100, 'admitted host-run scrap is added exactly once to the explicit browser-local starter fixture');
-  expect(shellEvidence.localCivilization.resources.scrap).toBe(shellEvidence.localSimulation.storage.scrap, 'playable construction wallet sees the bridged physical scrap');
-  expect(shellEvidence.localCivilization.stateScope).toBe('browser-local-not-host-persistent', 'later LOCAL mutations remain explicitly non-authoritative');
+  expect(shellEvidence.localSimulation.storage.scrap).toBe(shellEvidence.hostRunScrap + 100);
+  expect(shellEvidence.localCivilization.resources.scrap).toBe(shellEvidence.localSimulation.storage.scrap);
+  expect(shellEvidence.localCivilization.stateScope).toBe('browser-local-not-host-persistent');
 
   await expect(page.locator('#worldRunLifecycleSurface')).toBeVisible();
   await expect(page.locator('#endWorldRun')).toBeEnabled();
@@ -131,7 +134,7 @@ test('world account can explicitly apply pending next-drop value to one host run
   expect(closed.retryStatus).toBe(200);
   expect(closed.retry.accepted).toBe(true);
   expect(closed.retry.reconciled).toBe(true);
-  expect(closed.retry.progression.runHistory).toHaveLength(1, 'same terminal mutation cannot score or close twice');
+  expect(closed.retry.progression.runHistory).toHaveLength(1);
 
   await page.screenshot({ path: 'test-results/global-state-rts-world-run-entry.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);

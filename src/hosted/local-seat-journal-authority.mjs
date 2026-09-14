@@ -289,7 +289,7 @@ export class LocalSeatJournalAuthority {
       recordedAtMs: nowMs
     });
     const bindingPersistence = result.accepted ? this.#persistDurableBindings() : this.bindingPersistenceMeta();
-    return Object.freeze({ ...result, participantId: id, regionSeatId: seatId, binding, admission, worldTime, bindingPersistence, truthBoundary: 'host-reproduced-participant-scoped-local-journal-command-no-browser-state-equivalence-no-shared-world-promotion' });
+    return Object.freeze({ ...result, participantId: id, regionSeatId: seatId, binding, admission, worldTime, bindingPersistence, truthBoundary: 'host-reproduced-local-journal-command-no-browser-state-equivalence-no-shared-world-promotion' });
   }
 
   status({ regionSeatId, participantId = null } = {}) {
@@ -303,7 +303,7 @@ export class LocalSeatJournalAuthority {
     const binding = this.bindingsByKey.get(resolved.key);
     const journal = this.journalsByKey.get(resolved.key);
     const continuity = journal.verifyPersistedJournal();
-    return Object.freeze({ accepted: true, binding, journal: journal.meta(), continuity, bindingPersistence: this.bindingPersistenceMeta(), worldTime: this.#worldTime(), truthBoundary: 'participant-scoped-binding-and-host-journal-checkpoint-only-no-live-browser-state-equivalence' });
+    return Object.freeze({ accepted: true, binding, journal: journal.meta(), continuity, bindingPersistence: this.bindingPersistenceMeta(), worldTime: this.#worldTime(), truthBoundary: 'binding-and-host-journal-checkpoint-only-no-live-browser-state-equivalence' });
   }
 
   bindingForSeat(regionSeatId, participantId = null) {

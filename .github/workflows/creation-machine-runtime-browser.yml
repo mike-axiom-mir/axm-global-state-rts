@@ -58,11 +58,14 @@ jobs:
           node tests/creation-machine-runtime-prep-selftest.mjs
           node tests/creation-machine-starter-set-selftest.mjs
 
-      - name: Syntax-check starter-set runtime route
-        run: |
-          node --check src/assets/creation-machine-starter-set.mjs
-          node --check game/creation-machine-starter-set-adoption.mjs
-          node --check tests/browser/creation-machine-starter-set.spec.js
+      - name: Syntax-check starter-set registry
+        run: node --check src/assets/creation-machine-starter-set.mjs
+
+      - name: Syntax-check starter-set browser helper
+        run: node --check game/creation-machine-starter-set-adoption.mjs
+
+      - name: Syntax-check starter-set browser spec
+        run: node --check tests/browser/creation-machine-starter-set.spec.js
 
       - name: Run repository deterministic and source gates
         run: npm test

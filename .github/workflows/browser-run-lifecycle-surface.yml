@@ -42,9 +42,11 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Run deterministic and source gates
+      - name: Run full deterministic regression suite
+        run: npm test
+
+      - name: Check lifecycle source syntax
         run: |
-          npm test
           node --check game/world-run-entry.mjs
           node --check game/world-run-lifecycle.mjs
           node --check tests/browser/world-run-entry.spec.js
@@ -52,6 +54,9 @@ jobs:
           node --check src/hosted/world-run-http-api.mjs
           node --check src/session/world-browser-client.mjs
           node --check src/session/world-seat-binding.mjs
+
+      - name: Run focused host lifecycle selftests
+        run: |
           node tests/world-browser-client-selftest.mjs
           node tests/world-seat-binding-selftest.mjs
           node tests/world-run-http-authority-selftest.mjs

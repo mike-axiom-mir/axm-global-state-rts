@@ -79,6 +79,7 @@ export class WorldParticipantRegistry {
     createdAtWorldHour,
     storedCrates = 0,
     openedCrates = 0,
+    pendingNextDropRewards = null,
     anchorWorldHour = createdAtWorldHour,
     credentialMode = 'none',
     storageDurability
@@ -107,6 +108,7 @@ export class WorldParticipantRegistry {
         anchorWorldHour,
         storedCrates,
         openedCrates,
+        pendingNextDropRewards,
         cap: this.dropCacheCap
       })
     };
@@ -179,6 +181,7 @@ export class WorldParticipantRegistry {
       anchorWorldHour: cache.anchorWorldHour,
       storedCrates: cache.storedCrates,
       openedCrates: cache.openedCrates,
+      pendingNextDropRewards: cache.pendingNextDropRewards,
       credentialMode: snapshot.credentialMode || 'none',
       storageDurability: 'restored-through-external-persistence-adapter'
     }));

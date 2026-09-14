@@ -27,7 +27,7 @@
         <p class="eyebrow">EXPERIMENTAL SHARED WORLD ENTRY</p>
         <h1 id="worldTitle">Global State RTS · World Session</h1>
       </div>
-      <p class="truth">Human and machine participants use the same guest/account/chest API. Entry synchronizes elapsed hourly chests from host-authoritative world time. World-account mode is currently development-only: credentialMode=none is not secure public authentication.</p>
+      <p class="truth">Human and machine participants use the same guest/account/chest API. Entry synchronizes elapsed hourly chests from host-authoritative world time. Opening is explicit and moves deterministic contents into the participant's next-drop cache; it does not grant current LOCAL RTS resources. World-account mode is currently development-only: credentialMode=none is not secure public authentication.</p>
       <div id="worldMeta" class="status">Reading host world state…</div>
 
       <div class="world-grid">
@@ -49,7 +49,7 @@
         <button id="enterGuest" type="button">Enter as guest</button>
         <button id="enterAccount" type="button">Enter world account</button>
         <button id="accrueChests" type="button" disabled>Refresh chest clock</button>
-        <button id="openChest" type="button" disabled>Open 1 chest</button>
+        <button id="openChest" type="button" disabled>Open 1 for next drop</button>
         <button id="continueToRts" type="button" disabled>Continue as this participant</button>
       </div>
 
@@ -58,8 +58,10 @@
         <strong id="participantId">participant: none</strong>
         <span id="profileStatus">profile: none</span>
         <span id="chestStatus">chests: —</span>
+        <span id="nextDropStatus">next drop cache: —</span>
       </div>
       <p class="help">The host world-hour clock is the chest authority. Re-entry catches up one chest per elapsed world hour, capped at 24 stored chests. Refresh only rechecks that host clock; it cannot double-award the same hour.</p>
+      <p class="help">Opened contents are held as bounded next-drop setup value: food and scrap totals, counts for the fixed starting-item vocabulary, and unique blueprint options. This screen does not apply those values to the current civilization or claim that the run-start/death handoff exists yet.</p>
       <p class="help warning">Guest state is session-only. A world account can be persisted by the host adapter, but this screen does not prove account ownership, passwords, TLS, anti-Sybil controls, or production deployment.</p>
       <p class="help">Continue stores a single-use browser handoff, opens one matching local seat, then the RTS shell re-reads the participant from host authority before binding it. The handoff is a development convenience, not an authentication credential.</p>
     </section>

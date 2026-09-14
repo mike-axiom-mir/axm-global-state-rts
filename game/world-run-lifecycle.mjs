@@ -37,7 +37,7 @@ async function requestJson(pathname, { method = 'GET', body = undefined } = {}) 
 const bridge = await waitForBridge();
 const root = document.createElement('section');
 root.id = 'worldRunLifecycleSurface';
-root.className = 'gameplay-surface';
+root.className = 'world-run-lifecycle-surface';
 root.setAttribute('aria-label', 'Bound world civilization lifecycle');
 root.innerHTML = `
   <div class="gameplay-surface__head">
@@ -173,7 +173,9 @@ async function closeActiveRun() {
         body: { participantId, runId, mutationId }
       });
       retainedStatus = await requestJson(`/api/world/run?participantId=${encodeURIComponent(participantId)}`);
-      const finalGold = result.result?.finalGold ?? retainedStatus.progression?.runHistory?.at(-1)?.finalGold ?? 0;
+      const history = retainedStatus.progression?.runHistory || [];
+      const latestClosed = history[history.length - 1] || null;
+      const finalGold = result.result?.finalGold ?? latestClosed?.finalGold ?? 0;
       const bankedGold = result.result?.bankedGold ?? retainedStatus.progression?.bankedGold ?? 0;
       feedback.textContent = `Host terminal close accepted · score ${finalGold} · banked ${bankedGold} · return to Shared World Entry for the next-drop surface.`;
       render();

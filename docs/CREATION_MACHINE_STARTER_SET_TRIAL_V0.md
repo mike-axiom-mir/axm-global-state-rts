@@ -39,12 +39,16 @@ A later lane may derive conservative footprints from verified model bounds and c
 
 ## Browser evidence gate
 
-The Creation Machine browser workflow now prepares all five far candidates and exercises an explicit four-seat machine-player trial. Each seat independently enters LOCAL RTS and imports all five candidates through the same `installExternalStaticAsset` bridge used by the previous workshop test. The test preserves a four-pane screenshot and verifies:
+The Creation Machine browser workflow prepares all five far candidates and opens the real game in a four-seat machine-player split layout. All four seats independently enter LOCAL RTS through their existing admitted action path; **seat 1 alone** explicitly imports the five-candidate set. Seats 2–4 intentionally retain their procedural visuals. This keeps the test bounded while proving both the real multi-seat render route and that asset adoption remains seat-local/explicit rather than leaking across seats.
+
+The test preserves a four-pane screenshot and verifies:
 
 - no candidate is installed before the explicit call;
-- all four seats can import the same five source-pinned candidates;
+- all four seats can enter LOCAL RTS through the existing machine action path;
+- seat 1 imports all five source-pinned candidates through the actual static GLB runtime;
+- seats 2–4 remain on procedural presentation, proving no silent cross-seat adoption;
 - runtime SHA-256 identity is checked by the static GLB runtime;
-- each receipt remains `RUNTIME_IMPORTED_NOT_VISUALLY_ACCEPTED`;
+- each imported receipt remains `RUNTIME_IMPORTED_NOT_VISUALLY_ACCEPTED`;
 - collision, navigation, split-screen readability and target-device FPS remain `NOT_TESTED` rather than being inferred from successful decoding.
 
 A screenshot is evidence that the real browser route rendered; it is not by itself acceptance of scale, art quality, readability or performance.

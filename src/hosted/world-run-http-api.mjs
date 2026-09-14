@@ -1,12 +1,13 @@
 import { createWorldHttpApiService } from './world-http-api.mjs';
 import {
   DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+  WORLD_RUN_CLOSE_ACTION,
   WORLD_RUN_GLOBAL_CONTROL_ACTION,
   createDurableWorldRunMutationAuthority
 } from './durable-world-run-mutation-authority.mjs';
 import { WORLD_RUN_SESSION_AUTHORITY_SCHEMA } from './world-run-session-authority.mjs';
 
-export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.3';
+export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.4';
 
 function queryValue(searchParams, key) {
   if (!searchParams) return null;
@@ -89,6 +90,17 @@ export class WorldRunHttpApiService {
         return response(runMutationStatus(result), result);
       }
 
+      if (verb === 'POST' && route === '/api/world/run/close') {
+        if (this.writeMode !== 'dev') return response(403, { error: 'world writes disabled', writeMode: this.writeMode });
+        const result = this.runAuthority.closeActiveRun({
+          participantId: body.participantId,
+          runId: body.runId,
+          mutationId: body.mutationId,
+          timestampMs: finiteHostTime(this.clock)
+        });
+        return response(runMutationStatus(result), result);
+      }
+
       if (verb === 'GET' && route === '/api/world/meta') {
         const base = this.baseApi.handle({ method, pathname, searchParams, body });
         if (base.status !== 200) return base;
@@ -99,10 +111,10 @@ export class WorldRunHttpApiService {
             schema: WORLD_RUN_SESSION_AUTHORITY_SCHEMA,
             mutationAuthoritySchema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
             progressionPersistence: persistence,
-            hostAuthoritativeMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION]),
+            hostAuthoritativeMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION, WORLD_RUN_CLOSE_ACTION]),
             truthBoundary: persistence.enabled
-              ? 'next-drop-run-start-and-the-bounded-global-control-run-mutation-are-host-authoritative-and-replayable-from-durable-evidence;other-later-in-run-mutations-remain-outside-this-replay-contract'
-              : 'next-drop-run-start-and-global-control-mutations-are-host-authoritative-but-active-progression-remains-process-memory-only-without-durable-run-start-storage'
+              ? 'next-drop-run-start-plus-bounded-global-control-and-terminal-run-close-mutations-are-host-authoritative-and-replayable-from-durable-evidence;closed-record-rollover-into-the-next-durable-run-and-other-later-in-run-mutations-remain-separate-gaps'
+              : 'next-drop-run-start-global-control-and-run-close-commands-are-host-authoritative-in-process-but-active-progression-remains-process-memory-only-without-durable-run-start-storage'
           })
         });
       }

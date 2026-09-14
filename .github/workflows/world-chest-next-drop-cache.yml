@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - 'src/sim/hourly-drop-cache.mjs'
+      - 'src/sim/civilization-progression.mjs'
+      - 'src/sim/next-drop-run-bridge.mjs'
       - 'src/hosted/world-participant-registry.mjs'
       - 'src/hosted/world-account-store.mjs'
       - 'src/hosted/world-session-authority.mjs'
@@ -13,6 +15,7 @@ on:
       - 'src/session/world-browser-client.mjs'
       - 'game/world-entry.html'
       - 'game/world-entry.mjs'
+      - 'tests/civilization-progression-selftest.mjs'
       - 'tests/world-chest-next-drop-cache-selftest.mjs'
       - 'tests/browser/world-chest-next-drop.spec.js'
       - 'scripts/serve.mjs'
@@ -41,10 +44,14 @@ jobs:
         run: |
           npm test
           node --check src/sim/hourly-drop-cache.mjs
+          node --check src/sim/civilization-progression.mjs
+          node --check src/sim/next-drop-run-bridge.mjs
           node --check src/hosted/world-participant-registry.mjs
           node --check game/world-entry.mjs
+          node --check tests/civilization-progression-selftest.mjs
           node --check tests/world-chest-next-drop-cache-selftest.mjs
           node --check tests/browser/world-chest-next-drop.spec.js
+          node tests/civilization-progression-selftest.mjs
           node tests/world-chest-next-drop-cache-selftest.mjs
 
       - name: Install pinned Playwright test runner

@@ -146,7 +146,7 @@ export class WorldSessionAuthority {
       });
     }
 
-    const journal = this.localSeats.journalForSeat(status.binding.regionSeatId);
+    const journal = this.localSeats.journalForSeat(status.binding.regionSeatId, participant);
     const entries = journal.store.readAll();
     if (!Array.isArray(entries) || entries.length !== status.journal.revision) {
       throw new Error('host local journal entry count does not match checkpoint revision');
@@ -265,7 +265,7 @@ export class WorldSessionAuthority {
       });
     }
 
-    const journal = this.localSeats.journalForSeat(status.binding.regionSeatId);
+    const journal = this.localSeats.journalForSeat(status.binding.regionSeatId, participant);
     if (!journal) throw new Error(`host local journal missing for ${status.binding.regionSeatId}`);
     const snapshot = journal.authoritativeSnapshot();
     const storageScrap = Number(snapshot.state?.storage?.scrap);

@@ -12,7 +12,14 @@ function requireRuntimeBridge() {
   return bridge;
 }
 
-async function fetchCandidate(plan) {
+function requirePlanEntry(fixtureAssetId) {
+  const key = String(fixtureAssetId || '');
+  const entry = creationMachineStarterSetTrialPlan().find(candidate => candidate.fixtureAssetId === key);
+  if (!entry) throw new Error(`no Creation Machine starter-set candidate registered for ${key || 'empty fixture id'}`);
+  return entry;
+}
+
+async function fetchCandidate(plan, { includeBytes = true } = {}) {
   const receiptResponse = await fetch(plan.receiptUrl, { cache: 'no-store' });
   if (!receiptResponse.ok) throw new Error(`${plan.sourceAsset} receipt unavailable (${receiptResponse.status})`);
   const receipt = await receiptResponse.json();
@@ -28,15 +35,17 @@ async function fetchCandidate(plan) {
     throw new Error(`${plan.sourceAsset} prepared receipt failed the starter-set identity contract`);
   }
 
+  if (!includeBytes) return Object.freeze({ plan, receipt, bytes: null });
   const glbResponse = await fetch(plan.glbUrl, { cache: 'no-store' });
   if (!glbResponse.ok) throw new Error(`${plan.sourceAsset} GLB unavailable (${glbResponse.status})`);
   return Object.freeze({ plan, receipt, bytes: await glbResponse.arrayBuffer() });
 }
 
 export async function inspectCreationMachineStarterSet() {
-  const plan = creationMachineStarterSetTrialPlan();
   const candidates = [];
-  for (const entry of plan) candidates.push(await fetchCandidate(entry));
+  for (const entry of creationMachineStarterSetTrialPlan()) {
+    candidates.push(await fetchCandidate(entry, { includeBytes: false }));
+  }
   return Object.freeze({
     schema: CREATION_MACHINE_STARTER_SET_SCHEMA,
     status: 'PREPARED_STARTER_SET_AVAILABLE_NOT_ACCEPTED',
@@ -48,41 +57,40 @@ export async function inspectCreationMachineStarterSet() {
       triangles: candidate.receipt.triangles,
       automaticLodSelection: false,
       collisionStatus: candidate.plan.collisionStatus
-    })))
+    }))),
+    combinedRuntimeAdoption: 'HOLD_NOT_PROVEN'
   });
 }
 
-export async function adoptCreationMachineStarterSet({ seatId = 'seat-1', focus = false } = {}) {
+export async function adoptCreationMachineStarterAsset({
+  seatId = 'seat-1',
+  fixtureAssetId,
+  focus = false
+} = {}) {
   const bridge = requireRuntimeBridge();
-  const plan = creationMachineStarterSetTrialPlan();
-
-  // Preflight every receipt and byte payload before mutating presentation state. A missing
-  // candidate therefore leaves the procedural starter set intact rather than half replaced.
-  const candidates = [];
-  for (const entry of plan) candidates.push(await fetchCandidate(entry));
-
-  const receipts = [];
-  for (const candidate of candidates) {
-    receipts.push(await bridge.installExternalStaticAsset({
-      seatId,
-      assetId: candidate.plan.fixtureAssetId,
-      bytes: candidate.bytes,
-      expectedSha256: candidate.receipt.outputGlbSha256,
-      uniformScale: candidate.plan.uniformScale,
-      focus
-    }));
-  }
+  const plan = requirePlanEntry(fixtureAssetId);
+  const candidate = await fetchCandidate(plan);
+  const receipt = await bridge.installExternalStaticAsset({
+    seatId,
+    assetId: candidate.plan.fixtureAssetId,
+    bytes: candidate.bytes,
+    expectedSha256: candidate.receipt.outputGlbSha256,
+    uniformScale: candidate.plan.uniformScale,
+    focus
+  });
 
   return Object.freeze({
     schema: CREATION_MACHINE_STARTER_SET_SCHEMA,
-    status: 'RUNTIME_IMPORTED_STARTER_SET_NOT_VISUALLY_ACCEPTED',
+    status: 'RUNTIME_IMPORTED_SINGLE_STARTER_ASSET_NOT_VISUALLY_ACCEPTED',
     seatId,
-    count: receipts.length,
-    receipts: Object.freeze(receipts),
+    fixtureAssetId: candidate.plan.fixtureAssetId,
+    sourceAsset: candidate.plan.sourceAsset,
+    receipt,
     nonclaims: Object.freeze([
-      'Explicit runtime import does not make these assets the default presentation.',
+      'Explicit runtime import does not make this asset the default presentation.',
       'This import does not establish visual acceptance, source-to-fixture scale acceptance, collision, navigation, or target-device FPS.',
       'The supplied near/far variants do not yet have an evidence-backed automatic LOD handoff distance.',
+      'Five-asset simultaneous starter-set adoption remains HOLD until cumulative decode/resource behavior is proven.',
       'No bespoke animation is added by this static adoption trial.'
     ])
   });
@@ -92,7 +100,7 @@ if (typeof window !== 'undefined' && !Object.prototype.hasOwnProperty.call(windo
   Object.defineProperty(window, '__AXM_CREATION_MACHINE_STARTER_SET__', {
     value: Object.freeze({
       inspect: inspectCreationMachineStarterSet,
-      adopt: adoptCreationMachineStarterSet,
+      adoptAsset: adoptCreationMachineStarterAsset,
       plan: creationMachineStarterSetTrialPlan
     }),
     configurable: false

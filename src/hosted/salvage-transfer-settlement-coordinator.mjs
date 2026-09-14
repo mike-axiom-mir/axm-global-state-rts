@@ -68,6 +68,7 @@ function durableBindingSnapshots(localSeatAuthority) {
       profileKind: item.binding.profileKind,
       credentialMode: item.binding.credentialMode,
       boundAtWorldHourIndex: item.binding.boundAtWorldHourIndex,
+      journalStoreKey: item.binding.journalStoreKey,
       journalGenesisDigest: item.binding.journalGenesisDigest,
       journalGenesisStateHash: item.binding.journalGenesisStateHash,
       journalRevision: item.journal.revision,
@@ -143,8 +144,14 @@ export function recoverSettlementAdvancedLocalSeatBindings({
       snapshot.boundAtWorldHourIndex,
       'persisted boundAtWorldHourIndex'
     );
-    const store = storeFactory(seatId);
-    if (!store?.readAll || !store?.append) throw new TypeError(`storeFactory(${seatId}) must return a journal store`);
+    const storeKey = snapshot.journalStoreKey
+      ? nonEmpty(snapshot.journalStoreKey, 'persisted journalStoreKey')
+      : seatId;
+    const store = storeFactory(
+      storeKey,
+      Object.freeze({ participantId, regionSeatId: seatId })
+    );
+    if (!store?.readAll || !store?.append) throw new TypeError(`storeFactory(${storeKey}) must return a journal store`);
     const journal = createLocalRegionCommandJournalAuthority({
       regionSeatId: seatId,
       genesisWorldHourIndex,
@@ -392,8 +399,11 @@ export class SalvageTransferSettlementCoordinator {
       regionSeatId: transfer.regionSeatId
     });
     if (!status.accepted) return status;
-    const journal = this.localSeats.journalForSeat(transfer.regionSeatId);
-    if (!journal) throw new Error(`host local journal missing for ${transfer.regionSeatId}`);
+    const journal = this.localSeats.journalForSeat(
+      transfer.regionSeatId,
+      participant.participantId
+    );
+    if (!journal) throw new Error(`host local journal missing for ${transfer.regionSeatId} (${participant.participantId})`);
 
     const debit = journal.submitSalvageDebit({
       transferId: transfer.transferId,

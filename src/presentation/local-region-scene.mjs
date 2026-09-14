@@ -323,15 +323,17 @@ export function createLocalRegionScene(region) {
   async function installExternalStaticAsset({ assetId, arrayBuffer, expectedSha256, uniformScale = 1 } = {}) {
     if (typeof assetId !== 'string' || !assetId) throw new TypeError('assetId required');
     if (!Number.isFinite(uniformScale) || uniformScale <= 0 || uniformScale > 100) throw new RangeError('uniformScale must be >0 and <=100');
-    const fixture = region.previewFixtures.find(candidate => candidate.assetId === assetId);
-    if (!fixture) throw new Error(`no preview fixture registered for ${assetId}`);
+    const staticFixture = region.previewFixtures.find(candidate => candidate.assetId === assetId) || null;
+    const crewFixture = region.previewCrew.find(candidate => candidate.assetId === assetId) || null;
+    const fixture = staticFixture || crewFixture;
+    if (!fixture) throw new Error(`no preview fixture or Crew registered for ${assetId}`);
     const loaded = await buildStaticGlbScene(arrayBuffer, { expectedSha256 });
     const object = loaded.object;
     object.userData.assetId = assetId;
     object.userData.previewFixtureId = fixture.id;
     object.userData.externalRuntimeAsset = true;
     object.scale.setScalar(uniformScale);
-    placeAtTerrain(object, terrain, fixture.xM, fixture.zM, fixture.yawDeg, 0.05, { trackFocus: false });
+    placeAtTerrain(object, terrain, fixture.xM, fixture.zM, fixture.yawDeg, crewFixture ? 0.03 : 0.05, { trackFocus: false });
 
     const previous = fixtures.visualsById.get(fixture.id);
     fixtures.root.add(object);
@@ -346,6 +348,10 @@ export function createLocalRegionScene(region) {
       status: 'RUNTIME_IMPORTED_NOT_VISUALLY_ACCEPTED',
       assetId,
       fixtureId: fixture.id,
+      targetKind: crewFixture ? 'preview-crew' : 'preview-fixture',
+      matchingPreviewInstances: crewFixture
+        ? region.previewCrew.filter(candidate => candidate.assetId === assetId).length
+        : region.previewFixtures.filter(candidate => candidate.assetId === assetId).length,
       regionId: region.id,
       placement: Object.freeze({ xM: fixture.xM, zM: fixture.zM, yawDeg: fixture.yawDeg, uniformScale }),
       collision: 'NOT_TESTED',

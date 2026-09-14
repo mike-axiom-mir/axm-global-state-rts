@@ -25,13 +25,19 @@ The first target is deliberately narrow:
 - Global State RTS fixture: `building-workshop-a`;
 - browser install path: the already-existing hash-bound `installExternalStaticAsset(...)` seam.
 
+## Explicit adoption and fallback
+
+The ordinary game shell keeps the procedural workshop as its continuity fallback. In `LOCAL RTS`, a player can explicitly request **Use prepared Creation Machine workshop**. The helper re-reads the generated receipt, requires the expected source asset/variant/status and a valid SHA-256 identity, fetches the prepared GLB, and passes those exact bytes through the existing hash-bound renderer seam.
+
+If preparation is absent, the receipt is malformed or mismatched, the GLB cannot be fetched, or the runtime import rejects the bytes, the helper reports the failure and leaves the procedural workshop in place. It never silently promotes the prepared derivative to the default asset. Human and machine seats use the same presentation helper and the same renderer installation path; the human button is only a convenience surface.
+
 ## Evidence gate
 
 `tests/creation-machine-runtime-prep-selftest.mjs` prepares the same derivative twice and requires byte-identical SHA-256 output. It then passes the generated GLB through the Global State RTS static-GLB decoder, proving that the actual checked-in Creation Machine delivery is structurally consumable by that bounded runtime contract.
 
-`tests/browser/creation-machine-runtime.spec.js` goes further: CI prepares the derivative, starts the real RTS shell, enters `LOCAL RTS`, loads the generated checked-in-asset derivative through the existing browser bridge, replaces the workshop preview fixture, retains the runtime receipt, and captures a screenshot as execution evidence.
+`tests/browser/creation-machine-runtime.spec.js` goes further: CI prepares the derivative, starts the real RTS shell, proves the procedural fallback remains active before adoption, proves adoption is rejected until the seat enters `LOCAL RTS`, then uses the actual player-facing control to install the prepared workshop. A second Chromium case gives a machine seat the same explicit presentation choice through the shared helper. Both cases retain the runtime receipt; the human path captures a screenshot as execution evidence.
 
-Passing this browser gate establishes **browser runtime import/insertion of this exact prepared derivative**. It does not establish aesthetic quality or performance acceptance.
+Passing this browser gate establishes **browser runtime import/insertion of this exact prepared derivative through the explicit adoption surface for human and machine seats**. It does not establish aesthetic quality or performance acceptance.
 
 ## Truth boundary
 
@@ -50,4 +56,4 @@ The source review already warned that workshop geometry/material cost needs furt
 
 ## Next activation
 
-If this exact checked-in derivative passes both deterministic and Chromium gates, the next useful step is player-facing adoption logic with an explicit fallback/availability state, or generation/testing of a genuinely lighter tactical/ordinary RTS derivative. Do not default-adopt a high-cost asset merely because one browser instance can load it.
+The remaining high-value asset rung is a genuinely lighter tactical/ordinary RTS derivative plus measured one/ten/one-hundred workshop browser evidence across 1/2/4 split-screen scenes. Do not default-adopt the current derivative merely because explicit single-workshop import succeeds.

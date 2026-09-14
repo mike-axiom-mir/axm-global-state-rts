@@ -7,12 +7,15 @@ on:
       - src/input/**
       - src/session/**
       - src/presentation/**
+      - src/sim/local-civilization-gameplay.mjs
       - src/hosted/local-seat-binding-store.mjs
       - src/hosted/local-seat-journal-authority.mjs
       - src/hosted/world-session-authority.mjs
       - scripts/serve.mjs
+      - tests/local-civilization-gameplay-selftest.mjs
       - tests/browser/planet-shell-controller.spec.js
       - tests/browser/gameplay-surface.spec.js
+      - tests/browser/local-civilization-gameplay.spec.js
       - .github/workflows/planet-shell-controller.yml
       - package.json
   push:
@@ -38,8 +41,12 @@ jobs:
       - name: Run deterministic/source gates
         run: |
           npm test
+          node tests/local-civilization-gameplay-selftest.mjs
+          node --check src/sim/local-civilization-gameplay.mjs
+          node --check game/app.mjs
           node --check game/gameplay-surface.mjs
           node --check tests/browser/gameplay-surface.spec.js
+          node --check tests/browser/local-civilization-gameplay.spec.js
       - name: Install pinned Playwright test runner
         run: npm install --no-save @playwright/test@1.55.0
       - name: Install Chromium runtime
@@ -56,8 +63,8 @@ jobs:
           done
           cat /tmp/axm-global-state-rts-server.log
           exit 1
-      - name: Exercise controllers, machine seat, and gameplay surface in Chromium
-        run: npx playwright test tests/browser/planet-shell-controller.spec.js tests/browser/gameplay-surface.spec.js --reporter=line
+      - name: Exercise controllers, machine seat, construction, production, and gameplay surface in Chromium
+        run: npx playwright test tests/browser/planet-shell-controller.spec.js tests/browser/gameplay-surface.spec.js tests/browser/local-civilization-gameplay.spec.js --reporter=line
       - name: Preserve browser evidence
         if: always()
         uses: actions/upload-artifact@v4

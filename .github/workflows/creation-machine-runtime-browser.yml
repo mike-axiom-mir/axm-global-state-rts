@@ -7,6 +7,8 @@ on:
     paths:
       - 'assets/creation-machine/prepare_runtime_glb.py'
       - 'assets/creation-machine/.gitignore'
+      - 'game/creation-machine-workshop-adoption.mjs'
+      - 'game/index.html'
       - 'tests/creation-machine-runtime-prep-selftest.mjs'
       - 'tests/browser/creation-machine-runtime.spec.js'
       - 'docs/CREATION_MACHINE_RUNTIME_DERIVATIVE_V0.md'
@@ -66,7 +68,7 @@ jobs:
           cat /tmp/axm-global-state-rts-creation-machine.log
           exit 1
 
-      - name: Exercise real checked-in Creation Machine bytes through LOCAL RTS browser seam
+      - name: Exercise explicit human and machine Creation Machine adoption through LOCAL RTS
         run: npx playwright test tests/browser/creation-machine-runtime.spec.js --reporter=line
 
       - name: Regress four-controller and machine-seat browser shell

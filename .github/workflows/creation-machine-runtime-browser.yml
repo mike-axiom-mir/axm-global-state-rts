@@ -58,14 +58,10 @@ jobs:
           node tests/creation-machine-runtime-prep-selftest.mjs
           node tests/creation-machine-starter-set-selftest.mjs
 
-      - name: Syntax-check starter-set registry
-        run: node --check src/assets/creation-machine-starter-set.mjs
-
-      - name: Syntax-check starter-set browser helper
-        run: node --check game/creation-machine-starter-set-adoption.mjs
-
-      - name: Syntax-check starter-set browser spec
-        run: node --check tests/browser/creation-machine-starter-set.spec.js
+      - name: Syntax-check starter-set runtime modules
+        run: |
+          node --check src/assets/creation-machine-starter-set.mjs
+          node --check game/creation-machine-starter-set-adoption.mjs
 
       - name: Run repository deterministic and source gates
         run: npm test
@@ -93,6 +89,9 @@ jobs:
           cat /tmp/axm-global-state-rts-creation-machine.log
           exit 1
 
+      # The browser spec itself is compiled/executed by the pinned Playwright runner below;
+      # node --check is retained for runtime modules only so the preflight does not substitute
+      # Node's standalone .js module-mode rules for the actual browser-test loader.
       - name: Exercise explicit Creation Machine adoption through LOCAL RTS
         run: npx playwright test tests/browser/creation-machine-runtime.spec.js tests/browser/creation-machine-starter-set.spec.js --reporter=line
 

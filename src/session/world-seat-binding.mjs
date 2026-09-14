@@ -1,6 +1,9 @@
-export const WORLD_SEAT_BINDING_SCHEMA = 'axm.global-state-rts.world-seat-binding/v0.1';
+import { activeLocalRegionSimulation } from '../sim/local-region-sim.mjs';
+
+export const WORLD_SEAT_BINDING_SCHEMA = 'axm.global-state-rts.world-seat-binding/v0.2';
 export const WORLD_SEAT_HANDOFF_SCHEMA = 'axm.global-state-rts.world-seat-handoff/v0.1';
 export const WORLD_SEAT_HANDOFF_KEY = 'axm.global-state-rts.world-seat-handoff';
+export const WORLD_RUN_LOCAL_BOOTSTRAP_SCHEMA = 'axm.global-state-rts.world-run-local-bootstrap/v0.1';
 
 const WORLD_EVENT_TYPES = Object.freeze([
   'territory.claim',
@@ -16,6 +19,12 @@ function nonEmpty(value, label) {
 
 function cloneJson(value) {
   return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}
+
+function freezeJson(value) {
+  if (value === null || value === undefined || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return Object.freeze(value.map(freezeJson));
+  return Object.freeze(Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, freezeJson(entry)])));
 }
 
 function seatById(roster, seatId) {
@@ -37,8 +46,108 @@ function normalizedParticipant(record) {
     controllerKind,
     profileKind: String(record.profileKind || 'unknown'),
     leaderboardMode: String(record.leaderboardMode || 'unknown'),
-    credentialMode: String(record.credentialMode || 'unknown')
+    credentialMode: String(record.credentialMode || 'unknown'),
+    runBootstrap: record.runBootstrap ? freezeJson(cloneJson(record.runBootstrap)) : null
   });
+}
+
+function finiteNonNegative(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) throw new RangeError(`${label} must be finite and non-negative`);
+  return number;
+}
+
+function localRunBootstrap({ seatId, participant, runStatus }) {
+  const activeRun = runStatus?.progression?.activeRun || null;
+  if (!activeRun) return null;
+  if (String(runStatus.participantId || '') !== participant.participantId) {
+    throw new Error('world run status participant does not match the bound participant');
+  }
+  if (String(activeRun.civilizationId || '') !== participant.participantId) {
+    throw new Error('active civilization run does not belong to the bound participant');
+  }
+
+  const runId = nonEmpty(activeRun.runId, 'activeRun.runId');
+  const hostStartingScrap = finiteNonNegative(activeRun.stockpile?.resources?.scrap, 'activeRun scrap');
+  const hostPopulation = Number(activeRun.manpower?.population ?? 0);
+  if (!Number.isSafeInteger(hostPopulation) || hostPopulation < 0) throw new RangeError('activeRun population must be a non-negative safe integer');
+
+  const simulation = activeLocalRegionSimulation(seatId);
+  if (!simulation) {
+    return Object.freeze({
+      schema: WORLD_RUN_LOCAL_BOOTSTRAP_SCHEMA,
+      participantId: participant.participantId,
+      seatId,
+      runId,
+      applied: false,
+      reason: 'local-simulation-not-instantiated',
+      hostStartingScrap,
+      hostPopulation,
+      truthBoundary: 'Host run was revalidated, but no LOCAL simulation existed to receive the bounded initial scrap bridge.'
+    });
+  }
+
+  const bootstrapKey = `${participant.participantId}|${runId}`;
+  if (simulation.worldRunBootstrap?.bootstrapKey === bootstrapKey) return simulation.worldRunBootstrap;
+  if (simulation.worldRunBootstrap) {
+    return Object.freeze({
+      schema: WORLD_RUN_LOCAL_BOOTSTRAP_SCHEMA,
+      participantId: participant.participantId,
+      seatId,
+      runId,
+      applied: false,
+      reason: 'different-host-run-already-bootstrapped',
+      hostStartingScrap,
+      hostPopulation,
+      localPopulation: simulation.crew.length,
+      truthBoundary: 'A different host run already contributed initial value to this browser-local simulation; no second run is silently layered onto it.'
+    });
+  }
+
+  if (simulation.elapsedMs > 0 || simulation.order) {
+    return Object.freeze({
+      schema: WORLD_RUN_LOCAL_BOOTSTRAP_SCHEMA,
+      participantId: participant.participantId,
+      seatId,
+      runId,
+      applied: false,
+      reason: 'local-simulation-already-active',
+      hostStartingScrap,
+      hostPopulation,
+      localPopulation: simulation.crew.length,
+      truthBoundary: 'Binding after LOCAL play has begun does not rewrite or top up the already-active local simulation.'
+    });
+  }
+
+  const localStarterScrap = finiteNonNegative(simulation.storage?.scrap, 'local starter scrap');
+  const combinedStartingScrap = localStarterScrap + hostStartingScrap;
+  if (combinedStartingScrap > Number(simulation.storage?.capacity ?? 0) + 1e-9) {
+    throw new RangeError('host run starting scrap plus LOCAL starter scrap exceeds physical storage capacity');
+  }
+
+  if (hostStartingScrap > 0) {
+    simulation.storage.scrap = combinedStartingScrap;
+    simulation.revision += 1;
+  }
+
+  const evidence = Object.freeze({
+    schema: WORLD_RUN_LOCAL_BOOTSTRAP_SCHEMA,
+    bootstrapKey,
+    participantId: participant.participantId,
+    seatId,
+    runId,
+    applied: true,
+    source: 'revalidated-host-active-run',
+    hostStartingScrap,
+    localStarterScrap,
+    combinedStartingScrap,
+    hostPopulation,
+    localPopulation: simulation.crew.length,
+    populationParity: hostPopulation === simulation.crew.length,
+    truthBoundary: 'Only admitted host-run scrap is bridged into the fresh LOCAL physical storage, in addition to the existing browser-local starter fixture. Host food, items, blueprints, manpower deltas, later LOCAL gather/build/produce changes, death and closure remain separate until explicitly authoritative.'
+  });
+  simulation.worldRunBootstrap = evidence;
+  return evidence;
 }
 
 export function createWorldSeatHandoff({ participant, seatId = 'seat-1' } = {}) {
@@ -118,15 +227,29 @@ export class WorldSeatBindingRuntime {
       controllerKind: record.controllerKind,
       profileKind: record.profileKind,
       leaderboardMode: record.leaderboardMode,
-      credentialMode: record.credentialMode
+      credentialMode: record.credentialMode,
+      runBootstrap: record.runBootstrap
     });
     this.bindings.set(seat.id, binding);
     return binding;
   }
 
   async bindParticipant({ seatId, participantId } = {}) {
+    const normalizedSeatId = nonEmpty(seatId, 'seatId');
     const response = await this.client.participant(nonEmpty(participantId, 'participantId'));
-    return this.bindResolvedParticipant({ seatId, participant: response?.participant });
+    const participant = normalizedParticipant(response?.participant);
+    seatById(this.roster, normalizedSeatId);
+
+    let runBootstrap = null;
+    if (participant.profileKind === 'world-account' && typeof this.client.worldRunStatus === 'function') {
+      const runStatus = await this.client.worldRunStatus(participant.participantId);
+      runBootstrap = localRunBootstrap({ seatId: normalizedSeatId, participant, runStatus });
+    }
+
+    return this.bindResolvedParticipant({
+      seatId: normalizedSeatId,
+      participant: { ...participant, runBootstrap }
+    });
   }
 
   unbindSeat(seatId) {

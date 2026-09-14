@@ -37,6 +37,8 @@ const PARTY_MENU_ACTIONS = Object.freeze([
   Object.freeze({ id: 'cancel', label: 'Close party menu', localOnly: true, partyMenuOnly: true })
 ]);
 
+const LOCAL_MACRO_ORDER_ACTIONS = new Set(['gather-scrap', 'repair-core', 'explore']);
+
 function waitForBridge(timeoutMs = 5000) {
   return new Promise((resolve, reject) => {
     const startedAt = performance.now();
@@ -63,6 +65,50 @@ function knownResourceSummary(resources = []) {
   const known = resources.filter(resource => resource?.known !== false && Number.isFinite(resource?.amount));
   const remaining = known.reduce((sum, resource) => sum + Math.max(0, Number(resource.amount) || 0), 0);
   return `${known.length} known · ${finiteFloor(remaining)} remaining`;
+}
+
+function selectedCrewState(simulation, party) {
+  const selectedIds = new Set(party?.selectedCrewIds || []);
+  const selected = (simulation?.crew || []).filter(member => selectedIds.has(member.id));
+  const carrying = selected.reduce((sum, member) => sum + Math.max(0, Number(member.carrying) || 0), 0);
+  const targets = [...new Set(selected.map(member => member.targetId).filter(Boolean))].sort();
+  return Object.freeze({
+    expectedCount: selectedIds.size,
+    liveCount: selected.length,
+    carrying,
+    targets,
+    phases: phaseSummary(selected)
+  });
+}
+
+function selectedConsequenceSummary(simulation, party) {
+  const state = selectedCrewState(simulation, party);
+  if (!state.expectedCount) return 'no selected Crew';
+  const live = `${state.liveCount}/${state.expectedCount} Crew visible`;
+  const phases = state.phases || 'no active phase';
+  const carrying = state.carrying > 0 ? ` · carrying ${Math.round(state.carrying * 10) / 10}` : '';
+  const target = state.targets.length ? ` · target ${state.targets.join(', ')}` : '';
+  return `${live} · ${phases}${carrying}${target}`;
+}
+
+function macroAdmissionFeedback(seat, actionId, beforeOrderId = null) {
+  let simulation = null;
+  let party = null;
+  try { simulation = bridge.describeSeatSimulation(seat.id); } catch { simulation = null; }
+  try { party = bridge.describeSeatParty(seat.id); } catch { party = null; }
+  const order = simulation?.order || null;
+  const selectedIds = [...(party?.selectedCrewIds || [])].sort();
+  const orderedIds = [...(order?.crewIds || [])].sort();
+  const matchingCrew = selectedIds.length === orderedIds.length && selectedIds.every((id, index) => id === orderedIds[index]);
+  const matchingOrder = order?.type === actionId && matchingCrew;
+  const orderAdvanced = order?.id && order.id !== beforeOrderId;
+  if (matchingOrder && orderAdvanced) {
+    return `${seat.id} · ${actionId} admitted through its existing admitted input path · ${order.id} · ${selectedConsequenceSummary(simulation, party)}`;
+  }
+  if (matchingOrder) {
+    return `${seat.id} · ${actionId} remains the active LOCAL macro order through its existing admitted input path · ${order.id || 'order'} · ${selectedConsequenceSummary(simulation, party)}`;
+  }
+  return `${seat.id} · ${actionId} reached its existing admitted input path, but no matching LOCAL macro consequence was observed. Gameplay state may have rejected the command.`;
 }
 
 function keyboardSubmit(actionId) {
@@ -181,7 +227,9 @@ function submitAction(actionId) {
       return;
     }
     let beforeCivilization = null;
+    let beforeSimulation = null;
     try { beforeCivilization = bridge.describeSeatCivilization(seat.id); } catch { beforeCivilization = null; }
+    try { beforeSimulation = bridge.describeSeatSimulation(seat.id); } catch { beforeSimulation = null; }
     if (seat.kind === 'machine') {
       const result = bridge.submitMachineAction({ seatId: seat.id, actionId, timestampMs: performance.now() });
       if (!result?.accepted) {
@@ -193,7 +241,9 @@ function submitAction(actionId) {
     setTimeout(() => {
       try {
         const civilization = bridge.describeSeatCivilization(seat.id);
-        if (beforeCivilization?.menuOpen || actionId === 'ui-left' || actionId === 'ui-right') {
+        if (LOCAL_MACRO_ORDER_ACTIONS.has(actionId)) {
+          feedback.textContent = macroAdmissionFeedback(seat, actionId, beforeSimulation?.order?.id || null);
+        } else if (beforeCivilization?.menuOpen || actionId === 'ui-left' || actionId === 'ui-right') {
           feedback.textContent = `${seat.id} · ${civilization.lastOutcome?.message || actionId}`;
         }
       } catch {}
@@ -247,6 +297,7 @@ function render() {
   try { civilization = bridge.describeSeatCivilization(seat.id); } catch { civilization = null; }
 
   const order = simulation?.order?.type || 'idle';
+  const orderId = simulation?.order?.id || 'none';
   const core = Math.round(Number(simulation?.core?.integrity) || 0);
   const scrap = finiteFloor(simulation?.storage?.scrap);
   const capacity = finiteFloor(simulation?.storage?.capacity);
@@ -263,9 +314,10 @@ function render() {
   summary.innerHTML = `
     <span><b>${seat.id}</b> · ${seat.kind} · ${mode}</span>
     <span>party <b>${partySummary(party)}</b></span>
+    <span>selected consequence <b>${selectedConsequenceSummary(simulation, party)}</b></span>
     <span>core <b>${core}%</b></span>
     <span>materials <b>${scrap}/${capacity} scrap · ${timber} timber</b></span>
-    <span>order <b>${order}</b></span>
+    <span>order <b>${order} · ${orderId}</b></span>
     <span>cursor <b>${cursorX}, ${cursorZ} m</b></span>
     <span>resources <b>${knownResourceSummary(simulation?.resources)}</b></span>
     <span>structures <b>${structureSummary(civilization)}</b></span>

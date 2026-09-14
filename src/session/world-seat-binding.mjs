@@ -238,7 +238,10 @@ export class WorldSeatBindingRuntime {
     const normalizedSeatId = nonEmpty(seatId, 'seatId');
     const response = await this.client.participant(nonEmpty(participantId, 'participantId'));
     const participant = normalizedParticipant(response?.participant);
-    seatById(this.roster, normalizedSeatId);
+    const seat = seatById(this.roster, normalizedSeatId);
+    if (participant.controllerKind !== seat.kind) {
+      throw new Error(`${participant.participantId} is ${participant.controllerKind} but ${seat.id} is ${seat.kind}`);
+    }
 
     let runBootstrap = null;
     if (participant.profileKind === 'world-account' && typeof this.client.worldRunStatus === 'function') {

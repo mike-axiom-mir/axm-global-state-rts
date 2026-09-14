@@ -27,7 +27,7 @@
         <p class="eyebrow">EXPERIMENTAL SHARED WORLD ENTRY</p>
         <h1 id="worldTitle">Global State RTS · World Session</h1>
       </div>
-      <p class="truth">Human and machine participants use the same guest/account/chest API. Entry synchronizes elapsed hourly chests from host-authoritative world time. Opening is explicit and moves deterministic contents into the participant's next-drop cache; it does not grant current LOCAL RTS resources. A world account can explicitly begin one host-admitted next civilization from that named next-drop value. World-account mode is currently development-only: credentialMode=none is not secure public authentication.</p>
+      <p class="truth">Human and machine participants use the same guest/account/chest API. Entry synchronizes elapsed hourly chests from host-authoritative world time. Opening is explicit and moves deterministic contents into the participant's next-drop cache; opening alone does not grant current LOCAL RTS resources. A world account can explicitly begin one host-admitted next civilization from that named next-drop value; Continue then revalidates that active host run before the bounded LOCAL bootstrap. World-account mode is currently development-only: credentialMode=none is not secure public authentication.</p>
       <div id="worldMeta" class="status">Reading host world state…</div>
 
       <div class="world-grid">
@@ -62,9 +62,9 @@
       </div>
       <p class="help">The host world-hour clock is the chest authority. Re-entry catches up one chest per elapsed world hour, capped at 24 stored chests. Refresh only rechecks that host clock; it cannot double-award the same hour.</p>
       <p class="help">Opened contents are held as bounded next-drop setup value: food and scrap totals, counts for the fixed starting-item vocabulary, and unique blueprint options. For world accounts, Begin next civilization now sends that value through the host next-drop claim/run-start authority exactly once. A retry reuses the named claim rather than inventing a second reward path.</p>
-      <p class="help warning">Current convergence boundary: the host can durably replay the admitted initial run start when configured with its run-start store, but later in-run progression mutations are not yet covered by that replay contract. The visible LOCAL RTS starter simulation is also not yet seeded from the host progression, and browser run-death/closure is not yet connected to this screen. Those gaps remain explicit instead of being hidden behind the Continue button.</p>
+      <p class="help warning">Current convergence boundary: the host durably replays the admitted run start and its explicitly journaled run-mutation surface, while Continue now revalidates the active run and adds its admitted starting scrap exactly once to a fresh LOCAL physical store. The existing 100 LOCAL scrap + 260 browser-local timber fixture still exists. Host food, starting items, blueprints, manpower differences, and later LOCAL gather/build/produce mutations are not yet reconciled into one authority, and browser run-death/closure is not yet connected here.</p>
       <p class="help warning">Guest state is session-only. A world account can be persisted by the host adapter, but this screen does not prove account ownership, passwords, TLS, anti-Sybil controls, or production deployment.</p>
-      <p class="help">Continue stores a single-use browser handoff, opens one matching local seat, then the RTS shell re-reads the participant from host authority before binding it. The handoff is a development convenience, not an authentication credential.</p>
+      <p class="help">Continue stores a single-use browser handoff, opens one matching local seat, then the RTS shell re-reads the participant and active run from host authority before binding it. The handoff is a development convenience, not an authentication credential.</p>
     </section>
   </main>
   <script type="module" src="./world-entry.mjs"></script>

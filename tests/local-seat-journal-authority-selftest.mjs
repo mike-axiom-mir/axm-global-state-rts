@@ -112,15 +112,38 @@ const stale = authority.submitBoundCommand({
 assert.equal(stale.accepted, false);
 assert.equal(stale.reason, 'local-authority-revision-conflict');
 
+const exploreIntent = Object.freeze({ actionId: 'explore', cursorXM: 200, cursorZM: 200, stepCount: 12 });
+const humanExplore = authority.submitBoundCommand({
+  participantId: human.participantId,
+  regionSeatId: 'seat-1',
+  intent: exploreIntent,
+  expectedRevision: 1
+});
+const machineExplore = authority.submitBoundCommand({
+  participantId: machine.participantId,
+  regionSeatId: 'seat-1',
+  intent: exploreIntent,
+  expectedRevision: 1
+});
+assert.equal(humanExplore.accepted, true, 'explore is now a host-admitted local command');
+assert.equal(machineExplore.accepted, true, 'machine explore crosses the same host admission path');
+assert.equal(humanExplore.revision, 2);
+assert.equal(machineExplore.revision, 2);
+assert.equal(humanExplore.entry.physicalIntent.actionId, 'explore');
+assert.equal(machineExplore.entry.physicalIntent.actionId, 'explore');
+assert.equal(humanExplore.physicalCommandDigest, machineExplore.physicalCommandDigest, 'human and machine explore must preserve identical physical intent evidence');
+assert.equal(humanExplore.stateHash, machineExplore.stateHash, 'equal explore commands must replay to equal host local state');
+assert.notEqual(humanExplore.admissionDigest, machineExplore.admissionDigest, 'explore admission remains participant-specific');
+
 const notEnabled = authority.submitBoundCommand({
   participantId: human.participantId,
   regionSeatId: 'seat-1',
-  intent: { actionId: 'explore', cursorXM: 0, cursorZM: 0, stepCount: 1 },
-  expectedRevision: 1
+  intent: { actionId: 'attack', cursorXM: 0, cursorZM: 0, stepCount: 1 },
+  expectedRevision: 2
 });
 assert.equal(notEnabled.accepted, false);
 assert.equal(notEnabled.reason, 'host-local-action-not-enabled');
-assert.deepEqual(notEnabled.enabledActionIds, ['gather-scrap', 'repair-core']);
+assert.deepEqual(notEnabled.enabledActionIds, ['gather-scrap', 'explore', 'repair-core']);
 
 const cappedRegistry = createWorldParticipantRegistry({ worldEpochMs: 0, apmCap: 1 });
 const cappedParticipant = cappedRegistry.createWorldAccount({ accountId: 'capped', controllerKind: 'human', nowMs: initialNowMs });
@@ -137,6 +160,7 @@ console.log(JSON.stringify({
   isolatedJournalStoreCount: journals.size,
   humanRevision: authority.status({ participantId: human.participantId, regionSeatId: 'seat-1' }).journal.revision,
   machineRevision: authority.status({ participantId: machine.participantId, regionSeatId: 'seat-1' }).journal.revision,
+  hostEnabledActions: notEnabled.enabledActionIds,
   unboundLookupBoundary: ambiguous.reason,
   truthBoundary: authority.snapshot().truthBoundary
 }, null, 2));

@@ -1,0 +1,35 @@
+name: world-event-encounter-authority
+
+on:
+  pull_request:
+    paths:
+      - 'src/hosted/world-event-encounter-authority.mjs'
+      - 'tests/world-event-encounter-authority-selftest.mjs'
+      - '.github/workflows/world-event-encounter-authority.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/hosted/world-event-encounter-authority.mjs'
+      - 'tests/world-event-encounter-authority-selftest.mjs'
+      - '.github/workflows/world-event-encounter-authority.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-host-encounter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Syntax check authority seam
+        run: |
+          node --check src/hosted/world-event-encounter-authority.mjs
+          node --check tests/world-event-encounter-authority-selftest.mjs
+      - name: Prove durable authoritative encounter replay and admission parity
+        run: node tests/world-event-encounter-authority-selftest.mjs
+      - name: Existing deterministic regression suite
+        run: npm test

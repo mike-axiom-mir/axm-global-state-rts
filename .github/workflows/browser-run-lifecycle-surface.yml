@@ -49,7 +49,7 @@ jobs:
         run: node --check game/world-run-lifecycle.mjs
 
       - name: Check world-run browser test syntax
-        run: node --check tests/browser/world-run-entry.spec.js
+        run: node --input-type=module --check < tests/browser/world-run-entry.spec.js
 
       - name: Check existing lifecycle authority syntax
         run: |

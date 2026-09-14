@@ -1,0 +1,132 @@
+name: Global State RTS world run restart persistence
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/hosted/world-run-start-store.mjs'
+      - 'src/hosted/world-run-session-authority.mjs'
+      - 'src/hosted/world-run-http-api.mjs'
+      - 'scripts/serve.mjs'
+      - 'tests/world-run-restart-persistence-selftest.mjs'
+      - '.github/workflows/world-run-restart-persistence.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  durable-run-start-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run deterministic and syntax gates
+        run: |
+          npm test
+          node --check src/hosted/world-run-start-store.mjs
+          node --check src/hosted/world-run-session-authority.mjs
+          node --check src/hosted/world-run-http-api.mjs
+          node --check scripts/serve.mjs
+          node --check tests/world-run-restart-persistence-selftest.mjs
+          node tests/world-run-restart-persistence-selftest.mjs
+
+      - name: Seed one durable world account with next-drop value
+        run: |
+          rm -f /tmp/axm-run-restart-accounts.json /tmp/axm-run-restart-starts.json /tmp/axm-run-restart-world.json /tmp/axm-run-restart-before.json /tmp/axm-run-restart-after.json /tmp/axm-run-restart-host.log
+          node --input-type=module <<'NODE'
+          import { WORLD_HOUR_MS } from './src/hosted/world-clock.mjs';
+          import { createFileWorldAccountStore } from './src/hosted/world-account-store.mjs';
+          import { createWorldSessionAuthority } from './src/hosted/world-session-authority.mjs';
+          const nowMs = Date.now();
+          const authority = createWorldSessionAuthority({
+            worldEpochMs: 0,
+            accountStore: createFileWorldAccountStore('/tmp/axm-run-restart-accounts.json')
+          });
+          const participant = authority.createWorldAccount({
+            accountId: 'workflow-restart-account',
+            displayName: 'Workflow Restart Account',
+            controllerKind: 'machine',
+            nowMs: nowMs - 2 * WORLD_HOUR_MS
+          });
+          authority.accrueChests(participant.participantId, nowMs);
+          const opened = authority.openChests(participant.participantId, 1);
+          if (!opened.accepted || opened.pendingNextDropRewards.openedCratesContributed !== 1) {
+            throw new Error('failed to seed exactly one next-drop reward');
+          }
+          NODE
+
+      - name: Start run, restart host process, and verify exact initial progression replay
+        run: |
+          set -euo pipefail
+          export AXM_SHARED_WRITE_MODE=dev
+          export AXM_WORLD_JOURNAL_PATH=/tmp/axm-run-restart-world.json
+          export AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-run-restart-accounts.json
+          export AXM_WORLD_RUN_STARTS_PATH=/tmp/axm-run-restart-starts.json
+          PORT=4187 node scripts/serve.mjs > /tmp/axm-run-restart-host.log 2>&1 &
+          HOST_PID=$!
+          trap 'kill "$HOST_PID" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4187/api/world/meta >/tmp/axm-run-restart-meta.json; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent --show-error \
+            -H 'content-type: application/json' \
+            -d '{"participantId":"world:workflow-restart-account","runId":"run:workflow-restart:001","runOptions":{"crewCount":9,"extraStartingResources":{"scrap":17}}}' \
+            http://127.0.0.1:4187/api/world/run/begin-next-drop > /tmp/axm-run-restart-before.json
+          kill "$HOST_PID"
+          wait "$HOST_PID" || true
+          trap - EXIT
+
+          PORT=4187 node scripts/serve.mjs >> /tmp/axm-run-restart-host.log 2>&1 &
+          HOST_PID=$!
+          trap 'kill "$HOST_PID" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl --fail --silent 'http://127.0.0.1:4187/api/world/run?participantId=world%3Aworkflow-restart-account' > /tmp/axm-run-restart-after.json; then
+              break
+            fi
+            sleep 1
+          done
+
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const before = JSON.parse(fs.readFileSync('/tmp/axm-run-restart-before.json', 'utf8'));
+          const after = JSON.parse(fs.readFileSync('/tmp/axm-run-restart-after.json', 'utf8'));
+          assert.equal(before.accepted, true);
+          assert.equal(before.runStartPersistence.persisted, true);
+          assert.equal(before.progressionPersistence.kind, 'json-file-run-start-replay');
+          assert.deepEqual(after.progression, before.progression);
+          assert.equal(after.controllerKind, 'machine');
+          assert.equal(after.continuity.processRestartGap, false);
+          assert.equal(after.continuity.restoredFromRunStart, true);
+          assert.equal(after.continuity.state, 'run-start-restored-from-durable-record');
+          assert.equal(after.progressionPersistence.restoredThisProcess, 1);
+          NODE
+
+      - name: Preserve restart evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-world-run-restart-persistence
+          path: |
+            /tmp/axm-run-restart-accounts.json
+            /tmp/axm-run-restart-starts.json
+            /tmp/axm-run-restart-world.json
+            /tmp/axm-run-restart-before.json
+            /tmp/axm-run-restart-after.json
+            /tmp/axm-run-restart-host.log
+          if-no-files-found: warn
+          retention-days: 14

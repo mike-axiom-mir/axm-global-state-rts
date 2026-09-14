@@ -4,7 +4,7 @@ import {
   createWorldRunSessionAuthority
 } from './world-run-session-authority.mjs';
 
-export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.1';
+export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.2';
 
 function queryValue(searchParams, key) {
   if (!searchParams) return null;
@@ -32,7 +32,14 @@ function runMutationStatus(result) {
 }
 
 export class WorldRunHttpApiService {
-  constructor({ authority, runAuthority = null, baseApi = null, writeMode = 'off', clock = () => Date.now() } = {}) {
+  constructor({
+    authority,
+    runAuthority = null,
+    runStartStore = null,
+    baseApi = null,
+    writeMode = 'off',
+    clock = () => Date.now()
+  } = {}) {
     if (!authority?.participants || !authority?.sharedState) throw new TypeError('world session authority required');
     if (typeof clock !== 'function') throw new TypeError('clock must be a function');
     if (baseApi !== null && typeof baseApi?.handle !== 'function') throw new TypeError('baseApi must provide handle');
@@ -40,7 +47,7 @@ export class WorldRunHttpApiService {
     this.authority = authority;
     this.writeMode = String(writeMode || 'off');
     this.clock = clock;
-    this.runAuthority = runAuthority || createWorldRunSessionAuthority({ worldAuthority: authority, clock });
+    this.runAuthority = runAuthority || createWorldRunSessionAuthority({ worldAuthority: authority, runStartStore, clock });
     this.baseApi = baseApi || createWorldHttpApiService({ authority, writeMode: this.writeMode, clock });
   }
 
@@ -68,12 +75,15 @@ export class WorldRunHttpApiService {
       if (verb === 'GET' && route === '/api/world/meta') {
         const base = this.baseApi.handle({ method, pathname, searchParams, body });
         if (base.status !== 200) return base;
+        const persistence = this.runAuthority.progressionPersistenceMeta();
         return response(200, {
           ...base.body,
           runLifecycle: Object.freeze({
             schema: WORLD_RUN_SESSION_AUTHORITY_SCHEMA,
-            progressionPersistence: this.runAuthority.progressionPersistenceMeta(),
-            truthBoundary: 'next-drop-run-start-is-host-authoritative-but-active-progression-remains-process-memory-only'
+            progressionPersistence: persistence,
+            truthBoundary: persistence.enabled
+              ? 'next-drop-run-start-is-host-authoritative-and-its-initial-progression-state-can-be-replayed-from-durable-start-evidence;later-in-run-mutations-remain-outside-this-replay-contract'
+              : 'next-drop-run-start-is-host-authoritative-but-active-progression-remains-process-memory-only'
           })
         });
       }

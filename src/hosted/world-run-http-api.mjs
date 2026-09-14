@@ -1,5 +1,8 @@
 import { createWorldHttpApiService } from './world-http-api.mjs';
-import { createWorldRunSessionAuthority } from './world-run-session-authority.mjs';
+import {
+  WORLD_RUN_SESSION_AUTHORITY_SCHEMA,
+  createWorldRunSessionAuthority
+} from './world-run-session-authority.mjs';
 
 export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.1';
 
@@ -29,15 +32,16 @@ function runMutationStatus(result) {
 }
 
 export class WorldRunHttpApiService {
-  constructor({ authority, runAuthority = null, writeMode = 'off', clock = () => Date.now() } = {}) {
+  constructor({ authority, runAuthority = null, baseApi = null, writeMode = 'off', clock = () => Date.now() } = {}) {
     if (!authority?.participants || !authority?.sharedState) throw new TypeError('world session authority required');
     if (typeof clock !== 'function') throw new TypeError('clock must be a function');
+    if (baseApi !== null && typeof baseApi?.handle !== 'function') throw new TypeError('baseApi must provide handle');
     this.schema = WORLD_RUN_HTTP_API_SCHEMA;
     this.authority = authority;
     this.writeMode = String(writeMode || 'off');
     this.clock = clock;
     this.runAuthority = runAuthority || createWorldRunSessionAuthority({ worldAuthority: authority, clock });
-    this.baseApi = createWorldHttpApiService({ authority, writeMode: this.writeMode, clock });
+    this.baseApi = baseApi || createWorldHttpApiService({ authority, writeMode: this.writeMode, clock });
   }
 
   handle({ method = 'GET', pathname, searchParams = null, body = {} } = {}) {
@@ -67,7 +71,7 @@ export class WorldRunHttpApiService {
         return response(200, {
           ...base.body,
           runLifecycle: Object.freeze({
-            schema: WORLD_RUN_SESSION_AUTHORITY_SCHEMA_COMPAT,
+            schema: WORLD_RUN_SESSION_AUTHORITY_SCHEMA,
             progressionPersistence: this.runAuthority.progressionPersistenceMeta(),
             truthBoundary: 'next-drop-run-start-is-host-authoritative-but-active-progression-remains-process-memory-only'
           })
@@ -82,8 +86,6 @@ export class WorldRunHttpApiService {
     }
   }
 }
-
-const WORLD_RUN_SESSION_AUTHORITY_SCHEMA_COMPAT = 'axm.global-state-rts.world-run-session-authority/v0.1';
 
 export function createWorldRunHttpApiService(options = {}) {
   return new WorldRunHttpApiService(options);

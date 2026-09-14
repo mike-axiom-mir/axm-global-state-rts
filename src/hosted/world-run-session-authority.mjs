@@ -73,12 +73,15 @@ export class WorldRunSessionAuthority {
     let progression = this.progressions.get(record.participantId);
     if (!progression) {
       progression = this.progressionFactory({
+        ...cloneJson(this.progressionOptions),
         playerId: record.participantId,
-        playerSeed: record.participantId,
-        ...cloneJson(this.progressionOptions)
+        playerSeed: record.participantId
       });
       if (!progression?.snapshot || !progression?.beginRunFromNextDropClaim) {
         throw new TypeError('progressionFactory must return a PlayerProgression-compatible object');
+      }
+      if (progression.playerId !== record.participantId) {
+        throw new Error('progressionFactory changed authoritative participant identity');
       }
       this.progressions.set(record.participantId, progression);
     }
@@ -147,15 +150,20 @@ export class WorldRunSessionAuthority {
     }
 
     const progression = this.#progressionFor(record.participantId);
-    const bridge = beginClaimedNextDropRun({
-      participantRegistry: this.worldAuthority.participants,
-      playerProgression: progression,
-      participantId: record.participantId,
-      runId: nextRunId,
-      runOptions: cloneJson(runOptions || {})
-    });
+    let bridge;
+    let accountPersistence;
+    try {
+      bridge = beginClaimedNextDropRun({
+        participantRegistry: this.worldAuthority.participants,
+        playerProgression: progression,
+        participantId: record.participantId,
+        runId: nextRunId,
+        runOptions: cloneJson(runOptions || {})
+      });
+    } finally {
+      accountPersistence = this.#persistParticipantClaimState();
+    }
 
-    const accountPersistence = this.#persistParticipantClaimState();
     return Object.freeze({
       ...bridge,
       schema: WORLD_RUN_SESSION_AUTHORITY_SCHEMA,

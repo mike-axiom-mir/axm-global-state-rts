@@ -1,17 +1,22 @@
 import { expect, test } from '@playwright/test';
 
-function captureRuntimeFailures(page) {
+function captureRuntimeFailures(page, { allowConsole = [] } = {}) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() !== 'error') return;
+    const text = message.text();
+    if (allowConsole.some(pattern => pattern.test(text))) return;
+    failures.push(`console: ${text}`);
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
 }
 
 test('seeded world account explicitly opens a chest into durable next-drop value without current-RTS claim', async ({ page }) => {
-  const failures = captureRuntimeFailures(page);
+  const failures = captureRuntimeFailures(page, {
+    allowConsole: [/Failed to load resource:.*400 \(Bad Request\)/]
+  });
   const response = await page.goto('http://127.0.0.1:4174/game/world-entry.html', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);
 

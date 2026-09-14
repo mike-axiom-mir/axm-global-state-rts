@@ -134,7 +134,7 @@ function render(record = participant()) {
   if (retainedStatus.progression?.activeRun) {
     const active = retainedStatus.progression.activeRun;
     const persistence = retainedStatus.progressionPersistence?.kind || 'unknown persistence';
-    runStatusElement.textContent = `civilization run: active ${active.runId} · host progression ${persistence} · LOCAL physical starter state is not yet seeded from this run`;
+    runStatusElement.textContent = `civilization run: active ${active.runId} · host progression ${persistence} · Continue revalidates this run and bridges its admitted scrap once into a fresh LOCAL seat; other host resources remain host-only`;
     return;
   }
   if (retainedStatus.continuity?.processRestartGap) {
@@ -221,7 +221,7 @@ async function beginNextDropRun() {
       const persistence = result.runStartPersistence?.persisted
         ? `${result.progressionPersistence?.kind || 'durable'} start replay evidence`
         : `${result.progressionPersistence?.kind || 'process-memory'} progression`;
-      runStatusElement.textContent = `civilization run: active ${result.runId} · claim ${result.claim?.status || 'unknown'} · ${persistence} · continue enters the RTS shell, but visible LOCAL starter state is not yet seeded from this progression`;
+      runStatusElement.textContent = `civilization run: active ${result.runId} · claim ${result.claim?.status || 'unknown'} · ${persistence} · Continue revalidates the same host run and bridges its admitted scrap once into the fresh LOCAL physical store`;
       return Object.freeze({ accepted: true, result, status: retainedStatus, participant: refreshedParticipant || record });
     } catch (error) {
       const reason = error?.body?.reason || error?.body?.error || error.message;

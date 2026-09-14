@@ -141,10 +141,16 @@ try {
   lines[1] = JSON.stringify(tampered);
   const tamperedPath = path.join(tempDir, 'encounter-tampered.jsonl');
   fs.writeFileSync(tamperedPath, `${lines.join('\n')}\n`, 'utf8');
+  const tamperedAccounts = registryWithAccounts(soloTickMs);
   assert.throws(
-    () => createFileWorldJournalStore(tamperedPath),
-    /entryHash|previousHash|journal/i,
-    'tampered durable evidence must fail closed before it can be replayed'
+    () => createWorldEventEncounterAuthority({
+      event,
+      participantRegistry: tamperedAccounts.registry,
+      store: createFileWorldJournalStore(tamperedPath),
+      clock: () => soloTickMs
+    }),
+    /entryHash mismatch/i,
+    'tampered durable evidence must fail closed when replayed'
   );
 
   console.log('host-authoritative durable world-event encounter selftest: PASS');

@@ -60,10 +60,12 @@ const reopenBuild = gameplay.handleAction('ui-right');
 assert.equal(reopenBuild.accepted, true);
 assert.equal(gameplay.handleAction('ui-down').accepted, true);
 assert.equal(gameplay.snapshot().selectedBuild.id, 'building:training-yard');
+const beforeBlockedResources = gameplay.snapshot().resources;
 const blocked = gameplay.handleAction('confirm', { cursorXM: 80, cursorZM: 80, selectedCrewIds: crewIds });
 assert.equal(blocked.accepted, false);
 assert.equal(blocked.reason, 'insufficient-resources');
-assert.ok(blocked.missing.scrap > 0);
+assert.match(gameplay.snapshot().lastOutcome.message, /insufficient-resources/);
+assert.deepEqual(gameplay.snapshot().resources, beforeBlockedResources, 'rejected construction must not debit any material');
 assert.equal(gameplay.snapshot().structures.length, 1, 'rejected construction does not create a placeholder structure');
 
 console.log('browser-local construction / aggregate production gameplay selftest: PASS');

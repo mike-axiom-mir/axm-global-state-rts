@@ -1,0 +1,106 @@
+name: Global State RTS durable next-drop chest cache
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/sim/hourly-drop-cache.mjs'
+      - 'src/hosted/world-participant-registry.mjs'
+      - 'src/hosted/world-account-store.mjs'
+      - 'src/hosted/world-session-authority.mjs'
+      - 'src/hosted/world-http-api.mjs'
+      - 'src/session/world-browser-client.mjs'
+      - 'game/world-entry.html'
+      - 'game/world-entry.mjs'
+      - 'tests/world-chest-next-drop-cache-selftest.mjs'
+      - 'tests/browser/world-chest-next-drop.spec.js'
+      - 'scripts/serve.mjs'
+      - '.github/workflows/world-chest-next-drop-cache.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  durable-next-drop-chest-cache:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run deterministic and source gates
+        run: |
+          npm test
+          node --check src/sim/hourly-drop-cache.mjs
+          node --check src/hosted/world-participant-registry.mjs
+          node --check game/world-entry.mjs
+          node --check tests/world-chest-next-drop-cache-selftest.mjs
+          node --check tests/browser/world-chest-next-drop.spec.js
+          node tests/world-chest-next-drop-cache-selftest.mjs
+
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Seed one durable world-account chest
+        run: |
+          rm -f /tmp/axm-next-drop-accounts.json /tmp/axm-next-drop-world.json /tmp/axm-next-drop-host.log
+          node --input-type=module <<'NODE'
+          import { WORLD_HOUR_MS } from './src/hosted/world-clock.mjs';
+          import { createFileWorldAccountStore } from './src/hosted/world-account-store.mjs';
+          import { createWorldSessionAuthority } from './src/hosted/world-session-authority.mjs';
+          const nowMs = Date.now();
+          const accountStore = createFileWorldAccountStore('/tmp/axm-next-drop-accounts.json');
+          const authority = createWorldSessionAuthority({ worldEpochMs: 0, accountStore });
+          const participant = authority.createWorldAccount({
+            accountId: 'browser-next-drop-seed',
+            displayName: 'Seeded Chest Player',
+            controllerKind: 'human',
+            nowMs: nowMs - WORLD_HOUR_MS
+          });
+          const accrued = authority.accrueChests(participant.participantId, nowMs);
+          if (accrued.dropCache.storedCrates !== 1) {
+            throw new Error(`expected exactly one seeded chest, got ${accrued.dropCache.storedCrates}`);
+          }
+          NODE
+
+      - name: Start development world host on the same durable account store
+        run: |
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-next-drop-world.json \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-next-drop-accounts.json \
+          node scripts/serve.mjs > /tmp/axm-next-drop-host.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-next-drop-host.log
+          exit 1
+
+      - name: Exercise explicit next-drop chest opening and re-entry in Chromium
+        run: npx playwright test tests/browser/world-chest-next-drop.spec.js --reporter=line
+
+      - name: Preserve exact player-facing and durable-store evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-next-drop-chest-cache
+          path: |
+            test-results/global-state-rts-next-drop-chest.png
+            /tmp/axm-next-drop-accounts.json
+            /tmp/axm-next-drop-host.log
+          if-no-files-found: warn
+          retention-days: 14

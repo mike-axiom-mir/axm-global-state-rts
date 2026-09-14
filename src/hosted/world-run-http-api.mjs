@@ -1,10 +1,12 @@
 import { createWorldHttpApiService } from './world-http-api.mjs';
 import {
-  WORLD_RUN_SESSION_AUTHORITY_SCHEMA,
-  createWorldRunSessionAuthority
-} from './world-run-session-authority.mjs';
+  DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+  WORLD_RUN_GLOBAL_CONTROL_ACTION,
+  createDurableWorldRunMutationAuthority
+} from './durable-world-run-mutation-authority.mjs';
+import { WORLD_RUN_SESSION_AUTHORITY_SCHEMA } from './world-run-session-authority.mjs';
 
-export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.2';
+export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.3';
 
 function queryValue(searchParams, key) {
   if (!searchParams) return null;
@@ -26,7 +28,8 @@ function finiteHostTime(clock) {
 function runMutationStatus(result) {
   if (result?.accepted) return 200;
   if (result?.reason === 'participant-action-rate-limited') return 429;
-  if (result?.reason === 'run-start-rejected') return 409;
+  if (result?.reason === 'mutation-persistence-failed-before-apply') return 503;
+  if (result?.reason === 'run-start-rejected' || result?.reason === 'no-active-run' || result?.reason === 'run-id-mismatch') return 409;
   if (String(result?.reason || '').includes('claim')) return 409;
   return 400;
 }
@@ -47,7 +50,9 @@ export class WorldRunHttpApiService {
     this.authority = authority;
     this.writeMode = String(writeMode || 'off');
     this.clock = clock;
-    this.runAuthority = runAuthority || createWorldRunSessionAuthority({ worldAuthority: authority, runStartStore, clock });
+    this.runAuthority = runAuthority?.recordGlobalControlPercent
+      ? runAuthority
+      : createDurableWorldRunMutationAuthority({ worldAuthority: authority, runAuthority, runStartStore, clock });
     this.baseApi = baseApi || createWorldHttpApiService({ authority, writeMode: this.writeMode, clock });
   }
 
@@ -72,6 +77,18 @@ export class WorldRunHttpApiService {
         return response(runMutationStatus(result), result);
       }
 
+      if (verb === 'POST' && route === '/api/world/run/global-control') {
+        if (this.writeMode !== 'dev') return response(403, { error: 'world writes disabled', writeMode: this.writeMode });
+        const result = this.runAuthority.recordGlobalControlPercent({
+          participantId: body.participantId,
+          runId: body.runId,
+          mutationId: body.mutationId,
+          percent: body.percent,
+          timestampMs: finiteHostTime(this.clock)
+        });
+        return response(runMutationStatus(result), result);
+      }
+
       if (verb === 'GET' && route === '/api/world/meta') {
         const base = this.baseApi.handle({ method, pathname, searchParams, body });
         if (base.status !== 200) return base;
@@ -80,10 +97,12 @@ export class WorldRunHttpApiService {
           ...base.body,
           runLifecycle: Object.freeze({
             schema: WORLD_RUN_SESSION_AUTHORITY_SCHEMA,
+            mutationAuthoritySchema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
             progressionPersistence: persistence,
+            hostAuthoritativeMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION]),
             truthBoundary: persistence.enabled
-              ? 'next-drop-run-start-is-host-authoritative-and-its-initial-progression-state-can-be-replayed-from-durable-start-evidence;later-in-run-mutations-remain-outside-this-replay-contract'
-              : 'next-drop-run-start-is-host-authoritative-but-active-progression-remains-process-memory-only'
+              ? 'next-drop-run-start-and-the-bounded-global-control-run-mutation-are-host-authoritative-and-replayable-from-durable-evidence;other-later-in-run-mutations-remain-outside-this-replay-contract'
+              : 'next-drop-run-start-and-global-control-mutations-are-host-authoritative-but-active-progression-remains-process-memory-only-without-durable-run-start-storage'
           })
         });
       }
@@ -91,7 +110,11 @@ export class WorldRunHttpApiService {
       return this.baseApi.handle({ method, pathname, searchParams, body });
     } catch (error) {
       const message = String(error?.message || error);
-      const status = /already exists/.test(message) ? 409 : /unknown participant/.test(message) ? 404 : 400;
+      const status = /already exists|id conflict|application state ambiguous/.test(message)
+        ? 409
+        : /unknown participant/.test(message)
+          ? 404
+          : 400;
       return response(status, { error: message });
     }
   }

@@ -1,0 +1,146 @@
+name: Global State RTS world run mutation replay
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/hosted/world-run-start-store.mjs'
+      - 'src/hosted/world-run-session-authority.mjs'
+      - 'src/hosted/durable-world-run-mutation-authority.mjs'
+      - 'src/hosted/world-run-http-api.mjs'
+      - 'scripts/serve.mjs'
+      - 'tests/world-run-global-control-replay-selftest.mjs'
+      - '.github/workflows/world-run-mutation-replay.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  durable-global-control-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run deterministic and syntax gates
+        run: |
+          npm test
+          node --check src/hosted/world-run-start-store.mjs
+          node --check src/hosted/world-run-session-authority.mjs
+          node --check src/hosted/durable-world-run-mutation-authority.mjs
+          node --check src/hosted/world-run-http-api.mjs
+          node --check scripts/serve.mjs
+          node --check tests/world-run-restart-persistence-selftest.mjs
+          node --check tests/world-run-global-control-replay-selftest.mjs
+          node tests/world-run-restart-persistence-selftest.mjs
+          node tests/world-run-global-control-replay-selftest.mjs
+
+      - name: Seed durable machine world account with next-drop value
+        run: |
+          rm -f /tmp/axm-run-mutation-accounts.json /tmp/axm-run-mutation-starts.json /tmp/axm-run-mutation-world.json /tmp/axm-run-mutation-start.json /tmp/axm-run-mutation-command.json /tmp/axm-run-mutation-after.json /tmp/axm-run-mutation-host.log
+          node --input-type=module <<'NODE'
+          import { WORLD_HOUR_MS } from './src/hosted/world-clock.mjs';
+          import { createFileWorldAccountStore } from './src/hosted/world-account-store.mjs';
+          import { createWorldSessionAuthority } from './src/hosted/world-session-authority.mjs';
+          const nowMs = Date.now();
+          const authority = createWorldSessionAuthority({
+            worldEpochMs: 0,
+            accountStore: createFileWorldAccountStore('/tmp/axm-run-mutation-accounts.json')
+          });
+          const participant = authority.createWorldAccount({
+            accountId: 'workflow-mutation-account',
+            displayName: 'Workflow Mutation Account',
+            controllerKind: 'machine',
+            nowMs: nowMs - 2 * WORLD_HOUR_MS
+          });
+          authority.accrueChests(participant.participantId, nowMs);
+          const opened = authority.openChests(participant.participantId, 1);
+          if (!opened.accepted || opened.pendingNextDropRewards.openedCratesContributed !== 1) {
+            throw new Error('failed to seed exactly one next-drop reward');
+          }
+          NODE
+
+      - name: Mutate run, restart real host, and verify replayed progression
+        run: |
+          set -euo pipefail
+          export AXM_SHARED_WRITE_MODE=dev
+          export AXM_WORLD_JOURNAL_PATH=/tmp/axm-run-mutation-world.json
+          export AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-run-mutation-accounts.json
+          export AXM_WORLD_RUN_STARTS_PATH=/tmp/axm-run-mutation-starts.json
+          PORT=4188 node scripts/serve.mjs > /tmp/axm-run-mutation-host.log 2>&1 &
+          HOST_PID=$!
+          trap 'kill "$HOST_PID" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4188/api/world/meta >/tmp/axm-run-mutation-meta.json; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent --show-error \
+            -H 'content-type: application/json' \
+            -d '{"participantId":"world:workflow-mutation-account","runId":"run:workflow-mutation:001","runOptions":{"crewCount":9,"extraStartingResources":{"scrap":17}}}' \
+            http://127.0.0.1:4188/api/world/run/begin-next-drop > /tmp/axm-run-mutation-start.json
+          curl --fail --silent --show-error \
+            -H 'content-type: application/json' \
+            -d '{"participantId":"world:workflow-mutation-account","runId":"run:workflow-mutation:001","mutationId":"workflow-control-001","percent":42.25}' \
+            http://127.0.0.1:4188/api/world/run/global-control > /tmp/axm-run-mutation-command.json
+          kill "$HOST_PID"
+          wait "$HOST_PID" || true
+          trap - EXIT
+
+          PORT=4188 node scripts/serve.mjs >> /tmp/axm-run-mutation-host.log 2>&1 &
+          HOST_PID=$!
+          trap 'kill "$HOST_PID" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl --fail --silent 'http://127.0.0.1:4188/api/world/run?participantId=world%3Aworkflow-mutation-account' > /tmp/axm-run-mutation-after.json; then
+              break
+            fi
+            sleep 1
+          done
+
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const started = JSON.parse(fs.readFileSync('/tmp/axm-run-mutation-start.json', 'utf8'));
+          const command = JSON.parse(fs.readFileSync('/tmp/axm-run-mutation-command.json', 'utf8'));
+          const after = JSON.parse(fs.readFileSync('/tmp/axm-run-mutation-after.json', 'utf8'));
+          assert.equal(started.accepted, true);
+          assert.equal(started.runStartPersistence.persisted, true);
+          assert.equal(command.accepted, true);
+          assert.equal(command.mutationPersistence.persisted, true);
+          assert.equal(command.mutationPersistence.sequence, 1);
+          assert.equal(command.progression.activeRun.economy.peakGlobalControlPercent, 42.25);
+          assert.deepEqual(after.progression, command.progression);
+          assert.equal(after.controllerKind, 'machine');
+          assert.equal(after.continuity.restoredFromRunStart, true);
+          assert.equal(after.continuity.state, 'run-start-and-mutations-restored-from-durable-record');
+          assert.equal(after.mutationContinuity.durableMutationCount, 1);
+          assert.equal(after.progressionPersistence.restoredMutationsThisProcess, 1);
+          NODE
+
+      - name: Preserve mutation replay evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-world-run-mutation-replay
+          path: |
+            /tmp/axm-run-mutation-accounts.json
+            /tmp/axm-run-mutation-starts.json
+            /tmp/axm-run-mutation-world.json
+            /tmp/axm-run-mutation-start.json
+            /tmp/axm-run-mutation-command.json
+            /tmp/axm-run-mutation-after.json
+            /tmp/axm-run-mutation-meta.json
+            /tmp/axm-run-mutation-host.log
+          if-no-files-found: warn
+          retention-days: 14

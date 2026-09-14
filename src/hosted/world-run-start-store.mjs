@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const WORLD_RUN_START_STORE_SCHEMA = 'axm.global-state-rts.world-run-start-store/v0.1';
+export const WORLD_RUN_START_STORE_SCHEMA = 'axm.global-state-rts.world-run-start-store/v0.2';
 export const WORLD_RUN_START_FILE_SCHEMA = 'axm.global-state-rts.world-run-start-file/v0.1';
 
 function cloneJson(value) {
@@ -20,9 +20,53 @@ function finiteTimestamp(value, label) {
   return number;
 }
 
+function nonNegativeSafeInteger(value, label) {
+  const number = Number(value);
+  if (!Number.isSafeInteger(number) || number < 0) throw new RangeError(`${label} must be a non-negative safe integer`);
+  return number;
+}
+
+function positiveSafeInteger(value, label) {
+  const number = Number(value);
+  if (!Number.isSafeInteger(number) || number < 1) throw new RangeError(`${label} must be a positive safe integer`);
+  return number;
+}
+
 function plainObject(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError(`${label} must be an object`);
   return value;
+}
+
+function normalizeMutation(mutation, index, label) {
+  plainObject(mutation, `${label} mutation ${index}`);
+  const sequence = positiveSafeInteger(mutation.sequence, `${label} mutation ${index} sequence`);
+  const mutationId = nonEmpty(mutation.mutationId, `${label} mutation ${index} mutationId`);
+  const action = nonEmpty(mutation.action, `${label} mutation ${index} action`);
+  const payload = plainObject(mutation.payload ?? {}, `${label} mutation ${index} payload`);
+  return {
+    sequence,
+    mutationId,
+    action,
+    timestampMs: finiteTimestamp(mutation.timestampMs, `${label} mutation ${index} timestampMs`),
+    beforeRunRevision: nonNegativeSafeInteger(mutation.beforeRunRevision, `${label} mutation ${index} beforeRunRevision`),
+    payload: cloneJson(payload)
+  };
+}
+
+function normalizeMutations(mutations, label) {
+  if (mutations === undefined) return [];
+  if (!Array.isArray(mutations)) throw new TypeError(`${label} mutations must be an array`);
+  const ids = new Set();
+  return mutations.map((mutation, index) => {
+    const normalized = normalizeMutation(mutation, index, label);
+    const expectedSequence = index + 1;
+    if (normalized.sequence !== expectedSequence) {
+      throw new Error(`${label} mutation sequence must be contiguous from 1; expected ${expectedSequence}, got ${normalized.sequence}`);
+    }
+    if (ids.has(normalized.mutationId)) throw new Error(`${label} duplicate mutationId: ${normalized.mutationId}`);
+    ids.add(normalized.mutationId);
+    return normalized;
+  });
 }
 
 function normalizeRecord(record, index = null) {
@@ -51,7 +95,8 @@ function normalizeRecord(record, index = null) {
     startedAtMs: finiteTimestamp(record.startedAtMs, `${label} startedAtMs`),
     appliedClaim: cloneJson(claim),
     runOptions: cloneJson(runOptions),
-    initialProgressionSnapshot: cloneJson(initialProgressionSnapshot)
+    initialProgressionSnapshot: cloneJson(initialProgressionSnapshot),
+    mutations: normalizeMutations(record.mutations, label)
   };
 }
 

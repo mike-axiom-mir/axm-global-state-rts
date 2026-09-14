@@ -100,7 +100,7 @@ test('player explicitly prepares, debits, and finalizes non-spendable global sal
   await expect(page.locator('#hostLocalSalvageTransferFinalize')).toBeEnabled();
 
   await page.locator('#hostLocalSalvageTransferFinalize').click();
-  await expect(page.locator('#hostLocalSalvageTransferStatus')).toContainText('transfer-bound reservation consumption applied');
+  await expect(page.locator('#hostLocalSalvageTransferStatus')).toContainText('transfer-bound reservation consumption is applied');
   await expect(page.locator('#hostLocalSalvageTransferStatus')).toContainText('global spendable balance remains zero');
 
   const finalized = await page.evaluate(async () => {

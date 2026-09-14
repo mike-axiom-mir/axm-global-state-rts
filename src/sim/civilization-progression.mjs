@@ -16,6 +16,12 @@ function nonNegative(value, label) {
   return number;
 }
 
+function positiveSafeInteger(value, label) {
+  const number = Number(value);
+  if (!Number.isSafeInteger(number) || number < 1) throw new RangeError(`${label} must be a positive safe integer`);
+  return number;
+}
+
 function normalizeResources(resources = {}) {
   const result = {};
   for (const [id, raw] of Object.entries(resources || {})) {
@@ -42,6 +48,39 @@ function itemCounts(items = []) {
 }
 
 function frozenItemCounts(map) { return Object.freeze(Object.fromEntries([...map.entries()].sort((a, b) => a[0].localeCompare(b[0])))); }
+
+function normalizeClaimRewards(claim, blueprintLedger) {
+  if (!claim || typeof claim !== 'object' || Array.isArray(claim)) throw new TypeError('next-drop claim required');
+  const runId = String(claim.runId || '').trim();
+  if (!runId) throw new TypeError('next-drop claim runId required');
+  if (claim.status !== 'claimed') throw new Error('next-drop claim must be in claimed state');
+  positiveSafeInteger(claim.claimSerial, 'next-drop claim serial');
+  const rewards = claim.rewards && typeof claim.rewards === 'object' && !Array.isArray(claim.rewards)
+    ? claim.rewards
+    : {};
+  const resources = {
+    food: nonNegative(rewards.food, 'next-drop claim food'),
+    scrap: nonNegative(rewards.scrap, 'next-drop claim scrap')
+  };
+  const startingItems = [];
+  const itemCountMap = rewards.itemCounts && typeof rewards.itemCounts === 'object' && !Array.isArray(rewards.itemCounts)
+    ? rewards.itemCounts
+    : {};
+  for (const [rawItemId, rawCount] of Object.entries(itemCountMap)) {
+    const itemId = String(rawItemId || '').trim();
+    if (!itemId) throw new TypeError('next-drop claim item id required');
+    const count = Number(rawCount);
+    if (!Number.isSafeInteger(count) || count < 0) throw new RangeError(`next-drop claim item count must be a non-negative safe integer: ${itemId}`);
+    for (let index = 0; index < count; index++) startingItems.push(itemId);
+  }
+  const blueprintIds = Array.isArray(rewards.blueprintIds)
+    ? [...new Set(rewards.blueprintIds.map(String))].sort()
+    : [];
+  for (const blueprintId of blueprintIds) {
+    if (!blueprintLedger.definition(blueprintId)) throw new RangeError(`unknown next-drop claim blueprint: ${blueprintId}`);
+  }
+  return Object.freeze({ runId, resources: Object.freeze(resources), startingItems: Object.freeze(startingItems), blueprintIds: Object.freeze(blueprintIds) });
+}
 
 export class CivilizationRun {
   constructor({ runId, civilizationId, blueprintLedger, startingResources = {}, startingItems = [], crewCount = 8, foodPolicy = 'normal', foodPerDestroyedMaterial = 1 } = {}) {
@@ -189,18 +228,44 @@ export class PlayerProgression {
   unlockQuestBlueprint(blueprintId, eventId) { const result = this.blueprints.unlock(blueprintId, { source: 'quest', eventId }); this.revision += 1; return result; }
 
   beginRun(runId, { crewCount = this.baseCrewCount, foodPolicy = 'normal', extraStartingResources = {}, startingItems = [] } = {}) {
+    const id = String(runId || '').trim();
+    if (!id) throw new TypeError('runId required');
     if (this.activeRun && !this.activeRun.closed) throw new Error('cannot begin a second run while one is active');
+    if (this.runHistory.some(entry => entry.runId === id)) throw new Error(`run id already used: ${id}`);
     const runResources = addResources(addResources(this.baseStartingResources, this.dropReserveResources), extraStartingResources);
     const runItems = [];
     for (const [itemId, count] of this.dropReserveItems) for (let i = 0; i < count; i++) runItems.push(itemId);
     runItems.push(...startingItems.map(String));
     this.dropReserveResources = {};
     this.dropReserveItems.clear();
-    this.activeRun = new CivilizationRun({ runId, civilizationId: this.playerId, blueprintLedger: this.blueprints, startingResources: runResources, startingItems: runItems, crewCount, foodPolicy });
+    this.activeRun = new CivilizationRun({ runId: id, civilizationId: this.playerId, blueprintLedger: this.blueprints, startingResources: runResources, startingItems: runItems, crewCount, foodPolicy });
     const deployment = this.mercenaryReserve.deployIntoRun(this.activeRun);
     this.activeRun.recordMercenaryDeployment(deployment);
     this.revision += 1;
     return this.activeRun;
+  }
+
+  beginRunFromNextDropClaim(claim, options = {}) {
+    const normalized = normalizeClaimRewards(claim, this.blueprints);
+    if (this.activeRun && !this.activeRun.closed) throw new Error('cannot begin a second run while one is active');
+    if (this.runHistory.some(entry => entry.runId === normalized.runId)) throw new Error(`run id already used: ${normalized.runId}`);
+    const {
+      extraStartingResources = {},
+      startingItems = [],
+      ...runOptions
+    } = options || {};
+    const run = this.beginRun(normalized.runId, {
+      ...runOptions,
+      extraStartingResources: addResources(extraStartingResources, normalized.resources),
+      startingItems: [...normalized.startingItems, ...startingItems.map(String)]
+    });
+    for (const blueprintId of normalized.blueprintIds) {
+      this.blueprints.unlock(blueprintId, {
+        source: 'rng-cache',
+        eventId: `next-drop-claim:${claim.claimSerial}:${normalized.runId}:${blueprintId}`
+      });
+    }
+    return run;
   }
 
   closeActiveRun() {

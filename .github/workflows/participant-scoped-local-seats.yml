@@ -1,0 +1,54 @@
+name: Participant-scoped LOCAL seats
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/hosted/local-seat-binding-store.mjs'
+      - 'src/hosted/local-seat-journal-authority.mjs'
+      - 'src/hosted/world-session-authority.mjs'
+      - 'tests/local-seat-journal-authority-selftest.mjs'
+      - 'tests/local-seat-restart-continuity-selftest.mjs'
+      - 'docs/PARTICIPANT_SCOPED_LOCAL_SEATS_V0.md'
+      - '.github/workflows/participant-scoped-local-seats.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-participant-seat-regressions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Full deterministic and source prerequisite
+        run: npm test
+      - name: Local outcome replay authority
+        run: node tests/local-outcome-replay-authority-selftest.mjs
+      - name: Local region journal authority
+        run: node tests/local-region-command-journal-selftest.mjs
+      - name: Participant-scoped LOCAL seat authority
+        run: node tests/local-seat-journal-authority-selftest.mjs
+      - name: Participant-scoped LOCAL restart continuity
+        run: node tests/local-seat-restart-continuity-selftest.mjs
+      - name: LOCAL seat HTTP authority
+        run: node tests/local-seat-http-authority-selftest.mjs
+      - name: LOCAL checkpoint adoption
+        run: node tests/local-checkpoint-adoption-selftest.mjs
+      - name: Verified LOCAL salvage
+        run: node tests/verified-local-salvage-selftest.mjs
+      - name: Verified LOCAL salvage reservation HTTP
+        run: node tests/verified-local-salvage-reservation-http-selftest.mjs
+      - name: World session authority
+        run: node tests/world-session-authority-selftest.mjs
+      - name: World HTTP authority
+        run: node tests/world-http-api-selftest.mjs
+      - name: World browser client
+        run: node tests/world-browser-client-selftest.mjs

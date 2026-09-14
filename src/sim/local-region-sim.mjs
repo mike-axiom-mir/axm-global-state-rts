@@ -51,7 +51,10 @@ function immutablePoint(entity) {
 
 function cloneOrder(order) {
   if (!order) return null;
-  return Object.freeze({ ...order });
+  return Object.freeze({
+    ...order,
+    crewIds: order.crewIds ? Object.freeze([...order.crewIds]) : undefined
+  });
 }
 
 function snapshotCrew(crew) {
@@ -226,19 +229,49 @@ export class LocalRegionSimulation {
     return this.environment.lightTowerActive;
   }
 
-  issueGatherKnownScrap({ resourceId = null } = {}) {
+  #resolveCommandCrew(crewIds = null) {
+    if (crewIds === null || crewIds === undefined) return [...this.crew];
+    if (!Array.isArray(crewIds)) throw new TypeError('crewIds must be an array when supplied');
+    const requested = new Set(crewIds.map(String));
+    if (!requested.size) return [];
+    const found = this.crew.filter(crew => requested.has(crew.id));
+    if (found.length !== requested.size) throw new RangeError('crewIds contains an unknown Crew id');
+    return found;
+  }
+
+  #beginOrder(type, fields, crewIds = null) {
+    const commandedCrew = this.#resolveCommandCrew(crewIds);
+    if (!commandedCrew.length) return null;
+    const commandedIds = new Set(commandedCrew.map(crew => crew.id));
+    for (const crew of this.crew) {
+      if (commandedIds.has(crew.id)) continue;
+      crew.phase = 'idle';
+      crew.targetId = null;
+    }
+    this.orderSequence += 1;
+    this.order = {
+      id: `order-${this.orderSequence}`,
+      type,
+      ...fields,
+      crewIds: commandedCrew.map(crew => crew.id)
+    };
+    return commandedCrew;
+  }
+
+  #orderedCrew() {
+    if (!this.order) return [];
+    return this.#resolveCommandCrew(this.order.crewIds || null);
+  }
+
+  issueGatherKnownScrap({ resourceId = null, crewIds = null } = {}) {
     const candidates = this.knownResources();
     if (!candidates.length) return Object.freeze({ accepted: false, reason: 'no-known-scrap' });
     let target = resourceId ? candidates.find(resource => resource.id === resourceId) : null;
     if (resourceId && !target) return Object.freeze({ accepted: false, reason: 'resource-not-known-or-depleted' });
     if (!target) target = candidates[0];
-    this.orderSequence += 1;
-    this.order = {
-      id: `order-${this.orderSequence}`,
-      type: 'gather-scrap',
-      resourceId: target.id
-    };
-    for (const crew of this.crew) {
+    const commandedCrew = this.#beginOrder('gather-scrap', { resourceId: target.id }, crewIds);
+    if (!commandedCrew) return Object.freeze({ accepted: false, reason: 'no-commanded-crew' });
+    for (const crew of commandedCrew) {
       if (crew.carrying > EPSILON) {
         crew.phase = 'deliver';
         crew.targetId = this.storage.id;
@@ -251,17 +284,17 @@ export class LocalRegionSimulation {
     return Object.freeze({ accepted: true, order: cloneOrder(this.order) });
   }
 
-  issueGatherAt(xM, zM) {
+  issueGatherAt(xM, zM, { crewIds = null } = {}) {
     finite(xM, 'xM');
     finite(zM, 'zM');
     const candidates = this.knownResources();
     if (!candidates.length) return Object.freeze({ accepted: false, reason: 'no-known-scrap' });
     const cursor = { xM, zM };
     const target = [...candidates].sort((a, b) => distance(a, cursor) - distance(b, cursor) || a.id.localeCompare(b.id))[0];
-    return this.issueGatherKnownScrap({ resourceId: target.id });
+    return this.issueGatherKnownScrap({ resourceId: target.id, crewIds });
   }
 
-  issueExploreAt(xM, zM) {
+  issueExploreAt(xM, zM, { crewIds = null } = {}) {
     finite(xM, 'xM');
     finite(zM, 'zM');
     if (Math.abs(xM) > this.region.halfSizeM || Math.abs(zM) > this.region.halfSizeM) {
@@ -275,14 +308,9 @@ export class LocalRegionSimulation {
     )) {
       return Object.freeze({ accepted: false, reason: 'explore-target-blocked-by-workshop' });
     }
-    this.orderSequence += 1;
-    this.order = {
-      id: `order-${this.orderSequence}`,
-      type: 'explore',
-      xM,
-      zM
-    };
-    for (const crew of this.crew) {
+    const commandedCrew = this.#beginOrder('explore', { xM, zM }, crewIds);
+    if (!commandedCrew) return Object.freeze({ accepted: false, reason: 'no-commanded-crew' });
+    for (const crew of commandedCrew) {
       crew.phase = 'to-explore';
       crew.targetId = this.order.id;
     }
@@ -290,10 +318,10 @@ export class LocalRegionSimulation {
     return Object.freeze({ accepted: true, order: cloneOrder(this.order) });
   }
 
-  issueRepairCore() {
-    this.orderSequence += 1;
-    this.order = { id: `order-${this.orderSequence}`, type: 'repair-core', targetId: this.core.id };
-    for (const crew of this.crew) {
+  issueRepairCore({ crewIds = null } = {}) {
+    const commandedCrew = this.#beginOrder('repair-core', { targetId: this.core.id }, crewIds);
+    if (!commandedCrew) return Object.freeze({ accepted: false, reason: 'no-commanded-crew' });
+    for (const crew of commandedCrew) {
       crew.phase = 'to-core';
       crew.targetId = this.core.id;
     }
@@ -301,15 +329,15 @@ export class LocalRegionSimulation {
     return Object.freeze({ accepted: true, order: cloneOrder(this.order) });
   }
 
-  issueLocalAction(actionId, { cursorXM = 0, cursorZM = 0 } = {}) {
+  issueLocalAction(actionId, { cursorXM = 0, cursorZM = 0, crewIds = null } = {}) {
     if (actionId === 'confirm' || actionId === 'gather-scrap') {
-      return this.issueGatherAt(cursorXM, cursorZM);
+      return this.issueGatherAt(cursorXM, cursorZM, { crewIds });
     }
     if (actionId === 'context' || actionId === 'repair-core') {
-      return this.issueRepairCore();
+      return this.issueRepairCore({ crewIds });
     }
     if (actionId === 'explore') {
-      return this.issueExploreAt(cursorXM, cursorZM);
+      return this.issueExploreAt(cursorXM, cursorZM, { crewIds });
     }
     return Object.freeze({ accepted: false, reason: 'not-a-local-sim-action' });
   }
@@ -384,8 +412,9 @@ export class LocalRegionSimulation {
   #stepExplore(dtSeconds) {
     const target = { xM: this.order.xM, zM: this.order.zM };
     const maxMove = this.tuning.crewSpeedMps * dtSeconds;
+    const orderedCrew = this.#orderedCrew();
     let arrived = 0;
-    for (const crew of this.crew) {
+    for (const crew of orderedCrew) {
       crew.phase = 'to-explore';
       crew.targetId = this.order.id;
       if (this.#moveCrewToward(crew, target, maxMove)) {
@@ -394,14 +423,14 @@ export class LocalRegionSimulation {
         arrived += 1;
       }
     }
-    if (arrived === this.crew.length) this.order = null;
+    if (arrived === orderedCrew.length) this.order = null;
   }
 
   #stepGather(dtSeconds) {
     const maxMove = this.tuning.crewSpeedMps * dtSeconds;
     const gatherPerStep = this.tuning.gatherRatePerSecond * dtSeconds;
 
-    for (const crew of this.crew) {
+    for (const crew of this.#orderedCrew()) {
       if (crew.phase === 'deliver' || crew.carrying >= this.tuning.carryCapacity - EPSILON) {
         crew.phase = 'deliver';
         crew.targetId = this.storage.id;
@@ -453,17 +482,19 @@ export class LocalRegionSimulation {
   }
 
   #stepRepair(dtSeconds) {
+    const orderedCrew = this.#orderedCrew();
     if (this.core.integrity >= 100 - EPSILON) {
       this.core.integrity = 100;
-      for (const crew of this.crew) {
+      for (const crew of orderedCrew) {
         crew.phase = 'idle';
         crew.targetId = null;
       }
+      this.order = null;
       return;
     }
 
     const maxMove = this.tuning.crewSpeedMps * dtSeconds;
-    for (const crew of this.crew) {
+    for (const crew of orderedCrew) {
       crew.targetId = this.core.id;
       if (crew.phase !== 'repair') crew.phase = 'to-core';
       if (!this.#moveCrewToward(crew, this.core, maxMove)) continue;
@@ -497,7 +528,7 @@ export class LocalRegionSimulation {
     this.revision = otherSimulation.revision;
     this.accumulatorMs = otherSimulation.accumulatorMs;
     this.orderSequence = otherSimulation.orderSequence;
-    this.order = otherSimulation.order ? { ...otherSimulation.order } : null;
+    this.order = otherSimulation.order ? { ...otherSimulation.order, crewIds: otherSimulation.order.crewIds ? [...otherSimulation.order.crewIds] : undefined } : null;
     this.environment = { ...otherSimulation.environment };
     this.core = { ...otherSimulation.core };
     this.storage = { ...otherSimulation.storage };

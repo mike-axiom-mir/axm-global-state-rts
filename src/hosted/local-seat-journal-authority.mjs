@@ -2,9 +2,9 @@ import { createMemoryWorldJournalStore } from './journal-store.mjs';
 import { createLocalRegionCommandJournalAuthority } from './local-region-command-journal-authority.mjs';
 
 export const LOCAL_SEAT_JOURNAL_AUTHORITY_SCHEMA =
-  'axm.global-state-rts.local-seat-journal-authority/v0.2';
+  'axm.global-state-rts.local-seat-journal-authority/v0.3';
 export const LOCAL_SEAT_JOURNAL_BINDING_SCHEMA =
-  'axm.global-state-rts.local-seat-journal-binding/v0.2';
+  'axm.global-state-rts.local-seat-journal-binding/v0.3';
 
 const HOST_ENABLED_LOCAL_ACTIONS = Object.freeze(['gather-scrap', 'repair-core']);
 
@@ -33,13 +33,22 @@ function normalizeExpectedControllerKind(value) {
   return kind;
 }
 
+function participantSeatKey(participantId, regionSeatId) {
+  return `${nonEmpty(participantId, 'participantId')}\u0000${normalizeSeatId(regionSeatId)}`;
+}
+
+function journalStoreKey(participantId, regionSeatId) {
+  const encoded = Buffer.from(nonEmpty(participantId, 'participantId'), 'utf8').toString('base64url');
+  return `participant-${encoded}-${normalizeSeatId(regionSeatId)}`;
+}
+
 function bindingPersistenceLabel({ durableStore, journalMeta }) {
   if (!durableStore) return 'process-local';
   if (journalMeta.storeKind === 'memory') return 'binding-durable-journal-memory-only';
   return 'restart-durable-host-storage';
 }
 
-function freezeBinding({ participant, regionSeatId, boundAtWorldHourIndex, journalMeta, durableStore }) {
+function freezeBinding({ participant, regionSeatId, boundAtWorldHourIndex, journalMeta, durableStore, storeKey }) {
   return Object.freeze({
     schema: LOCAL_SEAT_JOURNAL_BINDING_SCHEMA,
     regionSeatId,
@@ -49,10 +58,12 @@ function freezeBinding({ participant, regionSeatId, boundAtWorldHourIndex, journ
     profileKind: participant.profileKind,
     credentialMode: participant.credentialMode,
     boundAtWorldHourIndex,
+    journalStoreKey: storeKey,
     journalGenesisDigest: journalMeta.genesisDigest,
     journalGenesisStateHash: journalMeta.genesisStateHash,
     ownershipPersistence: bindingPersistenceLabel({ durableStore, journalMeta }),
-    authority: 'host-owned-local-seat-to-command-journal-v0'
+    slotSemantics: 'client-local-seat-id-scoped-by-world-participant',
+    authority: 'host-owned-participant-local-seat-to-command-journal-v1'
   });
 }
 
@@ -78,9 +89,9 @@ export class LocalSeatJournalAuthority {
     this.storeFactory = storeFactory;
     this.bindingStore = bindingStore;
     this.maxCommands = maxCommands;
-    this.bindingsBySeat = new Map();
+    this.bindingsByKey = new Map();
     this.seatByParticipant = new Map();
-    this.journalsBySeat = new Map();
+    this.journalsByKey = new Map();
     this.#restoreDurableBindings();
   }
 
@@ -94,9 +105,9 @@ export class LocalSeatJournalAuthority {
     return this.participantRegistry.worldTime(nowMs);
   }
 
-  #journalForBinding(regionSeatId, genesisWorldHourIndex) {
-    const store = this.storeFactory(regionSeatId);
-    if (!store?.readAll || !store?.append) throw new TypeError(`storeFactory(${regionSeatId}) must return a journal store`);
+  #journalForBinding({ participantId, regionSeatId, genesisWorldHourIndex, storeKey }) {
+    const store = this.storeFactory(storeKey, Object.freeze({ participantId, regionSeatId }));
+    if (!store?.readAll || !store?.append) throw new TypeError(`storeFactory(${storeKey}) must return a journal store`);
     return createLocalRegionCommandJournalAuthority({
       regionSeatId,
       genesisWorldHourIndex,
@@ -106,10 +117,10 @@ export class LocalSeatJournalAuthority {
     });
   }
 
-  #durableSnapshotForSeat(regionSeatId) {
-    const binding = this.bindingsBySeat.get(regionSeatId);
+  #durableSnapshotForKey(key) {
+    const binding = this.bindingsByKey.get(key);
     if (!binding || binding.profileKind !== 'world-account') return null;
-    const journalMeta = this.journalsBySeat.get(regionSeatId).meta();
+    const journalMeta = this.journalsByKey.get(key).meta();
     return Object.freeze({
       schema: binding.schema,
       regionSeatId: binding.regionSeatId,
@@ -119,6 +130,7 @@ export class LocalSeatJournalAuthority {
       profileKind: binding.profileKind,
       credentialMode: binding.credentialMode,
       boundAtWorldHourIndex: binding.boundAtWorldHourIndex,
+      journalStoreKey: binding.journalStoreKey,
       journalGenesisDigest: binding.journalGenesisDigest,
       journalGenesisStateHash: binding.journalGenesisStateHash,
       journalRevision: journalMeta.revision,
@@ -129,17 +141,12 @@ export class LocalSeatJournalAuthority {
 
   #persistDurableBindings() {
     if (!this.bindingStore) return Object.freeze({ enabled: false, kind: 'none' });
-    const snapshots = [...this.bindingsBySeat.keys()]
-      .sort()
-      .map(regionSeatId => this.#durableSnapshotForSeat(regionSeatId))
-      .filter(Boolean);
+    const snapshots = [...this.bindingsByKey.keys()]
+      .map(key => this.#durableSnapshotForKey(key))
+      .filter(Boolean)
+      .sort((a, b) => a.participantId.localeCompare(b.participantId) || a.regionSeatId.localeCompare(b.regionSeatId));
     const write = this.bindingStore.replaceAll(snapshots);
-    return Object.freeze({
-      enabled: true,
-      kind: this.bindingStore.kind || 'external',
-      bindingCount: snapshots.length,
-      write
-    });
+    return Object.freeze({ enabled: true, kind: this.bindingStore.kind || 'external', bindingCount: snapshots.length, write });
   }
 
   #restoreDurableBindings() {
@@ -151,17 +158,15 @@ export class LocalSeatJournalAuthority {
       const participantId = nonEmpty(snapshot.participantId, 'persisted participantId');
       const participant = this.participantRegistry.participant(participantId);
       if (!participant) throw new Error(`persisted local seat participant missing from world accounts: ${participantId}`);
-      if (participant.profileKind !== 'world-account') {
-        throw new Error(`persisted local seat participant must be a world-account: ${participantId}`);
-      }
-      if (participant.controllerKind !== snapshot.controllerKind) {
-        throw new Error(`persisted local seat controller kind mismatch for ${participantId}`);
-      }
-      if (this.bindingsBySeat.has(seatId)) throw new Error(`duplicate restored local seat binding: ${seatId}`);
+      if (participant.profileKind !== 'world-account') throw new Error(`persisted local seat participant must be a world-account: ${participantId}`);
+      if (participant.controllerKind !== snapshot.controllerKind) throw new Error(`persisted local seat controller kind mismatch for ${participantId}`);
       if (this.seatByParticipant.has(participantId)) throw new Error(`duplicate restored local seat participant: ${participantId}`);
 
+      const key = participantSeatKey(participantId, seatId);
+      if (this.bindingsByKey.has(key)) throw new Error(`duplicate restored participant-local seat binding: ${participantId} ${seatId}`);
       const genesisWorldHourIndex = nonNegativeInteger(snapshot.boundAtWorldHourIndex, 'persisted boundAtWorldHourIndex');
-      const journal = this.#journalForBinding(seatId, genesisWorldHourIndex);
+      const storeKey = snapshot.journalStoreKey ? nonEmpty(snapshot.journalStoreKey, 'persisted journalStoreKey') : seatId;
+      const journal = this.#journalForBinding({ participantId, regionSeatId: seatId, genesisWorldHourIndex, storeKey });
       const journalMeta = journal.meta();
       const mismatches = [];
       if (journalMeta.genesisDigest !== snapshot.journalGenesisDigest) mismatches.push('genesisDigest');
@@ -169,20 +174,12 @@ export class LocalSeatJournalAuthority {
       if (journalMeta.revision !== snapshot.journalRevision) mismatches.push('revision');
       if ((journalMeta.headHash ?? null) !== (snapshot.journalHeadHash ?? null)) mismatches.push('headHash');
       if (journalMeta.stateHash !== snapshot.journalStateHash) mismatches.push('stateHash');
-      if (mismatches.length) {
-        throw new Error(`persisted local seat checkpoint mismatch for ${seatId}: ${mismatches.join(',')}`);
-      }
+      if (mismatches.length) throw new Error(`persisted local seat checkpoint mismatch for ${seatId} (${participantId}): ${mismatches.join(',')}`);
 
-      const binding = freezeBinding({
-        participant,
-        regionSeatId: seatId,
-        boundAtWorldHourIndex: genesisWorldHourIndex,
-        journalMeta,
-        durableStore: true
-      });
-      this.bindingsBySeat.set(seatId, binding);
+      const binding = freezeBinding({ participant, regionSeatId: seatId, boundAtWorldHourIndex: genesisWorldHourIndex, journalMeta, durableStore: true, storeKey });
+      this.bindingsByKey.set(key, binding);
       this.seatByParticipant.set(participantId, seatId);
-      this.journalsBySeat.set(seatId, journal);
+      this.journalsByKey.set(key, journal);
     }
   }
 
@@ -192,9 +189,26 @@ export class LocalSeatJournalAuthority {
     return Object.freeze({
       enabled: true,
       kind: this.bindingStore.kind || 'external',
-      durableBindingCount: [...this.bindingsBySeat.values()].filter(binding => binding.profileKind === 'world-account').length,
+      durableBindingCount: [...this.bindingsByKey.values()].filter(binding => binding.profileKind === 'world-account').length,
       ...meta
     });
+  }
+
+  #keysForSeat(regionSeatId) {
+    const seatId = normalizeSeatId(regionSeatId);
+    return [...this.bindingsByKey.entries()].filter(([, binding]) => binding.regionSeatId === seatId).map(([key]) => key);
+  }
+
+  #resolveBindingKey(regionSeatId, participantId = null) {
+    const seatId = normalizeSeatId(regionSeatId);
+    if (participantId !== null && participantId !== undefined) {
+      const id = nonEmpty(participantId, 'participantId');
+      const key = participantSeatKey(id, seatId);
+      return this.bindingsByKey.has(key) ? { key, seatId, participantId: id, ambiguous: false } : { key: null, seatId, participantId: id, ambiguous: false };
+    }
+    const keys = this.#keysForSeat(seatId);
+    if (keys.length === 1) return { key: keys[0], seatId, participantId: this.bindingsByKey.get(keys[0]).participantId, ambiguous: false };
+    return { key: null, seatId, participantId: null, ambiguous: keys.length > 1, participantCount: keys.length };
   }
 
   bindParticipant({ participantId, regionSeatId, expectedControllerKind = null } = {}) {
@@ -203,239 +217,119 @@ export class LocalSeatJournalAuthority {
     const expectedKind = normalizeExpectedControllerKind(expectedControllerKind);
     const participant = this.participantRegistry.participant(id);
     if (!participant) throw new RangeError(`unknown participant: ${id}`);
-
     if (expectedKind && participant.controllerKind !== expectedKind) {
-      return Object.freeze({
-        accepted: false,
-        reason: 'local-seat-controller-kind-conflict',
-        participantId: id,
-        participantControllerKind: participant.controllerKind,
-        expectedControllerKind: expectedKind,
-        regionSeatId: seatId
-      });
-    }
-
-    const existingSeatBinding = this.bindingsBySeat.get(seatId);
-    if (existingSeatBinding) {
-      if (existingSeatBinding.participantId !== id) {
-        return Object.freeze({
-          accepted: false,
-          reason: 'local-seat-already-bound',
-          regionSeatId: seatId,
-          participantId: id,
-          currentParticipantId: existingSeatBinding.participantId
-        });
-      }
-      return Object.freeze({
-        accepted: true,
-        reused: true,
-        binding: existingSeatBinding,
-        journal: this.journalsBySeat.get(seatId).meta(),
-        worldTime: this.#worldTime(),
-        bindingPersistence: this.bindingPersistenceMeta()
-      });
+      return Object.freeze({ accepted: false, reason: 'local-seat-controller-kind-conflict', participantId: id, participantControllerKind: participant.controllerKind, expectedControllerKind: expectedKind, regionSeatId: seatId });
     }
 
     const existingParticipantSeat = this.seatByParticipant.get(id);
     if (existingParticipantSeat && existingParticipantSeat !== seatId) {
-      return Object.freeze({
-        accepted: false,
-        reason: 'participant-already-bound-to-local-seat',
-        participantId: id,
-        regionSeatId: seatId,
-        currentRegionSeatId: existingParticipantSeat
-      });
+      return Object.freeze({ accepted: false, reason: 'participant-already-bound-to-local-seat', participantId: id, regionSeatId: seatId, currentRegionSeatId: existingParticipantSeat });
+    }
+
+    const key = participantSeatKey(id, seatId);
+    const existing = this.bindingsByKey.get(key);
+    if (existing) {
+      return Object.freeze({ accepted: true, reused: true, binding: existing, journal: this.journalsByKey.get(key).meta(), worldTime: this.#worldTime(), bindingPersistence: this.bindingPersistenceMeta() });
     }
 
     const worldTime = this.#worldTime();
-    const journal = this.#journalForBinding(seatId, worldTime.worldHourIndex);
+    const storeKey = journalStoreKey(id, seatId);
+    const journal = this.#journalForBinding({ participantId: id, regionSeatId: seatId, genesisWorldHourIndex: worldTime.worldHourIndex, storeKey });
     const journalMeta = journal.meta();
-    const binding = freezeBinding({
-      participant,
-      regionSeatId: seatId,
-      boundAtWorldHourIndex: worldTime.worldHourIndex,
-      journalMeta,
-      durableStore: Boolean(this.bindingStore && participant.profileKind === 'world-account')
-    });
-    this.bindingsBySeat.set(seatId, binding);
+    const binding = freezeBinding({ participant, regionSeatId: seatId, boundAtWorldHourIndex: worldTime.worldHourIndex, journalMeta, durableStore: Boolean(this.bindingStore && participant.profileKind === 'world-account'), storeKey });
+    this.bindingsByKey.set(key, binding);
     this.seatByParticipant.set(id, seatId);
-    this.journalsBySeat.set(seatId, journal);
+    this.journalsByKey.set(key, journal);
 
     let bindingPersistence;
-    try {
-      bindingPersistence = this.#persistDurableBindings();
-    } catch (error) {
-      this.bindingsBySeat.delete(seatId);
+    try { bindingPersistence = this.#persistDurableBindings(); }
+    catch (error) {
+      this.bindingsByKey.delete(key);
       this.seatByParticipant.delete(id);
-      this.journalsBySeat.delete(seatId);
+      this.journalsByKey.delete(key);
       throw error;
     }
 
-    return Object.freeze({
-      accepted: true,
-      reused: false,
-      binding,
-      journal: journalMeta,
-      worldTime,
-      bindingPersistence
-    });
+    return Object.freeze({ accepted: true, reused: false, binding, journal: journalMeta, worldTime, bindingPersistence, truthBoundary: 'region-seat-id-is-client-local-and-participant-scoped-not-a-global-world-player-slot' });
   }
 
   submitBoundCommand({ participantId, regionSeatId, intent, expectedRevision } = {}) {
     const id = nonEmpty(participantId, 'participantId');
     const seatId = normalizeSeatId(regionSeatId);
     const expected = nonNegativeInteger(expectedRevision, 'expectedRevision');
-    const binding = this.bindingsBySeat.get(seatId) || null;
-    if (!binding) {
-      return Object.freeze({
-        accepted: false,
-        reason: 'local-seat-not-bound',
-        participantId: id,
-        regionSeatId: seatId
-      });
-    }
-    if (binding.participantId !== id) {
-      return Object.freeze({
-        accepted: false,
-        reason: 'participant-local-seat-binding-mismatch',
-        participantId: id,
-        regionSeatId: seatId,
-        currentParticipantId: binding.participantId
-      });
-    }
+    const key = participantSeatKey(id, seatId);
+    const binding = this.bindingsByKey.get(key) || null;
+    if (!binding) return Object.freeze({ accepted: false, reason: 'local-seat-not-bound', participantId: id, regionSeatId: seatId });
 
     const participant = this.participantRegistry.participant(id);
     if (!participant) throw new RangeError(`unknown participant: ${id}`);
     const actionId = String(intent?.actionId || '');
     if (!HOST_ENABLED_LOCAL_ACTIONS.includes(actionId)) {
-      return Object.freeze({
-        accepted: false,
-        reason: 'host-local-action-not-enabled',
-        participantId: id,
-        regionSeatId: seatId,
-        requestedActionId: actionId || null,
-        enabledActionIds: HOST_ENABLED_LOCAL_ACTIONS
-      });
+      return Object.freeze({ accepted: false, reason: 'host-local-action-not-enabled', participantId: id, regionSeatId: seatId, requestedActionId: actionId || null, enabledActionIds: HOST_ENABLED_LOCAL_ACTIONS });
     }
 
-    const journal = this.journalsBySeat.get(seatId);
+    const journal = this.journalsByKey.get(key);
     const currentMeta = journal.meta();
     if (expected !== currentMeta.revision) {
-      return Object.freeze({
-        accepted: false,
-        reason: 'local-authority-revision-conflict',
-        participantId: id,
-        regionSeatId: seatId,
-        expectedRevision: expected,
-        currentRevision: currentMeta.revision,
-        headHash: currentMeta.headHash,
-        stateHash: currentMeta.stateHash
-      });
+      return Object.freeze({ accepted: false, reason: 'local-authority-revision-conflict', participantId: id, regionSeatId: seatId, expectedRevision: expected, currentRevision: currentMeta.revision, headHash: currentMeta.headHash, stateHash: currentMeta.stateHash });
     }
 
     const nowMs = this.#nowMs();
     const worldTime = this.#worldTime(nowMs);
-    if (typeof this.participantRegistry.submitAction !== 'function') {
-      throw new TypeError('participantRegistry.submitAction required for host local command admission');
-    }
-    const admission = this.participantRegistry.submitAction({
-      participantId: id,
-      actionId: `host-local:${actionId}`,
-      timestampMs: nowMs
-    });
+    if (typeof this.participantRegistry.submitAction !== 'function') throw new TypeError('participantRegistry.submitAction required for host local command admission');
+    const admission = this.participantRegistry.submitAction({ participantId: id, actionId: `host-local:${actionId}`, timestampMs: nowMs });
     if (!admission.accepted) {
-      return Object.freeze({
-        accepted: false,
-        reason: 'participant-action-rate-limited',
-        participantId: id,
-        regionSeatId: seatId,
-        admission,
-        journal: currentMeta,
-        worldTime
-      });
+      return Object.freeze({ accepted: false, reason: 'participant-action-rate-limited', participantId: id, regionSeatId: seatId, admission, journal: currentMeta, worldTime });
     }
 
     const result = journal.submit(intent, {
-      participant: {
-        participantId: participant.participantId,
-        controllerKind: participant.controllerKind
-      },
+      participant: { participantId: participant.participantId, controllerKind: participant.controllerKind },
       worldHourIndex: worldTime.worldHourIndex,
       expectedRevision: expected,
       recordedAtMs: nowMs
     });
     const bindingPersistence = result.accepted ? this.#persistDurableBindings() : this.bindingPersistenceMeta();
-
-    return Object.freeze({
-      ...result,
-      participantId: id,
-      regionSeatId: seatId,
-      binding,
-      admission,
-      worldTime,
-      bindingPersistence,
-      truthBoundary: 'host-reproduced-local-journal-command-no-browser-state-equivalence-no-shared-world-promotion'
-    });
+    return Object.freeze({ ...result, participantId: id, regionSeatId: seatId, binding, admission, worldTime, bindingPersistence, truthBoundary: 'host-reproduced-participant-scoped-local-journal-command-no-browser-state-equivalence-no-shared-world-promotion' });
   }
 
   status({ regionSeatId, participantId = null } = {}) {
-    const seatId = normalizeSeatId(regionSeatId);
-    const binding = this.bindingsBySeat.get(seatId) || null;
-    if (!binding) {
-      return Object.freeze({
-        accepted: false,
-        reason: 'local-seat-not-bound',
-        regionSeatId: seatId
-      });
+    const resolved = this.#resolveBindingKey(regionSeatId, participantId);
+    if (resolved.ambiguous) {
+      return Object.freeze({ accepted: false, reason: 'local-seat-participant-required', regionSeatId: resolved.seatId, participantCount: resolved.participantCount, truthBoundary: 'client-local-seat-id-is-not-a-global-world-identity' });
     }
-    if (participantId !== null && participantId !== undefined) {
-      const id = nonEmpty(participantId, 'participantId');
-      if (binding.participantId !== id) {
-        return Object.freeze({
-          accepted: false,
-          reason: 'participant-local-seat-binding-mismatch',
-          regionSeatId: seatId,
-          participantId: id,
-          currentParticipantId: binding.participantId
-        });
-      }
+    if (!resolved.key) {
+      return Object.freeze({ accepted: false, reason: 'local-seat-not-bound', regionSeatId: resolved.seatId, ...(resolved.participantId ? { participantId: resolved.participantId } : {}) });
     }
-
-    const journal = this.journalsBySeat.get(seatId);
+    const binding = this.bindingsByKey.get(resolved.key);
+    const journal = this.journalsByKey.get(resolved.key);
     const continuity = journal.verifyPersistedJournal();
-    return Object.freeze({
-      accepted: true,
-      binding,
-      journal: journal.meta(),
-      continuity,
-      bindingPersistence: this.bindingPersistenceMeta(),
-      worldTime: this.#worldTime(),
-      truthBoundary: 'binding-and-host-journal-checkpoint-only-no-live-browser-state-equivalence'
-    });
+    return Object.freeze({ accepted: true, binding, journal: journal.meta(), continuity, bindingPersistence: this.bindingPersistenceMeta(), worldTime: this.#worldTime(), truthBoundary: 'participant-scoped-binding-and-host-journal-checkpoint-only-no-live-browser-state-equivalence' });
   }
 
-  bindingForSeat(regionSeatId) {
-    return this.bindingsBySeat.get(normalizeSeatId(regionSeatId)) || null;
+  bindingForSeat(regionSeatId, participantId = null) {
+    const resolved = this.#resolveBindingKey(regionSeatId, participantId);
+    return resolved.key ? this.bindingsByKey.get(resolved.key) : null;
   }
 
-  journalForSeat(regionSeatId) {
-    return this.journalsBySeat.get(normalizeSeatId(regionSeatId)) || null;
+  journalForSeat(regionSeatId, participantId = null) {
+    const resolved = this.#resolveBindingKey(regionSeatId, participantId);
+    return resolved.key ? this.journalsByKey.get(resolved.key) : null;
   }
 
   snapshot() {
-    const seats = [...this.bindingsBySeat.keys()].sort();
+    const keys = [...this.bindingsByKey.keys()].sort((a, b) => {
+      const aBinding = this.bindingsByKey.get(a);
+      const bBinding = this.bindingsByKey.get(b);
+      return aBinding.participantId.localeCompare(bBinding.participantId) || aBinding.regionSeatId.localeCompare(bBinding.regionSeatId);
+    });
     return Object.freeze({
       schema: LOCAL_SEAT_JOURNAL_AUTHORITY_SCHEMA,
-      bindingCount: seats.length,
-      bindings: Object.freeze(seats.map(regionSeatId => Object.freeze({
-        binding: this.bindingsBySeat.get(regionSeatId),
-        journal: this.journalsBySeat.get(regionSeatId).meta()
-      }))),
+      bindingCount: keys.length,
+      bindings: Object.freeze(keys.map(key => Object.freeze({ binding: this.bindingsByKey.get(key), journal: this.journalsByKey.get(key).meta() }))),
       bindingPersistence: this.bindingPersistenceMeta(),
-      persistence: this.bindingStore
-        ? 'world-account-bindings-checkpointed-with-injected-per-seat-journal-store'
-        : 'host-process-binding-with-per-seat-journal-store',
-      truthBoundary: 'does-not-claim-browser-simulation-is-identical-to-host-journal-state'
+      slotSemantics: 'seat-1-through-seat-4-are-per-participant-client-slots-not-four-global-world-player-slots',
+      persistence: this.bindingStore ? 'world-account-participant-scoped-bindings-checkpointed-with-injected-journal-store' : 'host-process-participant-scoped-binding-with-injected-journal-store',
+      truthBoundary: 'many-participants-may-share-the-same-client-seat-id-with-isolated-journals-no-production-scale-claim'
     });
   }
 }

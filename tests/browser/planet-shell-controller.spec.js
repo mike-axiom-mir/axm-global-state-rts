@@ -4,7 +4,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => {
     failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`);
@@ -115,11 +115,11 @@ test('four local controller seats get independent globe/local views and local ma
   expect(Math.abs(cursorAfter - cursorBefore)).toBeGreaterThan(1);
 
   await pulse(page, 3, 0);
-  await expect(page.locator('#inputStatus')).toContainText('seat-4 · gather-scrap · local macro order admitted');
+  await expect(page.locator('#inputStatus')).toContainText('seat-4 · gather-scrap · Crew 1 8 Crew · local macro order admitted');
   await expect(page.locator('[data-seat-id="seat-4"]')).toContainText('gather-scrap');
 
   await pulse(page, 3, 10); // L3: explicit explore order at the current seat cursor.
-  await expect(page.locator('#inputStatus')).toContainText('seat-4 · explore · local macro order admitted');
+  await expect(page.locator('#inputStatus')).toContainText('seat-4 · explore · Crew 1 8 Crew · local macro order admitted');
 
   const visibleSimulation = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-4'));
   expect(visibleSimulation.resources).toHaveLength(1);
@@ -160,7 +160,7 @@ test('machine user seat uses the same globe/local and local macro action surface
     timestampMs: 5250
   }));
   expect(machineGather.accepted).toBe(true);
-  await expect(page.locator('#inputStatus')).toContainText('seat-3 · gather-scrap · local macro order admitted');
+  await expect(page.locator('#inputStatus')).toContainText('seat-3 · gather-scrap · Crew 1 8 Crew · local macro order admitted');
 
   const machineExplore = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitMachineAction({
     seatId: 'seat-3',
@@ -168,7 +168,7 @@ test('machine user seat uses the same globe/local and local macro action surface
     timestampMs: 5500
   }));
   expect(machineExplore.accepted).toBe(true);
-  await expect(page.locator('#inputStatus')).toContainText('seat-3 · explore · local macro order admitted');
+  await expect(page.locator('#inputStatus')).toContainText('seat-3 · explore · Crew 1 8 Crew · local macro order admitted');
 
   const machineView = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatView('seat-3'));
   expect(machineView.mode).toBe('local-rts');
@@ -199,13 +199,13 @@ test('single-player keyboard path enters local RTS and issues gather/explore/rep
   expect(Math.abs(after - before)).toBeGreaterThan(1);
 
   await page.keyboard.press('Enter');
-  await expect(page.locator('#inputStatus')).toContainText('seat-1 · gather-scrap · local macro order admitted');
+  await expect(page.locator('#inputStatus')).toContainText('seat-1 · gather-scrap · Crew 1 8 Crew · local macro order admitted');
 
   await page.keyboard.press('f');
-  await expect(page.locator('#inputStatus')).toContainText('seat-1 · explore · local macro order admitted');
+  await expect(page.locator('#inputStatus')).toContainText('seat-1 · explore · Crew 1 8 Crew · local macro order admitted');
 
   await page.keyboard.press('x');
-  await expect(page.locator('#inputStatus')).toContainText('seat-1 · repair-core · local macro order admitted');
+  await expect(page.locator('#inputStatus')).toContainText('seat-1 · repair-core · Crew 1 8 Crew · local macro order admitted');
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('repair-core');
 
   const visibleSimulation = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'));

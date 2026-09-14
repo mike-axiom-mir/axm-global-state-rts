@@ -4,7 +4,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => {
     failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`);
@@ -43,6 +43,8 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await expect(seat.locator('option')).toHaveCount(3);
   await expect(page.locator('#gameplaySummary')).toContainText('seat-1');
   await expect(page.locator('#gameplaySummary')).toContainText('Crew 1 · 8 Crew · 1 parties');
+  await expect(page.locator('#gameplaySummary')).toContainText('selected consequence');
+  await expect(page.locator('#gameplaySummary')).toContainText('8/8 Crew visible');
   await expect(page.locator('#gameplaySummary')).toContainText('core');
   await expect(page.locator('#gameplaySummary')).toContainText('scrap');
   await expect(page.locator('#gameplaySummary')).toContainText('crew');
@@ -73,7 +75,11 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await gatherButton.click();
   await expect(page.locator('#inputStatus')).toContainText('seat-1 · gather-scrap · Crew 2 4 Crew · local macro order admitted');
   await expect(page.locator('#gameplayFeedback')).toContainText('existing admitted input path');
-  await expect(page.locator('#gameplaySummary')).toContainText('gather-scrap');
+  await expect(page.locator('#gameplayFeedback')).toContainText('4/4 Crew visible');
+  await expect(page.locator('#gameplayFeedback')).toContainText('target');
+  await expect(page.locator('#gameplaySummary')).toContainText('gather-scrap · order-');
+  await expect(page.locator('#gameplaySummary')).toContainText('selected consequence');
+  await expect(page.locator('#gameplaySummary')).toContainText('4/4 Crew visible');
   const seatOneSimulation = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'));
   expect(seatOneSimulation.order?.crewIds).toHaveLength(4);
 
@@ -81,8 +87,11 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await expect(page.locator('#gameplaySummary')).toContainText('Crew 1 · 4 Crew · 2 parties');
   await exploreButton.click();
   await expect(page.locator('#inputStatus')).toContainText('seat-1 · explore · Crew 1 4 Crew · local macro order admitted');
+  await expect(page.locator('#gameplayFeedback')).toContainText('explore admitted through its existing admitted input path');
+  await expect(page.locator('#gameplayFeedback')).toContainText('4/4 Crew visible');
   await repairButton.click();
   await expect(page.locator('#inputStatus')).toContainText('seat-1 · repair-core · Crew 1 4 Crew · local macro order admitted');
+  await expect(page.locator('#gameplayFeedback')).toContainText('repair-core admitted through its existing admitted input path');
 
   await seat.selectOption('seat-2');
   await expect(page.locator('#gameplaySummary')).toContainText('controller-owned; view only here');
@@ -101,6 +110,8 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await expect(page.locator('#gameplaySummary')).toContainText('Crew 2 · 4 Crew · 2 parties');
   await gatherButton.click();
   await expect(page.locator('#inputStatus')).toContainText('seat-3 · gather-scrap · Crew 2 4 Crew · local macro order admitted');
+  await expect(page.locator('#gameplayFeedback')).toContainText('seat-3 · gather-scrap admitted through its existing admitted input path');
+  await expect(page.locator('#gameplayFeedback')).toContainText('4/4 Crew visible');
 
   const machineSimulation = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-3'));
   const machineParty = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatParty('seat-3'));

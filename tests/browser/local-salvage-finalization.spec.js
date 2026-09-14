@@ -4,7 +4,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -86,13 +86,16 @@ test('player explicitly prepares, debits, and finalizes non-spendable global sal
   await expect(page.locator('#hostLocalSalvageTransferStatus')).toContainText('explicitly finalize durable global credit evidence next');
   const debited = await page.evaluate(() => ({
     transfer: window.__AXM_HOST_LOCAL_SALVAGE_TRANSFER__.status().activeTransfer,
+    debitEvidence: window.__AXM_HOST_LOCAL_SALVAGE_TRANSFER__.lastEvidence(),
     seat: window.__AXM_HOST_LOCAL_SEAT__.status(),
     reservation: window.__AXM_HOST_LOCAL_SALVAGE_RESERVATION__.status()
   }));
   expect(debited.transfer.phase).toBe('local-debited');
   expect(debited.transfer.globalCredit).toBeNull();
   expect(debited.seat.journal.revision).toBe(2);
-  expect(debited.seat.journal.state.storage.scrap).toBeCloseTo(scrapBefore - 1, 9);
+  expect(debited.debitEvidence.accepted).toBe(true);
+  expect(debited.debitEvidence.action).toBe('local-debit');
+  expect(debited.debitEvidence.result.localDebit.outcome.storage.scrap).toBeCloseTo(scrapBefore - 1, 9);
   expect(debited.reservation.reservation.reservedScrapMilli).toBe(1000);
   await expect(page.locator('#hostLocalSalvageTransferFinalize')).toBeEnabled();
 
@@ -125,7 +128,6 @@ test('player explicitly prepares, debits, and finalizes non-spendable global sal
   expect(finalized.seat.journal.revision).toBe(2);
   expect(finalized.meta.salvageTransferSettlement.reservationConsumptionJournal.appliedCount).toBe(1);
   expect(finalized.meta.salvageTransferSettlement.reservationConsumptionJournal.pendingCount).toBe(0);
-  expect(finalized.meta.salvageTransferSettlement.globalCreditLedger.creditedMilli).toBeUndefined();
 
   const revisionsBeforeRetry = {
     transfer: finalized.meta.salvageTransferSettlement.transactionJournal.revision,

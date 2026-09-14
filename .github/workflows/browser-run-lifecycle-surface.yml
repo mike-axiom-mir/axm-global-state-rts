@@ -1,0 +1,112 @@
+name: Global State RTS browser run lifecycle surface
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'game/world-entry.html'
+      - 'game/world-entry.mjs'
+      - 'game/world-run-entry.mjs'
+      - 'src/hosted/world-run-session-authority.mjs'
+      - 'src/hosted/world-run-http-api.mjs'
+      - 'src/hosted/world-run-start-store.mjs'
+      - 'src/sim/next-drop-run-bridge.mjs'
+      - 'src/sim/civilization-progression.mjs'
+      - 'scripts/serve.mjs'
+      - 'tests/browser/world-run-entry.spec.js'
+      - '.github/workflows/browser-run-lifecycle-surface.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-run-lifecycle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run deterministic and source gates
+        run: |
+          npm test
+          node --check game/world-run-entry.mjs
+          node --check tests/browser/world-run-entry.spec.js
+          node --check src/hosted/world-run-session-authority.mjs
+          node --check src/hosted/world-run-http-api.mjs
+          node tests/world-run-http-authority-selftest.mjs
+          node tests/world-run-restart-persistence-selftest.mjs
+
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Seed one world account with explicit next-drop value
+        run: |
+          rm -f /tmp/axm-browser-run-accounts.json /tmp/axm-browser-run-starts.json /tmp/axm-browser-run-world.json /tmp/axm-browser-run-host.log
+          node --input-type=module <<'NODE'
+          import { WORLD_HOUR_MS } from './src/hosted/world-clock.mjs';
+          import { createFileWorldAccountStore } from './src/hosted/world-account-store.mjs';
+          import { createWorldSessionAuthority } from './src/hosted/world-session-authority.mjs';
+
+          const nowMs = Date.now();
+          const authority = createWorldSessionAuthority({
+            worldEpochMs: 0,
+            accountStore: createFileWorldAccountStore('/tmp/axm-browser-run-accounts.json')
+          });
+          const participant = authority.createWorldAccount({
+            accountId: 'browser-run-lifecycle',
+            displayName: 'Browser Run Player',
+            controllerKind: 'human',
+            nowMs: nowMs - WORLD_HOUR_MS
+          });
+          authority.accrueChests(participant.participantId, nowMs);
+          const opened = authority.openChests(participant.participantId, 1);
+          if (!opened.accepted || opened.pendingNextDropRewards.openedCratesContributed !== 1) {
+            throw new Error('failed to seed one explicit next-drop chest reward');
+          }
+          NODE
+
+      - name: Start development host with durable account and run-start stores
+        run: |
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-browser-run-world.json \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-browser-run-accounts.json \
+          AXM_WORLD_RUN_STARTS_PATH=/tmp/axm-browser-run-starts.json \
+          node scripts/serve.mjs > /tmp/axm-browser-run-host.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-browser-run-host.log
+          exit 1
+
+      - name: Exercise next-drop run admission and RTS handoff in Chromium
+        run: npx playwright test tests/browser/world-run-entry.spec.js --reporter=line
+
+      - name: Preserve browser and durability evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-browser-run-lifecycle
+          path: |
+            test-results/global-state-rts-world-run-entry.png
+            /tmp/axm-browser-run-accounts.json
+            /tmp/axm-browser-run-starts.json
+            /tmp/axm-browser-run-world.json
+            /tmp/axm-browser-run-host.log
+          if-no-files-found: warn
+          retention-days: 14

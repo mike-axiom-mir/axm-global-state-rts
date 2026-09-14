@@ -46,6 +46,11 @@ async function pulse(page, gamepadIndex, buttonIndex, holdMs = 70) {
 }
 
 test('command deck makes construction and aggregate production immediately playable without animation dependency', async ({ page }) => {
+  // This integration gate intentionally captures full-page visual evidence after exercising live production.
+  // Shared CI runners have twice completed all gameplay assertions but exhausted the default 30s budget while
+  // beginning that evidence screenshot. Give the evidence step bounded headroom without changing product timing claims.
+  test.setTimeout(60_000);
+
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/?players=2&seat2=machine', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);

@@ -11,6 +11,7 @@ const responses = [
   { status: 200, body: { accepted: true, participantId: 'world:chatgpt', summary: { scrapMilli: 24000 } } },
   { status: 200, body: { accepted: true, participantId: 'world:chatgpt', regionSeatId: 'seat-1', source: { revision: 1 }, summary: { scrapMilli: 24000 } } },
   { status: 200, body: { accepted: true, participantId: 'world:chatgpt', actorId: 'world:chatgpt', eventType: 'territory.claim' } },
+  { status: 200, body: { participantId: 'world:chatgpt', progression: { activeRun: { runId: 'run:world:chatgpt:drop-1' } } } },
   { status: 400, body: { error: 'not enough stored crates' } }
 ];
 
@@ -92,6 +93,11 @@ assert.deepEqual(JSON.parse(calls[7].options.body), {
   payload: { latDeg: 3, lonDeg: 4 },
   expectedRevision: 5
 });
+
+const runStatus = await client.worldRunStatus('world:chatgpt');
+assert.equal(runStatus.progression.activeRun.runId, 'run:world:chatgpt:drop-1');
+assert.equal(new URL(calls[8].url).pathname, '/api/world/run');
+assert.equal(new URL(calls[8].url).searchParams.get('participantId'), 'world:chatgpt');
 
 await assert.rejects(
   () => client.openChests('world:chatgpt', 1),

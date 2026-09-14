@@ -7,6 +7,9 @@ import {
   readWorldSeatHandoff,
   writeWorldSeatHandoff
 } from '../src/session/world-seat-binding.mjs';
+import { createLocalRegionSimulation } from '../src/sim/local-region-sim.mjs';
+import { createLocalCivilizationGameplay } from '../src/sim/local-civilization-gameplay.mjs';
+import { createStarterRegion } from '../src/world/starter-region.mjs';
 
 function memoryStorage() {
   const values = new Map();
@@ -49,6 +52,23 @@ const client = {
     if (!participant) throw new Error('participant not found');
     return { participant };
   },
+  async worldRunStatus(participantId) {
+    if (participantId !== 'world:human-a') {
+      return { participantId, progression: { activeRun: null } };
+    }
+    return {
+      participantId,
+      progression: {
+        activeRun: {
+          runId: 'run:world:human-a:drop-1',
+          civilizationId: participantId,
+          stockpile: { resources: { food: 40, scrap: 25 } },
+          manpower: { population: 8 },
+          startingItems: []
+        }
+      }
+    };
+  },
   async submitCommand(command) {
     submitted.push(structuredClone(command));
     return {
@@ -64,6 +84,13 @@ const roster = createLocalRoster({
   seatKinds: ['human', 'machine'],
   teams: ['coop', 'coop']
 });
+
+const humanSimulation = createLocalRegionSimulation(createStarterRegion('seat-1'));
+createLocalCivilizationGameplay(humanSimulation, { seatId: 'seat-1' });
+assert.equal(humanSimulation.snapshot().storage.scrap, 100, 'browser-local construction fixture starts with its explicit 100 scrap');
+const machineSimulation = createLocalRegionSimulation(createStarterRegion('seat-2'));
+createLocalCivilizationGameplay(machineSimulation, { seatId: 'seat-2' });
+
 const runtime = createWorldSeatBindingRuntime({ roster, client });
 
 const humanBinding = await runtime.bindParticipant({ seatId: 'seat-1', participantId: 'world:human-a' });
@@ -72,6 +99,18 @@ assert.equal(humanBinding.participantId, 'world:human-a');
 assert.equal(humanBinding.seatKind, 'human');
 assert.equal(machineBinding.participantId, 'world:machine-a');
 assert.equal(machineBinding.seatKind, 'machine');
+assert.equal(humanBinding.runBootstrap.applied, true);
+assert.equal(humanBinding.runBootstrap.runId, 'run:world:human-a:drop-1');
+assert.equal(humanBinding.runBootstrap.hostStartingScrap, 25);
+assert.equal(humanBinding.runBootstrap.localStarterScrap, 100);
+assert.equal(humanBinding.runBootstrap.combinedStartingScrap, 125);
+assert.equal(humanBinding.runBootstrap.populationParity, true);
+assert.equal(humanSimulation.snapshot().storage.scrap, 125, 'revalidated host-run scrap reaches the fresh LOCAL physical store');
+assert.equal(machineBinding.runBootstrap, null, 'no active host run means no bootstrap value is invented');
+
+const repeatedHumanBinding = await runtime.bindParticipant({ seatId: 'seat-1', participantId: 'world:human-a' });
+assert.equal(repeatedHumanBinding.runBootstrap.combinedStartingScrap, 125);
+assert.equal(humanSimulation.snapshot().storage.scrap, 125, 'revalidating the same run cannot duplicate the admitted scrap');
 
 await assert.rejects(
   runtime.bindParticipant({ seatId: 'seat-1', participantId: 'world:machine-a' }),

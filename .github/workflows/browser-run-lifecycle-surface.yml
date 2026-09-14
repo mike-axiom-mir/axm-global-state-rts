@@ -11,9 +11,13 @@ on:
       - 'src/hosted/world-run-session-authority.mjs'
       - 'src/hosted/world-run-http-api.mjs'
       - 'src/hosted/world-run-start-store.mjs'
+      - 'src/session/world-browser-client.mjs'
+      - 'src/session/world-seat-binding.mjs'
       - 'src/sim/next-drop-run-bridge.mjs'
       - 'src/sim/civilization-progression.mjs'
       - 'scripts/serve.mjs'
+      - 'tests/world-browser-client-selftest.mjs'
+      - 'tests/world-seat-binding-selftest.mjs'
       - 'tests/browser/world-run-entry.spec.js'
       - '.github/workflows/browser-run-lifecycle-surface.yml'
   workflow_dispatch:
@@ -43,6 +47,10 @@ jobs:
           node --check tests/browser/world-run-entry.spec.js
           node --check src/hosted/world-run-session-authority.mjs
           node --check src/hosted/world-run-http-api.mjs
+          node --check src/session/world-browser-client.mjs
+          node --check src/session/world-seat-binding.mjs
+          node tests/world-browser-client-selftest.mjs
+          node tests/world-seat-binding-selftest.mjs
           node tests/world-run-http-authority-selftest.mjs
           node tests/world-run-restart-persistence-selftest.mjs
 

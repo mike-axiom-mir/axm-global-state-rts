@@ -1,3 +1,4 @@
+import { buildStaticGlbScene } from '../src/assets/cached-static-glb-runtime.mjs';
 import { GamepadSeatRouter } from '../src/input/gamepad-seat-router.mjs';
 import { normalizedSplitLayout } from '../src/presentation/split-screen-layout.mjs';
 import { SplitScreenPlanetRenderer } from '../src/presentation/planet-renderer.mjs';
@@ -44,6 +45,7 @@ const keys = new Set();
 const simulations = new Map();
 const partyGameplays = new Map();
 const civilizationGameplays = new Map();
+const constructionAssetTrialsBySeat = new Map();
 const worldTimeSyncBySeat = new Map();
 const worldTimeRefreshTimers = new Map();
 
@@ -102,6 +104,15 @@ function civilizationGameplayForSeat(seatId) {
     civilizationGameplays.set(seatId, civilizationGameplay);
   }
   return civilizationGameplay;
+}
+
+function constructionAssetTrialsForSeat(seatId) {
+  let trials = constructionAssetTrialsBySeat.get(seatId);
+  if (!trials) {
+    trials = new Map();
+    constructionAssetTrialsBySeat.set(seatId, trials);
+  }
+  return trials;
 }
 
 function modeLabel(seatId) {
@@ -287,6 +298,10 @@ function rebuildRuntime() {
     if (worldSeatRuntime.bindingForSeat(seatId)) continue;
     worldTimeSyncBySeat.delete(seatId);
     clearWorldTimeRefresh(seatId);
+  }
+  const activeSeatIds = new Set(activeSeats(roster).map(seat => seat.id));
+  for (const seatId of constructionAssetTrialsBySeat.keys()) {
+    if (!activeSeatIds.has(seatId)) constructionAssetTrialsBySeat.delete(seatId);
   }
   bindAvailableInputs();
   gamepadRouter = new GamepadSeatRouter(runtime);
@@ -603,10 +618,97 @@ const publicBridge = {
     }
     return receipt;
   },
+  async installExternalConstructionAsset({
+    seatId = 'seat-1',
+    assetId,
+    buildingInstanceId,
+    expectedDefinitionId,
+    bytes,
+    expectedSha256,
+    uniformScale = 1,
+    focus = false
+  } = {}) {
+    const state = renderer.seatStates.get(seatId);
+    if (!state) throw new Error(`${seatId || 'seat'} is not active`);
+    if (renderer.getSeatMode(seatId) !== 'local-rts' || !state.localBundle) {
+      throw new Error(`${seatId} must be in local-rts mode before external construction asset installation`);
+    }
+    if (typeof assetId !== 'string' || !assetId) throw new TypeError('assetId required');
+    if (typeof buildingInstanceId !== 'string' || !buildingInstanceId) throw new TypeError('buildingInstanceId required');
+    if (typeof expectedDefinitionId !== 'string' || !expectedDefinitionId) throw new TypeError('expectedDefinitionId required');
+    if (!Number.isFinite(uniformScale) || uniformScale <= 0 || uniformScale > 100) throw new RangeError('uniformScale must be >0 and <=100');
+
+    const civilization = civilizationGameplayForSeat(seatId).snapshot();
+    const structure = civilization.structures.find(candidate => candidate.instanceId === buildingInstanceId) || null;
+    if (!structure) throw new Error(`no live construction instance registered for ${buildingInstanceId}`);
+    if (structure.destroyed) throw new Error(`${buildingInstanceId} is destroyed and cannot receive a static presentation trial`);
+    if (structure.definitionId !== expectedDefinitionId) {
+      throw new Error(`${buildingInstanceId} definition mismatch: expected ${expectedDefinitionId}, got ${structure.definitionId}`);
+    }
+
+    const loaded = await buildStaticGlbScene(bytes, { expectedSha256 });
+    const object = loaded.object;
+    object.userData.assetId = assetId;
+    object.userData.externalRuntimeAsset = true;
+    object.userData.constructionInstanceId = structure.instanceId;
+    object.userData.gameplayDefinitionId = structure.definitionId;
+    object.scale.setScalar(uniformScale);
+    object.position.set(
+      structure.xM,
+      state.localBundle.terrain.heightAt(structure.xM, structure.zM) + 0.05,
+      structure.zM
+    );
+    object.rotation.y = (Number(structure.yawDeg) || 0) * Math.PI / 180;
+
+    const seatTrials = constructionAssetTrialsForSeat(seatId);
+    const previous = seatTrials.get(structure.instanceId);
+    if (previous?.object) state.localBundle.fixtureRoot.remove(previous.object);
+    state.localBundle.fixtureRoot.add(object);
+
+    const receipt = Object.freeze({
+      ...loaded.receipt,
+      status: 'RUNTIME_IMPORTED_CONSTRUCTION_ASSET_NOT_VISUALLY_ACCEPTED',
+      assetId,
+      targetKind: 'construction-instance',
+      buildingInstanceId: structure.instanceId,
+      definitionId: structure.definitionId,
+      regionId: state.localRegion.id,
+      placement: Object.freeze({
+        xM: structure.xM,
+        zM: structure.zM,
+        yawDeg: structure.yawDeg,
+        uniformScale
+      }),
+      collision: 'NOT_TESTED',
+      footprint: 'NOT_ESTABLISHED',
+      navigation: 'NOT_TESTED',
+      splitScreenReadability: 'NOT_TESTED',
+      targetDeviceFps: 'NOT_TESTED'
+    });
+    seatTrials.set(structure.instanceId, Object.freeze({ object, receipt }));
+
+    if (focus) {
+      state.localTargetX = receipt.placement.xM;
+      state.localTargetZ = receipt.placement.zM;
+      state.cursorX = receipt.placement.xM;
+      state.cursorZ = receipt.placement.zM;
+      state.localDistance = Math.min(state.localDistance, 120);
+    }
+    return receipt;
+  },
   externalAssetStatus({ seatId = 'seat-1', assetId = null } = {}) {
     const state = renderer.seatStates.get(seatId);
     if (!state?.localBundle) return assetId ? null : [];
-    return state.localBundle.externalAssetStatus(assetId);
+    const constructionReceipts = [...(constructionAssetTrialsBySeat.get(seatId)?.values() || [])].map(entry => entry.receipt);
+    if (assetId) {
+      return constructionReceipts.find(receipt => receipt.assetId === assetId)
+        || state.localBundle.externalAssetStatus(assetId)
+        || null;
+    }
+    return Object.freeze([
+      ...state.localBundle.externalAssetStatus(),
+      ...constructionReceipts
+    ]);
   },
   submitMachineAction({ seatId, actionId, payload = null, timestampMs = performance.now() } = {}) {
     const seat = activeSeats(roster).find(candidate => candidate.id === seatId);

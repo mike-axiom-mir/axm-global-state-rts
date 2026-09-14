@@ -15,6 +15,7 @@ const entryStatus = document.getElementById('entryStatus');
 const participantId = document.getElementById('participantId');
 const profileStatus = document.getElementById('profileStatus');
 const chestStatus = document.getElementById('chestStatus');
+const nextDropStatus = document.getElementById('nextDropStatus');
 
 const WORLD_BOUNDARY_SETTLE_MS = 250;
 const WORLD_BOUNDARY_MIN_DELAY_MS = 250;
@@ -43,12 +44,32 @@ function setBusy(busy) {
   continueToRts.disabled = controlsBusy || !participant;
 }
 
+function itemCountText(itemCounts = {}) {
+  const entries = Object.entries(itemCounts)
+    .filter(([, count]) => Number(count) > 0)
+    .sort(([left], [right]) => left.localeCompare(right));
+  if (!entries.length) return 'none';
+  return entries.map(([itemId, count]) => `${itemId.replace(/^item:/, '')} ×${count}`).join(', ');
+}
+
+function blueprintText(blueprintIds = []) {
+  return Array.isArray(blueprintIds) && blueprintIds.length
+    ? blueprintIds.map(id => String(id).replace(/^[^:]+:/, '')).join(', ')
+    : 'none';
+}
+
+function nextDropText(cache = {}) {
+  const pending = cache.pendingNextDropRewards || {};
+  return `next drop cache: ${pending.openedCratesContributed ?? 0} opened chest${Number(pending.openedCratesContributed) === 1 ? '' : 's'} held · food ${pending.food ?? 0} · scrap ${pending.scrap ?? 0} · items ${itemCountText(pending.itemCounts)} · blueprint options ${blueprintText(pending.blueprintIds)} · not current LOCAL RTS resources`;
+}
+
 function renderParticipant(record) {
   participant = record || null;
   if (!participant) {
     participantId.textContent = 'participant: none';
     profileStatus.textContent = 'profile: none';
     chestStatus.textContent = 'chests: —';
+    nextDropStatus.textContent = 'next drop cache: —';
     accrueChests.disabled = true;
     openChest.disabled = true;
     continueToRts.disabled = true;
@@ -58,6 +79,7 @@ function renderParticipant(record) {
   profileStatus.textContent = `profile: ${participant.profileKind} · ${participant.controllerKind} · leaderboard ${participant.leaderboardMode}`;
   const cache = participant.dropCache || {};
   chestStatus.textContent = `chests: ${cache.storedCrates ?? 0} stored · ${cache.openedCrates ?? 0} opened · cap ${cache.cap ?? 24} · accounted through world hour ${cache.anchorWorldHour ?? 'unbound'} · host-hour accounting auto-checks while this page is open; opening remains manual`;
+  nextDropStatus.textContent = nextDropText(cache);
   accrueChests.disabled = controlsBusy;
   openChest.disabled = controlsBusy;
   continueToRts.disabled = controlsBusy;
@@ -76,6 +98,16 @@ function entryChestSyncText(result) {
   const worldHour = sync.worldTime?.worldHourIndex;
   const capText = discarded > 0 ? ` · ${discarded} elapsed chest${discarded === 1 ? '' : 's'} beyond cap` : '';
   return ` · world-time chest sync +${added}${capText} · hour ${worldHour ?? '?'}`;
+}
+
+function openedChestText(result) {
+  const opened = result?.opened?.[0];
+  if (!opened) return 'Chest open returned no contents.';
+  const items = Array.isArray(opened.startingItems) && opened.startingItems.length
+    ? opened.startingItems.map(id => String(id).replace(/^item:/, '')).join(', ')
+    : 'none';
+  const blueprint = opened.blueprintId ? String(opened.blueprintId).replace(/^[^:]+:/, '') : 'none';
+  return `Opened chest #${opened.serial} for the next drop: +${opened.food} food · +${opened.scrap} scrap · items ${items} · blueprint option ${blueprint}. Held in the next-drop cache; current LOCAL RTS resources unchanged.`;
 }
 
 function worldBoundaryText(worldTime) {
@@ -235,10 +267,12 @@ openChest.addEventListener('click', async () => {
   if (!participant) return;
   setBusy(true);
   try {
-    await client.openChests(participant.participantId, 1);
+    const result = await client.openChests(participant.participantId, 1);
     const refreshed = await client.participant(participant.participantId);
     renderParticipant(refreshed.participant);
-    entryStatus.textContent = 'Opened 1 chest.';
+    entryStatus.textContent = result.accepted
+      ? openedChestText(result)
+      : `Chest not opened: ${result.reason || 'host rejected the request'}.`;
   } catch (error) {
     entryStatus.textContent = `Open failed: ${errorText(error)}`;
   } finally {

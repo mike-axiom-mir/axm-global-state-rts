@@ -11,6 +11,10 @@ function captureRuntimeFailures(page) {
 }
 
 test('explicit starter-set trial renders inside a real four-seat LOCAL RTS layout without cross-seat adoption', async ({ page }) => {
+  // Five source-pinned GLBs are deliberately decoded in one seat. This is a heavier CI
+  // evidence route than the single-workshop smoke and is not a target-device FPS claim.
+  test.setTimeout(60_000);
+
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/?players=4&seat1=machine&seat2=machine&seat3=machine&seat4=machine', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);

@@ -89,11 +89,10 @@ jobs:
           cat /tmp/axm-global-state-rts-creation-machine.log
           exit 1
 
-      # The browser spec itself is compiled/executed by the pinned Playwright runner below;
-      # node --check is retained for runtime modules only so the preflight does not substitute
-      # Node's standalone .js module-mode rules for the actual browser-test loader.
+      # Static GLB decode/scene replacement is CPU-heavy on hosted runners. Keep this evidence
+      # route serial so two independent asset-decode tests do not contend for the same runner.
       - name: Exercise explicit Creation Machine adoption through LOCAL RTS
-        run: npx playwright test tests/browser/creation-machine-runtime.spec.js tests/browser/creation-machine-starter-set.spec.js --reporter=line
+        run: npx playwright test tests/browser/creation-machine-runtime.spec.js tests/browser/creation-machine-starter-set.spec.js --workers=1 --reporter=line
 
       - name: Regress four-controller and machine-seat browser shell
         run: npx playwright test tests/browser/planet-shell-controller.spec.js --reporter=line

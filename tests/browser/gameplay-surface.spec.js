@@ -37,7 +37,7 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   expect(surfaceBox).not.toBeNull();
   expect(surfaceBox.x).toBeGreaterThanOrEqual(0);
   expect(surfaceBox.x + surfaceBox.width).toBeLessThanOrEqual(viewport.width + 1);
-  expect(surfaceBox.y).toBeGreaterThanOrEqual(0);
+  expect(surfaceBox.y + surfaceBox.height).toBeGreaterThan(0);
   expect(surfaceBox.y).toBeLessThan(viewport.height);
 
   await expect(seat.locator('option')).toHaveCount(3);

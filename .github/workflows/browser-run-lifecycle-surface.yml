@@ -5,9 +5,11 @@ on:
     branches:
       - main
     paths:
+      - 'game/index.html'
       - 'game/world-entry.html'
       - 'game/world-entry.mjs'
       - 'game/world-run-entry.mjs'
+      - 'game/world-run-lifecycle.mjs'
       - 'src/hosted/world-run-session-authority.mjs'
       - 'src/hosted/world-run-http-api.mjs'
       - 'src/hosted/world-run-start-store.mjs'
@@ -44,6 +46,7 @@ jobs:
         run: |
           npm test
           node --check game/world-run-entry.mjs
+          node --check game/world-run-lifecycle.mjs
           node --check tests/browser/world-run-entry.spec.js
           node --check src/hosted/world-run-session-authority.mjs
           node --check src/hosted/world-run-http-api.mjs
@@ -102,7 +105,7 @@ jobs:
           cat /tmp/axm-browser-run-host.log
           exit 1
 
-      - name: Exercise next-drop run admission and RTS handoff in Chromium
+      - name: Exercise next-drop admission, LOCAL bootstrap and terminal host close in Chromium
         run: npx playwright test tests/browser/world-run-entry.spec.js --reporter=line
 
       - name: Preserve browser and durability evidence

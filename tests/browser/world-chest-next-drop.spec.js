@@ -51,7 +51,7 @@ test('seeded world account explicitly opens a chest into durable next-drop value
   expect(afterReentry.dropCache.pendingNextDropRewards).toEqual(afterOpen.dropCache.pendingNextDropRewards);
 
   await page.locator('#openChest').click();
-  await expect(page.locator('#entryStatus')).toContainText('Chest not opened: not-enough-stored-crates.');
+  await expect(page.locator('#entryStatus')).toContainText('Open failed: not-enough-stored-crates (HTTP 400)');
   const afterRejectedOpen = await page.evaluate(() => window.__AXM_WORLD_ENTRY__.participant());
   expect(afterRejectedOpen.dropCache.pendingNextDropRewards).toEqual(afterOpen.dropCache.pendingNextDropRewards);
 

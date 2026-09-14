@@ -58,13 +58,10 @@ function normalizeRecord(record, index = null) {
 function normalizeRecords(records) {
   if (!Array.isArray(records)) throw new TypeError('world run starts must be an array');
   const participants = new Set();
-  const runIds = new Set();
   const normalized = records.map((record, index) => {
     const entry = normalizeRecord(record, index);
     if (participants.has(entry.participantId)) throw new Error(`duplicate active world run participant: ${entry.participantId}`);
-    if (runIds.has(entry.runId)) throw new Error(`duplicate active world run id: ${entry.runId}`);
     participants.add(entry.participantId);
-    runIds.add(entry.runId);
     return entry;
   });
   normalized.sort((a, b) => a.participantId.localeCompare(b.participantId));

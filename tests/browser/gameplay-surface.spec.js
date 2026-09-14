@@ -19,7 +19,27 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
 
   const surface = page.locator('#gameplaySurface');
   const seat = page.locator('#gameplaySeat');
+  const dock = page.locator('.control-dock');
   await expect(surface).toBeVisible();
+  await expect(dock).toBeVisible();
+
+  const viewport = page.viewportSize();
+  const dockBox = await dock.boundingBox();
+  expect(viewport).not.toBeNull();
+  expect(dockBox).not.toBeNull();
+  expect(dockBox.x).toBeGreaterThanOrEqual(0);
+  expect(dockBox.y).toBeGreaterThanOrEqual(0);
+  expect(dockBox.x + dockBox.width).toBeLessThanOrEqual(viewport.width + 1);
+  expect(dockBox.y + dockBox.height).toBeLessThanOrEqual(viewport.height + 1);
+
+  await surface.scrollIntoViewIfNeeded();
+  const surfaceBox = await surface.boundingBox();
+  expect(surfaceBox).not.toBeNull();
+  expect(surfaceBox.x).toBeGreaterThanOrEqual(0);
+  expect(surfaceBox.x + surfaceBox.width).toBeLessThanOrEqual(viewport.width + 1);
+  expect(surfaceBox.y + surfaceBox.height).toBeGreaterThan(0);
+  expect(surfaceBox.y).toBeLessThan(viewport.height);
+
   await expect(seat.locator('option')).toHaveCount(3);
   await expect(page.locator('#gameplaySummary')).toContainText('seat-1');
   await expect(page.locator('#gameplaySummary')).toContainText('Crew 1 · 8 Crew · 1 parties');

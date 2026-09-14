@@ -6,6 +6,7 @@ import { createFileWorldJournalStore, createMemoryWorldJournalStore } from '../s
 import { createFileLocalSeatBindingStore } from '../src/hosted/local-seat-binding-store.mjs';
 import { createFileWorldAccountStore, createMemoryWorldAccountStore } from '../src/hosted/world-account-store.mjs';
 import { createWorldHttpApiService } from '../src/hosted/world-http-api.mjs';
+import { createWorldRunHttpApiService } from '../src/hosted/world-run-http-api.mjs';
 import { createWorldSessionAuthority } from '../src/hosted/world-session-authority.mjs';
 import { createSettlementWorldHttpApiService } from '../src/hosted/settlement-world-http-api.mjs';
 import { createSettlementWorldSessionAuthority } from '../src/hosted/settlement-world-session-authority.mjs';
@@ -94,6 +95,12 @@ if (globalSalvageCreditJournalPath) {
     clock: () => Date.now()
   });
 }
+apiService = createWorldRunHttpApiService({
+  authority: worldSession,
+  baseApi: apiService,
+  writeMode: sharedWriteMode,
+  clock: () => Date.now()
+});
 
 const MIME = new Map([
   ['.html', 'text/html; charset=utf-8'],

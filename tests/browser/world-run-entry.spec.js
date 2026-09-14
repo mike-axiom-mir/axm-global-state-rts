@@ -10,7 +10,7 @@ function captureRuntimeFailures(page) {
   return failures;
 }
 
-test('world account can explicitly apply pending next-drop value to one host run before continuing into RTS', async ({ page }) => {
+test('world account can explicitly apply pending next-drop value to one host run and carry admitted scrap into a fresh LOCAL seat', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/world-entry.html', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);
@@ -71,15 +71,26 @@ test('world account can explicitly apply pending next-drop value to one host run
       binding,
       runStatus: runResponse.status,
       activeRunId: run.progression?.activeRun?.runId || null,
-      localSimulation: window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1')
+      hostRunScrap: run.progression?.activeRun?.stockpile?.resources?.scrap ?? null,
+      localSimulation: window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'),
+      localCivilization: window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1')
     };
   });
 
   expect(shellEvidence.binding.participantId).toBe('world:browser-run-lifecycle');
   expect(shellEvidence.runStatus).toBe(200);
   expect(shellEvidence.activeRunId).toBe('run:world:browser-run-lifecycle:drop-1');
+  expect(shellEvidence.hostRunScrap).toBeGreaterThan(0);
+  expect(shellEvidence.binding.runBootstrap.applied).toBe(true);
+  expect(shellEvidence.binding.runBootstrap.runId).toBe(shellEvidence.activeRunId);
+  expect(shellEvidence.binding.runBootstrap.hostStartingScrap).toBe(shellEvidence.hostRunScrap);
+  expect(shellEvidence.binding.runBootstrap.localStarterScrap).toBe(100);
+  expect(shellEvidence.binding.runBootstrap.combinedStartingScrap).toBe(shellEvidence.hostRunScrap + 100);
+  expect(shellEvidence.binding.runBootstrap.populationParity).toBe(true);
   expect(shellEvidence.localSimulation.regionId).toBeTruthy();
-  expect(shellEvidence.localSimulation.storage.scrap).toBe(0, 'visible LOCAL starter state remains explicitly separate from host run stockpile');
+  expect(shellEvidence.localSimulation.storage.scrap).toBe(shellEvidence.hostRunScrap + 100, 'admitted host-run scrap is added exactly once to the explicit browser-local starter fixture');
+  expect(shellEvidence.localCivilization.resources.scrap).toBe(shellEvidence.localSimulation.storage.scrap, 'playable construction wallet sees the bridged physical scrap');
+  expect(shellEvidence.localCivilization.stateScope).toBe('browser-local-not-host-persistent', 'later LOCAL mutations remain explicitly non-authoritative');
 
   await page.screenshot({ path: 'test-results/global-state-rts-world-run-entry.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);

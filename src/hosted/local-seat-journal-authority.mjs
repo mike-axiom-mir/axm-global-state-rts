@@ -6,7 +6,7 @@ export const LOCAL_SEAT_JOURNAL_AUTHORITY_SCHEMA =
 export const LOCAL_SEAT_JOURNAL_BINDING_SCHEMA =
   'axm.global-state-rts.local-seat-journal-binding/v0.3';
 
-const HOST_ENABLED_LOCAL_ACTIONS = Object.freeze(['gather-scrap', 'repair-core']);
+const HOST_ENABLED_LOCAL_ACTIONS = Object.freeze(['gather-scrap', 'explore', 'repair-core']);
 
 function nonEmpty(value, label) {
   const text = String(value ?? '').trim();

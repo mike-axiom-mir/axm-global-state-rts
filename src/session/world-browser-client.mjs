@@ -1,4 +1,4 @@
-export const WORLD_BROWSER_CLIENT_SCHEMA = 'axm.global-state-rts.world-browser-client/v0.3';
+export const WORLD_BROWSER_CLIENT_SCHEMA = 'axm.global-state-rts.world-browser-client/v0.4';
 
 function nonEmpty(value, label) {
   const text = String(value ?? '').trim();
@@ -85,6 +85,10 @@ export class WorldBrowserClient {
 
   career(participantId) {
     return this.#request('GET', '/api/world/career', { query: { participantId: nonEmpty(participantId, 'participantId') } });
+  }
+
+  worldRunStatus(participantId) {
+    return this.#request('GET', '/api/world/run', { query: { participantId: nonEmpty(participantId, 'participantId') } });
   }
 
   verifiedLocalSalvage(participantId) {

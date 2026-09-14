@@ -80,6 +80,7 @@ export class WorldParticipantRegistry {
     storedCrates = 0,
     openedCrates = 0,
     pendingNextDropRewards = null,
+    nextDropClaim = null,
     anchorWorldHour = createdAtWorldHour,
     credentialMode = 'none',
     storageDurability
@@ -109,6 +110,7 @@ export class WorldParticipantRegistry {
         storedCrates,
         openedCrates,
         pendingNextDropRewards,
+        nextDropClaim,
         cap: this.dropCacheCap
       })
     };
@@ -182,6 +184,7 @@ export class WorldParticipantRegistry {
       storedCrates: cache.storedCrates,
       openedCrates: cache.openedCrates,
       pendingNextDropRewards: cache.pendingNextDropRewards,
+      nextDropClaim: cache.nextDropClaim,
       credentialMode: snapshot.credentialMode || 'none',
       storageDurability: 'restored-through-external-persistence-adapter'
     }));
@@ -207,6 +210,30 @@ export class WorldParticipantRegistry {
     const result = record.dropCache.open(count, options);
     if (result.accepted) this.revision += 1;
     return result;
+  }
+
+  claimNextDropRewards(participantId, runId) {
+    const record = this.participants.get(String(participantId));
+    if (!record) throw new RangeError(`unknown participant: ${participantId}`);
+    const result = record.dropCache.claimPendingNextDropRewards(runId);
+    if (result.accepted && !result.reused) this.revision += 1;
+    return Object.freeze({
+      participantId: record.participantId,
+      result,
+      dropCache: record.dropCache.snapshot()
+    });
+  }
+
+  acknowledgeNextDropRewards(participantId, runId) {
+    const record = this.participants.get(String(participantId));
+    if (!record) throw new RangeError(`unknown participant: ${participantId}`);
+    const result = record.dropCache.acknowledgeNextDropClaim(runId);
+    if (result.accepted && !result.reused) this.revision += 1;
+    return Object.freeze({
+      participantId: record.participantId,
+      result,
+      dropCache: record.dropCache.snapshot()
+    });
   }
 
   scoreIdentityForRun(participantId, runId) {

@@ -1,6 +1,6 @@
 import { DEFAULT_BLUEPRINT_CATALOG } from './blueprint-ledger.mjs';
 
-export const HOURLY_DROP_CACHE_SCHEMA = 'axm.global-state-rts.hourly-drop-cache/v0.3';
+export const HOURLY_DROP_CACHE_SCHEMA = 'axm.global-state-rts.hourly-drop-cache/v0.4';
 export const DROP_CACHE_HOUR_MS = 60 * 60 * 1000;
 export const DEFAULT_DROP_CACHE_CAP = 24;
 
@@ -32,6 +32,12 @@ function checkedAdd(left, right, label) {
   const value = left + right;
   if (!Number.isSafeInteger(value) || value < 0) throw new RangeError(`${label} exceeds safe integer range`);
   return value;
+}
+
+function nonEmpty(value, label) {
+  const text = String(value ?? '').trim();
+  if (!text) throw new TypeError(`${label} required`);
+  return text;
 }
 
 function hash(text) {
@@ -105,6 +111,29 @@ function snapshotPendingNextDropRewards(rewards) {
   });
 }
 
+function normalizeNextDropClaim(value, catalog) {
+  if (value === null || value === undefined) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('nextDropClaim must be an object or null');
+  const status = String(value.status || '');
+  if (!['claimed', 'applied'].includes(status)) throw new RangeError('nextDropClaim.status must be claimed or applied');
+  return {
+    claimSerial: nonNegativeSafeInteger(Number(value.claimSerial), 'nextDropClaim.claimSerial'),
+    runId: nonEmpty(value.runId, 'nextDropClaim.runId'),
+    status,
+    rewards: normalizePendingNextDropRewards(value.rewards, catalog)
+  };
+}
+
+function snapshotNextDropClaim(claim) {
+  if (!claim) return null;
+  return Object.freeze({
+    claimSerial: claim.claimSerial,
+    runId: claim.runId,
+    status: claim.status,
+    rewards: snapshotPendingNextDropRewards(claim.rewards)
+  });
+}
+
 function addContentsToPendingNextDropRewards(rewards, contents) {
   rewards.openedCratesContributed = checkedAdd(rewards.openedCratesContributed, 1, 'pending next-drop crate count');
   rewards.food = checkedAdd(rewards.food, contents.food, 'pending next-drop food');
@@ -165,6 +194,7 @@ export class HourlyDropCache {
     storedCrates = 0,
     openedCrates = 0,
     pendingNextDropRewards = null,
+    nextDropClaim = null,
     cap = DEFAULT_DROP_CACHE_CAP,
     catalog = DEFAULT_BLUEPRINT_CATALOG
   } = {}) {
@@ -187,6 +217,7 @@ export class HourlyDropCache {
     this.cap = cap;
     this.catalog = catalog;
     this.pendingNextDropRewards = normalizePendingNextDropRewards(pendingNextDropRewards, catalog);
+    this.nextDropClaim = normalizeNextDropClaim(nextDropClaim, catalog);
     this.revision = 0;
   }
 
@@ -255,6 +286,56 @@ export class HourlyDropCache {
     });
   }
 
+  claimPendingNextDropRewards(runId) {
+    const id = nonEmpty(runId, 'runId');
+    if (this.nextDropClaim?.status === 'claimed') {
+      if (this.nextDropClaim.runId === id) {
+        return Object.freeze({ accepted: true, reused: true, claim: snapshotNextDropClaim(this.nextDropClaim) });
+      }
+      return Object.freeze({
+        accepted: false,
+        reason: 'next-drop-claim-outstanding',
+        claim: snapshotNextDropClaim(this.nextDropClaim)
+      });
+    }
+    if (this.nextDropClaim?.status === 'applied' && this.nextDropClaim.runId === id) {
+      return Object.freeze({
+        accepted: false,
+        reason: 'next-drop-claim-already-applied',
+        claim: snapshotNextDropClaim(this.nextDropClaim)
+      });
+    }
+
+    const claimSerial = (this.nextDropClaim?.claimSerial || 0) + 1;
+    this.nextDropClaim = {
+      claimSerial,
+      runId: id,
+      status: 'claimed',
+      rewards: normalizePendingNextDropRewards(snapshotPendingNextDropRewards(this.pendingNextDropRewards), this.catalog)
+    };
+    this.pendingNextDropRewards = normalizePendingNextDropRewards(null, this.catalog);
+    this.revision += 1;
+    return Object.freeze({ accepted: true, reused: false, claim: snapshotNextDropClaim(this.nextDropClaim) });
+  }
+
+  acknowledgeNextDropClaim(runId) {
+    const id = nonEmpty(runId, 'runId');
+    if (!this.nextDropClaim) return Object.freeze({ accepted: false, reason: 'next-drop-claim-missing', claim: null });
+    if (this.nextDropClaim.runId !== id) {
+      return Object.freeze({
+        accepted: false,
+        reason: 'next-drop-claim-run-mismatch',
+        claim: snapshotNextDropClaim(this.nextDropClaim)
+      });
+    }
+    if (this.nextDropClaim.status === 'applied') {
+      return Object.freeze({ accepted: true, reused: true, claim: snapshotNextDropClaim(this.nextDropClaim) });
+    }
+    this.nextDropClaim = { ...this.nextDropClaim, status: 'applied' };
+    this.revision += 1;
+    return Object.freeze({ accepted: true, reused: false, claim: snapshotNextDropClaim(this.nextDropClaim) });
+  }
+
   snapshot() {
     return Object.freeze({
       schema: HOURLY_DROP_CACHE_SCHEMA,
@@ -263,6 +344,7 @@ export class HourlyDropCache {
       cap: this.cap,
       openedCrates: this.openedCrates,
       pendingNextDropRewards: snapshotPendingNextDropRewards(this.pendingNextDropRewards),
+      nextDropClaim: snapshotNextDropClaim(this.nextDropClaim),
       anchorMs: this.anchorMs,
       nextAccrualAtMs: this.anchorMs + DROP_CACHE_HOUR_MS,
       anchorWorldHour: this.anchorWorldHour,

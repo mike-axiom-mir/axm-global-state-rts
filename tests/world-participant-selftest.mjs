@@ -116,10 +116,42 @@ leaderboard.submitClosedRun({
 assert.equal(leaderboard.playerSummary(chatgpt.participantId).runCount, 2);
 assert.equal(leaderboard.playerSummary(gemini.participantId).runCount, 1);
 
+const claimAccount = registry.createWorldAccount({
+  accountId: 'claim-continuity',
+  displayName: 'Claim Continuity',
+  controllerKind: 'human',
+  nowMs: epochMs + 50 * WORLD_HOUR_MS
+});
+registry.accrueChests(claimAccount.participantId, epochMs + 53 * WORLD_HOUR_MS);
+assert.equal(registry.openChests(claimAccount.participantId, 2).accepted, true);
+const heldBeforeClaim = registry.participant(claimAccount.participantId).dropCache.pendingNextDropRewards;
+assert.equal(heldBeforeClaim.openedCratesContributed, 2);
+const firstClaim = registry.claimNextDropRewards(claimAccount.participantId, 'claim-run-1');
+assert.equal(firstClaim.result.accepted, true);
+assert.equal(firstClaim.result.reused, false);
+assert.equal(firstClaim.result.claim.status, 'claimed');
+assert.deepEqual(firstClaim.result.claim.rewards, heldBeforeClaim);
+assert.equal(firstClaim.dropCache.pendingNextDropRewards.openedCratesContributed, 0);
+const retryClaim = registry.claimNextDropRewards(claimAccount.participantId, 'claim-run-1');
+assert.equal(retryClaim.result.accepted, true);
+assert.equal(retryClaim.result.reused, true);
+const conflictingClaim = registry.claimNextDropRewards(claimAccount.participantId, 'claim-run-2');
+assert.equal(conflictingClaim.result.accepted, false);
+assert.equal(conflictingClaim.result.reason, 'next-drop-claim-outstanding');
+
 const exported = registry.exportWorldAccounts();
 const restored = createWorldParticipantRegistry({ worldEpochMs: epochMs, restoredAccounts: exported });
 assert.equal(restored.participant(chatgpt.participantId).dropCache.storedCrates, 4);
 assert.equal(restored.participant(gemini.participantId).dropCache.storedCrates, 2);
 assert.equal(restored.participant(guest.participantId), null, 'guest session is deliberately not exported as durable account state');
+assert.equal(restored.participant(claimAccount.participantId).dropCache.nextDropClaim.runId, 'claim-run-1');
+assert.equal(restored.participant(claimAccount.participantId).dropCache.nextDropClaim.status, 'claimed');
+assert.deepEqual(restored.participant(claimAccount.participantId).dropCache.nextDropClaim.rewards, heldBeforeClaim);
+const appliedClaim = restored.acknowledgeNextDropRewards(claimAccount.participantId, 'claim-run-1');
+assert.equal(appliedClaim.result.accepted, true);
+assert.equal(appliedClaim.result.claim.status, 'applied');
+const restoredAgain = createWorldParticipantRegistry({ worldEpochMs: epochMs, restoredAccounts: restored.exportWorldAccounts() });
+assert.equal(restoredAgain.participant(claimAccount.participantId).dropCache.nextDropClaim.status, 'applied', 'applied claim marker survives account export/restore');
+assert.equal(restoredAgain.claimNextDropRewards(claimAccount.participantId, 'claim-run-1').result.reason, 'next-drop-claim-already-applied');
 
-console.log('world participant guest/account/AI parity/world-hour chest/highscore identity selftest: PASS');
+console.log('world participant guest/account/AI parity/world-hour chest/highscore identity/next-drop claim selftest: PASS');

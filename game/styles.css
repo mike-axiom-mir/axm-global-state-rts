@@ -74,6 +74,7 @@ select, button {
   padding: .45rem .65rem;
 }
 button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .42; }
 button:focus-visible, select:focus-visible { outline: 2px solid #dce9ee; outline-offset: 2px; }
 
 .seat-setup {
@@ -94,6 +95,43 @@ button:focus-visible, select:focus-visible { outline: 2px solid #dce9ee; outline
 .seat-card select { width: 100%; min-width: 0; }
 .seat-card .binding { margin-top: .4rem; font-size: .68rem; color: #93a3aa; overflow-wrap: anywhere; }
 
+.gameplay-surface {
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: .65rem;
+  padding: .65rem;
+  display: grid;
+  gap: .55rem;
+  background: #0d1319;
+}
+.gameplay-surface__head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+}
+.gameplay-surface__head strong { font-size: .88rem; }
+.gameplay-surface__head label { display: grid; gap: .2rem; min-width: 9rem; font-size: .7rem; color: #aab7bd; }
+.gameplay-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  font-size: .7rem;
+  color: #aebbc0;
+}
+.gameplay-summary span {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: .4rem;
+  padding: .28rem .42rem;
+  background: #141b22;
+}
+.gameplay-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: .4rem;
+}
+.gameplay-actions button { min-width: 0; }
+
 .help, .truth { margin: 0; font-size: .72rem; line-height: 1.4; color: #9eacb2; }
 .truth { color: #7f9098; }
 
@@ -101,9 +139,10 @@ button:focus-visible, select:focus-visible { outline: 2px solid #dce9ee; outline
   body { overflow: auto; }
   .app-shell { min-height: 100vh; grid-template-rows: minmax(360px, 62vh) auto; }
   .seat-setup { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .gameplay-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 430px) {
-  .seat-setup { grid-template-columns: 1fr; }
+  .seat-setup, .gameplay-actions { grid-template-columns: 1fr; }
   .control-dock { padding-inline: .7rem; }
 }

@@ -1,6 +1,6 @@
 # Creation Machine starter static-set trial v0
 
-Status: **RUNTIME TRIAL PATH · NOT DEFAULT-ADOPTED · NOT VISUALLY ACCEPTED**
+Status: **PER-ASSET RUNTIME TRIAL PATH · NOT DEFAULT-ADOPTED · NOT VISUALLY ACCEPTED · COMBINED FIVE-ASSET ADOPTION HOLD**
 
 This slice connects five checked-in plate-directed Creation Machine assets to five starter-region fixtures that already exist in the live RTS:
 
@@ -18,7 +18,13 @@ The source IDs are not renamed or rewritten. `src/assets/creation-machine-starte
 
 The trial uses `assets/creation-machine/prepare_runtime_glb.py` to deterministically package the checked-in **far/lod1** glTF variant for each source asset into an embedded GLB plus SHA-256 receipt. That choice is only a bounded runtime trial. It is **not** an evidence-backed automatic LOD policy.
 
-The procedural starter visuals remain the default. Nothing imports the static set automatically. `game/creation-machine-starter-set-adoption.mjs` must be called explicitly after a seat enters LOCAL RTS. It preflights all five receipts and payloads before replacing any presentation fixture, so a missing candidate does not create a half-adopted starter set.
+The procedural starter visuals remain the default. Nothing imports the static set automatically. `game/creation-machine-starter-set-adoption.mjs` exposes explicit per-asset adoption only after a seat enters LOCAL RTS. A missing or failing candidate therefore leaves that fixture on its existing procedural presentation.
+
+## Why combined five-asset adoption is HOLD
+
+Two real hosted-Chromium attempts tried to decode and install all five candidates into one seat in the same four-seat LOCAL RTS page. The first exceeded a 60-second test budget. A second run increased only the bounded CI budget to 150 seconds and again reached that full timeout while waiting for the combined adoption call. Deterministic preparation, mapping checks, the repository test suite, server startup, and the pre-existing single-workshop browser routes all passed around those failures.
+
+That evidence is treated as a limit, not hidden by raising the timer again. The likely cost surface is cumulative static GLB/image decoding and retained resources, but this document does **not** claim a root cause that has not yet been isolated. Until a later lane proves bounded combined behavior, the public helper intentionally exposes individual adoption rather than a five-asset batch API.
 
 ## LOD truth boundary
 
@@ -39,17 +45,20 @@ A later lane may derive conservative footprints from verified model bounds and c
 
 ## Browser evidence gate
 
-The Creation Machine browser workflow prepares all five far candidates and opens the real game in a four-seat machine-player split layout. All four seats independently enter LOCAL RTS through their existing admitted action path; **seat 1 alone** explicitly imports the five-candidate set. Seats 2–4 intentionally retain their procedural visuals. This keeps the test bounded while proving both the real multi-seat render route and that asset adoption remains seat-local/explicit rather than leaking across seats.
+The Creation Machine browser workflow prepares all five far candidates. Each candidate then receives its **own fresh browser page/context** in a real four-seat machine-player split layout. All four seats independently enter LOCAL RTS through their existing admitted action path; seat 1 explicitly imports one source-pinned candidate and seats 2–4 deliberately retain procedural presentation. This avoids turning the known cumulative five-asset limit into a false failure of an individual asset.
 
-The test preserves a four-pane screenshot and verifies:
+For every candidate the gate verifies:
 
-- no candidate is installed before the explicit call;
+- no external candidate is installed before the explicit call;
 - all four seats can enter LOCAL RTS through the existing machine action path;
-- seat 1 imports all five source-pinned candidates through the actual static GLB runtime;
-- seats 2–4 remain on procedural presentation, proving no silent cross-seat adoption;
+- seat 1 imports the requested source-pinned candidate through the actual static GLB runtime;
+- seats 2–4 remain on procedural presentation, proving adoption does not leak across seats;
 - runtime SHA-256 identity is checked by the static GLB runtime;
-- each imported receipt remains `RUNTIME_IMPORTED_NOT_VISUALLY_ACCEPTED`;
-- collision, navigation, split-screen readability and target-device FPS remain `NOT_TESTED` rather than being inferred from successful decoding.
+- the imported receipt remains `RUNTIME_IMPORTED_NOT_VISUALLY_ACCEPTED`;
+- collision, navigation, split-screen readability and target-device FPS remain `NOT_TESTED` rather than being inferred from successful decoding;
+- a four-pane screenshot is retained for that individual runtime trial.
+
+If all five individual cases pass, the evidence means **each candidate is individually runtime-importable in the real four-seat route**. It does not mean all five can yet coexist within an acceptable cumulative decode/resource budget, and it does not make any of them the default visual.
 
 A screenshot is evidence that the real browser route rendered; it is not by itself acceptance of scale, art quality, readability or performance.
 

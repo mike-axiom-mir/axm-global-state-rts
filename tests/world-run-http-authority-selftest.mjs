@@ -128,7 +128,7 @@ try {
     worldEpochMs: 0,
     accountStore: createFileWorldAccountStore(accountPath)
   });
-  const restartedApi = createWorldRunHttpApiService({ restartedAuthority, writeMode: 'dev', clock });
+  const restartedApi = createWorldRunHttpApiService({ authority: restartedAuthority, writeMode: 'dev', clock });
   const restartStatus = get(restartedApi, '/api/world/run', { participantId: human.participantId });
   assert.equal(restartStatus.status, 200);
   assert.equal(restartStatus.body.nextDropClaim.status, 'applied');
@@ -136,7 +136,7 @@ try {
   assert.equal(restartStatus.body.continuity.processRestartGap, true);
   assert.equal(restartStatus.body.continuity.state, 'active-progression-not-restored');
 
-  const offApi = createWorldRunHttpApiService({ restartedAuthority, writeMode: 'off', clock });
+  const offApi = createWorldRunHttpApiService({ authority: restartedAuthority, writeMode: 'off', clock });
   const blockedWrite = post(offApi, '/api/world/run/begin-next-drop', {
     participantId: human.participantId,
     runId: 'run:blocked'

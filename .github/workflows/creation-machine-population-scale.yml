@@ -78,6 +78,12 @@ jobs:
       - name: Measure 1/10/100 total workshops across 1/2/4 real split scenes
         run: npx playwright test tests/browser/creation-machine-population-scale.spec.js --reporter=line
 
+      - name: Snapshot population evidence before later Playwright cleanup
+        run: |
+          mkdir -p /tmp/creation-machine-population-evidence
+          cp test-results/global-state-rts-creation-machine-population-scale.json /tmp/creation-machine-population-evidence/
+          cp test-results/global-state-rts-creation-machine-population-*.png /tmp/creation-machine-population-evidence/
+
       - name: Regress explicit checked-in workshop adoption
         run: npx playwright test tests/browser/creation-machine-runtime.spec.js --reporter=line
 
@@ -91,8 +97,7 @@ jobs:
           name: global-state-rts-creation-machine-population-scale-evidence
           path: |
             assets/creation-machine/runtime-prepared/improvised-workshop-lod1.receipt.json
-            test-results/global-state-rts-creation-machine-population-scale.json
-            test-results/global-state-rts-creation-machine-population-*.png
+            /tmp/creation-machine-population-evidence/
             test-results/global-state-rts-creation-machine-workshop-runtime.png
             test-results/global-state-rts-*.png
             /tmp/axm-global-state-rts-creation-machine-population.log

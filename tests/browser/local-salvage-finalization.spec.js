@@ -4,7 +4,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -134,7 +134,9 @@ test('player explicitly prepares, debits, and finalizes non-spendable global sal
     credit: finalized.meta.salvageTransferSettlement.globalCreditLedger.revision,
     consumption: finalized.meta.salvageTransferSettlement.reservationConsumptionJournal.revision
   };
-  await page.locator('#hostLocalSalvageTransferFinalize').click();
+  const retryEvidence = await page.evaluate(() => window.__AXM_HOST_LOCAL_SALVAGE_TRANSFER__.finalizeGlobalCredit());
+  expect(retryEvidence.accepted).toBe(true);
+  expect(retryEvidence.result.reused).toBe(true);
   await expect(page.locator('#hostLocalSalvageTransferStatus')).toContainText('global spendable balance remains zero');
   const afterRetry = await page.evaluate(async () => {
     const metaResponse = await fetch('/api/world/meta');

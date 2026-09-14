@@ -1,0 +1,105 @@
+name: Creation Machine population scale
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'assets/creation-machine/prepare_runtime_glb.py'
+      - 'assets/creation-machine/asset-index.csv'
+      - 'assets/creation-machine/transfer-manifest.json'
+      - 'assets/creation-machine/packs/**'
+      - 'src/assets/cached-static-glb-runtime.mjs'
+      - 'src/assets/static-glb-runtime.mjs'
+      - 'src/presentation/planet-renderer.mjs'
+      - 'src/presentation/local-region-scene.mjs'
+      - 'tests/creation-machine-runtime-prep-selftest.mjs'
+      - 'tests/browser/creation-machine-population-harness.html'
+      - 'tests/browser/creation-machine-population-scale.spec.js'
+      - 'docs/CREATION_MACHINE_POPULATION_SCALE_V0.md'
+      - '.github/workflows/creation-machine-population-scale.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checked-in-workshop-population-scale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    steps:
+      - name: Check out exact RTS candidate and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Prepare exact checked-in Creation Machine far derivative
+        run: |
+          python3 assets/creation-machine/prepare_runtime_glb.py \
+            --asset improvised-workshop \
+            --variant far
+          node tests/creation-machine-runtime-prep-selftest.mjs
+
+      - name: Run repository deterministic and source gates
+        run: |
+          node --check tests/browser/creation-machine-population-scale.spec.js
+          npm test
+
+      - name: Install pinned Playwright browser test route
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start repository static host with generated derivative
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-creation-machine-population.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/tests/browser/creation-machine-population-harness.html > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/improvised-workshop-lod1.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/improvised-workshop-lod1.receipt.json > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-creation-machine-population.log
+          exit 1
+
+      - name: Measure 1/10/100 total workshops across 1/2/4 real split scenes
+        run: npx playwright test tests/browser/creation-machine-population-scale.spec.js --reporter=line
+
+      - name: Snapshot population evidence before later Playwright cleanup
+        run: |
+          mkdir -p /tmp/creation-machine-population-evidence
+          cp test-results/global-state-rts-creation-machine-population-scale.json /tmp/creation-machine-population-evidence/
+          cp test-results/global-state-rts-creation-machine-population-*.png /tmp/creation-machine-population-evidence/
+
+      - name: Regress explicit checked-in workshop adoption
+        run: npx playwright test tests/browser/creation-machine-runtime.spec.js --reporter=line
+
+      - name: Regress four-controller and machine-seat browser shell
+        run: npx playwright test tests/browser/planet-shell-controller.spec.js --reporter=line
+
+      - name: Preserve descriptive CI evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-creation-machine-population-scale-evidence
+          path: |
+            assets/creation-machine/runtime-prepared/improvised-workshop-lod1.receipt.json
+            /tmp/creation-machine-population-evidence/
+            test-results/global-state-rts-creation-machine-workshop-runtime.png
+            test-results/global-state-rts-*.png
+            /tmp/axm-global-state-rts-creation-machine-population.log
+          if-no-files-found: warn
+          retention-days: 14

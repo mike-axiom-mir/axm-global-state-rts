@@ -210,10 +210,15 @@ function partySummary(party) {
   return `${party.selectedPartyLabel || party.selectedPartyId || 'party'} · ${party.selectedCrewIds?.length || 0} Crew · ${party.partyCount || 0} parties${menu}`;
 }
 
+function readableDefinitionId(definitionId) {
+  const tail = String(definitionId || 'structure').split(':').pop();
+  return tail.split('-').filter(Boolean).map(part => `${part[0]?.toUpperCase() || ''}${part.slice(1)}`).join(' ') || 'Structure';
+}
+
 function structureSummary(civilization) {
   const structures = civilization?.structures || [];
   if (!structures.length) return '0 placed';
-  const recent = structures.slice(-2).map(building => `${building.label} @ ${Math.round(building.xM)},${Math.round(building.zM)}`).join(' · ');
+  const recent = structures.slice(-2).map(building => `${building.label || readableDefinitionId(building.definitionId)} @ ${Math.round(building.xM)},${Math.round(building.zM)}`).join(' · ');
   return `${structures.length} placed · ${recent}`;
 }
 

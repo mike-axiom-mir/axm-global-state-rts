@@ -6,14 +6,29 @@ const HUMAN_KEY_BY_ACTION = Object.freeze({
   'map-toggle': 'm',
   'gather-scrap': 'Enter',
   'repair-core': 'x',
-  explore: 'f'
+  explore: 'f',
+  'party-menu': 'Tab',
+  'party-prev': 'q',
+  'party-next': 'e',
+  confirm: 'Enter',
+  context: 'x',
+  cancel: 'Escape'
 });
 
-const ACTIONS = Object.freeze([
-  Object.freeze({ id: 'gather-scrap', label: 'Gather at cursor', localOnly: true }),
-  Object.freeze({ id: 'repair-core', label: 'Repair core', localOnly: true }),
-  Object.freeze({ id: 'explore', label: 'Explore cursor', localOnly: true }),
+const BASE_ACTIONS = Object.freeze([
+  Object.freeze({ id: 'gather-scrap', label: 'Gather at cursor', localOnly: true, gameplayOrder: true }),
+  Object.freeze({ id: 'repair-core', label: 'Repair core', localOnly: true, gameplayOrder: true }),
+  Object.freeze({ id: 'explore', label: 'Explore cursor', localOnly: true, gameplayOrder: true }),
+  Object.freeze({ id: 'party-menu', label: 'Party menu', localOnly: true }),
+  Object.freeze({ id: 'party-prev', label: 'Previous party', localOnly: true }),
+  Object.freeze({ id: 'party-next', label: 'Next party', localOnly: true }),
   Object.freeze({ id: 'map-toggle', label: 'Globe / Local', localOnly: false })
+]);
+
+const PARTY_MENU_ACTIONS = Object.freeze([
+  Object.freeze({ id: 'confirm', label: 'Split selected party', localOnly: true, partyMenuOnly: true }),
+  Object.freeze({ id: 'context', label: 'Merge into Crew 1', localOnly: true, partyMenuOnly: true }),
+  Object.freeze({ id: 'cancel', label: 'Close party menu', localOnly: true, partyMenuOnly: true })
 ]);
 
 function waitForBridge(timeoutMs = 5000) {
@@ -100,19 +115,23 @@ function canClickSeat(seat) {
   return Boolean(seat && (seat.kind === 'machine' || seat.id === 'seat-1'));
 }
 
-function renderActions(seat, mode) {
-  const signature = `${seat?.id || 'none'}:${seat?.kind || 'none'}:${mode}:${canClickSeat(seat) ? 'clickable' : 'view-only'}`;
+function renderActions(seat, mode, party) {
+  const menuOpen = Boolean(party?.menuOpen);
+  const signature = `${seat?.id || 'none'}:${seat?.kind || 'none'}:${mode}:${canClickSeat(seat) ? 'clickable' : 'view-only'}:${menuOpen ? 'party-open' : 'party-closed'}`;
   if (signature === lastActionSignature) return;
   lastActionSignature = signature;
-  actions.replaceChildren(...ACTIONS.map(definition => {
+  const definitions = menuOpen ? [...BASE_ACTIONS, ...PARTY_MENU_ACTIONS] : BASE_ACTIONS;
+  actions.replaceChildren(...definitions.map(definition => {
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.gameplayAction = definition.id;
     button.textContent = definition.label;
     const unavailableMode = definition.localOnly && mode !== 'local-rts';
-    button.disabled = unavailableMode || !canClickSeat(seat);
+    const blockedByPartyMenu = Boolean(menuOpen && definition.gameplayOrder);
+    button.disabled = unavailableMode || blockedByPartyMenu || !canClickSeat(seat);
     if (!canClickSeat(seat)) button.title = 'Human seats 2–4 remain controller-owned; this panel does not bypass their input binding.';
     else if (unavailableMode) button.title = 'Enter LOCAL RTS first.';
+    else if (blockedByPartyMenu) button.title = 'Close the party menu before issuing a world order.';
     button.addEventListener('click', () => submitAction(definition.id));
     return button;
   }));
@@ -140,6 +159,12 @@ function submitAction(actionId) {
   }
 }
 
+function partySummary(party) {
+  if (!party) return 'party state unavailable';
+  const menu = party.menuOpen ? ' · menu open' : '';
+  return `${party.selectedPartyLabel || party.selectedPartyId || 'party'} · ${party.selectedCrewIds?.length || 0} Crew · ${party.partyCount || 0} parties${menu}`;
+}
+
 function render() {
   const seats = syncSeatOptions();
   if (!seats.length) return;
@@ -150,7 +175,9 @@ function render() {
   const view = bridge.describeSeatView(seat.id);
   const mode = view?.mode || 'unknown';
   let simulation = null;
+  let party = null;
   try { simulation = bridge.describeSeatSimulation(seat.id); } catch { simulation = null; }
+  try { party = bridge.describeSeatParty(seat.id); } catch { party = null; }
 
   const order = simulation?.order?.type || 'idle';
   const core = Math.round(Number(simulation?.core?.integrity) || 0);
@@ -165,6 +192,7 @@ function render() {
 
   summary.innerHTML = `
     <span><b>${seat.id}</b> · ${seat.kind} · ${mode}</span>
+    <span>party <b>${partySummary(party)}</b></span>
     <span>core <b>${core}%</b></span>
     <span>scrap <b>${scrap}/${capacity}</b></span>
     <span>order <b>${order}</b></span>
@@ -174,7 +202,7 @@ function render() {
     <span>time <b>${worldTime}</b></span>
     <span>input <b>${controlNote}</b></span>
   `;
-  renderActions(seat, mode);
+  renderActions(seat, mode, party);
 }
 
 seatSelect.addEventListener('change', () => {

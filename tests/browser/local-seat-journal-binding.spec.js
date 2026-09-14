@@ -70,7 +70,7 @@ test('authority-revalidated machine participant can journal, record verified sal
     timestampMs: 10_250
   }));
   expect(localGather.accepted).toBe(true);
-  await expect(page.locator('#inputStatus')).toContainText('gather-scrap · local macro order admitted');
+  await expect(page.locator('#inputStatus')).toContainText('seat-1 · gather-scrap · Crew 1 8 Crew · local macro order admitted');
 
   const afterLocalMacro = await page.evaluate(async () => {
     const beforeRefresh = window.__AXM_HOST_LOCAL_SEAT__.status();

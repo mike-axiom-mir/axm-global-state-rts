@@ -6,6 +6,7 @@ import { LocalSeatRuntime } from '../src/session/local-seat-runtime.mjs';
 import { createWorldBrowserClient } from '../src/session/world-browser-client.mjs';
 import { createWorldSeatBindingRuntime, readWorldSeatHandoff } from '../src/session/world-seat-binding.mjs';
 import { describeBoundLocalWorldTime } from '../src/session/world-time-local-sync.mjs';
+import { createLocalPartyGameplay } from '../src/sim/local-party-gameplay.mjs';
 import { createLocalRegionSimulation } from '../src/sim/local-region-sim.mjs';
 import { createStarterRegion } from '../src/world/starter-region.mjs';
 
@@ -40,6 +41,7 @@ let nextHudRefreshAt = 0;
 let drag = null;
 const keys = new Set();
 const simulations = new Map();
+const partyGameplays = new Map();
 const worldTimeSyncBySeat = new Map();
 const worldTimeRefreshTimers = new Map();
 
@@ -77,6 +79,16 @@ function simulationForSeat(seatId) {
   return simulation;
 }
 
+function partyGameplayForSeat(seatId) {
+  let partyGameplay = partyGameplays.get(seatId);
+  if (!partyGameplay) {
+    const crewIds = simulationForSeat(seatId).snapshot().crew.map(crew => crew.id);
+    partyGameplay = createLocalPartyGameplay(crewIds);
+    partyGameplays.set(seatId, partyGameplay);
+  }
+  return partyGameplay;
+}
+
 function modeLabel(seatId) {
   return renderer.getSeatMode(seatId) === 'local-rts' ? 'LOCAL RTS' : 'GLOBE';
 }
@@ -84,10 +96,11 @@ function modeLabel(seatId) {
 function simulationLabel(seatId) {
   if (renderer.getSeatMode(seatId) !== 'local-rts') return '';
   const snapshot = simulationForSeat(seatId).snapshot();
+  const party = partyGameplayForSeat(seatId).snapshot();
   const order = snapshot.order?.type || 'idle';
   const world = renderer.describeSeatView(seatId)?.local?.world;
   const worldLabel = world ? ` · vision ${world.visibleCells} · features ${world.visibleFeatures}` : '';
-  return ` · core ${Math.round(snapshot.core.integrity)}% · scrap ${Math.floor(snapshot.storage.scrap)} · ${order} · light ${snapshot.environment.lightingPhase}${worldLabel}`;
+  return ` · core ${Math.round(snapshot.core.integrity)}% · scrap ${Math.floor(snapshot.storage.scrap)} · ${party.selectedPartyLabel} ${party.selectedCrewIds.length}/${snapshot.crew.length} · ${order} · light ${snapshot.environment.lightingPhase}${worldLabel}`;
 }
 
 function worldBindingLabel(seatId) {
@@ -189,6 +202,7 @@ function bindAvailableInputs() {
 
   for (const seat of seats) {
     simulationForSeat(seat.id);
+    partyGameplayForSeat(seat.id);
     if (seat.kind === 'machine') {
       runtime.bindInput({ seatId: seat.id, sourceKind: 'machine' });
       continue;
@@ -297,15 +311,29 @@ async function bindPendingWorldParticipant() {
 function issueLocalSimulationAction(event) {
   if (renderer.getSeatMode(event.seatId) !== 'local-rts') return null;
   const simulation = simulationForSeat(event.seatId);
+  const partyGameplay = partyGameplayForSeat(event.seatId);
+  const partyCommand = partyGameplay.handleAction(event.actionId);
+  if (partyCommand) {
+    if (partyCommand.accepted) {
+      const party = partyGameplay.snapshot();
+      setStatus(`${event.seatId} · ${partyCommand.action} · ${party.selectedPartyLabel} ${party.selectedCrewIds.length} Crew`);
+    } else {
+      setStatus(`${event.seatId} · ${partyCommand.reason}`);
+    }
+    return partyCommand;
+  }
+
   const view = renderer.describeSeatView(event.seatId);
+  const party = partyGameplay.snapshot();
   const command = simulation.issueLocalAction(event.actionId, {
     cursorXM: view?.local?.cursorXM ?? 0,
-    cursorZM: view?.local?.cursorZM ?? 0
+    cursorZM: view?.local?.cursorZM ?? 0,
+    crewIds: party.selectedCrewIds
   });
   if (!command.accepted && command.reason !== 'not-a-local-sim-action') {
     setStatus(`${event.seatId} · ${command.reason}`);
   } else if (command.accepted) {
-    setStatus(`${event.seatId} · ${command.order.type} · local macro order admitted`);
+    setStatus(`${event.seatId} · ${command.order.type} · ${party.selectedPartyLabel} ${party.selectedCrewIds.length} Crew · local macro order admitted`);
   }
   return command;
 }
@@ -445,6 +473,11 @@ const publicBridge = {
     const seat = activeSeats(roster).find(candidate => candidate.id === seatId);
     if (!seat) throw new Error(`${seatId || 'seat'} is not active`);
     return simulationForSeat(seatId).snapshot();
+  },
+  describeSeatParty(seatId) {
+    const seat = activeSeats(roster).find(candidate => candidate.id === seatId);
+    if (!seat) throw new Error(`${seatId || 'seat'} is not active`);
+    return partyGameplayForSeat(seatId).snapshot();
   },
   listSeats() {
     return activeSeats(roster).map(seat => ({

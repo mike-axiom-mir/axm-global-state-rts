@@ -12,7 +12,7 @@ function captureRuntimeFailures(page) {
   return failures;
 }
 
-test('player-facing command deck mirrors admitted local macro actions without cross-seat bypass', async ({ page }) => {
+test('player-facing command deck mirrors admitted local macro and persistent-party actions without cross-seat bypass', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/?players=3&seat3=machine', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);
@@ -22,6 +22,7 @@ test('player-facing command deck mirrors admitted local macro actions without cr
   await expect(surface).toBeVisible();
   await expect(seat.locator('option')).toHaveCount(3);
   await expect(page.locator('#gameplaySummary')).toContainText('seat-1');
+  await expect(page.locator('#gameplaySummary')).toContainText('Crew 1 · 8 Crew · 1 parties');
   await expect(page.locator('#gameplaySummary')).toContainText('core');
   await expect(page.locator('#gameplaySummary')).toContainText('scrap');
   await expect(page.locator('#gameplaySummary')).toContainText('crew');
@@ -30,21 +31,38 @@ test('player-facing command deck mirrors admitted local macro actions without cr
   const gatherButton = page.locator('[data-gameplay-action="gather-scrap"]');
   const repairButton = page.locator('[data-gameplay-action="repair-core"]');
   const exploreButton = page.locator('[data-gameplay-action="explore"]');
+  const partyMenuButton = page.locator('[data-gameplay-action="party-menu"]');
 
   await expect(gatherButton).toBeDisabled();
   await mapButton.click();
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
   await expect(gatherButton).toBeEnabled();
+  await expect(partyMenuButton).toBeEnabled();
+
+  await partyMenuButton.click();
+  await expect(page.locator('#gameplaySummary')).toContainText('menu open');
+  await expect(gatherButton).toBeDisabled();
+  const splitButton = page.locator('[data-gameplay-action="confirm"]');
+  await expect(splitButton).toHaveText('Split selected party');
+  await splitButton.click();
+  await expect(page.locator('#inputStatus')).toContainText('party-split');
+  await expect(page.locator('#gameplaySummary')).toContainText('Crew 2 · 4 Crew · 2 parties');
+  await page.locator('[data-gameplay-action="cancel"]').click();
+  await expect(page.locator('#gameplaySummary')).not.toContainText('menu open');
 
   await gatherButton.click();
-  await expect(page.locator('#inputStatus')).toContainText('seat-1 · gather-scrap · local macro order admitted');
+  await expect(page.locator('#inputStatus')).toContainText('seat-1 · gather-scrap · Crew 2 4 Crew · local macro order admitted');
   await expect(page.locator('#gameplayFeedback')).toContainText('existing admitted input path');
   await expect(page.locator('#gameplaySummary')).toContainText('gather-scrap');
+  const seatOneSimulation = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'));
+  expect(seatOneSimulation.order?.crewIds).toHaveLength(4);
 
+  await page.locator('[data-gameplay-action="party-prev"]').click();
+  await expect(page.locator('#gameplaySummary')).toContainText('Crew 1 · 4 Crew · 2 parties');
   await exploreButton.click();
-  await expect(page.locator('#inputStatus')).toContainText('seat-1 · explore · local macro order admitted');
+  await expect(page.locator('#inputStatus')).toContainText('seat-1 · explore · Crew 1 4 Crew · local macro order admitted');
   await repairButton.click();
-  await expect(page.locator('#inputStatus')).toContainText('seat-1 · repair-core · local macro order admitted');
+  await expect(page.locator('#inputStatus')).toContainText('seat-1 · repair-core · Crew 1 4 Crew · local macro order admitted');
 
   await seat.selectOption('seat-2');
   await expect(page.locator('#gameplaySummary')).toContainText('controller-owned; view only here');
@@ -57,11 +75,19 @@ test('player-facing command deck mirrors admitted local macro actions without cr
   await mapButton.click();
   await expect(page.locator('[data-seat-id="seat-3"]')).toContainText('LOCAL RTS');
   await expect(gatherButton).toBeEnabled();
+  await partyMenuButton.click();
+  await page.locator('[data-gameplay-action="confirm"]').click();
+  await page.locator('[data-gameplay-action="cancel"]').click();
+  await expect(page.locator('#gameplaySummary')).toContainText('Crew 2 · 4 Crew · 2 parties');
   await gatherButton.click();
-  await expect(page.locator('#inputStatus')).toContainText('seat-3 · gather-scrap · local macro order admitted');
+  await expect(page.locator('#inputStatus')).toContainText('seat-3 · gather-scrap · Crew 2 4 Crew · local macro order admitted');
 
   const machineSimulation = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-3'));
+  const machineParty = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatParty('seat-3'));
   expect(machineSimulation.order?.type).toBe('gather-scrap');
+  expect(machineSimulation.order?.crewIds).toHaveLength(4);
+  expect(machineParty.partyCount).toBe(2);
+  expect(machineParty.selectedCrewIds).toHaveLength(4);
 
   await page.screenshot({ path: 'test-results/global-state-rts-gameplay-surface.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);

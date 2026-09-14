@@ -62,6 +62,7 @@ jobs:
         run: |
           node --check src/assets/creation-machine-starter-set.mjs
           node --check game/creation-machine-starter-set-adoption.mjs
+          node --check tests/browser/creation-machine-starter-set.spec.js
 
       - name: Run repository deterministic and source gates
         run: npm test
@@ -90,9 +91,14 @@ jobs:
           exit 1
 
       # Static GLB decode/scene replacement is CPU-heavy on hosted runners. Keep this evidence
-      # route serial so two independent asset-decode tests do not contend for the same runner.
+      # route serial so independent asset-decode tests do not contend for the same runner.
       - name: Exercise explicit Creation Machine adoption through LOCAL RTS
-        run: npx playwright test tests/browser/creation-machine-runtime.spec.js tests/browser/creation-machine-starter-set.spec.js --workers=1 --reporter=line
+        run: |
+          npx playwright test tests/browser/creation-machine-runtime.spec.js tests/browser/creation-machine-starter-set.spec.js --workers=1 --reporter=line
+          # A later Playwright invocation clears test-results. Copy this lane's screenshots first
+          # so the uploaded evidence actually retains the asset renders that just passed.
+          mkdir -p evidence/creation-machine-runtime
+          cp test-results/global-state-rts-creation-machine-*.png evidence/creation-machine-runtime/
 
       - name: Regress four-controller and machine-seat browser shell
         run: npx playwright test tests/browser/planet-shell-controller.spec.js --reporter=line
@@ -104,7 +110,7 @@ jobs:
           name: global-state-rts-creation-machine-runtime-evidence
           path: |
             assets/creation-machine/runtime-prepared/*.receipt.json
-            test-results/global-state-rts-creation-machine-*.png
+            evidence/creation-machine-runtime/*.png
             test-results/global-state-rts-*.png
             /tmp/axm-global-state-rts-creation-machine.log
           if-no-files-found: warn

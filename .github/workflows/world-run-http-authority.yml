@@ -1,0 +1,122 @@
+name: Global State RTS host run HTTP authority
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/hosted/world-run-session-authority.mjs'
+      - 'src/hosted/world-run-http-api.mjs'
+      - 'src/hosted/world-session-authority.mjs'
+      - 'src/hosted/world-http-api.mjs'
+      - 'src/hosted/world-participant-registry.mjs'
+      - 'src/sim/civilization-progression.mjs'
+      - 'src/sim/next-drop-run-bridge.mjs'
+      - 'scripts/serve.mjs'
+      - 'tests/world-run-http-authority-selftest.mjs'
+      - '.github/workflows/world-run-http-authority.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host-run-http-authority:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run deterministic and syntax gates
+        run: |
+          npm test
+          node --check src/hosted/world-run-session-authority.mjs
+          node --check src/hosted/world-run-http-api.mjs
+          node --check scripts/serve.mjs
+          node --check tests/world-run-http-authority-selftest.mjs
+          node tests/world-run-http-authority-selftest.mjs
+
+      - name: Seed one durable next-drop claim source
+        run: |
+          rm -f /tmp/axm-run-http-accounts.json /tmp/axm-run-http-world.json /tmp/axm-run-http-host.log
+          node --input-type=module <<'NODE'
+          import { WORLD_HOUR_MS } from './src/hosted/world-clock.mjs';
+          import { createFileWorldAccountStore } from './src/hosted/world-account-store.mjs';
+          import { createWorldSessionAuthority } from './src/hosted/world-session-authority.mjs';
+          const nowMs = Date.now();
+          const authority = createWorldSessionAuthority({
+            worldEpochMs: 0,
+            accountStore: createFileWorldAccountStore('/tmp/axm-run-http-accounts.json')
+          });
+          const participant = authority.createWorldAccount({
+            accountId: 'workflow-run-seed',
+            displayName: 'Workflow Run Seed',
+            controllerKind: 'machine',
+            nowMs: nowMs - WORLD_HOUR_MS
+          });
+          authority.accrueChests(participant.participantId, nowMs);
+          const opened = authority.openChests(participant.participantId, 1);
+          if (!opened.accepted || opened.pendingNextDropRewards.openedCratesContributed !== 1) {
+            throw new Error('failed to seed exactly one next-drop chest reward');
+          }
+          NODE
+
+      - name: Start development host with durable accounts
+        run: |
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-run-http-world.json \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-run-http-accounts.json \
+          node scripts/serve.mjs > /tmp/axm-run-http-host.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/api/world/meta > /tmp/axm-run-http-meta.json; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-run-http-host.log
+          exit 1
+
+      - name: Exercise mounted run lifecycle routes over real HTTP
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const meta = JSON.parse(fs.readFileSync('/tmp/axm-run-http-meta.json', 'utf8'));
+          if (meta.runLifecycle?.progressionPersistence?.kind !== 'process-memory') {
+            throw new Error('world meta did not expose explicit progression persistence boundary');
+          }
+          const begin = await fetch('http://127.0.0.1:4174/api/world/run/begin-next-drop', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ participantId: 'world:workflow-run-seed', runId: 'run:workflow:001' })
+          });
+          const beginBody = await begin.json();
+          if (begin.status !== 200 || !beginBody.accepted || beginBody.claim?.status !== 'applied') {
+            throw new Error(`host run begin failed: ${begin.status} ${JSON.stringify(beginBody)}`);
+          }
+          const statusResponse = await fetch('http://127.0.0.1:4174/api/world/run?participantId=world%3Aworkflow-run-seed');
+          const status = await statusResponse.json();
+          if (statusResponse.status !== 200 || status.progression?.activeRun?.runId !== 'run:workflow:001') {
+            throw new Error(`host run status mismatch: ${statusResponse.status} ${JSON.stringify(status)}`);
+          }
+          NODE
+
+      - name: Preserve host evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-host-run-http-authority
+          path: |
+            /tmp/axm-run-http-accounts.json
+            /tmp/axm-run-http-world.json
+            /tmp/axm-run-http-meta.json
+            /tmp/axm-run-http-host.log
+          if-no-files-found: warn
+          retention-days: 14

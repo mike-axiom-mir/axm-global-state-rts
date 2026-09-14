@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { describeDropCacheContents } from '../src/sim/hourly-drop-cache.mjs';
 import { createPlayerProgression } from '../src/sim/civilization-progression.mjs';
+import { beginClaimedNextDropRun } from '../src/sim/next-drop-run-bridge.mjs';
+import { createWorldParticipantRegistry } from '../src/hosted/world-participant-registry.mjs';
+import { WORLD_HOUR_MS } from '../src/hosted/world-clock.mjs';
 
 const deterministicA = describeDropCacheContents({ playerSeed: 'progression-selftest', serial: 7 });
 const deterministicB = describeDropCacheContents({ playerSeed: 'progression-selftest', serial: 7 });
@@ -118,4 +121,69 @@ assert.equal(nextRun.blueprints.has('weapon:pipe-shotgun', { runId: 'run-002' })
 assert.equal(nextRun.blueprints.has('weapon:scrap-rifle', { runId: 'run-002' }), true);
 assert.equal(nextRun.manpower.snapshot().roleCounts.crew, 8, 'new drop starts from Crew again rather than carrying old specializations');
 
-console.log('civilization progression / hourly cache / food / irreversible specialization selftest: PASS');
+// World-account chest value now has an explicit claim -> run-start -> acknowledgement bridge.
+const bridgeRegistry = createWorldParticipantRegistry({ worldEpochMs: 0 });
+const bridgeAccount = bridgeRegistry.createWorldAccount({
+  accountId: 'bridge-player',
+  displayName: 'Bridge Player',
+  controllerKind: 'human',
+  nowMs: 0
+});
+bridgeRegistry.accrueChests(bridgeAccount.participantId, 3 * WORLD_HOUR_MS);
+assert.equal(bridgeRegistry.openChests(bridgeAccount.participantId, 2).accepted, true);
+const heldRewards = bridgeRegistry.participant(bridgeAccount.participantId).dropCache.pendingNextDropRewards;
+assert.ok(heldRewards.food > 0);
+assert.ok(heldRewards.scrap > 0);
+
+const bridgeProgression = createPlayerProgression({
+  playerId: bridgeAccount.participantId,
+  baseStartingResources: { food: 50, scrap: 20 },
+  baseCrewCount: 4
+});
+const rejectedStart = beginClaimedNextDropRun({
+  participantRegistry: bridgeRegistry,
+  playerProgression: bridgeProgression,
+  participantId: bridgeAccount.participantId,
+  runId: 'bridge-run-1',
+  runOptions: { crewCount: 0 }
+});
+assert.equal(rejectedStart.accepted, false);
+assert.equal(rejectedStart.reason, 'run-start-rejected');
+assert.equal(rejectedStart.retryableClaim, true);
+assert.equal(bridgeRegistry.participant(bridgeAccount.participantId).dropCache.nextDropClaim.status, 'claimed');
+assert.equal(bridgeRegistry.participant(bridgeAccount.participantId).dropCache.pendingNextDropRewards.food, 0, 'claimed rewards leave the pending bucket exactly once');
+
+const startedFromClaim = beginClaimedNextDropRun({
+  participantRegistry: bridgeRegistry,
+  playerProgression: bridgeProgression,
+  participantId: bridgeAccount.participantId,
+  runId: 'bridge-run-1'
+});
+assert.equal(startedFromClaim.accepted, true);
+assert.equal(startedFromClaim.reusedClaim, true, 'retry uses the already-held claim rather than draining another reward bucket');
+assert.equal(startedFromClaim.claim.status, 'applied');
+assert.ok(startedFromClaim.run.stockpile.resources.food >= 50 + heldRewards.food);
+assert.ok(startedFromClaim.run.stockpile.resources.scrap >= 20 + heldRewards.scrap);
+assert.deepEqual(startedFromClaim.run.startingItems, heldRewards.itemCounts);
+
+const reconcileSameActiveRun = beginClaimedNextDropRun({
+  participantRegistry: bridgeRegistry,
+  playerProgression: bridgeProgression,
+  participantId: bridgeAccount.participantId,
+  runId: 'bridge-run-1'
+});
+assert.equal(reconcileSameActiveRun.accepted, true);
+assert.equal(reconcileSameActiveRun.reconciled, true, 'matching active run + claim reconciles without starting a second civilization');
+
+bridgeProgression.closeActiveRun();
+assert.throws(() => bridgeProgression.beginRun('bridge-run-1'), /run id already used/, 'closed run ids are append-once and cannot replay old rewards');
+const replayAppliedClaim = beginClaimedNextDropRun({
+  participantRegistry: bridgeRegistry,
+  playerProgression: bridgeProgression,
+  participantId: bridgeAccount.participantId,
+  runId: 'bridge-run-1'
+});
+assert.equal(replayAppliedClaim.accepted, false);
+assert.equal(replayAppliedClaim.reason, 'next-drop-claim-already-applied');
+
+console.log('civilization progression / hourly cache / food / irreversible specialization / next-drop run bridge selftest: PASS');

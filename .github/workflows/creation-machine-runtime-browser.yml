@@ -47,12 +47,19 @@ jobs:
         run: |
           set -euo pipefail
           for asset in settlement-hub improvised-workshop storage-hall scrap-sorting-yard light-tower; do
+            echo "preparing ${asset}"
             python3 assets/creation-machine/prepare_runtime_glb.py \
               --asset "$asset" \
               --variant far
           done
+
+      - name: Verify prepared identities and starter-set mapping
+        run: |
           node tests/creation-machine-runtime-prep-selftest.mjs
           node tests/creation-machine-starter-set-selftest.mjs
+
+      - name: Syntax-check starter-set runtime route
+        run: |
           node --check src/assets/creation-machine-starter-set.mjs
           node --check game/creation-machine-starter-set-adoption.mjs
           node --check tests/browser/creation-machine-starter-set.spec.js

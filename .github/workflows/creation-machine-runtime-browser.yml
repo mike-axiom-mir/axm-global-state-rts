@@ -1,4 +1,4 @@
-name: Creation Machine checked-in workshop runtime
+name: Creation Machine checked-in static runtime
 
 on:
   pull_request:
@@ -7,11 +7,16 @@ on:
     paths:
       - 'assets/creation-machine/prepare_runtime_glb.py'
       - 'assets/creation-machine/.gitignore'
+      - 'src/assets/creation-machine-starter-set.mjs'
       - 'game/creation-machine-workshop-adoption.mjs'
+      - 'game/creation-machine-starter-set-adoption.mjs'
       - 'game/index.html'
       - 'tests/creation-machine-runtime-prep-selftest.mjs'
+      - 'tests/creation-machine-starter-set-selftest.mjs'
       - 'tests/browser/creation-machine-runtime.spec.js'
+      - 'tests/browser/creation-machine-starter-set.spec.js'
       - 'docs/CREATION_MACHINE_RUNTIME_DERIVATIVE_V0.md'
+      - 'docs/CREATION_MACHINE_STARTER_SET_TRIAL_V0.md'
       - '.github/workflows/creation-machine-runtime-browser.yml'
   workflow_dispatch:
 
@@ -21,7 +26,7 @@ permissions:
 jobs:
   checked-in-creation-machine-runtime:
     runs-on: ubuntu-latest
-    timeout-minutes: 28
+    timeout-minutes: 32
     steps:
       - name: Check out exact RTS candidate and pinned Planet
         uses: actions/checkout@v4
@@ -38,12 +43,26 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Prepare deterministic checked-in Creation Machine runtime derivative
+      - name: Prepare deterministic checked-in Creation Machine starter-set derivatives
         run: |
-          python3 assets/creation-machine/prepare_runtime_glb.py \
-            --asset improvised-workshop \
-            --variant far
+          set -euo pipefail
+          for asset in settlement-hub improvised-workshop storage-hall scrap-sorting-yard light-tower; do
+            echo "preparing ${asset}"
+            python3 assets/creation-machine/prepare_runtime_glb.py \
+              --asset "$asset" \
+              --variant far
+          done
+
+      - name: Verify prepared identities and starter-set mapping
+        run: |
           node tests/creation-machine-runtime-prep-selftest.mjs
+          node tests/creation-machine-starter-set-selftest.mjs
+
+      - name: Syntax-check starter-set runtime modules
+        run: |
+          node --check src/assets/creation-machine-starter-set.mjs
+          node --check game/creation-machine-starter-set-adoption.mjs
+          node --check tests/browser/creation-machine-starter-set.spec.js
 
       - name: Run repository deterministic and source gates
         run: npm test
@@ -54,13 +73,16 @@ jobs:
       - name: Install Chromium runtime
         run: npx playwright install --with-deps chromium
 
-      - name: Start actual Global State RTS shell with prepared derivative in static root
+      - name: Start actual Global State RTS shell with prepared derivatives in static root
         run: |
           node scripts/serve.mjs > /tmp/axm-global-state-rts-creation-machine.log 2>&1 &
           for i in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null \
-              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/improvised-workshop-lod1.glb > /dev/null \
-              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/improvised-workshop-lod1.receipt.json > /dev/null; then
+            ready=1
+            for asset in settlement-hub improvised-workshop storage-hall scrap-sorting-yard light-tower; do
+              curl --fail --silent "http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/${asset}-lod1.glb" > /dev/null || ready=0
+              curl --fail --silent "http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/${asset}-lod1.receipt.json" > /dev/null || ready=0
+            done
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null && [ "$ready" -eq 1 ]; then
               exit 0
             fi
             sleep 1
@@ -68,20 +90,27 @@ jobs:
           cat /tmp/axm-global-state-rts-creation-machine.log
           exit 1
 
-      - name: Exercise explicit human and machine Creation Machine adoption through LOCAL RTS
-        run: npx playwright test tests/browser/creation-machine-runtime.spec.js --reporter=line
+      # Static GLB decode/scene replacement is CPU-heavy on hosted runners. Keep this evidence
+      # route serial so independent asset-decode tests do not contend for the same runner.
+      - name: Exercise explicit Creation Machine adoption through LOCAL RTS
+        run: |
+          npx playwright test tests/browser/creation-machine-runtime.spec.js tests/browser/creation-machine-starter-set.spec.js --workers=1 --reporter=line
+          # A later Playwright invocation clears test-results. Copy this lane's screenshots first
+          # so the uploaded evidence actually retains the asset renders that just passed.
+          mkdir -p evidence/creation-machine-runtime
+          cp test-results/global-state-rts-creation-machine-*.png evidence/creation-machine-runtime/
 
       - name: Regress four-controller and machine-seat browser shell
         run: npx playwright test tests/browser/planet-shell-controller.spec.js --reporter=line
 
-      - name: Preserve runtime evidence without committing generated derivative
+      - name: Preserve runtime evidence without committing generated derivatives
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: global-state-rts-creation-machine-runtime-evidence
           path: |
-            assets/creation-machine/runtime-prepared/improvised-workshop-lod1.receipt.json
-            test-results/global-state-rts-creation-machine-workshop-runtime.png
+            assets/creation-machine/runtime-prepared/*.receipt.json
+            evidence/creation-machine-runtime/*.png
             test-results/global-state-rts-*.png
             /tmp/axm-global-state-rts-creation-machine.log
           if-no-files-found: warn

@@ -7,6 +7,8 @@ const HUMAN_KEY_BY_ACTION = Object.freeze({
   'ui-up': '[',
   'ui-down': ']',
   'ui-left': 'p',
+  'ui-right': 'b',
+  'party-menu': 'Tab',
   confirm: 'Enter',
   context: 'x',
   cancel: 'Escape'
@@ -90,7 +92,9 @@ function submitAction(actionId) {
     setTimeout(() => {
       const after = selectedState();
       const outcome = after?.strategic?.lastOutcome?.message;
-      if (outcome) feedback.textContent = `${state.seat.id} · ${outcome}`;
+      if (outcome && (after.strategic.menuOpen || after.strategic.deployedLocalCrewIds?.length)) {
+        feedback.textContent = `${state.seat.id} · ${outcome}`;
+      }
       render();
     }, 0);
   } catch (error) {
@@ -143,35 +147,43 @@ function routeDefinitions(state) {
   ];
 }
 
-function routeButton(state, definition) {
+function vehicleDefinitions(state) {
+  const civilization = state.civilization;
+  const selected = civilization?.vehicles?.selectedPlan;
+  const supplyBatch = civilization?.vehicles?.convoySupplyLoadBatch || 100;
+  const deployed = state.strategic?.deployedLocalCrewIds?.length || 0;
+  const selectedDeployed = strategic.blocksSelectedLocalCrew(state.seat.id, state.party?.selectedCrewIds || []);
+  const routeLabel = deployed
+    ? (selectedDeployed ? `Strategic route · control ${deployed}-Crew convoy · L3 / F` : `Strategic route · select deployed ${deployed}-Crew party · L3 / F`)
+    : `Strategic route · ${state.strategic?.destinationNodeId || 'destination'} · L3 / F`;
+  return [
+    { id: 'ui-up', label: 'Previous vehicle plan', localVehicleAction: true },
+    { id: 'ui-down', label: 'Next vehicle plan', localVehicleAction: true },
+    { id: 'ui-right', label: `Load ${supplyBatch} scrap → selected-party convoy`, localVehicleAction: true },
+    { id: 'ui-left', label: 'Unload selected-party convoy scrap → local storage', localVehicleAction: true },
+    { id: 'confirm', label: selected ? `Construct ${selected.label}` : 'Construct selected vehicle', localVehicleAction: true },
+    { id: 'party-menu', label: 'Prepare selected-party light drivers', localVehicleAction: true },
+    { id: 'context', label: 'Assign / release selected-party drivers', localVehicleAction: true },
+    { id: 'explore', label: routeLabel, strategicOpen: true, disabled: Boolean(deployed && !selectedDeployed) },
+    { id: 'cancel', label: 'Close vehicle menu' }
+  ];
+}
+
+function commandButton(state, definition, { route = false } = {}) {
   const button = document.createElement('button');
   button.type = 'button';
   button.dataset.gameplayAction = definition.id;
-  button.dataset.primaryStrategicAction = definition.id;
+  if (route) button.dataset.primaryStrategicAction = definition.id;
+  if (definition.strategicOpen) button.dataset.primaryStrategicOpen = 'true';
   button.textContent = definition.label;
-  button.disabled = Boolean(definition.disabled) || !canClickSeat(state.seat);
+  const selectedDeployed = strategic.blocksSelectedLocalCrew(state.seat.id, state.party?.selectedCrewIds || []);
+  const deployedLocalBlock = Boolean(selectedDeployed && definition.localVehicleAction);
+  button.disabled = Boolean(definition.disabled) || deployedLocalBlock || !canClickSeat(state.seat);
   if (!canClickSeat(state.seat)) button.title = 'Human seats 2–4 remain controller-owned; use the bound controller.';
+  else if (deployedLocalBlock) button.title = 'Selected Crew are strategically deployed. Use Strategic Route or close Vehicles.';
+  else if (definition.disabled && definition.strategicOpen) button.title = 'Select the deployed convoy party before controlling its strategic route.';
   button.addEventListener('click', () => submitAction(definition.id));
   return button;
-}
-
-function syncVehicleRouteEntry(state) {
-  if (!actions || state.civilization?.menuKind !== 'vehicle' || state.strategic?.menuOpen) return;
-  let button = actions.querySelector('[data-primary-strategic-open]');
-  if (!button) {
-    button = document.createElement('button');
-    button.type = 'button';
-    button.dataset.gameplayAction = 'explore';
-    button.dataset.primaryStrategicOpen = 'true';
-    button.addEventListener('click', () => submitAction('explore'));
-    actions.appendChild(button);
-  }
-  const deployed = state.strategic?.deployedLocalCrewIds?.length || 0;
-  const selectedDeployed = strategic.blocksSelectedLocalCrew(state.seat.id, state.party?.selectedCrewIds || []);
-  button.textContent = deployed
-    ? (selectedDeployed ? `Strategic route · control ${deployed}-Crew convoy · L3 / F` : `Strategic route · select deployed ${deployed}-Crew party · L3 / F`)
-    : `Strategic route · ${state.strategic?.destinationNodeId || 'destination'} · L3 / F`;
-  button.disabled = !canClickSeat(state.seat) || Boolean(deployed && !selectedDeployed);
 }
 
 function applyDeploymentGuards(state) {
@@ -183,15 +195,6 @@ function applyDeploymentGuards(state) {
     const actionId = button.dataset.gameplayAction;
     const strategicAction = button.hasAttribute('data-primary-strategic-action') || button.hasAttribute('data-primary-strategic-open');
     if (strategicAction) continue;
-
-    if (state.civilization?.menuKind === 'vehicle') {
-      if (actionId !== 'cancel') {
-        button.disabled = true;
-        button.title = 'Selected Crew are strategically deployed. Use Strategic Route or close Vehicles.';
-      }
-      continue;
-    }
-
     if (DEPLOYED_LOCAL_BLOCKED_ACTIONS.has(actionId)) {
       button.disabled = true;
       button.title = 'Selected Crew are strategically deployed. Cycle to a LOCAL party or return the convoy home.';
@@ -205,11 +208,16 @@ function render() {
   ensureStrategicSummary(state);
 
   if (state.strategic.menuOpen) {
-    actions.replaceChildren(...routeDefinitions(state).map(definition => routeButton(state, definition)));
-  } else {
-    syncVehicleRouteEntry(state);
-    applyDeploymentGuards(state);
+    actions.replaceChildren(...routeDefinitions(state).map(definition => commandButton(state, definition, { route: true })));
+    return;
   }
+
+  if (state.civilization?.menuKind === 'vehicle') {
+    actions.replaceChildren(...vehicleDefinitions(state).map(definition => commandButton(state, definition)));
+    return;
+  }
+
+  applyDeploymentGuards(state);
 }
 
 render();

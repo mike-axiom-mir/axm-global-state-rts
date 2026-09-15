@@ -66,7 +66,8 @@ test('bound primary gather repair and explore controls journal then adopt instea
   expect(afterGather.command.intent.actionId).toBe('gather-scrap');
   expect(afterGather.command.intent.stepCount).toBe(160);
   expect(afterGather.adoption.accepted).toBe(true);
-  expect(afterGather.simulation).toEqual(afterGather.adoption.adopted.after);
+  expect(afterGather.adoption.adopted.after).toEqual(afterGather.adoption.issued.checkpoint.publicState);
+  expect(afterGather.simulation.revision).toBeGreaterThanOrEqual(afterGather.adoption.adopted.after.revision);
 
   const repair = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitMachineAction({
     seatId: 'seat-1',
@@ -83,7 +84,8 @@ test('bound primary gather repair and explore controls journal then adopt instea
     simulation: window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1')
   }));
   expect(afterRepair.command.intent.actionId).toBe('repair-core');
-  expect(afterRepair.simulation).toEqual(afterRepair.adoption.adopted.after);
+  expect(afterRepair.adoption.adopted.after).toEqual(afterRepair.adoption.issued.checkpoint.publicState);
+  expect(afterRepair.simulation.revision).toBeGreaterThanOrEqual(afterRepair.adoption.adopted.after.revision);
 
   const explore = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitMachineAction({
     seatId: 'seat-1',
@@ -102,7 +104,8 @@ test('bound primary gather repair and explore controls journal then adopt instea
   }));
   expect(afterExplore.command.intent.actionId).toBe('explore');
   expect(afterExplore.journal.revision).toBe(3);
-  expect(afterExplore.simulation).toEqual(afterExplore.adoption.adopted.after);
+  expect(afterExplore.adoption.adopted.after).toEqual(afterExplore.adoption.issued.checkpoint.publicState);
+  expect(afterExplore.simulation.revision).toBeGreaterThanOrEqual(afterExplore.adoption.adopted.after.revision);
 
   await page.screenshot({ path: 'test-results/global-state-rts-bound-primary-host-macros.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);

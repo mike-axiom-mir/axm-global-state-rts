@@ -1,0 +1,109 @@
+name: Creation Machine industry static runtime
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'assets/creation-machine/**'
+      - 'src/assets/creation-machine-industry-set.mjs'
+      - 'src/assets/cached-static-glb-runtime.mjs'
+      - 'src/presentation/local-region-scene.mjs'
+      - 'src/world/starter-region.mjs'
+      - 'src/sim/construction-economy.mjs'
+      - 'game/app.mjs'
+      - 'game/creation-machine-industry-adoption.mjs'
+      - 'tests/creation-machine-industry-set-selftest.mjs'
+      - 'tests/browser/creation-machine-industry-set.spec.js'
+      - 'docs/CREATION_MACHINE_INDUSTRY_STATIC_TRIAL_V0.md'
+      - '.github/workflows/creation-machine-industry-runtime-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checked-in-creation-machine-industry-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out exact RTS candidate and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Prepare deterministic checked-in Machine Shop far derivative
+        run: |
+          set -euo pipefail
+          python3 assets/creation-machine/prepare_runtime_glb.py \
+            --asset machine-shop \
+            --variant far
+
+      - name: Verify source identity, stable ID and real state targets
+        run: node tests/creation-machine-industry-set-selftest.mjs
+
+      - name: Syntax-check focused runtime seam
+        run: |
+          node --check src/assets/creation-machine-industry-set.mjs
+          node --check game/creation-machine-industry-adoption.mjs
+          node --check tests/creation-machine-industry-set-selftest.mjs
+          node --check tests/browser/creation-machine-industry-set.spec.js
+
+      - name: Regress prior asset lanes and shell contracts
+        run: |
+          node tests/creation-machine-starter-set-selftest.mjs
+          node tests/creation-machine-crew-set-selftest.mjs
+          node tests/creation-machine-resource-set-selftest.mjs
+          node tests/creation-machine-defense-set-selftest.mjs
+          node tests/creation-machine-continuity-set-selftest.mjs
+          node tests/creation-machine-logistics-set-selftest.mjs
+          npm run test:shell
+
+      - name: Install pinned Playwright browser test route
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start actual Global State RTS shell with prepared industry derivative
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-creation-machine-industry.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/machine-shop-lod1.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/machine-shop-lod1.receipt.json > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-creation-machine-industry.log
+          exit 1
+
+      - name: Exercise explicit Machine Shop alternate in four-seat LOCAL RTS
+        run: |
+          npx playwright test tests/browser/creation-machine-industry-set.spec.js --workers=1 --reporter=line
+          mkdir -p evidence/creation-machine-industry-runtime
+          cp test-results/global-state-rts-creation-machine-machine-shop-4seat.png evidence/creation-machine-industry-runtime/
+
+      - name: Preserve industry runtime evidence without committing generated derivatives
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-creation-machine-industry-runtime-evidence
+          path: |
+            assets/creation-machine/runtime-prepared/machine-shop-lod1.receipt.json
+            evidence/creation-machine-industry-runtime/*.png
+            test-results/global-state-rts-*.png
+            /tmp/axm-global-state-rts-creation-machine-industry.log
+          if-no-files-found: warn
+          retention-days: 14

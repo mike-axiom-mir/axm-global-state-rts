@@ -5,6 +5,9 @@ on:
     branches:
       - rts-host-owned-vehicle-assignment-20260915
 
+permissions:
+  contents: write
+
 jobs:
   diagnose:
     if: github.actor != 'github-actions[bot]'
@@ -36,9 +39,13 @@ jobs:
             echo '=== syntax test ==='; node --check tests/world-run-vehicle-assignment-authority-selftest.mjs; echo "exit=$?"
             echo '=== assignment selftest ==='; node tests/world-run-vehicle-assignment-authority-selftest.mjs; echo "exit=$?"
             echo '=== construction selftest ==='; node tests/world-run-vehicle-construction-authority-selftest.mjs; echo "exit=$?"
-          } 2>&1 | tee diagnostics.txt
+          } 2>&1 | tee automation-owned-vehicle-assignment-diagnostics.txt
           exit 0
-      - uses: actions/upload-artifact@v4
-        with:
-          name: owned-vehicle-assignment-diagnostics
-          path: diagnostics.txt
+      - name: Persist diagnostics
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add automation-owned-vehicle-assignment-diagnostics.txt
+          git commit -m 'chore: capture owned vehicle assignment diagnostics'
+          git push origin HEAD:rts-host-owned-vehicle-assignment-20260915

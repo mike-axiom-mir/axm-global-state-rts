@@ -6,7 +6,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => {
     failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`);
@@ -85,7 +85,7 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   const blockedProductionConfirm = page.locator('[data-gameplay-action="confirm"]');
   await expect(blockedProductionConfirm).toHaveText('Assign party (build a Shallow Mine)');
   await blockedProductionConfirm.click();
-  await expect(feedback).toContainText('No compatible production site exists.');
+  await expect(feedback).toContainText('No Shallow Mine exists yet. Build one first.');
   await expect(feedback).toContainText('Retry path · Production readiness · blocked · build a Shallow Mine first');
   await feedback.scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'test-results/global-state-rts-command-retry-blocked.png', fullPage: true });

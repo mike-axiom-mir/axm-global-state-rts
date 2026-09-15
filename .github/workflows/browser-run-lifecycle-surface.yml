@@ -10,6 +10,7 @@ on:
       - 'game/world-entry.mjs'
       - 'game/world-run-entry.mjs'
       - 'game/world-run-lifecycle.mjs'
+      - 'game/local-defeat-run-close-bridge.mjs'
       - 'src/hosted/world-run-session-authority.mjs'
       - 'src/hosted/world-run-http-api.mjs'
       - 'src/hosted/world-run-start-store.mjs'
@@ -20,6 +21,7 @@ on:
       - 'scripts/serve.mjs'
       - 'tests/world-browser-client-selftest.mjs'
       - 'tests/world-seat-binding-selftest.mjs'
+      - 'tests/local-defeat-run-close-bridge-selftest.mjs'
       - 'tests/browser/world-run-entry.spec.js'
       - '.github/workflows/browser-run-lifecycle-surface.yml'
   workflow_dispatch:
@@ -47,6 +49,7 @@ jobs:
           npm test
           node --check game/world-run-entry.mjs
           node --check game/world-run-lifecycle.mjs
+          node --check game/local-defeat-run-close-bridge.mjs
           node --input-type=module --check < tests/browser/world-run-entry.spec.js
           node --check src/hosted/world-run-session-authority.mjs
           node --check src/hosted/world-run-http-api.mjs
@@ -54,6 +57,7 @@ jobs:
           node --check src/session/world-seat-binding.mjs
           node tests/world-browser-client-selftest.mjs
           node tests/world-seat-binding-selftest.mjs
+          node tests/local-defeat-run-close-bridge-selftest.mjs
           node tests/world-run-http-authority-selftest.mjs
           node tests/world-run-restart-persistence-selftest.mjs
           node tests/world-run-close-replay-selftest.mjs

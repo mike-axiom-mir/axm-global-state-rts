@@ -51,12 +51,17 @@ jobs:
       - name: Verify source identity, stable ID and live continuity target
         run: node tests/creation-machine-continuity-set-selftest.mjs
 
-      - name: Syntax-check focused runtime seam
-        run: |
-          node --check src/assets/creation-machine-continuity-set.mjs
-          node --check game/creation-machine-continuity-adoption.mjs
-          node --check tests/creation-machine-continuity-set-selftest.mjs
-          node --check tests/browser/creation-machine-continuity-set.spec.js
+      - name: Syntax-check continuity asset set
+        run: node --check src/assets/creation-machine-continuity-set.mjs
+
+      - name: Syntax-check continuity adoption helper
+        run: node --check game/creation-machine-continuity-adoption.mjs
+
+      - name: Syntax-check continuity selftest
+        run: node --check tests/creation-machine-continuity-set-selftest.mjs
+
+      - name: Syntax-check continuity browser evidence
+        run: node --check tests/browser/creation-machine-continuity-set.spec.js
 
       - name: Regress construction, prior asset lanes and shell contracts
         run: |

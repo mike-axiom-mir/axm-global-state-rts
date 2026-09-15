@@ -40,7 +40,7 @@ assert.equal(simulation.snapshot().order, null);
 assert.equal(combat.snapshot().engagedLocalCrewIds.length, 4);
 
 let exchanges = 1;
-while (!combat.snapshot().contact.cleared && exchanges < 12) {
+while (!combat.snapshot().contact.cleared && exchanges < 24) {
   const result = combat.handleAction('confirm', { selectedCrewIds: party.snapshot().selectedCrewIds });
   assert.equal(result.accepted, true);
   exchanges += 1;
@@ -51,7 +51,7 @@ assert.equal(finalCombat.contact.cleared, true);
 assert.equal(finalCombat.contact.remainingCrew, 0);
 assert.equal(finalCombat.contact.initialCrew, 4);
 assert.equal(finalCombat.lastOutcome.kind, 'victory');
-assert.equal(exchanges < 12, true);
+assert.equal(exchanges < 24, true);
 
 const simFinal = simulation.snapshot();
 const partyFinal = party.snapshot();

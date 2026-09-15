@@ -44,7 +44,7 @@ test('explicit Training Yard source trial attaches only to a real constructed co
   })));
   expect(before.every(entry => entry.assets.length === 0)).toBe(true);
 
-  const gatherStarted = await page.evaluate(() => {
+  const gatherAdmitted = await page.evaluate(() => {
     const bridge = window.__AXM_GLOBAL_STATE_RTS__;
     const seats = ['seat-1', 'seat-2', 'seat-3', 'seat-4'];
     let timestampMs = 1000;
@@ -55,12 +55,10 @@ test('explicit Training Yard source trial attaches only to a real constructed co
     }
 
     const gather = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'confirm', timestampMs });
-    if (!gather?.accepted || gather?.order?.type !== 'gather-scrap') {
-      throw new Error(`seat-1 gather command was not admitted (${gather?.reason || 'unknown'})`);
-    }
-    return gather.order.type;
+    if (!gather?.accepted) throw new Error(`seat-1 gather input was not admitted (${gather?.rate?.retryAfterMs ?? 'unknown'})`);
+    return true;
   });
-  expect(gatherStarted).toBe('gather-scrap');
+  expect(gatherAdmitted).toBe(true);
 
   await page.evaluate(() => { window.__AXM_TEST_FAST_FORWARD__ = true; });
   await expect.poll(async () => page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1').resources.scrap), {
@@ -74,18 +72,23 @@ test('explicit Training Yard source trial attaches only to a real constructed co
     let timestampMs = 10_000;
     const openBuild = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'ui-right', timestampMs });
     timestampMs += 1000;
-    if (!openBuild?.accepted) throw new Error('seat-1 build menu action was not admitted');
+    if (!openBuild?.accepted) throw new Error('seat-1 build-menu input was not admitted');
+    let civilization = bridge.describeSeatCivilization('seat-1');
+    if (civilization.menuKind !== 'build') throw new Error('seat-1 build menu did not open');
+
     const selectTraining = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'ui-down', timestampMs });
     timestampMs += 1000;
-    if (!selectTraining?.accepted || selectTraining?.definitionId !== 'building:training-yard') {
-      throw new Error('seat-1 Training Yard build selection was not admitted');
+    if (!selectTraining?.accepted) throw new Error('seat-1 Training Yard selection input was not admitted');
+    civilization = bridge.describeSeatCivilization('seat-1');
+    if (civilization.selectedBuild?.id !== 'building:training-yard') {
+      throw new Error(`seat-1 selected ${civilization.selectedBuild?.id || 'no build'} instead of Training Yard`);
     }
-    const build = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'confirm', timestampMs });
-    if (!build?.accepted) throw new Error(`seat-1 Training Yard construction was not admitted (${build?.reason || 'unknown'})`);
 
-    const civilization = bridge.describeSeatCivilization('seat-1');
+    const build = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'confirm', timestampMs });
+    if (!build?.accepted) throw new Error('seat-1 Training Yard construction input was not admitted');
+    civilization = bridge.describeSeatCivilization('seat-1');
     const target = civilization.structures.find(structure => structure.definitionId === 'building:training-yard');
-    if (!target) throw new Error('playable construction path did not create the expected Training Yard target');
+    if (!target) throw new Error(`playable construction path did not create the expected Training Yard target (${civilization.lastOutcome?.message || 'no outcome'})`);
 
     const helper = await import('./creation-machine-continuity-adoption.mjs');
     return helper.adoptCreationMachineContinuityAsset({

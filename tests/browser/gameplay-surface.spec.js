@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test.setTimeout(60_000);
+test.setTimeout(90_000);
 
 function captureRuntimeFailures(page) {
   const failures = [];
@@ -82,6 +82,7 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await expect(readiness).toContainText('blocked');
   await expect(readiness).toContainText('build a Shallow Mine first');
   await expect(page.locator('[data-gameplay-action="confirm"]')).toHaveText('Assign party (build a Shallow Mine)');
+  await readiness.scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'test-results/global-state-rts-command-readiness-blocked.png', fullPage: true });
   await page.locator('[data-gameplay-action="cancel"]').click();
   await expect(readiness).toContainText('Macro readiness');

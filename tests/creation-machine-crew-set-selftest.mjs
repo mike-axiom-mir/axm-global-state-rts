@@ -13,6 +13,7 @@ const expected = Object.freeze([
   Object.freeze({ fixtureAssetId: 'crew-base-a', sourceAsset: 'scavenger', candidateRole: 'primary' }),
   Object.freeze({ fixtureAssetId: 'crew-worker-kit-a', sourceAsset: 'crew-worker', candidateRole: 'primary' }),
   Object.freeze({ fixtureAssetId: 'crew-worker-kit-a', sourceAsset: 'mechanic-repair-crew', candidateRole: 'alternate' }),
+  Object.freeze({ fixtureAssetId: 'crew-worker-kit-a', sourceAsset: 'citizen-harvester', candidateRole: 'alternate' }),
   Object.freeze({ fixtureAssetId: 'crew-rifle-kit-a', sourceAsset: 'rifle-guard', candidateRole: 'primary' })
 ]);
 
@@ -61,7 +62,7 @@ for (const entry of CREATION_MACHINE_CREW_SET) {
 assert.equal(creationMachineCrewSetEntry('crew-worker-kit-a').sourceAsset, 'crew-worker', 'omitting source selection must preserve the worker primary candidate');
 assert.deepEqual(
   creationMachineCrewSetCandidates('crew-worker-kit-a').map(entry => entry.sourceAsset),
-  ['crew-worker', 'mechanic-repair-crew']
+  ['crew-worker', 'mechanic-repair-crew', 'citizen-harvester']
 );
 assert.equal(creationMachineCrewSetEntry('crew-worker-kit-a', { sourceAsset: 'missing-worker-source' }), null);
 assert.equal(creationMachineCrewSetEntry('missing-crew-role'), null);

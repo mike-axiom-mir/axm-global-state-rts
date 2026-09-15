@@ -4,6 +4,7 @@ const CANDIDATES = Object.freeze([
   ['crew-base-a', 'scavenger', 5],
   ['crew-worker-kit-a', 'crew-worker', 2],
   ['crew-worker-kit-a', 'mechanic-repair-crew', 2],
+  ['crew-worker-kit-a', 'citizen-harvester', 2],
   ['crew-rifle-kit-a', 'rifle-guard', 1]
 ]);
 
@@ -80,7 +81,7 @@ for (const [fixtureAssetId, sourceAsset, expectedInstances] of CANDIDATES) {
   });
 }
 
-test('worker Crew omission keeps the existing primary source instead of silently selecting the alternate', async ({ page }) => {
+test('worker Crew omission keeps the existing primary source instead of silently selecting an alternate', async ({ page }) => {
   test.setTimeout(75_000);
 
   const failures = captureRuntimeFailures(page);

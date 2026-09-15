@@ -45,6 +45,39 @@ function scheduleRetryGuidance(actionId, feedbackAtAttempt) {
   }, 16);
 }
 
+function selectedSeatOwnsStatus(statusText) {
+  const seatId = document.querySelector('#gameplaySeat')?.value || '';
+  return Boolean(seatId && statusText.startsWith(`${seatId} · `));
+}
+
+function isKnownNativeBlockedOutcome(statusText, readinessText) {
+  if (!statusText || !readinessText || !/\bblocked\b/i.test(readinessText)) return false;
+
+  // This is deliberately narrow: only promote native-input rejections whose
+  // authoritative shell outcome is already explicit. Do not infer a rejected
+  // command merely because the current readiness projection is blocked.
+  if (/^Production readiness\b/i.test(readinessText)) {
+    return /No Shallow Mine exists yet\. Build one first\./i.test(statusText)
+      || /\bno-production-building\b/i.test(statusText);
+  }
+
+  return false;
+}
+
+function surfaceNativeBlockedRetry() {
+  const statusText = readText('#inputStatus');
+  const readinessText = readText('#gameplayReadiness');
+  const feedback = document.querySelector('#gameplayFeedback');
+  if (!feedback || !selectedSeatOwnsStatus(statusText)) return;
+  if (!isKnownNativeBlockedOutcome(statusText, readinessText)) return;
+  if (feedback.textContent?.includes('Retry path ·')) return;
+
+  // Keyboard/gamepad actions do not click the command-deck buttons. Mirror the
+  // already-authoritative shell rejection into the player-facing deck and add
+  // only the existing state-derived retry guidance; never repeat the command.
+  feedback.textContent = `${statusText} · Retry path · ${readinessText}`;
+}
+
 document.addEventListener('click', event => {
   const button = event.target.closest?.('#gameplaySurface [data-gameplay-action]');
   if (!button || button.disabled) return;
@@ -59,3 +92,9 @@ document.addEventListener('click', event => {
   // path, or gameplay mutation is introduced by this presentation layer.
   scheduleRetryGuidance(actionId, readText('#gameplayFeedback'));
 }, true);
+
+const inputStatus = document.querySelector('#inputStatus');
+if (inputStatus) {
+  const observer = new MutationObserver(() => surfaceNativeBlockedRetry());
+  observer.observe(inputStatus, { childList: true, characterData: true, subtree: true });
+}

@@ -131,12 +131,14 @@ root.innerHTML = `
       <select id="gameplaySeat"></select>
     </label>
   </div>
+  <div id="gameplayObjective" class="status" aria-live="polite">Immediate objective · loading current aggregate RTS state…</div>
   <div id="gameplaySummary" class="gameplay-summary" aria-live="polite"></div>
   <div id="gameplayActions" class="gameplay-actions"></div>
   <div id="gameplayFeedback" class="status" aria-live="polite">Choose a seat. Commands stay on the same admitted human/machine action paths.</div>
 `;
 
 const seatSelect = root.querySelector('#gameplaySeat');
+const objective = root.querySelector('#gameplayObjective');
 const summary = root.querySelector('#gameplaySummary');
 const actions = root.querySelector('#gameplayActions');
 const feedback = root.querySelector('#gameplayFeedback');
@@ -341,6 +343,51 @@ function combatSummary(combat) {
   return `${combat.contact.remainingCrew}/${combat.contact.initialCrew} hostiles · ${engaged} engaged Crew · ${state}`;
 }
 
+function operationObjective(mode, simulation, civilization) {
+  if (mode !== 'local-rts') return 'Immediate objective · Enter LOCAL RTS with Globe / Local. Guidance is read-only and never bypasses seat input authority.';
+  if (!simulation || !civilization) return 'Immediate objective · LOCAL gameplay state unavailable; no inferred objective is shown.';
+
+  const core = Math.round(Number(simulation.core?.integrity) || 0);
+  const scrap = finiteFloor(simulation.storage?.scrap);
+  if (core < 100) {
+    return `Immediate objective · Stabilize continuity core · Repair core from ${core}% toward 100% using ${scrap} stored scrap; gather first if storage runs dry.`;
+  }
+
+  const structures = civilization.structures || [];
+  const shallowMine = structures.find(building => !building.destroyed && building.definitionId === 'building:shallow-mine');
+  if (!shallowMine) {
+    const minePlan = (civilization.buildOptions || []).find(option => option.id === 'building:shallow-mine');
+    const gate = minePlan?.affordable ? 'ready to place' : `blocked · ${minePlan?.reason || 'check materials'}`;
+    return `Immediate objective · Establish aggregate production · build Shallow Mine${minePlan?.costText ? ` · ${minePlan.costText}` : ''} · ${gate}.`;
+  }
+
+  const activeJobs = (civilization.production?.jobs || []).filter(job => Number(job.workerCount) > 0);
+  if (!activeJobs.length) {
+    return `Immediate objective · Staff production · assign the selected party to ${shallowMine.instanceId}; this remains one aggregate production assignment.`;
+  }
+
+  const vehicles = civilization.vehicles;
+  if (!vehicles || Number(vehicles.vehicleCount) <= 0) {
+    const plan = vehicles?.selectedPlan;
+    const gate = plan?.constructible ? 'ready to construct' : `blocked · ${plan?.reason || 'check materials and blueprint state'}`;
+    return `Immediate objective · Motorize the selected party · construct ${plan?.label || 'the selected vehicle'} · ${gate}.`;
+  }
+
+  if (Number(vehicles.driverCount) <= 0) {
+    return 'Immediate objective · Crew transport · prepare and assign selected-party driver(s); do not dual-role Crew already on incompatible work.';
+  }
+
+  const cargo = finiteFloor(vehicles.cargoAmount);
+  const cargoCapacity = finiteFloor(vehicles.cargoCapacity);
+  const supplyBatch = finiteFloor(vehicles.convoySupplyLoadBatch || 100);
+  const loadTarget = Math.min(supplyBatch, cargoCapacity || supplyBatch);
+  if (cargo < loadTarget) {
+    return `Immediate objective · Supply convoy · load ${loadTarget} scrap onto the selected-party convoy · currently ${cargo}/${cargoCapacity} cargo.`;
+  }
+
+  return `Immediate objective · Strategic-ready · ${vehicles.driverCount} driver${vehicles.driverCount === 1 ? '' : 's'} · ${cargo}/${cargoCapacity} cargo. Use the existing Strategic Route controls; this guide adds no travel or event authority.`;
+}
+
 function render() {
   const seats = syncSeatOptions();
   if (!seats.length) return;
@@ -378,6 +425,7 @@ function render() {
     ? `${civilization.vehicles.selectedPlan.label} · ${civilization.vehicles.selectedPlan.costText}${civilization.vehicles.selectedPlan.constructible ? '' : ` · ${civilization.vehicles.selectedPlan.reason}`}`
     : 'none';
 
+  objective.textContent = operationObjective(mode, simulation, civilization);
   summary.innerHTML = `
     <span><b>${seat.id}</b> · ${seat.kind} · ${mode}</span>
     <span>party <b>${partySummary(party)}</b></span>

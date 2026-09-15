@@ -15,12 +15,17 @@ debitButton.id = 'hostLocalSalvageTransferDebit';
 debitButton.type = 'button';
 debitButton.disabled = true;
 debitButton.textContent = 'Debit 1 local scrap';
+const finalizeButton = document.createElement('button');
+finalizeButton.id = 'hostLocalSalvageTransferFinalize';
+finalizeButton.type = 'button';
+finalizeButton.disabled = true;
+finalizeButton.textContent = 'Finalize global credit evidence';
 const cancelButton = document.createElement('button');
 cancelButton.id = 'hostLocalSalvageTransferCancel';
 cancelButton.type = 'button';
 cancelButton.disabled = true;
 cancelButton.textContent = 'Cancel prepared transfer';
-controls.append(prepareButton, debitButton, cancelButton);
+controls.append(prepareButton, debitButton, finalizeButton, cancelButton);
 
 const statusElement = document.createElement('div');
 statusElement.id = 'hostLocalSalvageTransferStatus';
@@ -34,6 +39,7 @@ const ONE_SCRAP_MILLI = 1000;
 let capability = null;
 let transfers = Object.freeze([]);
 let activeTransfer = null;
+let committedTransfer = null;
 let lastEvidence = null;
 let inFlight = null;
 let activeParticipantId = null;
@@ -116,11 +122,21 @@ function chooseActive(items) {
     || null;
 }
 
+function chooseCommitted(items) {
+  return items.find(item => item.phase === 'committed') || null;
+}
+
+function finalizationTarget() {
+  return activeTransfer?.phase === 'local-debited' ? activeTransfer : committedTransfer;
+}
+
 function render(message = null) {
   const context = currentContext();
   const coverage = reservationCoverage(context);
   const busy = Boolean(inFlight);
   const available = Boolean(capability?.available);
+  const canFinalize = Boolean(capability?.globalCreditFinalizationAvailable);
+  const target = finalizationTarget();
   prepareButton.disabled = busy
     || !available
     || !context.accepted
@@ -129,6 +145,11 @@ function render(message = null) {
     || coverage.reservedMilli < ONE_SCRAP_MILLI;
   debitButton.disabled = busy || !available || activeTransfer?.phase !== 'prepared';
   cancelButton.disabled = busy || !available || activeTransfer?.phase !== 'prepared';
+  finalizeButton.disabled = busy
+    || !available
+    || !canFinalize
+    || !target
+    || !['local-debited', 'committed'].includes(target.phase);
 
   if (message) {
     statusElement.textContent = message;
@@ -151,14 +172,34 @@ function render(message = null) {
     return;
   }
   if (activeTransfer?.phase === 'local-debited') {
-    statusElement.textContent = `LOCAL debit committed for ${activeTransfer.transferId} · host journal advanced to r${activeTransfer.localDebit?.resultingLocalRevision ?? '?'} · reservation remains locked · no global credit or spendable balance exists.`;
+    statusElement.textContent = canFinalize
+      ? `LOCAL debit committed for ${activeTransfer.transferId} · host journal advanced to r${activeTransfer.localDebit?.resultingLocalRevision ?? '?'} · reservation remains locked · explicitly finalize durable global credit evidence next; spendable balance remains zero.`
+      : `LOCAL debit committed for ${activeTransfer.transferId} · host journal advanced to r${activeTransfer.localDebit?.resultingLocalRevision ?? '?'} · reservation remains locked · global finalization is unavailable on this host.`;
+    return;
+  }
+  if (
+    lastEvidence?.accepted
+    && lastEvidence.action === 'finalize-global-credit'
+    && committedTransfer?.transferId === lastEvidence.result?.transfer?.transferId
+  ) {
+    const reserved = Number(lastEvidence.result?.reservation?.reservedScrapMilli || 0) / 1000;
+    statusElement.textContent = `Global credit evidence committed for ${committedTransfer.transferId} · transfer-bound reservation consumption is applied · ${reserved.toFixed(3)} scrap remains reserved on this seat · global spendable balance remains zero.`;
+    return;
+  }
+  if (committedTransfer && canFinalize) {
+    const pendingCount = Number(capability?.reservationConsumptionJournal?.pendingCount || 0);
+    statusElement.textContent = pendingCount > 0
+      ? `Committed transfer ${committedTransfer.transferId} still has reservation reconciliation pending · use Finalize global credit evidence to reconcile the same transfer idempotently · no second LOCAL debit or global credit is created.`
+      : `Committed transfer ${committedTransfer.transferId} has durable global credit evidence · finalize/reconcile is idempotent · global spendable balance remains zero.`;
     return;
   }
   if (!coverage.current || coverage.reservedMilli < ONE_SCRAP_MILLI) {
-    statusElement.textContent = 'Salvage settlement ready · first record current host salvage and explicitly reserve at least 1.000 scrap · prepare/debit never runs automatically.';
+    statusElement.textContent = 'Salvage settlement ready · first record current host salvage and explicitly reserve at least 1.000 scrap · prepare/debit/finalize never runs automatically.';
     return;
   }
-  statusElement.textContent = 'Salvage settlement ready · 1.000 current verified scrap is reserved · prepare is explicit and still moves no value; LOCAL debit is a separate explicit action; global credit is not implemented.';
+  statusElement.textContent = canFinalize
+    ? 'Salvage settlement ready · 1.000 current verified scrap is reserved · prepare, LOCAL debit, and non-spendable global-credit finalization are three separate explicit actions.'
+    : 'Salvage settlement ready · 1.000 current verified scrap is reserved · prepare and LOCAL debit are explicit; this host has no global-credit finalization capability.';
 }
 
 async function refresh() {
@@ -166,6 +207,7 @@ async function refresh() {
   if (!context.accepted) {
     transfers = Object.freeze([]);
     activeTransfer = null;
+    committedTransfer = null;
     activeParticipantId = null;
     render();
     return context;
@@ -177,6 +219,7 @@ async function refresh() {
     if (!capability.available) {
       transfers = Object.freeze([]);
       activeTransfer = null;
+      committedTransfer = null;
       render();
       return Object.freeze({ accepted: false, reason: 'salvage-transfer-settlement-disabled', capability });
     }
@@ -185,12 +228,14 @@ async function refresh() {
     });
     transfers = Object.freeze([...(result.transfers || [])]);
     activeTransfer = chooseActive(transfers);
+    committedTransfer = chooseCommitted(transfers);
     render();
-    return Object.freeze({ accepted: true, context, capability, transfers, activeTransfer });
+    return Object.freeze({ accepted: true, context, capability, transfers, activeTransfer, committedTransfer });
   } catch (error) {
     capability = Object.freeze({ available: false });
     transfers = Object.freeze([]);
     activeTransfer = null;
+    committedTransfer = null;
     const reason = error?.body?.reason || error?.body?.error || error?.message || String(error);
     render(`Salvage settlement status unavailable · ${reason} · no automatic retry or debit.`);
     return Object.freeze({ accepted: false, reason });
@@ -271,7 +316,7 @@ async function debitPrepared() {
       await reservationBridge()?.refresh?.();
       lastEvidence = Object.freeze({ accepted: true, action: 'local-debit', context, result });
       await refresh();
-      render(`LOCAL debit committed · host journal r${result.localDebit.resultingLocalRevision} · reservation remains locked · transaction stops here · no global credit or spendable balance.`);
+      render(`LOCAL debit committed · host journal r${result.localDebit.resultingLocalRevision} · reservation remains locked · explicitly finalize durable global credit evidence next · spendable balance is still zero.`);
       return lastEvidence;
     } catch (error) {
       const reason = error?.body?.reason || error?.body?.error || error?.message || String(error);
@@ -279,6 +324,52 @@ async function debitPrepared() {
       await window.__AXM_HOST_LOCAL_SEAT__?.refresh?.().catch?.(() => {});
       await refresh();
       render(`LOCAL debit rejected · ${reason} · inspect host status before any retry.`);
+      return lastEvidence;
+    }
+  })();
+  try {
+    return await inFlight;
+  } finally {
+    inFlight = null;
+    render();
+  }
+}
+
+async function finalizeGlobalCredit() {
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    await refresh();
+    const context = currentContext();
+    if (!context.accepted) return context;
+    if (!capability?.globalCreditFinalizationAvailable) {
+      const result = Object.freeze({ accepted: false, reason: 'salvage-transfer-global-finalization-unavailable' });
+      render(`Global finalization unavailable · ${result.reason}.`);
+      return result;
+    }
+    const target = finalizationTarget();
+    if (!target || !['local-debited', 'committed'].includes(target.phase)) {
+      const result = Object.freeze({ accepted: false, reason: 'no-local-debited-or-committed-salvage-transfer' });
+      render(`Global finalization unavailable · ${result.reason}.`);
+      return result;
+    }
+    const transferId = target.transferId;
+    render(`Finalizing durable global credit evidence for ${transferId} · no spend authority is being created…`);
+    try {
+      const result = await request('POST', '/api/world/local-seat/salvage-transfer/finalize-global-credit', {
+        body: { transferId, participantId: context.participantId }
+      });
+      await reservationBridge()?.refresh?.();
+      lastEvidence = Object.freeze({ accepted: true, action: 'finalize-global-credit', context, result });
+      await refresh();
+      const reserved = Number(result.reservation?.reservedScrapMilli || 0) / 1000;
+      render(`Global credit evidence committed · transfer-bound reservation consumption applied · ${reserved.toFixed(3)} scrap remains reserved on this seat · global spendable balance remains zero.`);
+      return lastEvidence;
+    } catch (error) {
+      const reason = error?.body?.reason || error?.body?.error || error?.message || String(error);
+      lastEvidence = Object.freeze({ accepted: false, action: 'finalize-global-credit', reason, status: error?.status || 0, body: error?.body || null });
+      await reservationBridge()?.refresh?.().catch?.(() => {});
+      await refresh();
+      render(`Global finalization needs reconciliation · ${reason} · retry the same transfer id only after inspecting host status; no automatic second debit or credit is attempted.`);
       return lastEvidence;
     }
   })();
@@ -331,12 +422,13 @@ async function cancelPrepared() {
 }
 
 const bridge = Object.freeze({
-  status: () => Object.freeze({ capability, transfers, activeTransfer }),
+  status: () => Object.freeze({ capability, transfers, activeTransfer, committedTransfer }),
   lastEvidence: () => lastEvidence,
   preview: () => Object.freeze({ ...currentContext(), ...reservationCoverage(currentContext()) }),
   refresh,
   prepareOne,
   debitPrepared,
+  finalizeGlobalCredit,
   cancelPrepared
 });
 Object.defineProperty(window, '__AXM_HOST_LOCAL_SALVAGE_TRANSFER__', {
@@ -346,6 +438,7 @@ Object.defineProperty(window, '__AXM_HOST_LOCAL_SALVAGE_TRANSFER__', {
 
 prepareButton.addEventListener('click', () => { void prepareOne(); });
 debitButton.addEventListener('click', () => { void debitPrepared(); });
+finalizeButton.addEventListener('click', () => { void finalizeGlobalCredit(); });
 cancelButton.addEventListener('click', () => { void cancelPrepared(); });
 render();
 const observer = setInterval(() => {
@@ -355,6 +448,7 @@ const observer = setInterval(() => {
       activeParticipantId = null;
       transfers = Object.freeze([]);
       activeTransfer = null;
+      committedTransfer = null;
     }
     render();
     return;

@@ -4,7 +4,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -124,6 +124,13 @@ test('human controller seat uses D-pad build/production menus through the same a
   await pulse(page, 1, 2); // X: release workers.
   civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-2'));
   expect(civilization.production.jobs[0].workerCount).toBe(0);
+
+  await pulse(page, 1, 1); // B: close production menu.
+  await pulse(page, 1, 12); // D-pad up: vehicle menu.
+  civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-2'));
+  expect(civilization.menuKind).toBe('vehicle');
+  expect(civilization.vehicles.selectedPlan.id).toBe('vehicle:utility-hauler');
+  await pulse(page, 1, 1); // B: close vehicle menu.
   expect(failures, failures.join('\n')).toEqual([]);
 });
 

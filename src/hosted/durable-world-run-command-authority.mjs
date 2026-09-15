@@ -193,6 +193,13 @@ export class DurableWorldRunCommandAuthority {
       const unitId = nonEmpty(mutation.payload?.unitId, 'unitId');
       const vehicleId = nonEmpty(mutation.payload?.vehicleId, 'vehicleId');
       const vehicleClass = nonEmpty(mutation.payload?.vehicleClass, 'vehicleClass');
+      const ownedVehicle = run.vehicles?.vehicle?.(vehicleId) || null;
+      if (!ownedVehicle) {
+        throw new Error(`durable vehicle assignment replay target is not owned by active civilization: ${progression.playerId}:${mutation.mutationId}:${vehicleId}`);
+      }
+      if (ownedVehicle.vehicleClass !== vehicleClass) {
+        throw new Error(`durable vehicle assignment replay class mismatch: ${progression.playerId}:${mutation.mutationId}:${vehicleClass}:${ownedVehicle.vehicleClass}`);
+      }
       const assigned = run.assignVehicle(unitId, { vehicleId, vehicleClass });
       if (!assigned.accepted) throw new Error(`durable vehicle assignment replay rejected: ${progression.playerId}:${mutation.mutationId}:${assigned.reason}`);
       result = Object.freeze({ assignment: cloneJson(assigned), runRevision: run.revision });
@@ -407,9 +414,23 @@ export class DurableWorldRunCommandAuthority {
     const unit = run.manpower.unit(unitId);
     if (!unit) throw new RangeError(`unknown unit: ${unitId}`);
     if (!VEHICLE_LICENSES[vehicleClass]) throw new RangeError(`unknown vehicleClass: ${vehicleClass}`);
+    if (!run.vehicles?.vehicle) throw new Error('active run vehicle registry unavailable');
+    const ownedVehicle = run.vehicles.vehicle(vehicleId);
+    if (!ownedVehicle) {
+      return Object.freeze({ accepted: false, reason: 'vehicle-not-owned-by-active-civilization', vehicleId });
+    }
+    if (ownedVehicle.vehicleClass !== vehicleClass) {
+      return Object.freeze({
+        accepted: false,
+        reason: 'vehicle-class-mismatch',
+        vehicleId,
+        requestedVehicleClass: vehicleClass,
+        authoritativeVehicleClass: ownedVehicle.vehicleClass
+      });
+    }
     if (!unit.licenses.includes(vehicleClass)) return Object.freeze({ accepted: false, reason: 'required-license-missing', requiredLicense: vehicleClass, unit });
-    if (unit.assignedVehicleId === vehicleId) return Object.freeze({ accepted: false, reason: 'vehicle-already-assigned', unit });
-    if (unit.assignedVehicleId) return Object.freeze({ accepted: false, reason: 'unit-already-assigned-vehicle', assignedVehicleId: unit.assignedVehicleId, unit });
+    if (unit.assignedVehicleId === vehicleId) return Object.freeze({ accepted: false, reason: 'vehicle-already-assigned', unit, vehicle: ownedVehicle });
+    if (unit.assignedVehicleId) return Object.freeze({ accepted: false, reason: 'unit-already-assigned-vehicle', assignedVehicleId: unit.assignedVehicleId, unit, vehicle: ownedVehicle });
     return null;
   }
 
@@ -443,7 +464,7 @@ export class DurableWorldRunCommandAuthority {
       restoredMutationsThisProcess: this.mutationRestoreReport.restored,
       mutationParticipantsRestoredThisProcess: this.mutationRestoreReport.participantIds,
       truthBoundary: this.runStartStore
-        ? 'initial-run-start-plus-host-admitted-global-control-food-policy-unit-training-vehicle-licensing-vehicle-construction-vehicle-assignment-reference-weapon-crafting-weapon-equipping-and-terminal-run-close-mutations-are-durable-and-replayed-in-command-order;other-local-rts-mutations-remain-separate-gaps'
+        ? 'initial-run-start-plus-host-admitted-global-control-food-policy-unit-training-vehicle-licensing-vehicle-construction-vehicle-assignment-to-owned-constructed-vehicle-weapon-crafting-weapon-equipping-and-terminal-run-close-mutations-are-durable-and-replayed-in-command-order;other-local-rts-mutations-remain-separate-gaps'
         : 'active-player-progression-and-run-mutations-remain-process-memory-only-without-a-durable-run-start-store'
     });
   }
@@ -475,7 +496,7 @@ export class DurableWorldRunCommandAuthority {
         : terminalCloseApplied
           ? 'host-run-status-replays-the-terminal-close-and-durable-score-history-for-this-run;the-separate-archive-bound-rollover-layer-governs-next-generation handoff'
           : mutations.length
-            ? 'host-run-status-includes-durable-replay-for-the-bounded-global-control-food-policy-unit-training-vehicle-licensing-vehicle-construction-vehicle-assignment-reference-weapon-crafting-weapon-equipping-and-run-close-actions-only;other-run-mutations-remain-outside-this-contract'
+            ? 'host-run-status-includes-durable-replay-for-the-bounded-global-control-food-policy-unit-training-vehicle-licensing-vehicle-construction-vehicle-assignment-to-owned-constructed-vehicle-weapon-crafting-weapon-equipping-and-run-close-actions-only;other-run-mutations-remain-outside-this-contract'
             : base.truthBoundary
     });
   }
@@ -625,10 +646,10 @@ export class DurableWorldRunCommandAuthority {
         assignment: preflight,
         progressionPersistence: this.progressionPersistenceMeta(),
         progression: context.progression.snapshot(),
-        truthBoundary: 'vehicle-assignment-was-not-admitted-or-persisted-because-the-authoritative-active-run-license-and-assignment-preconditions-were-not-met;vehicle-existence-ownership-and-production-are-not-claimed-by-this-reference-command'
+        truthBoundary: 'vehicle-assignment-was-not-admitted-or-persisted-because-the-authoritative-active-run-owned-vehicle-class-license-or-assignment-preconditions-were-not-met'
       });
     }
-    return this.#admitPersistApply({ ...context, actionId: 'world-run-assign-vehicle', action: WORLD_RUN_ASSIGN_VEHICLE_ACTION, payload: { unitId: unit, vehicleId: vehicle, vehicleClass: vehicleType }, timestampMs, successTruthBoundary: 'host-admitted-vehicle-assignment-reference-was-durably-recorded-before-manpower-application-and-replays-in-command-order-after-restart;this-reference-command-does-not-itself-prove-vehicle-existence-ownership-or-production' });
+    return this.#admitPersistApply({ ...context, actionId: 'world-run-assign-vehicle', action: WORLD_RUN_ASSIGN_VEHICLE_ACTION, payload: { unitId: unit, vehicleId: vehicle, vehicleClass: vehicleType }, timestampMs, successTruthBoundary: 'host-admitted-vehicle-assignment-to-owned-constructed-vehicle-was-durably-recorded-before-manpower-application-and-replays-in-command-order-after-restart;the-referenced-vehicle-was-resolved-from-this-active-civilization-run-owned-durable-vehicle-registry-and-its-authoritative-class-was-validated-before-admission' });
   }
 
   craftWeapon({ participantId, runId, mutationId, weaponId, count = 1, timestampMs } = {}) {
@@ -743,7 +764,7 @@ export class DurableWorldRunCommandAuthority {
       mutationRestoreReport: this.mutationRestoreReport,
       unpersistedMutations: Object.freeze([...this.unpersistedMutations.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([participantId, error]) => Object.freeze({ participantId, error }))),
       truthBoundary: this.runStartStore
-        ? 'bounded-host-global-control-food-policy-unit-training-vehicle-licensing-vehicle-construction-vehicle-assignment-reference-weapon-crafting-weapon-equipping-and-terminal-run-close-mutations-replay-in-order-after-the-durable-run-start;other-local-rts-mutations-remain-separate-gaps'
+        ? 'bounded-host-global-control-food-policy-unit-training-vehicle-licensing-vehicle-construction-vehicle-assignment-to-owned-constructed-vehicle-weapon-crafting-weapon-equipping-and-terminal-run-close-mutations-replay-in-order-after-the-durable-run-start;other-local-rts-mutations-remain-separate-gaps'
         : 'run mutations remain process-memory-only without durable-run-start storage'
     });
   }

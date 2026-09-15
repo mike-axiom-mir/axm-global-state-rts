@@ -7,6 +7,7 @@ import { createFileLocalSeatBindingStore } from '../src/hosted/local-seat-bindin
 import { createFileWorldAccountStore, createMemoryWorldAccountStore } from '../src/hosted/world-account-store.mjs';
 import { createWorldEventHttpApiService } from '../src/hosted/world-event-http-api.mjs';
 import { createWorldHttpApiService } from '../src/hosted/world-http-api.mjs';
+import { createFileWorldRunArchiveStore } from '../src/hosted/world-run-archive-store.mjs';
 import { createWorldRunHttpApiService } from '../src/hosted/world-run-http-api.mjs';
 import { createFileWorldRunStartStore } from '../src/hosted/world-run-start-store.mjs';
 import { createWorldSessionAuthority } from '../src/hosted/world-session-authority.mjs';
@@ -28,6 +29,9 @@ const accountPath = process.env.AXM_WORLD_ACCOUNTS_PATH
 const runStartPath = process.env.AXM_WORLD_RUN_STARTS_PATH
   ? path.resolve(process.env.AXM_WORLD_RUN_STARTS_PATH)
   : null;
+const runArchivePath = process.env.AXM_WORLD_RUN_ARCHIVE_PATH
+  ? path.resolve(process.env.AXM_WORLD_RUN_ARCHIVE_PATH)
+  : null;
 const worldEventJournalDir = process.env.AXM_WORLD_EVENT_JOURNAL_DIR
   ? path.resolve(process.env.AXM_WORLD_EVENT_JOURNAL_DIR)
   : null;
@@ -48,6 +52,9 @@ if (Boolean(localSeatBindingsPath) !== Boolean(localSeatJournalDir)) {
 }
 if (runStartPath && !accountPath) {
   throw new Error('AXM_WORLD_ACCOUNTS_PATH is required when AXM_WORLD_RUN_STARTS_PATH is configured');
+}
+if (runArchivePath && (!runStartPath || !accountPath)) {
+  throw new Error('AXM_WORLD_RUN_ARCHIVE_PATH requires AXM_WORLD_RUN_STARTS_PATH and AXM_WORLD_ACCOUNTS_PATH');
 }
 if (worldEventJournalDir && !accountPath) {
   throw new Error('AXM_WORLD_ACCOUNTS_PATH is required when AXM_WORLD_EVENT_JOURNAL_DIR is configured');
@@ -75,6 +82,9 @@ const localSeatBindingStore = localSeatBindingsPath
   : null;
 const runStartStore = runStartPath
   ? createFileWorldRunStartStore(runStartPath)
+  : null;
+const runArchiveStore = runArchivePath
+  ? createFileWorldRunArchiveStore(runArchivePath)
   : null;
 
 const worldSessionOptions = {
@@ -118,6 +128,7 @@ if (globalSalvageCreditJournalPath) {
 apiService = createWorldRunHttpApiService({
   authority: worldSession,
   runStartStore,
+  runArchiveStore,
   baseApi: apiService,
   writeMode: sharedWriteMode,
   clock: () => Date.now()
@@ -257,6 +268,7 @@ server.listen(port, '127.0.0.1', () => {
   const journal = journalPath ? `journal=${journalPath}` : 'journal=memory-only';
   const accounts = accountPath ? `accounts=${accountPath}` : 'accounts=memory-only';
   const runStarts = runStartPath ? `run-starts=${runStartPath}` : 'run-starts=process-only';
+  const runArchive = runArchivePath ? `run-archive=${runArchivePath}` : 'run-archive=disabled';
   const worldEvents = worldEventJournalDir ? `world-events=${worldEventJournalDir}` : 'world-events=process-only';
   const localSeats = localSeatBindingsPath
     ? `local-seats=${localSeatBindingsPath}; local-seat-journals=${localSeatJournalDir}`
@@ -267,5 +279,5 @@ server.listen(port, '127.0.0.1', () => {
   const globalSalvageCredits = globalSalvageCreditJournalPath
     ? `global-salvage-credits=${globalSalvageCreditJournalPath}`
     : 'global-salvage-credits=disabled';
-  console.log(`AXM Global State RTS shell: http://127.0.0.1:${port}/game/ (${journal}, ${accounts}, ${runStarts}, ${worldEvents}, ${localSeats}, ${salvageTransfers}, ${globalSalvageCredits}, shared-writes=${sharedWriteMode})`);
+  console.log(`AXM Global State RTS shell: http://127.0.0.1:${port}/game/ (${journal}, ${accounts}, ${runStarts}, ${runArchive}, ${worldEvents}, ${localSeats}, ${salvageTransfers}, ${globalSalvageCredits}, shared-writes=${sharedWriteMode})`);
 });

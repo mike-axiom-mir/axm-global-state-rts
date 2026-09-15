@@ -2,6 +2,13 @@ import { SeatActionRateGate } from '../input/action-rate-gate.mjs';
 import { DEFAULT_APM_CAP, HUMAN_INPUT_KINDS, activeSeats } from './seat-contract.mjs';
 
 const MACHINE_INPUT_KIND = 'machine';
+const BOUND_PRIMARY_HOST_ACTIONS = Object.freeze({
+  confirm: Object.freeze({ label: 'gather', submitMethod: 'submitGatherAtCursor' }),
+  context: Object.freeze({ label: 'repair', submitMethod: 'submitRepairCore' }),
+  explore: Object.freeze({ label: 'explore', submitMethod: 'submitExploreAtCursor' })
+});
+const BOUND_PRIMARY_HOST_STEP_COUNT = 160;
+const boundPrimaryHostInFlight = new Map();
 
 function seatById(roster, seatId) {
   const seat = roster.find(candidate => candidate.id === seatId);
@@ -30,6 +37,57 @@ function assertSourceForSeat(seat, sourceKind) {
   }
 
   throw new Error(`${seat.id} cannot accept input`);
+}
+
+function routedEventDecision({ seatId, actionId }) {
+  const route = BOUND_PRIMARY_HOST_ACTIONS[actionId];
+  if (!route) return null;
+
+  const shell = globalThis.__AXM_GLOBAL_STATE_RTS__;
+  if (!shell?.worldBinding || !shell.worldBinding(seatId)) return null;
+  if (shell.describeSeatView?.(seatId)?.mode !== 'local-rts') return null;
+
+  const party = shell.describeSeatParty?.(seatId);
+  const civilization = shell.describeSeatCivilization?.(seatId);
+  const combat = shell.describeSeatCombat?.(seatId);
+  if (party?.menuOpen || civilization?.menuOpen || combat?.menuOpen) return null;
+
+  const decision = (reason = null) => Object.freeze({
+    intercepted: true,
+    actionId: `host-${route.label}-${reason ? 'blocked' : 'pending'}`,
+    authorityRoute: 'host-local-journal-checkpoint',
+    reason
+  });
+
+  if (boundPrimaryHostInFlight.has(seatId)) return decision('command-in-flight');
+
+  const host = globalThis.__AXM_HOST_LOCAL_SEAT__;
+  const submit = host?.[route.submitMethod];
+  if (typeof submit !== 'function' || typeof host?.adoptHostCheckpoint !== 'function') {
+    return decision('authority-bridge-not-ready');
+  }
+
+  const command = (async () => {
+    try {
+      const submitted = await submit.call(host, {
+        seatId,
+        stepCount: BOUND_PRIMARY_HOST_STEP_COUNT
+      });
+      if (!submitted?.accepted) return submitted;
+      return host.adoptHostCheckpoint({ seatId });
+    } catch (error) {
+      console.warn?.(`bound ${route.label} authority route failed closed`, error);
+      return Object.freeze({
+        accepted: false,
+        reason: String(error?.message || error || 'host-authority-route-failed')
+      });
+    } finally {
+      boundPrimaryHostInFlight.delete(seatId);
+    }
+  })();
+
+  boundPrimaryHostInFlight.set(seatId, command);
+  return decision();
 }
 
 export class LocalSeatRuntime {
@@ -108,18 +166,30 @@ export class LocalSeatRuntime {
     const nextSequence = (this.sequence.get(seatId) || 0) + 1;
     this.sequence.set(seatId, nextSequence);
 
+    const route = routedEventDecision({ seatId, actionId });
+    const baseEvent = {
+      schema: 'axm.global-state-rts.seat-action-event/v0.1',
+      seatId,
+      sequence: nextSequence,
+      sourceKind,
+      actionId,
+      payload,
+      timestampMs
+    };
+    const event = route?.intercepted
+      ? Object.freeze({
+          ...baseEvent,
+          requestedActionId: actionId,
+          actionId: route.actionId,
+          authorityRoute: route.authorityRoute,
+          authorityReason: route.reason
+        })
+      : Object.freeze(baseEvent);
+
     return Object.freeze({
       accepted: true,
       rate,
-      event: Object.freeze({
-        schema: 'axm.global-state-rts.seat-action-event/v0.1',
-        seatId,
-        sequence: nextSequence,
-        sourceKind,
-        actionId,
-        payload,
-        timestampMs
-      })
+      event
     });
   }
 }

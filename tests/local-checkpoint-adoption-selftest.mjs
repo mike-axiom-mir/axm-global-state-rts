@@ -84,6 +84,7 @@ const replay = replayLocalCheckpointForAdoption(issued.checkpoint, {
 });
 assert.equal(replay.accepted, true);
 assert.deepEqual(replay.publicState, issued.checkpoint.publicState);
+assert.deepEqual(replay.hostPublicState, issued.checkpoint.publicState);
 assert.equal(replay.replayedCommands, 1);
 
 const active = createLocalRegionSimulation(createStarterRegion('seat-1'));
@@ -108,26 +109,34 @@ assert.equal(
   'explicit-browser-local-replacement-from-host-replay-package-no-host-or-global-mutation'
 );
 
-const bootstrapScrap = 25;
-active.storage.scrap += bootstrapScrap;
-active.revision += 1;
-active.worldRunBootstrap = Object.freeze({
+const localStarterScrap = 100;
+const hostStartingScrap = 25;
+const combinedStartingScrap = localStarterScrap + hostStartingScrap;
+const runBootstrap = Object.freeze({
   schema: 'axm.global-state-rts.world-run-local-bootstrap/v0.1',
   bootstrapKey: 'world:adoption-machine|run:world:adoption-machine:drop-1',
   participantId: 'world:adoption-machine',
   seatId: 'seat-1',
   runId: 'run:world:adoption-machine:drop-1',
   applied: true,
-  hostStartingScrap: bootstrapScrap,
-  localStarterScrap: 100,
-  combinedStartingScrap: 125
+  source: 'revalidated-host-active-run',
+  hostStartingScrap,
+  localStarterScrap,
+  combinedStartingScrap
 });
-const bootstrappedBefore = active.snapshot();
+const bootstrapped = createLocalRegionSimulation(createStarterRegion('seat-1'));
+bootstrapped.storage.scrap += localStarterScrap;
+bootstrapped.revision += 1;
+bootstrapped.storage.scrap += hostStartingScrap;
+bootstrapped.revision += 1;
+bootstrapped.worldRunBootstrap = runBootstrap;
+const bootstrappedBefore = bootstrapped.snapshot();
+
 const incompatible = localCheckpointAdoptionCompatibility({ regionSeatId: 'seat-1' });
 assert.equal(incompatible.accepted, false);
 assert.equal(incompatible.reason, 'active-host-run-bootstrap-not-in-host-local-journal-genesis');
 assert.equal(incompatible.runId, 'run:world:adoption-machine:drop-1');
-assert.equal(incompatible.hostStartingScrap, bootstrapScrap);
+assert.equal(incompatible.hostStartingScrap, hostStartingScrap);
 
 const blockedAdoption = adoptLocalCheckpointIntoActiveSimulation(issued.checkpoint, {
   expectedRegionSeatId: 'seat-1'
@@ -135,11 +144,65 @@ const blockedAdoption = adoptLocalCheckpointIntoActiveSimulation(issued.checkpoi
 assert.equal(blockedAdoption.accepted, false);
 assert.equal(blockedAdoption.reason, 'active-host-run-bootstrap-not-in-host-local-journal-genesis');
 assert.equal(blockedAdoption.checkpointId, issued.checkpoint.checkpointId);
-assert.deepEqual(active.snapshot(), bootstrappedBefore, 'incompatible host checkpoint must not erase active run bootstrap value');
+assert.deepEqual(bootstrapped.snapshot(), bootstrappedBefore, 'unprovenanced host checkpoint must not erase active run bootstrap value');
+
+const matchedCheckpoint = clone(issued.checkpoint);
+matchedCheckpoint.genesisBootstrap = {
+  ...clone(runBootstrap),
+  source: 'host-revalidated-active-run-for-local-journal-delta-translation',
+  truthBoundary: 'test-host-revalidated-run-bootstrap'
+};
+matchedCheckpoint.truthBoundary =
+  'host-issued-zero-baseline-replay-package-with-host-revalidated-active-run-bootstrap-provenance-for-explicit-browser-delta-translation-no-shared-world-promotion';
+
+const matchedReplay = replayLocalCheckpointForAdoption(matchedCheckpoint, {
+  expectedRegionSeatId: 'seat-1'
+});
+assert.equal(matchedReplay.accepted, true);
+assert.deepEqual(matchedReplay.hostPublicState, issued.checkpoint.publicState);
 assert.equal(
-  blockedAdoption.truthBoundary,
-  'active-host-run-bootstrap-is-not-represented-in-host-local-journal-genesis-browser-state-left-unchanged'
+  matchedReplay.publicState.storage.scrap,
+  issued.checkpoint.publicState.storage.scrap + combinedStartingScrap
 );
+assert.equal(
+  matchedReplay.publicState.revision,
+  issued.checkpoint.publicState.revision + 2,
+  'starter and active-run scrap each preserve the browser bootstrap revision increments'
+);
+
+const matchedCompatibility = localCheckpointAdoptionCompatibility({
+  regionSeatId: 'seat-1',
+  checkpointBootstrap: matchedCheckpoint.genesisBootstrap
+});
+assert.equal(matchedCompatibility.accepted, true);
+assert.equal(matchedCompatibility.runBootstrapMatched, true);
+assert.equal(matchedCompatibility.combinedStartingScrap, combinedStartingScrap);
+
+const adoptedMatched = adoptLocalCheckpointIntoActiveSimulation(matchedCheckpoint, {
+  expectedRegionSeatId: 'seat-1'
+});
+assert.equal(adoptedMatched.accepted, true);
+assert.equal(adoptedMatched.runBootstrapMatched, true);
+assert.equal(adoptedMatched.runId, runBootstrap.runId);
+assert.deepEqual(adoptedMatched.hostPublicState, issued.checkpoint.publicState);
+assert.deepEqual(adoptedMatched.after, matchedReplay.publicState);
+assert.deepEqual(bootstrapped.snapshot(), matchedReplay.publicState);
+assert.equal(bootstrapped.worldRunBootstrap.bootstrapKey, runBootstrap.bootstrapKey, 'explicit adoption must preserve the active bootstrap provenance marker');
+assert.equal(
+  adoptedMatched.truthBoundary,
+  'explicit-browser-local-replacement-from-host-verified-delta-replay-over-matching-run-bootstrap-provenance-no-host-or-global-mutation'
+);
+
+const mismatchedCheckpoint = clone(matchedCheckpoint);
+mismatchedCheckpoint.genesisBootstrap.hostStartingScrap += 1;
+mismatchedCheckpoint.genesisBootstrap.combinedStartingScrap += 1;
+const mismatchBefore = bootstrapped.snapshot();
+const mismatchAdoption = adoptLocalCheckpointIntoActiveSimulation(mismatchedCheckpoint, {
+  expectedRegionSeatId: 'seat-1'
+});
+assert.equal(mismatchAdoption.accepted, false);
+assert.equal(mismatchAdoption.reason, 'active-host-run-bootstrap-checkpoint-mismatch');
+assert.deepEqual(bootstrapped.snapshot(), mismatchBefore, 'mismatched run provenance must leave browser state unchanged');
 
 const tampered = clone(issued.checkpoint);
 tampered.publicState.storage.scrap += 1;
@@ -164,7 +227,10 @@ console.log(JSON.stringify({
   beforeLocalRevision: adopted.before.revision,
   adoptedLocalRevision: adopted.after.revision,
   staleReason: stale.reason,
-  bootstrapMismatchReason: blockedAdoption.reason,
+  bootstrapWithoutProvenanceReason: blockedAdoption.reason,
+  matchedRunId: adoptedMatched.runId,
+  matchedCombinedStartingScrap: combinedStartingScrap,
+  mismatchReason: mismatchAdoption.reason,
   tamperReason: rejectedTamper.reason,
-  truthBoundary: blockedAdoption.truthBoundary
+  truthBoundary: adoptedMatched.truthBoundary
 }, null, 2));

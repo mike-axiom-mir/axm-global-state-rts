@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
+  CREATION_MACHINE_CREW_SET_SCHEMA,
   CREATION_MACHINE_CREW_SET,
   creationMachineCrewSetCandidates,
   creationMachineCrewSetEntry,
@@ -14,7 +15,8 @@ const expected = Object.freeze([
   Object.freeze({ fixtureAssetId: 'crew-worker-kit-a', sourceAsset: 'crew-worker', candidateRole: 'primary' }),
   Object.freeze({ fixtureAssetId: 'crew-worker-kit-a', sourceAsset: 'mechanic-repair-crew', candidateRole: 'alternate' }),
   Object.freeze({ fixtureAssetId: 'crew-worker-kit-a', sourceAsset: 'citizen-harvester', candidateRole: 'alternate' }),
-  Object.freeze({ fixtureAssetId: 'crew-rifle-kit-a', sourceAsset: 'rifle-guard', candidateRole: 'primary' })
+  Object.freeze({ fixtureAssetId: 'crew-rifle-kit-a', sourceAsset: 'rifle-guard', candidateRole: 'primary' }),
+  Object.freeze({ fixtureAssetId: 'crew-rifle-kit-a', sourceAsset: 'shotgun-raider', candidateRole: 'alternate' })
 ]);
 
 const fixtureExpectations = Object.freeze([
@@ -23,6 +25,7 @@ const fixtureExpectations = Object.freeze([
   Object.freeze({ fixtureAssetId: 'crew-rifle-kit-a', instancesPerSeat: 1 })
 ]);
 
+assert.equal(CREATION_MACHINE_CREW_SET_SCHEMA, 'axm.global-state-rts.creation-machine-crew-static-set/v0.2');
 assert.equal(CREATION_MACHINE_CREW_SET.length, expected.length);
 assert.deepEqual(
   CREATION_MACHINE_CREW_SET.map(entry => [entry.fixtureAssetId, entry.sourceAsset, entry.candidateRole]),
@@ -65,6 +68,17 @@ assert.deepEqual(
   ['crew-worker', 'mechanic-repair-crew', 'citizen-harvester']
 );
 assert.equal(creationMachineCrewSetEntry('crew-worker-kit-a', { sourceAsset: 'missing-worker-source' }), null);
+
+assert.equal(creationMachineCrewSetEntry('crew-rifle-kit-a').sourceAsset, 'rifle-guard', 'omitting source selection must preserve the rifle primary candidate');
+assert.deepEqual(
+  creationMachineCrewSetCandidates('crew-rifle-kit-a').map(entry => entry.sourceAsset),
+  ['rifle-guard', 'shotgun-raider']
+);
+const shotgunRaider = creationMachineCrewSetEntry('crew-rifle-kit-a', { sourceAsset: 'shotgun-raider' });
+assert.ok(shotgunRaider);
+assert.equal(shotgunRaider.candidateRole, 'alternate');
+assert.match(shotgunRaider.roleBoundary, /grants no shotgun weapon, hostile faction, combat-stat change, targeting behavior, or action authority/i);
+assert.equal(creationMachineCrewSetEntry('crew-rifle-kit-a', { sourceAsset: 'missing-rifle-source' }), null);
 assert.equal(creationMachineCrewSetEntry('missing-crew-role'), null);
 
 for (let seat = 1; seat <= 4; seat += 1) {
@@ -108,5 +122,7 @@ console.log(JSON.stringify({
   sourceIndexStaticRowsVerified: expected.length,
   workerPrimarySource: creationMachineCrewSetEntry('crew-worker-kit-a').sourceAsset,
   workerAlternateSources: creationMachineCrewSetCandidates('crew-worker-kit-a').filter(entry => entry.candidateRole === 'alternate').map(entry => entry.sourceAsset),
+  riflePrimarySource: creationMachineCrewSetEntry('crew-rifle-kit-a').sourceAsset,
+  rifleAlternateSources: creationMachineCrewSetCandidates('crew-rifle-kit-a').filter(entry => entry.candidateRole === 'alternate').map(entry => entry.sourceAsset),
   truthBoundary: 'Stable Crew presentation IDs and real simulation targets verified; alternate sources remain explicit-only while runtime import, visual/scale acceptance, collision, navigation, LOD handoff, FPS, modular kit equivalence and animation remain separate evidence.'
 }, null, 2));

@@ -192,9 +192,12 @@ function productionMenuActions(civilization) {
 
 function vehicleMenuActions(civilization) {
   const selected = civilization?.vehicles?.selectedPlan;
+  const supplyBatch = civilization?.vehicles?.convoySupplyLoadBatch || 100;
   return Object.freeze([
     Object.freeze({ id: 'ui-up', label: 'Previous vehicle plan', localOnly: true }),
     Object.freeze({ id: 'ui-down', label: 'Next vehicle plan', localOnly: true }),
+    Object.freeze({ id: 'ui-right', label: `Load ${supplyBatch} scrap → selected-party convoy`, localOnly: true }),
+    Object.freeze({ id: 'ui-left', label: 'Unload selected-party convoy scrap → local storage', localOnly: true }),
     Object.freeze({ id: 'confirm', label: selected ? `Construct ${selected.label}` : 'Construct selected vehicle', localOnly: true }),
     Object.freeze({ id: 'party-menu', label: 'Prepare selected-party light drivers', localOnly: true }),
     Object.freeze({ id: 'context', label: 'Assign / release selected-party drivers', localOnly: true }),
@@ -323,7 +326,12 @@ function vehicleSummary(civilization) {
   const vehicles = civilization?.vehicles;
   if (!vehicles) return 'vehicle state unavailable';
   const capacity = (vehicles.vehicles || []).reduce((sum, vehicle) => sum + (Number(vehicle.seatCapacity) || 0), 0);
-  return `${vehicles.vehicleCount || 0} vehicles · ${vehicles.driverCount || 0} drivers · ${vehicles.uncrewedCount || 0} uncrewed · ${capacity} seats`;
+  const cargo = Number(vehicles.cargoAmount) || 0;
+  const cargoCapacity = Number(vehicles.cargoCapacity) || 0;
+  const departure = vehicles.strategicDepartureState === 'blocked-until-local-strategic-handoff-authoritative'
+    ? 'strategic departure handoff pending'
+    : vehicles.strategicDepartureState || 'departure state unknown';
+  return `${vehicles.vehicleCount || 0} vehicles · ${vehicles.driverCount || 0} drivers · ${vehicles.uncrewedCount || 0} uncrewed · ${capacity} seats · ${finiteFloor(cargo)}/${finiteFloor(cargoCapacity)} cargo · ${departure}`;
 }
 
 function combatSummary(combat) {

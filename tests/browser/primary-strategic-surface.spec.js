@@ -207,6 +207,11 @@ test('primary RTS deck drives one aggregate strategic convoy, mobilizes an arriv
   expect(state.lastCityInteraction?.cityId).toBe(state.journey.currentNodeId);
   expect(state.lastCityInteraction?.stateScope).toBe('browser-local-world-runtime-not-host-persistent');
   await expect(page.locator('#primaryStrategicSummary')).toContainText('city mobilized-defense');
+  const threatIntel = page.locator('#primaryWorldThreat');
+  await expect(threatIntel).toContainText('incoming raid');
+  await expect(threatIntel).toContainText('nearest ETA');
+  await expect(threatIntel).toContainText('not yet admitted into LOCAL combat');
+  await expect(threatIntel).toHaveAttribute('data-state-scope', 'browser-local-world-pressure-warning-not-combat-admission');
   await page.screenshot({ path: 'test-results/global-state-rts-primary-strategic-city-response.png', fullPage: true });
 
   await pulse(page, 14); // Repeating the same visit does not manufacture a second city consequence.

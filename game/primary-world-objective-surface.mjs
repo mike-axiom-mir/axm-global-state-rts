@@ -41,8 +41,16 @@ worldObjective.dataset.primaryWorldObjective = 'true';
 worldObjective.dataset.stateScope = 'deterministic-browser-visible-not-route-integrated';
 worldObjective.setAttribute('aria-live', 'polite');
 
+const worldThreat = document.createElement('div');
+worldThreat.id = 'primaryWorldThreat';
+worldThreat.className = 'status';
+worldThreat.dataset.primaryWorldThreat = 'true';
+worldThreat.dataset.stateScope = 'browser-local-world-pressure-warning-not-combat-admission';
+worldThreat.setAttribute('aria-live', 'assertive');
+
 anchor.insertAdjacentElement('afterend', cityIntel);
 cityIntel.insertAdjacentElement('afterend', worldObjective);
+worldObjective.insertAdjacentElement('afterend', worldThreat);
 
 function finiteRound(value) {
   return Number.isFinite(Number(value)) ? Math.round(Number(value)) : 0;
@@ -94,17 +102,45 @@ function worldObjectiveText(state) {
   return 'world objective · no deterministic event in the next eight slots · objective routing/claim control remains unpromoted';
 }
 
+function worldThreatText(state) {
+  const pressure = state?.worldPressure;
+  if (!pressure) return 'threat intel · no known world-pressure target for this seat · no raid warning';
+
+  const raids = Array.isArray(pressure.raids) ? pressure.raids : [];
+  const arrived = raids.filter(raid => raid.status === 'arrived-local-drop-perimeter');
+  if (arrived.length) {
+    const units = arrived.reduce((sum, raid) => sum + finiteRound(raid.units), 0);
+    const origins = [...new Set(arrived.map(raid => String(raid.originCityId || 'unknown-city')))];
+    return `threat intel · RAID AT LOCAL DROP PERIMETER · ${units} aggregate raid units from ${origins.join(', ')} · browser-local arrival evidence only · not yet admitted into LOCAL combat or host authority`;
+  }
+
+  const transits = raids.filter(raid => raid.status === 'transit-to-local-drop');
+  if (transits.length) {
+    const units = transits.reduce((sum, raid) => sum + finiteRound(raid.units), 0);
+    const food = transits.reduce((sum, raid) => sum + finiteRound(raid.foodCost), 0);
+    const materials = transits.reduce((sum, raid) => sum + finiteRound(raid.materialCost), 0);
+    const nearest = [...transits].sort((a, b) => Number(a.remainingTravelMs || 0) - Number(b.remainingTravelMs || 0))[0];
+    const etaMinutes = Math.max(1, Math.ceil(Number(nearest?.remainingTravelMs || 0) / 60000));
+    return `threat intel · incoming raid · ${units} aggregate units in ${transits.length} finite raid${transits.length === 1 ? '' : 's'} · nearest ETA ${etaMinutes}m from ${nearest?.originCityId || 'unknown-city'} · origin cities spent ${food} food + ${materials} materials · browser-local transit only · not yet admitted into LOCAL combat`;
+  }
+
+  return 'threat intel · starter drop known to world pressure · no raid currently in transit · no LOCAL combat consequence claimed';
+}
+
 function render() {
   const state = selectedStrategicState();
   if (!state) {
     cityIntel.textContent = 'city intel · strategic state unavailable';
     worldObjective.textContent = 'world objective · strategic state unavailable';
+    worldThreat.textContent = 'threat intel · strategic state unavailable';
     return;
   }
   const nextCityText = cityIntelText(state);
   const nextObjectiveText = worldObjectiveText(state);
+  const nextThreatText = worldThreatText(state);
   if (cityIntel.textContent !== nextCityText) cityIntel.textContent = nextCityText;
   if (worldObjective.textContent !== nextObjectiveText) worldObjective.textContent = nextObjectiveText;
+  if (worldThreat.textContent !== nextThreatText) worldThreat.textContent = nextThreatText;
 }
 
 render();

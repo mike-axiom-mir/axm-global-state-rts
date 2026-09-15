@@ -12,11 +12,15 @@ function requireRuntimeBridge() {
   return bridge;
 }
 
-function requirePlanEntry(stableAssetId) {
+function requirePlanEntry(stableAssetId, sourceAsset = null) {
   const key = String(stableAssetId || '');
-  const entry = creationMachineLogisticsTrialPlan().find(candidate => candidate.stableAssetId === key);
-  if (!entry) throw new Error(`no Creation Machine logistics candidate registered for ${key || 'empty stable asset id'}`);
-  return entry;
+  const candidates = creationMachineLogisticsTrialPlan().filter(candidate => candidate.stableAssetId === key);
+  if (!candidates.length) throw new Error(`no Creation Machine logistics candidate registered for ${key || 'empty stable asset id'}`);
+  if (!sourceAsset) return candidates[0];
+  const sourceKey = String(sourceAsset || '');
+  const exact = candidates.find(candidate => candidate.sourceAsset === sourceKey);
+  if (!exact) throw new Error(`no Creation Machine logistics source ${sourceKey || 'empty source id'} registered for ${key}`);
+  return exact;
 }
 
 async function fetchCandidate(plan, { includeBytes = true } = {}) {
@@ -63,8 +67,10 @@ export async function inspectCreationMachineLogisticsSet() {
     schema: CREATION_MACHINE_LOGISTICS_SET_SCHEMA,
     status: 'PREPARED_LOGISTICS_SET_AVAILABLE_NOT_ACCEPTED',
     candidates: Object.freeze(candidates.map(candidate => Object.freeze({
+      candidateId: candidate.plan.candidateId,
       stableAssetId: candidate.plan.stableAssetId,
       sourceAsset: candidate.plan.sourceAsset,
+      candidateRole: candidate.plan.candidateRole,
       gameplayDefinitionId: candidate.plan.gameplayDefinitionId,
       variant: candidate.receipt.variant,
       sha256: candidate.receipt.outputGlbSha256,
@@ -80,11 +86,12 @@ export async function inspectCreationMachineLogisticsSet() {
 export async function adoptCreationMachineLogisticsAsset({
   seatId = 'seat-1',
   stableAssetId = 'building-storage-depot-a',
+  sourceAsset = null,
   buildingInstanceId = null,
   focus = false
 } = {}) {
   const bridge = requireRuntimeBridge();
-  const plan = requirePlanEntry(stableAssetId);
+  const plan = requirePlanEntry(stableAssetId, sourceAsset);
   const target = resolveLiveConstructionTarget(bridge, seatId, plan, buildingInstanceId);
   const candidate = await fetchCandidate(plan);
   const receipt = await bridge.installExternalConstructionAsset({
@@ -100,17 +107,20 @@ export async function adoptCreationMachineLogisticsAsset({
 
   return Object.freeze({
     schema: CREATION_MACHINE_LOGISTICS_SET_SCHEMA,
-    status: 'RUNTIME_IMPORTED_SINGLE_LOGISTICS_ASSET_NOT_VISUALLY_ACCEPTED',
+    status: 'RUNTIME_IMPORTED_SINGLE_LOGISTICS_ALTERNATE_NOT_VISUALLY_ACCEPTED',
     seatId,
+    candidateId: plan.candidateId,
     stableAssetId: plan.stableAssetId,
     sourceAsset: plan.sourceAsset,
+    candidateRole: plan.candidateRole,
     buildingInstanceId: target.instanceId,
     gameplayDefinitionId: plan.gameplayDefinitionId,
     receipt,
     nonclaims: Object.freeze([
       'Explicit runtime import does not make this alternate storage presentation the default.',
+      'The procedural presentation and other unaccepted Storage Depot candidates remain available; selecting one source here is not acceptance of any candidate.',
       'The source asset does not create, authorize, move resources through, repair, destroy, or persist the Storage Depot.',
-      'This trial does not establish visual acceptance, source-to-world scale acceptance, collision, navigation, gameplay footprint, or target-device FPS.',
+      'This trial does not establish visual acceptance, source-to-world scale acceptance, collision, navigation, gameplay footprint, split-screen readability, or target-device FPS.',
       'The supplied near/far variants do not yet have an evidence-backed automatic LOD handoff distance.',
       'No bespoke loading, doors, cranes, worker activity, damage, or destruction animation is added by this static trial.'
     ])

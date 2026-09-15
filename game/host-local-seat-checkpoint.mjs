@@ -19,9 +19,24 @@ const commandStatus = document.createElement('div');
 commandStatus.id = 'hostLocalCommandStatus';
 commandStatus.className = 'status';
 commandStatus.setAttribute('aria-live', 'polite');
-commandStatus.textContent = 'Host journal gather requires a bound participant with a selected LOCAL party.';
+commandStatus.textContent = 'Host journal macro commands require a bound participant with a selected LOCAL party.';
 commandRow.append(gatherButton, commandStatus);
 statusElement.insertAdjacentElement('afterend', commandRow);
+
+const macroRow = document.createElement('div');
+macroRow.className = 'setup-row';
+const repairButton = document.createElement('button');
+repairButton.id = 'hostLocalRepair';
+repairButton.type = 'button';
+repairButton.disabled = true;
+repairButton.textContent = 'Journal selected-party repair';
+const exploreButton = document.createElement('button');
+exploreButton.id = 'hostLocalExplore';
+exploreButton.type = 'button';
+exploreButton.disabled = true;
+exploreButton.textContent = 'Journal selected-party explore';
+macroRow.append(repairButton, exploreButton);
+commandRow.insertAdjacentElement('afterend', macroRow);
 
 const adoptionRow = document.createElement('div');
 adoptionRow.className = 'setup-row';
@@ -36,7 +51,7 @@ adoptionStatus.className = 'status';
 adoptionStatus.setAttribute('aria-live', 'polite');
 adoptionStatus.textContent = 'Adoption is explicit: the current browser-local simulation is not replaced automatically.';
 adoptionRow.append(adoptButton, adoptionStatus);
-commandRow.insertAdjacentElement('afterend', adoptionRow);
+macroRow.insertAdjacentElement('afterend', adoptionRow);
 
 const salvageRow = document.createElement('div');
 salvageRow.className = 'setup-row';
@@ -77,7 +92,12 @@ function currentWorldBinding() {
   return shell()?.worldBinding?.('seat-1') || null;
 }
 
-function previewGatherAtCursor({ seatId = 'seat-1', stepCount = 160 } = {}) {
+function previewSelectedPartyIntent(actionId, {
+  seatId = 'seat-1',
+  stepCount = 160,
+  cursorXM = null,
+  cursorZM = null
+} = {}) {
   const surface = shell();
   if (!surface) return Object.freeze({ accepted: false, reason: 'rts-shell-not-ready' });
   const binding = surface.worldBinding?.(seatId) || null;
@@ -86,26 +106,41 @@ function previewGatherAtCursor({ seatId = 'seat-1', stepCount = 160 } = {}) {
     return Object.freeze({ accepted: false, reason: 'host-local-checkpoint-not-ready' });
   }
   const view = surface.describeSeatView?.(seatId);
-  if (view?.mode !== 'local-rts') return Object.freeze({ accepted: false, reason: 'host-journal-gather-requires-local-rts' });
+  if (view?.mode !== 'local-rts') return Object.freeze({ accepted: false, reason: 'host-journal-command-requires-local-rts' });
   const party = surface.describeSeatParty?.(seatId) || null;
   if (!Array.isArray(party?.selectedCrewIds)) return Object.freeze({ accepted: false, reason: 'selected-party-unavailable' });
   const crewIds = [...party.selectedCrewIds];
   if (!crewIds.length) return Object.freeze({ accepted: false, reason: 'selected-party-empty' });
   const steps = Number(stepCount);
   if (!Number.isInteger(steps) || steps < 0) return Object.freeze({ accepted: false, reason: 'stepCount-must-be-non-negative-integer' });
+  const xM = cursorXM === null ? Number(view.local.cursorXM) : Number(cursorXM);
+  const zM = cursorZM === null ? Number(view.local.cursorZM) : Number(cursorZM);
+  if (!Number.isFinite(xM) || !Number.isFinite(zM)) return Object.freeze({ accepted: false, reason: 'cursor-must-be-finite' });
   return Object.freeze({
     accepted: true,
     binding,
     selectedPartyLabel: party.selectedPartyLabel || 'selected party',
     expectedRevision: retainedEvidence.journal.revision,
     intent: Object.freeze({
-      actionId: 'gather-scrap',
-      cursorXM: view.local.cursorXM,
-      cursorZM: view.local.cursorZM,
+      actionId,
+      cursorXM: xM,
+      cursorZM: zM,
       stepCount: steps,
       crewIds: Object.freeze(crewIds)
     })
   });
+}
+
+function previewGatherAtCursor(options = {}) {
+  return previewSelectedPartyIntent('gather-scrap', options);
+}
+
+function previewRepairCore(options = {}) {
+  return previewSelectedPartyIntent('repair-core', options);
+}
+
+function previewExploreAtCursor(options = {}) {
+  return previewSelectedPartyIntent('explore', options);
 }
 
 function previewAdoption({ seatId = 'seat-1' } = {}) {
@@ -157,6 +192,18 @@ function refreshControls() {
   gatherButton.title = gatherPreview.accepted
     ? `Ask the host to reproduce and journal gather for ${gatherPreview.intent.crewIds.length} selected Crew from this cursor against the displayed checkpoint.`
     : gatherPreview.reason;
+
+  const repairPreview = previewRepairCore();
+  repairButton.disabled = busy || !repairPreview.accepted;
+  repairButton.title = repairPreview.accepted
+    ? `Ask the host to reproduce and journal core repair for ${repairPreview.intent.crewIds.length} selected Crew against the displayed checkpoint.`
+    : repairPreview.reason;
+
+  const explorePreview = previewExploreAtCursor();
+  exploreButton.disabled = busy || !explorePreview.accepted;
+  exploreButton.title = explorePreview.accepted
+    ? `Ask the host to reproduce and journal exploration for ${explorePreview.intent.crewIds.length} selected Crew at this cursor against the displayed checkpoint.`
+    : explorePreview.reason;
 
   const adoptionPreview = previewAdoption();
   adoptButton.disabled = busy || !adoptionPreview.accepted;
@@ -232,16 +279,18 @@ async function bindCurrentWorldSeat({ forceStatusRefresh = false } = {}) {
   return inFlight;
 }
 
-async function submitGatherAtCursor({ seatId = 'seat-1', stepCount = 160 } = {}) {
+async function submitSelectedPartyIntent(actionId, options = {}) {
   if (commandInFlight) return commandInFlight;
-  const preview = previewGatherAtCursor({ seatId, stepCount });
+  const preview = previewSelectedPartyIntent(actionId, options);
+  const seatId = options.seatId || 'seat-1';
+  const label = actionId === 'gather-scrap' ? 'gather' : actionId === 'repair-core' ? 'repair' : 'explore';
   if (!preview.accepted) {
-    commandStatus.textContent = `Host journal gather unavailable · ${preview.reason}`;
+    commandStatus.textContent = `Host journal ${label} unavailable · ${preview.reason}`;
     refreshControls();
     return preview;
   }
 
-  commandStatus.textContent = `${seatId} · asking host to reproduce ${preview.intent.crewIds.length}-Crew selected-party gather against journal r${preview.expectedRevision}…`;
+  commandStatus.textContent = `${seatId} · asking host to reproduce ${preview.intent.crewIds.length}-Crew selected-party ${label} against journal r${preview.expectedRevision}…`;
   commandInFlight = (async () => {
     try {
       const result = await client.submitLocalSeatCommand({
@@ -263,8 +312,10 @@ async function submitGatherAtCursor({ seatId = 'seat-1', stepCount = 160 } = {})
         checkpoint
       });
       const hostScrap = Number(result?.outcome?.storage?.scrap);
+      const hostCore = Number(result?.outcome?.core?.integrity);
       const scrapLabel = Number.isFinite(hostScrap) ? ` · host scrap ${Math.floor(hostScrap)}` : '';
-      commandStatus.textContent = `${seatId} · host journal gather accepted · selected party ${preview.intent.crewIds.length} Crew · r${result.revision}${scrapLabel} · browser-local state remains separate until adoption.`;
+      const coreLabel = actionId === 'repair-core' && Number.isFinite(hostCore) ? ` · host core ${Math.round(hostCore)}%` : '';
+      commandStatus.textContent = `${seatId} · host journal ${label} accepted · selected party ${preview.intent.crewIds.length} Crew · r${result.revision}${scrapLabel}${coreLabel} · browser-local state remains separate until adoption.`;
       render();
       return lastCommandEvidence;
     } catch (error) {
@@ -288,7 +339,7 @@ async function submitGatherAtCursor({ seatId = 'seat-1', stepCount = 160 } = {})
         intent: preview.intent,
         expectedRevision: preview.expectedRevision
       });
-      commandStatus.textContent = `${seatId} · host journal gather rejected · selected party ${preview.intent.crewIds.length} Crew · ${reason} · no automatic retry.`;
+      commandStatus.textContent = `${seatId} · host journal ${label} rejected · selected party ${preview.intent.crewIds.length} Crew · ${reason} · no automatic retry.`;
       return lastCommandEvidence;
     } finally {
       commandInFlight = null;
@@ -297,6 +348,18 @@ async function submitGatherAtCursor({ seatId = 'seat-1', stepCount = 160 } = {})
   })();
   refreshControls();
   return commandInFlight;
+}
+
+function submitGatherAtCursor(options = {}) {
+  return submitSelectedPartyIntent('gather-scrap', options);
+}
+
+function submitRepairCore(options = {}) {
+  return submitSelectedPartyIntent('repair-core', options);
+}
+
+function submitExploreAtCursor(options = {}) {
+  return submitSelectedPartyIntent('explore', options);
 }
 
 async function adoptHostCheckpoint({ seatId = 'seat-1' } = {}) {
@@ -443,9 +506,13 @@ const bridge = Object.freeze({
     return lastSalvageEvidence;
   },
   previewGatherAtCursor,
+  previewRepairCore,
+  previewExploreAtCursor,
   previewAdoption,
   previewSalvage,
   submitGatherAtCursor,
+  submitRepairCore,
+  submitExploreAtCursor,
   adoptHostCheckpoint,
   recordVerifiedLocalSalvage,
   bindCurrent() {
@@ -461,6 +528,8 @@ Object.defineProperty(window, '__AXM_HOST_LOCAL_SEAT__', {
 });
 
 gatherButton.addEventListener('click', () => { void submitGatherAtCursor(); });
+repairButton.addEventListener('click', () => { void submitRepairCore(); });
+exploreButton.addEventListener('click', () => { void submitExploreAtCursor(); });
 adoptButton.addEventListener('click', () => { void adoptHostCheckpoint(); });
 salvageButton.addEventListener('click', () => { void recordVerifiedLocalSalvage(); });
 render();

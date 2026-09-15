@@ -165,6 +165,7 @@ try {
     'set-food-policy',
     'train-unit-specialization',
     'license-unit-vehicle',
+    'assign-vehicle',
     'craft-weapon',
     'equip-unit-weapon',
     'close-active-run'
@@ -174,6 +175,7 @@ try {
     'set-food-policy',
     'train-unit-specialization',
     'license-unit-vehicle',
+    'assign-vehicle',
     'craft-weapon',
     'equip-unit-weapon',
     'close-active-run'

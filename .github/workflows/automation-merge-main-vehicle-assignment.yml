@@ -1,0 +1,100 @@
+# Reconcile current main before merge; remove this helper before landing.
+name: Automation merge latest main for vehicle assignment authority
+
+on:
+  push:
+    branches:
+      - automation/world-run-vehicle-assignment-authority
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout feature with full history
+        uses: actions/checkout@v4
+        with:
+          ref: automation/world-run-vehicle-assignment-authority
+          fetch-depth: 0
+          submodules: recursive
+      - name: Merge latest main and resolve only expected API overlap
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          set +e
+          git merge --no-ff --no-commit origin/main
+          merge_status=$?
+          set -e
+          if [ "$merge_status" -ne 0 ]; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            if [ "$conflicts" != "src/hosted/world-run-http-api.mjs" ]; then
+              echo "Unexpected merge conflicts:"
+              printf '%s\n' "$conflicts"
+              exit 1
+            fi
+            git checkout --theirs -- src/hosted/world-run-http-api.mjs
+          fi
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/hosted/world-run-http-api.mjs')
+          text = p.read_text()
+
+          def once(old, new):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected exactly one occurrence, found {count}: {old[:120]!r}')
+              text = text.replace(old, new, 1)
+
+          once(
+              "  WORLD_RUN_LICENSE_UNIT_ACTION,\n  WORLD_RUN_TRAIN_UNIT_ACTION,",
+              "  WORLD_RUN_LICENSE_UNIT_ACTION,\n  WORLD_RUN_ASSIGN_VEHICLE_ACTION,\n  WORLD_RUN_TRAIN_UNIT_ACTION,"
+          )
+          once(
+              "export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.13';",
+              "export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.14';"
+          )
+          once(
+              "      if (verb === 'POST' && route === '/api/world/run/craft-weapon') {",
+              "      if (verb === 'POST' && route === '/api/world/run/assign-vehicle') {\n        if (this.writeMode !== 'dev') return response(403, { error: 'world writes disabled', writeMode: this.writeMode });\n        const assignmentAuthority = authorityWithMethod(this.runAuthority, 'assignUnitVehicle');\n        if (!assignmentAuthority) return response(503, { error: 'host vehicle-assignment authority unavailable' });\n        const result = assignmentAuthority.assignUnitVehicle({\n          participantId: body.participantId,\n          runId: body.runId,\n          mutationId: body.mutationId,\n          unitId: body.unitId,\n          vehicleId: body.vehicleId,\n          vehicleClass: body.vehicleClass,\n          timestampMs: finiteHostTime(this.clock)\n        });\n        return response(runMutationStatus(result), result);\n      }\n\n      if (verb === 'POST' && route === '/api/world/run/craft-weapon') {"
+          )
+          once(
+              "              WORLD_RUN_LICENSE_UNIT_ACTION,\n              WORLD_RUN_CRAFT_WEAPON_ACTION,",
+              "              WORLD_RUN_LICENSE_UNIT_ACTION,\n              WORLD_RUN_ASSIGN_VEHICLE_ACTION,\n              WORLD_RUN_CRAFT_WEAPON_ACTION,"
+          )
+          once(
+              "            durableVehicleLicensingEndpoint: '/api/world/run/license-unit',\n            durableWeaponCraftingEndpoint:",
+              "            durableVehicleLicensingEndpoint: '/api/world/run/license-unit',\n            durableVehicleAssignmentEndpoint: '/api/world/run/assign-vehicle',\n            durableWeaponCraftingEndpoint:"
+          )
+          count = text.count('vehicle-licensing weapon-crafting')
+          if count < 4:
+              raise SystemExit(f'expected at least four authority truth-boundary occurrences, found {count}')
+          text = text.replace('vehicle-licensing weapon-crafting', 'vehicle-licensing vehicle-assignment-reference weapon-crafting')
+          p.write_text(text)
+          PY
+          git add src/hosted/world-run-http-api.mjs
+          if git diff --name-only --diff-filter=U | grep -q .; then
+            echo 'Unresolved merge conflict remains'
+            git diff --name-only --diff-filter=U
+            exit 1
+          fi
+      - name: Verify merged bounded authority
+        run: |
+          node --check src/hosted/world-run-http-api.mjs
+          node --check src/hosted/durable-world-run-command-authority.mjs
+          node --check src/hosted/shared-world-authority-contract.mjs
+          node tests/shared-world-authority-contract-selftest.mjs
+          node tests/world-run-global-control-replay-selftest.mjs
+          node tests/world-run-close-replay-selftest.mjs
+          node tests/world-run-vehicle-assignment-authority-selftest.mjs
+          npm test
+      - name: Commit main reconciliation and push
+        shell: bash
+        run: |
+          git commit -m 'Merge latest main into vehicle assignment authority lane'
+          git push origin HEAD:automation/world-run-vehicle-assignment-authority

@@ -45,17 +45,31 @@ function normalizeSeatId(value) {
   return seatId;
 }
 
+function normalizeCrewIds(value) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new TypeError('intent.crewIds must be an array when supplied');
+  const crewIds = value.map((raw, index) => {
+    const id = String(raw ?? '').trim();
+    if (!id) throw new TypeError(`intent.crewIds[${index}] must be a non-empty Crew id`);
+    return id;
+  });
+  if (new Set(crewIds).size !== crewIds.length) throw new TypeError('intent.crewIds must not contain duplicates');
+  return Object.freeze([...crewIds].sort());
+}
+
 function normalizeIntent(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new TypeError('checkpoint command intent required');
   const actionId = nonEmpty(raw.actionId, 'intent.actionId');
   if (!['gather-scrap', 'explore', 'repair-core'].includes(actionId)) {
     throw new RangeError(`unsupported checkpoint action: ${actionId}`);
   }
+  const crewIds = normalizeCrewIds(raw.crewIds);
   return Object.freeze({
     actionId,
     cursorXM: finite(raw.cursorXM, 'intent.cursorXM'),
     cursorZM: finite(raw.cursorZM, 'intent.cursorZM'),
-    stepCount: nonNegativeInteger(raw.stepCount, 'intent.stepCount')
+    stepCount: nonNegativeInteger(raw.stepCount, 'intent.stepCount'),
+    ...(crewIds === undefined ? {} : { crewIds })
   });
 }
 
@@ -128,7 +142,8 @@ export function replayLocalCheckpointForAdoption(checkpoint, {
       simulation.setLightingPhase(expectedLighting);
       const action = simulation.issueLocalAction(intent.actionId, {
         cursorXM: intent.cursorXM,
-        cursorZM: intent.cursorZM
+        cursorZM: intent.cursorZM,
+        crewIds: intent.crewIds ?? null
       });
       if (!action.accepted) {
         return rejection('checkpoint-replay-command-rejected', {

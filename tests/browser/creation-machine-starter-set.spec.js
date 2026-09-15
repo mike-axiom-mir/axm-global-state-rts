@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test';
 
 const CANDIDATES = Object.freeze([
-  ['building-settlement-core-a', 'settlement-hub'],
-  ['building-workshop-a', 'improvised-workshop'],
-  ['building-storage-depot-a', 'storage-hall'],
-  ['resource-scrap-collector-a', 'scrap-sorting-yard'],
-  ['defense-light-tower-a', 'light-tower']
+  ['building-settlement-core-a', 'settlement-hub', 'primary'],
+  ['building-settlement-core-a', 'civic-shelter', 'alternate'],
+  ['building-workshop-a', 'improvised-workshop', 'primary'],
+  ['building-storage-depot-a', 'storage-hall', 'primary'],
+  ['resource-scrap-collector-a', 'scrap-sorting-yard', 'primary'],
+  ['defense-light-tower-a', 'light-tower', 'primary']
 ]);
 
 function captureRuntimeFailures(page) {
@@ -18,12 +19,11 @@ function captureRuntimeFailures(page) {
   return failures;
 }
 
-for (const [fixtureAssetId, sourceAsset] of CANDIDATES) {
+for (const [fixtureAssetId, sourceAsset, candidateRole] of CANDIDATES) {
   test(`explicit ${sourceAsset} trial imports in a real four-seat LOCAL RTS layout without cross-seat adoption`, async ({ page }) => {
-    // Each candidate gets a fresh page/context so this gate proves the bounded claim we actually
-    // need: the source-pinned static asset can enter the real four-seat LOCAL RTS route. Earlier
-    // combined five-asset trials exceeded 60s and then 150s on hosted Chromium, so simultaneous
-    // five-asset adoption is deliberately HOLD rather than being waved through with a bigger timer.
+    // Each source gets a fresh page/context so alternate candidates sharing a stable fixture ID
+    // cannot replace one another inside the evidence route. This proves only the bounded claim:
+    // the explicitly selected source can enter the real four-seat LOCAL RTS route on seat 1.
     test.setTimeout(75_000);
 
     const failures = captureRuntimeFailures(page);
@@ -36,7 +36,7 @@ for (const [fixtureAssetId, sourceAsset] of CANDIDATES) {
     })));
     expect(before.every(entry => entry.assets.length === 0)).toBe(true);
 
-    const result = await page.evaluate(async ({ fixtureAssetId: targetFixtureAssetId }) => {
+    const result = await page.evaluate(async ({ fixtureAssetId: targetFixtureAssetId, sourceAsset: targetSourceAsset }) => {
       const helper = await import('./creation-machine-starter-set-adoption.mjs');
       const bridge = window.__AXM_GLOBAL_STATE_RTS__;
       const seats = ['seat-1', 'seat-2', 'seat-3', 'seat-4'];
@@ -49,13 +49,15 @@ for (const [fixtureAssetId, sourceAsset] of CANDIDATES) {
       return helper.adoptCreationMachineStarterAsset({
         seatId: 'seat-1',
         fixtureAssetId: targetFixtureAssetId,
+        sourceAsset: targetSourceAsset,
         focus: false
       });
-    }, { fixtureAssetId });
+    }, { fixtureAssetId, sourceAsset });
 
     expect(result.status).toBe('RUNTIME_IMPORTED_SINGLE_STARTER_ASSET_NOT_VISUALLY_ACCEPTED');
     expect(result.fixtureAssetId).toBe(fixtureAssetId);
     expect(result.sourceAsset).toBe(sourceAsset);
+    expect(result.candidateRole).toBe(candidateRole);
     expect(result.receipt.status).toBe('RUNTIME_IMPORTED_NOT_VISUALLY_ACCEPTED');
     expect(result.receipt.triangles).toBeGreaterThan(0);
     expect(result.receipt.collision).toBe('NOT_TESTED');

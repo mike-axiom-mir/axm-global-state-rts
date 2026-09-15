@@ -42,14 +42,17 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Prepare deterministic checked-in Utility Hauler far derivative
+      - name: Prepare deterministic checked-in cargo-truck far derivatives
         run: |
           set -euo pipefail
-          python3 assets/creation-machine/prepare_runtime_glb.py \
-            --asset utility-hauler \
-            --variant far
+          for asset in utility-hauler flatbed-convoy-truck; do
+            echo "preparing ${asset}"
+            python3 assets/creation-machine/prepare_runtime_glb.py \
+              --asset "$asset" \
+              --variant far
+          done
 
-      - name: Verify source identity, stable ID and live vehicle target
+      - name: Verify source identities, stable ID and live vehicle target
         run: node tests/creation-machine-vehicle-set-selftest.mjs
 
       - name: Syntax-check focused runtime seam
@@ -78,13 +81,16 @@ jobs:
       - name: Install Chromium runtime
         run: npx playwright install --with-deps chromium
 
-      - name: Start actual Global State RTS shell with prepared vehicle derivative
+      - name: Start actual Global State RTS shell with prepared vehicle derivatives
         run: |
           node scripts/serve.mjs > /tmp/axm-global-state-rts-creation-machine-vehicle.log 2>&1 &
           for i in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null \
-              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/utility-hauler-lod1.glb > /dev/null \
-              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/utility-hauler-lod1.receipt.json > /dev/null; then
+            ready=1
+            for asset in utility-hauler flatbed-convoy-truck; do
+              curl --fail --silent "http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/${asset}-lod1.glb" > /dev/null || ready=0
+              curl --fail --silent "http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/${asset}-lod1.receipt.json" > /dev/null || ready=0
+            done
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null && [ "$ready" -eq 1 ]; then
               exit 0
             fi
             sleep 1
@@ -92,11 +98,11 @@ jobs:
           cat /tmp/axm-global-state-rts-creation-machine-vehicle.log
           exit 1
 
-      - name: Exercise live Utility Hauler construction then explicit static adoption
+      - name: Exercise live cargo vehicle construction then explicit static source adoption
         run: |
           npx playwright test tests/browser/creation-machine-vehicle-set.spec.js --workers=1 --reporter=line
           mkdir -p evidence/creation-machine-vehicle-runtime
-          cp test-results/global-state-rts-creation-machine-utility-hauler-4seat.png evidence/creation-machine-vehicle-runtime/
+          cp test-results/global-state-rts-creation-machine-*-4seat.png evidence/creation-machine-vehicle-runtime/
 
       - name: Regress player-facing LOCAL vehicle browser path
         run: npx playwright test tests/browser/local-civilization-gameplay.spec.js --workers=1 --reporter=line
@@ -108,6 +114,7 @@ jobs:
           name: global-state-rts-creation-machine-vehicle-runtime-evidence
           path: |
             assets/creation-machine/runtime-prepared/utility-hauler-lod1.receipt.json
+            assets/creation-machine/runtime-prepared/flatbed-convoy-truck-lod1.receipt.json
             evidence/creation-machine-vehicle-runtime/*.png
             test-results/global-state-rts-*.png
             /tmp/axm-global-state-rts-creation-machine-vehicle.log

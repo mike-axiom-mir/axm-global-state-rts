@@ -123,11 +123,6 @@ test('primary command dock surfaces deterministic world objectives and can route
   await page.locator('[data-gameplay-action="context"]').click();
   await expect(page.locator('#inputStatus')).toContainText('selected-party driver');
 
-  // The deterministic active event may project to the convoy's current home landmark.
-  // That is not a travel command: fail closed rather than routing away or pretending
-  // the off-network event marker was reached. Move through the existing strategic
-  // controls to another real landmark, then prove the objective action routes back
-  // toward the tracked nearest landmark.
   if (await routeAction.isDisabled()) {
     await expect(routeStatus).toContainText('already at nearest landmark');
     const objectiveLandmarkId = await routeAction.getAttribute('data-destination-node-id');
@@ -163,5 +158,71 @@ test('primary command dock surfaces deterministic world objectives and can route
   await expect(routeStatus).toContainText('convoy is between landmarks');
 
   await page.screenshot({ path: 'test-results/global-state-rts-primary-strategic-world-objective.png', fullPage: true });
+  expect(failures, failures.join('\n')).toEqual([]);
+});
+
+test('bound world seat consumes the host-announced event instead of a browser-synthetic objective', async ({ page, request }) => {
+  const failures = captureRuntimeFailures(page);
+  const entered = await request.post('http://127.0.0.1:4174/api/world/enter/guest', {
+    data: {
+      sessionId: 'objective-host-sync-guest',
+      displayName: 'Objective Host Sync',
+      controllerKind: 'human'
+    }
+  });
+  expect(entered.ok()).toBe(true);
+  const enteredBody = await entered.json();
+  const participantId = enteredBody.participant.participantId;
+
+  const hostEvent = {
+    schema: 'axm.global-state-rts.world-event/v0.1',
+    id: 'world-event:host-sync-proof',
+    slotIndex: 4242,
+    kind: 'signal-beacon',
+    startsAtMs: 1_000_000,
+    endsAtMs: 2_800_000,
+    coordinate: { lat: 47.123, lon: -71.456 },
+    radiusM: 160,
+    visibility: 'global-announcement',
+    reward: { kind: 'temporary-intel-pulse-seconds', amount: 777 },
+    objective: { type: 'activate-and-hold' }
+  };
+
+  await page.route('**/api/world/events', async route => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        schema: 'axm.global-state-rts.world-event-http-api/v0.2',
+        encounterNowMs: 1_600_000,
+        events: [{
+          event: hostEvent,
+          authoritativeEncounter: false,
+          support: 'announced-deterministic-world-event-not-yet-host-authoritative-v0.1'
+        }]
+      })
+    });
+  });
+
+  const response = await page.goto('http://127.0.0.1:4174/game/?players=1', { waitUntil: 'networkidle' });
+  expect(response?.ok()).toBe(true);
+  await page.evaluate(async participantId => {
+    await window.__AXM_GLOBAL_STATE_RTS__.bindWorldParticipant({ seatId: 'seat-1', participantId });
+  }, participantId);
+
+  const objective = page.locator('#primaryWorldObjective');
+  const routeAction = page.locator('#primaryWorldObjectiveRoute');
+  const routeStatus = page.locator('#primaryWorldObjectiveRouteStatus');
+  await expect(objective).toContainText('world objective · host-active signal-beacon');
+  await expect(objective).toContainText('temporary-intel-pulse-seconds 777');
+  await expect(objective).toContainText('host-announced event; encounter authority not promoted for this kind');
+  await expect(objective).not.toContainText('king-of-hill');
+  await expect(objective).toHaveAttribute('data-state-scope', 'host-announced-event-browser-local-nearest-landmark-route-not-event-participation');
+  await expect(routeAction).toHaveAttribute('data-state-scope', 'browser-local-strategic-route-to-host-announced-event-nearest-landmark-not-event-participation');
+  await expect(routeStatus).toContainText('host-announced event');
+  await expect(routeStatus).toContainText('selected party needs one supported driven-vehicle mode');
+  expect(await routeAction.getAttribute('data-destination-node-id')).toBeTruthy();
+
+  await page.screenshot({ path: 'test-results/global-state-rts-host-announced-world-objective.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);
 });

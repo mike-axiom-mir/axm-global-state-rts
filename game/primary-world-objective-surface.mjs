@@ -7,12 +7,14 @@ import { buildWorldLandmarks } from '../src/world/world-landmarks.mjs';
 import { buildWorldTransportNetwork } from '../src/world/world-transport-network.mjs';
 import { planLandmarkRoute } from '../src/world/world-route-planner.mjs';
 import { createWorldScale, greatCircleAngleRad } from '../src/world/world-scale.mjs';
+import { createWorldBrowserClient } from '../src/session/world-browser-client.mjs';
 import { activeLocalStrategicGameplay } from '../src/sim/local-strategic-gameplay.mjs';
 
 const WORLD_SEED = 'primary-local-strategic-gameplay';
 const ROUTE_MAJOR_CITY_COUNT = 2;
 const ROUTE_REGIONAL_CITY_COUNT = 5;
 const ROUTE_MODES = new Set(['wheeled', 'tracked', 'rail']);
+const HOST_EVENT_REFRESH_MS = 2500;
 const root = document.getElementById('gameplaySurface');
 
 if (!root) throw new Error('missing #gameplaySurface mount for world objective surface');
@@ -24,6 +26,7 @@ const objectiveRouteLandmarks = buildWorldLandmarks({
 });
 const objectiveRouteNetwork = buildWorldTransportNetwork(objectiveRouteLandmarks);
 const objectiveRouteScale = createWorldScale();
+const worldClient = createWorldBrowserClient();
 
 function waitForRuntime(timeoutMs = 5000) {
   return new Promise((resolve, reject) => {
@@ -42,6 +45,11 @@ function waitForRuntime(timeoutMs = 5000) {
 
 const { bridge, strategic, anchor } = await waitForRuntime();
 const seatSelect = root.querySelector('#gameplaySeat');
+let hostEventBindingKey = null;
+let hostEventIndex = null;
+let hostEventError = null;
+let hostEventRefreshInFlight = null;
+let nextHostEventRefreshAt = 0;
 
 const cityIntel = document.createElement('div');
 cityIntel.id = 'primaryCityIntel';
@@ -102,6 +110,53 @@ function selectedStrategicState() {
   let party = null;
   try { party = bridge.describeSeatParty(seatId); } catch { party = null; }
   return strategic.snapshot(seatId, party?.selectedCrewIds || []);
+}
+
+function worldBindingForState(state) {
+  const seatId = state?.seatId || seatSelect?.value || 'seat-1';
+  try { return bridge.worldBinding(seatId); } catch { return null; }
+}
+
+function hostBindingKey(state) {
+  const binding = worldBindingForState(state);
+  return binding ? `${state?.seatId || seatSelect?.value || 'seat-1'}|${binding.participantId}` : null;
+}
+
+function maybeRefreshHostEvents(state) {
+  const key = hostBindingKey(state);
+  if (!key) {
+    hostEventBindingKey = null;
+    hostEventIndex = null;
+    hostEventError = null;
+    nextHostEventRefreshAt = 0;
+    return;
+  }
+
+  if (hostEventBindingKey !== key) {
+    hostEventBindingKey = key;
+    hostEventIndex = null;
+    hostEventError = null;
+    nextHostEventRefreshAt = 0;
+  }
+
+  const now = performance.now();
+  if (hostEventRefreshInFlight || now < nextHostEventRefreshAt) return;
+  nextHostEventRefreshAt = now + HOST_EVENT_REFRESH_MS;
+  const requestKey = key;
+  hostEventRefreshInFlight = worldClient.worldEvents()
+    .then(index => {
+      if (hostEventBindingKey !== requestKey) return;
+      hostEventIndex = index;
+      hostEventError = null;
+    })
+    .catch(error => {
+      if (hostEventBindingKey !== requestKey) return;
+      hostEventError = String(error?.message || error);
+    })
+    .finally(() => {
+      hostEventRefreshInFlight = null;
+      render();
+    });
 }
 
 function cityIntelText(state) {
@@ -225,15 +280,19 @@ function objectiveRouteText(event, state) {
   return objectiveRoutePlan(event, state).description;
 }
 
-function objectiveText(event, nowMs, state, prefix = 'active') {
+function objectiveText(event, nowMs, state, prefix = 'active', source = 'browser-local', authoritativeEncounter = false) {
   const objective = event.objective?.type || 'unknown-objective';
   const hold = Number.isFinite(event.objective?.holdSeconds) ? ` · hold ${finiteRound(event.objective.holdSeconds)}s` : '';
   const reward = event.reward ? `${event.reward.kind} ${finiteRound(event.reward.amount)}` : 'none';
-  const minutes = prefix === 'active'
+  const isActive = prefix !== 'next';
+  const minutes = isActive
     ? Math.max(0, Math.ceil((event.endsAtMs - nowMs) / 60000))
     : Math.max(0, Math.ceil((event.startsAtMs - nowMs) / 60000));
-  const timing = prefix === 'active' ? `${minutes}m remaining` : `starts in ${minutes}m`;
-  return `world objective · ${prefix} ${event.kind} · ${objective}${hold} · reward ${reward} · ${timing} · ${objectiveRouteText(event, state)}`;
+  const timing = isActive ? `${minutes}m remaining` : `starts in ${minutes}m`;
+  const authority = source === 'host'
+    ? ` · ${authoritativeEncounter ? 'host encounter authority available' : 'host-announced event; encounter authority not promoted for this kind'}`
+    : '';
+  return `world objective · ${prefix} ${event.kind} · ${objective}${hold} · reward ${reward} · ${timing}${authority} · ${objectiveRouteText(event, state)}`;
 }
 
 function nextDeterministicEvent(nowMs) {
@@ -246,17 +305,38 @@ function nextDeterministicEvent(nowMs) {
 }
 
 function selectedWorldObjective(state) {
+  const binding = worldBindingForState(state);
+  if (binding) {
+    const key = hostBindingKey(state);
+    if (key !== hostEventBindingKey || !hostEventIndex) return null;
+    const described = Array.isArray(hostEventIndex.events) ? hostEventIndex.events[0] : null;
+    if (!described?.event) return null;
+    return Object.freeze({
+      event: described.event,
+      nowMs: Math.max(0, Number(hostEventIndex.encounterNowMs) || 0),
+      prefix: 'host-active',
+      source: 'host',
+      authoritativeEncounter: Boolean(described.authoritativeEncounter)
+    });
+  }
+
   const nowMs = Math.max(0, Number(state?.strategicNowMs) || 0);
   const active = activeWorldEvents(nowMs, { worldSeed: WORLD_SEED });
-  if (active.length) return Object.freeze({ event: active[0], nowMs, prefix: 'active' });
+  if (active.length) return Object.freeze({ event: active[0], nowMs, prefix: 'active', source: 'browser-local', authoritativeEncounter: false });
   const next = nextDeterministicEvent(nowMs);
-  if (next) return Object.freeze({ event: next, nowMs, prefix: 'next' });
+  if (next) return Object.freeze({ event: next, nowMs, prefix: 'next', source: 'browser-local', authoritativeEncounter: false });
   return null;
 }
 
 function worldObjectiveText(state) {
+  const binding = worldBindingForState(state);
   const selected = selectedWorldObjective(state);
-  if (selected) return objectiveText(selected.event, selected.nowMs, state, selected.prefix);
+  if (selected) return objectiveText(selected.event, selected.nowMs, state, selected.prefix, selected.source, selected.authoritativeEncounter);
+  if (binding) {
+    if (hostEventError) return `world objective · host event read unavailable · ${hostEventError} · browser-synthetic event suppressed for bound participant`;
+    if (!hostEventIndex) return 'world objective · loading host-announced events · browser-synthetic event suppressed for bound participant';
+    return 'world objective · no active host-announced event · browser-synthetic event suppressed for bound participant';
+  }
   return 'world objective · no deterministic event in the next eight slots · no route projection or route action to invent';
 }
 
@@ -304,15 +384,18 @@ function renderObjectiveRouteAction(state) {
   if (!selected) {
     objectiveRouteAction.disabled = true;
     objectiveRouteAction.dataset.destinationNodeId = '';
-    objectiveRouteStatus.textContent = 'objective convoy action · unavailable · no deterministic event exists in the next eight slots';
+    objectiveRouteStatus.textContent = worldBindingForState(state)
+      ? 'objective convoy action · unavailable · no current host-announced event route target'
+      : 'objective convoy action · unavailable · no deterministic event exists in the next eight slots';
     return;
   }
   const plan = objectiveRoutePlan(selected.event, state);
   objectiveRouteAction.disabled = !plan.ready;
   objectiveRouteAction.dataset.destinationNodeId = plan.landmarkId || '';
+  const source = selected.source === 'host' ? 'host-announced event' : 'browser-local deterministic event';
   objectiveRouteStatus.textContent = plan.ready
-    ? `objective convoy action · ready · depart ${plan.originNodeId} → ${plan.landmarkId} through the existing ${plan.mode} route authority · exact event marker, join, claim, and reward remain unpromoted`
-    : `objective convoy action · blocked · ${plan.actionReason}`;
+    ? `objective convoy action · ready · ${source} · depart ${plan.originNodeId} → ${plan.landmarkId} through the existing ${plan.mode} route authority · exact event marker, join, claim, and reward remain unpromoted`
+    : `objective convoy action · blocked · ${source} · ${plan.actionReason}`;
 }
 
 objectiveRouteAction.addEventListener('click', () => {
@@ -335,8 +418,9 @@ objectiveRouteAction.addEventListener('click', () => {
   }
 
   const result = liveStrategic.departToLandmark(plan.landmarkId, party.selectedCrewIds);
+  const source = selected.source === 'host' ? 'host-announced event' : 'browser-local deterministic event';
   objectiveRouteStatus.textContent = result?.accepted
-    ? `objective convoy action · departed toward nearest landmark ${plan.landmarkId} · existing Strategic Route controls remain open for bounded travel · exact event marker is still off-network`
+    ? `objective convoy action · ${source} · departed toward nearest landmark ${plan.landmarkId} · existing Strategic Route controls remain open for bounded travel · exact event marker is still off-network`
     : `objective convoy action · blocked by existing strategic authority · ${result?.reason || 'unknown-reason'}`;
   if (result?.accepted) objectiveRouteAction.disabled = true;
 });
@@ -351,6 +435,17 @@ function render() {
     objectiveRouteStatus.textContent = 'objective convoy action · strategic state unavailable';
     return;
   }
+
+  maybeRefreshHostEvents(state);
+  const bound = Boolean(worldBindingForState(state));
+  worldObjective.dataset.stateScope = bound
+    ? 'host-announced-event-browser-local-nearest-landmark-route-not-event-participation'
+    : 'deterministic-browser-nearest-landmark-route-action-not-event-participation';
+  objectiveRouteAction.dataset.stateScope = bound
+    ? 'browser-local-strategic-route-to-host-announced-event-nearest-landmark-not-event-participation'
+    : 'browser-local-strategic-route-to-nearest-event-landmark-not-event-participation';
+  objectiveRouteStatus.dataset.stateScope = objectiveRouteAction.dataset.stateScope;
+
   const nextCityText = cityIntelText(state);
   const nextObjectiveText = worldObjectiveText(state);
   const nextThreatText = worldThreatText(state);

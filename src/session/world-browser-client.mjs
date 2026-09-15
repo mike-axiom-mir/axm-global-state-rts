@@ -79,6 +79,14 @@ export class WorldBrowserClient {
     return this.#request('GET', '/api/world/meta');
   }
 
+  worldEvents() {
+    return this.#request('GET', '/api/world/events');
+  }
+
+  worldEvent(eventId) {
+    return this.#request('GET', `/api/world/events/${encodeURIComponent(nonEmpty(eventId, 'eventId'))}`);
+  }
+
   participant(participantId) {
     return this.#request('GET', '/api/world/participant', { query: { participantId: nonEmpty(participantId, 'participantId') } });
   }

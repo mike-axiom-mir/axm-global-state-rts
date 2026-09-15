@@ -56,6 +56,7 @@ const strategicActions = document.createElement('div');
 strategicActions.id = 'primaryStrategicActions';
 strategicActions.className = 'gameplay-actions';
 strategicActions.hidden = true;
+strategicActions.style.display = 'none';
 actions.insertAdjacentElement('afterend', strategicActions);
 
 let renderedRouteSignature = '';
@@ -255,13 +256,17 @@ function render() {
 
   if (state.strategic.menuOpen) {
     actions.hidden = true;
+    actions.style.display = 'none';
     strategicActions.hidden = false;
+    strategicActions.style.removeProperty('display');
     renderRouteActions(state);
     return;
   }
 
   actions.hidden = false;
+  actions.style.removeProperty('display');
   strategicActions.hidden = true;
+  strategicActions.style.display = 'none';
   renderedRouteSignature = '';
 
   if (state.civilization?.menuKind === 'vehicle') ensureStrategicOpenControl(state);

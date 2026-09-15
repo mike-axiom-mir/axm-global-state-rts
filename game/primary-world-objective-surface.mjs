@@ -10,9 +10,9 @@ import { createWorldScale, greatCircleAngleRad } from '../src/world/world-scale.
 import { createWorldBrowserClient } from '../src/session/world-browser-client.mjs';
 import { activeLocalStrategicGameplay } from '../src/sim/local-strategic-gameplay.mjs';
 
-const WORLD_SEED = 'primary-local-strategic-gameplay';
-const ROUTE_MAJOR_CITY_COUNT = 2;
-const ROUTE_REGIONAL_CITY_COUNT = 5;
+const WORLD_SEED = 'axm-global-state-rts-v0';
+const ROUTE_MAJOR_CITY_COUNT = 3;
+const ROUTE_REGIONAL_CITY_COUNT = 24;
 const ROUTE_MODES = new Set(['wheeled', 'tracked', 'rail']);
 const HOST_EVENT_REFRESH_MS = 2500;
 const root = document.getElementById('gameplaySurface');

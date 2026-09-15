@@ -62,14 +62,14 @@ async function gatherThenIdle(page) {
       steps += 1;
       snapshot = simulation.debugCanonicalSnapshot();
       const emptyHands = snapshot.crew.every(crew => Number(crew.carrying || 0) <= 1e-9);
-      if (snapshot.storage.scrap >= 300 && emptyHands) break;
+      if (snapshot.storage.scrap >= 400 && emptyHands) break;
     }
     return {
       scrap: snapshot.storage.scrap,
       emptyHands: snapshot.crew.every(crew => Number(crew.carrying || 0) <= 1e-9)
     };
   });
-  expect(gathered.scrap).toBeGreaterThanOrEqual(300);
+  expect(gathered.scrap).toBeGreaterThanOrEqual(400);
   expect(gathered.emptyHands).toBe(true);
 
   await page.locator('[data-gameplay-action="explore"]').click();
@@ -135,6 +135,7 @@ test('selected-party convoy loads and unloads physical scrap through command-dec
   expect(civilization.vehicles.vehicles[0].cargo.scrap).toBeCloseTo(100, 6);
   await expect(page.locator('#gameplaySummary')).toContainText('100/700 cargo');
   await expect(page.locator('#gameplaySummary')).toContainText('strategic departure handoff pending');
+  await page.screenshot({ path: 'test-results/global-state-rts-convoy-supply-loaded.png', fullPage: true });
 
   await pulse(page, 14); // D-pad left: unload selected-party convoy supply.
   await expect(page.locator('#inputStatus')).toContainText('unload-convoy-supply');

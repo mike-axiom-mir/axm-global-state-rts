@@ -6,6 +6,7 @@ import { createCombatEquipmentLedger } from './combat-equipment.mjs';
 import { createHourlyDropCache } from './hourly-drop-cache.mjs';
 import { createMercenaryReserve } from './mercenary-reserve.mjs';
 import { createRunEconomy } from './run-economy.mjs';
+import { createVehicleFabric } from './vehicle-fabric.mjs';
 
 export const PLAYER_PROGRESSION_SCHEMA = 'axm.global-state-rts.player-progression/v0.2';
 export const CIVILIZATION_RUN_SCHEMA = 'axm.global-state-rts.civilization-run/v0.2';
@@ -97,6 +98,7 @@ export class CivilizationRun {
     this.stockpile = createCivilizationStockpile(startingResources);
     this.manpower = createCivilizationManpower({ civilizationId: civ, crewCount });
     this.equipment = createCombatEquipmentLedger({ civilizationId: civ, stockpile: this.stockpile, manpower: this.manpower, blueprintLedger, runId: id });
+    this.vehicles = createVehicleFabric({ civilizationId: civ, stockpile: this.stockpile, manpower: this.manpower, blueprintLedger, runId: id });
     this.food = createCivilizationFoodSystem({ policy: foodPolicy });
     this.economy = createRunEconomy({ foodPerDestroyedMaterial });
     this.startingItems = itemCounts(startingItems);
@@ -140,6 +142,13 @@ export class CivilizationRun {
     return result;
   }
 
+  constructVehicle(definitionId, options = {}) {
+    this.#assertOpen();
+    const result = this.vehicles.construct(definitionId, options);
+    if (result.accepted) this.revision += 1;
+    return result;
+  }
+
   assignVehicle(unitId, options = {}) { this.#assertOpen(); const result = this.manpower.assignVehicle(unitId, options); if (result.accepted) this.revision += 1; return result; }
 
   craftWeapon(weaponId, count = 1, options = {}) { this.#assertOpen(); const result = this.equipment.craft(weaponId, count, options); if (result.accepted) this.revision += 1; return result; }
@@ -175,7 +184,7 @@ export class CivilizationRun {
   snapshot() {
     return Object.freeze({
       schema: CIVILIZATION_RUN_SCHEMA, runId: this.runId, civilizationId: this.civilizationId, revision: this.revision, closed: this.closed,
-      stockpile: this.stockpile.snapshot(), food: this.food.snapshot(), manpower: this.manpower.snapshot(), equipment: this.equipment.snapshot(),
+      stockpile: this.stockpile.snapshot(), food: this.food.snapshot(), manpower: this.manpower.snapshot(), equipment: this.equipment.snapshot(), vehicles: this.vehicles.snapshot(),
       blueprints: this.blueprints.snapshot({ runId: this.runId }), startingItems: frozenItemCounts(this.startingItems), mercenaryDeployment: this.mercenaryDeployment,
       economy: this.economy.snapshot()
     });

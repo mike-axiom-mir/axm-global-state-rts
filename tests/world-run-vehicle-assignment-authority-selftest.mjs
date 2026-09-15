@@ -108,7 +108,7 @@ try {
     assert.equal(result.body.mutationPersistence.persisted, true);
     assert.equal(result.body.mutationPersistence.mutation.action, 'assign-vehicle');
     assert.deepEqual(result.body.mutationPersistence.mutation.payload, { unitId: run.unitId, vehicleId, vehicleClass: 'light-vehicle' });
-    assert.match(result.body.truthBoundary, /does-not-prove-vehicle-existence-ownership-or-production/);
+    assert.match(result.body.truthBoundary, /does-not-itself-prove-vehicle-existence-ownership-or-production/);
     assert.equal(result.body.humanMachineParity, 'same-world-account-command-path-action-budget-and-durable-mutation-order-regardless-of-controller-kind');
   }
 

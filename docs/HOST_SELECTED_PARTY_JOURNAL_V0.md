@@ -1,12 +1,12 @@
 # Host-selected-party LOCAL journal v0
 
-Status: **EXPERIMENTAL / AUTHORITY-CONVERGENCE PREREQUISITE**
+Status: **EXPERIMENTAL / AUTHORITY-CONVERGENCE FOUNDATION**
 
 ## Purpose
 
-The playable LOCAL RTS already lets a player split Crew into persistent parties and issue gather, repair, and explore orders to the selected party. The durable host LOCAL command journal previously reproduced the same action types, but only as whole-seat orders because its physical intent did not carry the selected Crew ids.
+The playable LOCAL RTS lets a player split Crew into persistent parties and issue gather, repair, and explore orders to the selected party. The durable host LOCAL command journal originally reproduced the same action types only as whole-seat orders because its physical intent did not carry the selected Crew ids.
 
-That mismatch prevented the player-facing party layer from moving onto the existing host journal without changing gameplay semantics. This rung closes that mismatch instead of silently widening a selected-party order into an all-Crew host order.
+That mismatch prevented the player-facing party layer from moving onto the existing host journal without changing gameplay semantics. This foundation closes that mismatch instead of silently widening a selected-party order into an all-Crew host order.
 
 ## Additive physical intent
 
@@ -17,7 +17,7 @@ The existing LOCAL outcome intent keeps its v0.1 schema and its legacy four-key 
 - `cursorZM`
 - `stepCount`
 
-A fifth field, `crewIds`, is now optional. When supplied it is a bounded physical selector for the existing LOCAL simulation command. Crew ids are validated as non-empty, duplicate-free strings and canonicalized into sorted order before evidence is produced.
+A fifth field, `crewIds`, is optional. When supplied it is a bounded physical selector for the existing LOCAL simulation command. Crew ids are validated as non-empty, duplicate-free strings and canonicalized into sorted order before evidence is produced.
 
 When `crewIds` is omitted, the normalized physical intent keeps the old four-key shape. This deliberately preserves replay/digest compatibility for already-persisted journal entries rather than silently rewriting old evidence with `crewIds: null`.
 
@@ -25,7 +25,7 @@ Unknown Crew ids still fail through the existing LOCAL simulation validation. An
 
 ## Durable journal and checkpoint replay
 
-`LocalRegionCommandJournalAuthority` now carries optional selected-Crew scope through:
+`LocalRegionCommandJournalAuthority` carries optional selected-Crew scope through:
 
 1. intent normalization;
 2. physical command digesting;
@@ -37,35 +37,39 @@ The browser checkpoint replay/adoption path also replays the recorded `crewIds`.
 
 Human and machine controller identity remains separate from the physical command digest. Equal selected Crew, world hour, cursor, action, and step count must reproduce equal physical state regardless of controller kind.
 
-## Player-facing gather bridge
+## Player-facing host controls
 
-The existing explicit host gather control now reads the shell's current selected party. `Journal selected-party gather` submits those exact selected Crew ids with the host-bound gather intent.
+The explicit host gather, repair, and explore controls read the shell's current selected party and submit those exact selected Crew ids with the host-bound intent. They remain available as diagnostic/manual authority controls.
 
-The host result and the later explicit checkpoint adoption both retain that Crew scope. The browser does not silently adopt the host result; the existing `Adopt host checkpoint` action remains a separate user-visible choice.
+The newer bound-primary integration rung described in `BOUND_PRIMARY_HOST_MACROS_V0.md` also reuses this exact journal path for ordinary admitted gather/repair/explore controls when a shared-world-bound seat is already in LOCAL RTS and no existing menu owns the input.
 
-This is deliberate agency and continuity behavior: a host command is not automatically replayed or applied to a client after a revision conflict or after host acceptance.
+For those normal bound controls, host acceptance is followed by the existing deterministic checkpoint-adoption path. The requested browser macro is intercepted, so the same input is not also admitted as a second browser-local gather/repair/explore order. Host rejection, a missing authority bridge, an in-flight host command, or failed checkpoint adoption does not silently fall back to browser-local mutation.
+
+Local-only seats continue to use the existing browser-local macro path, and party/build/production/vehicle/combat menu inputs remain owned by their existing gameplay layers.
 
 ## Truth boundary
 
-This PR does **not** make ordinary keyboard/controller LOCAL macros host-authoritative. The main gather/repair/explore gameplay path still mutates the browser-local simulation first. The selected-party host route remains the explicit host-journal surface beside it.
+The host-selected-party journal and bound-primary route do **not** make the entire LOCAL RTS host-authoritative. They promote only a bounded gather/repair/explore command plus the named deterministic checkpoint that is explicitly adopted after host acceptance.
 
-This PR also does not make party membership itself host-persistent. The browser supplies selected Crew ids as part of the physical command; the host validates those ids against the deterministic LOCAL Crew roster and journals their physical effect, but it does not yet own the higher-level party registry/split/merge history.
+The host macro currently advances a bounded 160 deterministic journal steps. Ordinary later browser ticks are still browser-local, as are party split/merge membership, construction, aggregate production, vehicles, convoy/strategic travel, city pressure, combat, casualties, and civilization-death causality unless separately promoted.
 
-No construction, production, vehicle, convoy, combat, casualty, civilization-death, global-economy, or shared-world state is promoted by this change. No production hosting, multi-host scale, network security, latency, performance, visual quality, balance, or animation completion is claimed.
+Party membership itself is not host-persistent. The browser supplies selected Crew ids as part of the physical command; the host validates those ids against the deterministic LOCAL Crew roster and journals their physical effect, but it does not own the higher-level party registry/split/merge history.
 
-## Evidence required before merge
+No global-economy authority is implied. The active-run bootstrap/checkpoint provenance rules still prevent admitted starting value from being reclassified as newly earned verified salvage.
 
-The exact candidate head must pass:
+No production hosting, multi-host scale, network security, latency, performance, visual quality, balance, or animation completion is claimed. The 1–4 seat shell remains per-client access to the shared world, not a global-world player cap.
 
-- full repository deterministic/source tests;
-- selected-party one-shot host replay with physical/outcome digest distinction from all-Crew replay;
-- selected-party durable journal replay across restart;
-- selected-party checkpoint replay/adoption equivalence;
-- legacy four-key journal compatibility without adding `crewIds` to old canonical intent shape;
-- real Chromium world-account entry, LOCAL party split, selected-party host gather, host journal evidence, and explicit checkpoint adoption;
-- existing host local-seat checkpoint regression;
-- existing world-entry and controller regressions triggered by the affected paths.
+## Evidence
+
+The selected-party foundation remains covered by deterministic one-shot/restart/checkpoint replay tests and real Chromium selected-party host-journal adoption evidence.
+
+The bound-primary integration adds:
+
+- `tests/bound-primary-host-macro-selftest.mjs` for local-only preservation, existing-menu preservation, human/machine route parity, rejection behavior, missing-authority fail-closed behavior, and in-flight suppression;
+- `tests/browser/bound-primary-host-macros.spec.js` for ordinary bound gather/repair/explore controls traversing the real browser shell, durable host journal, and checkpoint adoption path.
+
+The exact integration candidate must remain green in those focused gates plus the existing controller/source regressions triggered by `src/session/local-seat-runtime.mjs`.
 
 ## Next convergence rung
 
-With selected-party physical semantics available on the host journal, the next safe integration target is the primary playable gather/repair/explore input path: for a bound world participant, submit the selected-party macro through host authority and adopt the resulting checkpoint without creating a second simulation rule set. That step must preserve explicit revision/conflict behavior and must not silently fall back to browser-only authority when a host command is rejected.
+After normal bound gather/repair/explore controls share one host route, the next useful authority work is not another input surface. It is to extend compatible provenance-bearing host authority into the next actual lifecycle gap—construction/production/vehicles/strategic travel or combat/death—without widening claims beyond what deterministic replay and browser evidence prove.

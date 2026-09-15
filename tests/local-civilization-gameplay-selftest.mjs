@@ -11,8 +11,11 @@ let state = gameplay.snapshot();
 assert.equal(state.stateScope, 'browser-local-not-host-persistent');
 assert.equal(state.resources.scrap, 100, 'starter scrap is placed in the same physical LOCAL storage used by gather/repair');
 assert.equal(state.resources.timber, 260, 'small browser-local timber bootstrap makes the first structural choices immediately playable');
+assert.equal(state.resources['industrial-metal'], 25, 'bounded browser-local metal bootstrap unlocks the existing no-blueprint utility-hauler path');
 assert.equal(simulation.snapshot().storage.scrap, 100);
 assert.equal(state.selectedBuild.id, 'building:shallow-mine');
+assert.equal(state.vehicles.vehicleCount, 0);
+assert.equal(state.vehicles.selectedPlan.id, 'vehicle:utility-hauler');
 
 const openBuild = gameplay.handleAction('ui-right');
 assert.equal(openBuild.accepted, true);
@@ -68,4 +71,54 @@ assert.match(gameplay.snapshot().lastOutcome.message, /insufficient-resources/);
 assert.deepEqual(gameplay.snapshot().resources, beforeBlockedResources, 'rejected construction must not debit any material');
 assert.equal(gameplay.snapshot().structures.length, 1, 'rejected construction does not create a placeholder structure');
 
-console.log('browser-local construction / aggregate production gameplay selftest: PASS');
+const vehicleSimulation = createLocalRegionSimulation(createStarterRegion('seat-2'));
+const vehicleGameplay = createLocalCivilizationGameplay(vehicleSimulation, {
+  seatId: 'seat-2',
+  starterMaterials: { scrap: 600, timber: 300, 'industrial-metal': 50 }
+});
+const vehicleCrewIds = vehicleSimulation.snapshot().crew.map(crew => crew.id);
+
+assert.equal(vehicleGameplay.handleAction('ui-up').accepted, true, 'D-pad up semantic opens the vehicle menu when no civilization menu is active');
+assert.equal(vehicleGameplay.snapshot().menuKind, 'vehicle');
+assert.equal(vehicleGameplay.snapshot().vehicles.selectedPlan.id, 'vehicle:utility-hauler');
+
+let prepared = vehicleGameplay.handleAction('party-menu', { selectedCrewIds: vehicleCrewIds });
+assert.equal(prepared.accepted, true);
+assert.equal(prepared.prepared, 1, 'driver preparation is a selected-party macro command, not direct unit micromanagement');
+assert.equal(vehicleGameplay.snapshot().manpower.roleCounts.citizen, 1);
+
+const vehicleOne = vehicleGameplay.handleAction('confirm', { cursorXM: 120, cursorZM: 140, selectedCrewIds: vehicleCrewIds });
+assert.equal(vehicleOne.accepted, true);
+assert.equal(vehicleOne.vehicle.definitionId, 'vehicle:utility-hauler');
+const vehicleTwo = vehicleGameplay.handleAction('confirm', { cursorXM: 160, cursorZM: 140, selectedCrewIds: vehicleCrewIds });
+assert.equal(vehicleTwo.accepted, true);
+assert.equal(vehicleGameplay.snapshot().vehicles.vehicleCount, 2);
+
+prepared = vehicleGameplay.handleAction('party-menu', { selectedCrewIds: vehicleCrewIds });
+assert.equal(prepared.accepted, true);
+assert.equal(prepared.prepared, 1, 'preparing again fills the fleet-level driver shortage rather than preparing every Crew member');
+
+const fleetAssigned = vehicleGameplay.handleAction('context', { selectedCrewIds: vehicleCrewIds });
+assert.equal(fleetAssigned.accepted, true);
+assert.equal(fleetAssigned.assigned, 2, 'one aggregate selected-party command assigns all currently fillable uncrewed vehicles');
+state = vehicleGameplay.snapshot();
+assert.equal(state.vehicles.driverCount, 2);
+assert.equal(state.vehicles.uncrewedCount, 0);
+assert.equal(state.vehicles.vehicles.every(vehicle => vehicle.driverUnitId), true);
+
+const fleetReleased = vehicleGameplay.handleAction('context', { selectedCrewIds: vehicleCrewIds });
+assert.equal(fleetReleased.accepted, true);
+assert.equal(fleetReleased.released, 2, 'the same macro control releases every selected-party driver without per-vehicle clicks');
+assert.equal(vehicleGameplay.snapshot().vehicles.driverCount, 0);
+
+const beforeBlueprintBlocked = vehicleGameplay.snapshot().resources;
+assert.equal(vehicleGameplay.handleAction('ui-down').accepted, true);
+assert.equal(vehicleGameplay.snapshot().vehicles.selectedPlan.id, 'vehicle:scrap-buggy');
+const blockedVehicle = vehicleGameplay.handleAction('confirm', { cursorXM: 200, cursorZM: 140, selectedCrewIds: vehicleCrewIds });
+assert.equal(blockedVehicle.accepted, false);
+assert.equal(blockedVehicle.reason, 'required-blueprint-unavailable');
+assert.deepEqual(vehicleGameplay.snapshot().resources, beforeBlueprintBlocked, 'blueprint-gated vehicle rejection cannot debit resources');
+assert.equal(vehicleGameplay.handleAction('cancel').accepted, true);
+assert.equal(vehicleGameplay.snapshot().menuOpen, false);
+
+console.log('browser-local construction / aggregate production / vehicle gameplay selftest: PASS');

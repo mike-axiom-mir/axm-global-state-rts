@@ -10,8 +10,8 @@ import {
 import { DEFAULT_BUILDING_CATALOG } from '../src/sim/construction-economy.mjs';
 import { createStarterRegion } from '../src/world/starter-region.mjs';
 
-assert.equal(CREATION_MACHINE_DEFENSE_SET_SCHEMA, 'axm.global-state-rts.creation-machine-defense-static-set/v0.2');
-assert.equal(CREATION_MACHINE_DEFENSE_SET.length, 2);
+assert.equal(CREATION_MACHINE_DEFENSE_SET_SCHEMA, 'axm.global-state-rts.creation-machine-defense-static-set/v0.3');
+assert.equal(CREATION_MACHINE_DEFENSE_SET.length, 3);
 
 const spotlight = creationMachineDefenseSetEntry('defense-light-tower-a');
 assert.ok(spotlight);
@@ -43,11 +43,27 @@ assert.equal(watchtower.fallback.replacementRequiresExplicitRuntimeCall, true);
 assert.equal(watchtower.collision.footprint, null);
 assert.equal(watchtower.animation.status, 'HANDOFF_LATER');
 assert.equal(creationMachineDefenseCandidate(watchtower.candidateId), watchtower);
+
+const utilityTower = creationMachineDefenseSetEntry('defense-light-tower-a', 'light-tower');
+assert.ok(utilityTower);
+assert.equal(utilityTower.sourceAsset, 'light-tower');
+assert.equal(utilityTower.sourceFamily, 'utilities', 'preserve Creation Machine family provenance instead of rewriting it');
+assert.equal(utilityTower.gameplayTarget, spotlight.gameplayTarget);
+assert.equal(utilityTower.constructionDefinitionId, spotlight.constructionDefinitionId);
+assert.equal(utilityTower.targetKind, 'preview-fixture');
+assert.equal(utilityTower.candidateRole, 'explicit-alternate-static-visual-candidate');
+assert.equal(utilityTower.candidateId, 'defense-light-tower-a:light-tower');
+assert.equal(utilityTower.runtimeTrial.variant, 'far');
+assert.equal(utilityTower.runtimeTrial.automaticLodSelection, false);
+assert.equal(utilityTower.fallback.replacementRequiresExplicitRuntimeCall, true);
+assert.equal(utilityTower.collision.footprint, null);
+assert.equal(utilityTower.animation.status, 'HANDOFF_LATER');
+assert.equal(creationMachineDefenseCandidate(utilityTower.candidateId), utilityTower);
 assert.equal(creationMachineDefenseSetEntry('defense-light-tower-a', 'not-a-real-source'), null);
 
 const plan = creationMachineDefenseTrialPlan();
-assert.equal(plan.length, 2);
-assert.deepEqual(plan.map(candidate => candidate.sourceAsset), ['spotlight-tower', 'crane-section-watchtower']);
+assert.equal(plan.length, 3);
+assert.deepEqual(plan.map(candidate => candidate.sourceAsset), ['spotlight-tower', 'crane-section-watchtower', 'light-tower']);
 for (const candidate of plan) {
   assert.equal(candidate.stableAssetId, 'defense-light-tower-a');
   assert.equal(candidate.constructionDefinitionId, 'building:light-tower');
@@ -77,6 +93,10 @@ assert.match(
   sourceIndex,
   /^crane-section-watchtower,defenses,assets\/crane-section-watchtower\/crane-section-watchtower\.gltf,assets\/crane-section-watchtower\/crane-section-watchtower-lod1\.gltf,False,False$/m
 );
+assert.match(
+  sourceIndex,
+  /^light-tower,utilities,assets\/light-tower\/light-tower\.gltf,assets\/light-tower\/light-tower-lod1\.gltf,False,False$/m
+);
 
 const sourceReadme = fs.readFileSync(new URL('../assets/creation-machine/README.md', import.meta.url), 'utf8');
 assert.match(sourceReadme, /83 assets/);
@@ -86,7 +106,7 @@ console.log(JSON.stringify({
   schema: CREATION_MACHINE_DEFENSE_SET_SCHEMA,
   status: 'PASS',
   stableAssetId: spotlight.stableAssetId,
-  candidates: plan.map(candidate => ({ candidateId: candidate.candidateId, sourceAsset: candidate.sourceAsset })),
+  candidates: plan.map(candidate => ({ candidateId: candidate.candidateId, sourceAsset: candidate.sourceAsset, sourceFamily: candidate.sourceFamily })),
   gameplayTarget: spotlight.gameplayTarget,
   constructionDefinitionId: spotlight.constructionDefinitionId,
   runtimeVariant: spotlight.runtimeTrial.variant,

@@ -167,6 +167,7 @@ try {
     'license-unit-vehicle',
     'construct-vehicle',
     'assign-vehicle',
+    'unassign-vehicle',
     'craft-weapon',
     'equip-unit-weapon',
     'close-active-run'
@@ -178,6 +179,7 @@ try {
     'license-unit-vehicle',
     'construct-vehicle',
     'assign-vehicle',
+    'unassign-vehicle',
     'craft-weapon',
     'equip-unit-weapon',
     'close-active-run'

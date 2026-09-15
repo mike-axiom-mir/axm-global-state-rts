@@ -29,11 +29,33 @@ function enterAccount(api, { accountId, controllerKind }) {
   return result.body.participant;
 }
 
+function cloneJson(value) {
+  return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
+}
+
 const event = firstKingOfHillEvent();
 const epochMs = 5_000_000;
 let encounterNowMs = event.startsAtMs + 1_000;
 let hostNowMs = epochMs + encounterNowMs;
-const authority = createWorldSessionAuthority({ worldEpochMs: epochMs, store: createMemoryWorldJournalStore() });
+let persistedAccounts = [];
+const accountStore = {
+  kind: 'memory-test-world-account-store',
+  readAll() {
+    return cloneJson(persistedAccounts);
+  },
+  replaceAll(entries) {
+    persistedAccounts = cloneJson(entries);
+    return Object.freeze({ written: persistedAccounts.length });
+  },
+  meta() {
+    return Object.freeze({ kind: this.kind, count: persistedAccounts.length });
+  }
+};
+const authority = createWorldSessionAuthority({
+  worldEpochMs: epochMs,
+  store: createMemoryWorldJournalStore(),
+  accountStore
+});
 const baseApi = createWorldHttpApiService({ authority, writeMode: 'dev', clock: () => hostNowMs });
 const eventStores = new Map();
 const storeFactory = worldEvent => {
@@ -63,11 +85,13 @@ assert.equal(guestEntry.status, 200);
 const index = api.handle({ method: 'GET', pathname: '/api/world/events' });
 assert.equal(index.status, 200);
 assert.equal(index.body.rules.humanMachineParity, 'same-world-account-command-path-and-100-actions-per-rolling-60-seconds-gate');
-assert.equal(index.body.rules.rewardApplication, 'next-drop-cache-bonus-is-durable-entitlement-evidence-only-not-yet-consumed');
+assert.equal(index.body.rules.rewardApplication, 'supported-next-drop-cache-bonus-outcomes-are-applied-once-to-winner-world-account-pending-next-drop-rewards');
+assert.equal(index.body.rules.rewardAdmission, 'host-derived-reward-consequence-does-not-consume-participant-apm-human-machine-identical');
 const indexed = index.body.events.find(item => item.event.id === event.id);
 assert.ok(indexed, 'deterministic active event is exposed through the shared-world HTTP surface');
 assert.equal(indexed.authoritativeEncounter, true);
 assert.equal(indexed.outcome, null);
+assert.equal(indexed.outcomeApplication, null);
 
 const guestDenied = api.handle({
   method: 'POST',
@@ -128,7 +152,25 @@ assert.equal(wonStatus.body.encounter.contest.winnerId, human.participantId);
 assert.equal(wonStatus.body.outcome.winnerParticipantId, human.participantId);
 assert.deepEqual(wonStatus.body.outcome.reward, event.reward);
 assert.equal(wonStatus.body.outcome.reward.kind, 'next-drop-cache-bonus');
+assert.equal(wonStatus.body.outcomeApplication.applied, true);
+assert.equal(wonStatus.body.outcomeApplication.receipt.amount, event.reward.amount);
 assert.equal(eventStores.get('__world-event-outcomes__').readAll().length, 1, 'winner consequence is durably journaled once');
+
+const humanAfterWin = authority.participant(human.participantId);
+const machineAfterWin = authority.participant(machine.participantId);
+assert.equal(humanAfterWin.dropCache.appliedWorldEventBonuses.length, 1, 'winner carries one idempotent event receipt');
+assert.deepEqual(humanAfterWin.dropCache.appliedWorldEventBonuses[0], {
+  eventId: event.id,
+  rewardKind: 'next-drop-cache-bonus',
+  amount: event.reward.amount
+});
+assert.equal(humanAfterWin.dropCache.pendingNextDropRewards.openedCratesContributed, event.reward.amount, 'event cache bonus is materialized into next-drop rewards');
+assert.equal(humanAfterWin.dropCache.openedCrates, event.reward.amount, 'deterministic cache serial advances for each awarded cache');
+assert.equal(humanAfterWin.dropCache.storedCrates, 0, 'event reward does not consume or fabricate hourly stored-cache slots');
+assert.ok(humanAfterWin.dropCache.pendingNextDropRewards.food > 0);
+assert.ok(humanAfterWin.dropCache.pendingNextDropRewards.scrap > 0);
+assert.equal(machineAfterWin.dropCache.appliedWorldEventBonuses.length, 0, 'non-winner receives no reward receipt');
+const winnerCacheSnapshot = cloneJson(humanAfterWin.dropCache);
 
 const outcomeStatus = api.handle({
   method: 'GET',
@@ -137,7 +179,9 @@ const outcomeStatus = api.handle({
 assert.equal(outcomeStatus.status, 200);
 assert.equal(outcomeStatus.body.outcome.eventId, event.id);
 assert.equal(outcomeStatus.body.outcome.winnerParticipantId, human.participantId);
-assert.equal(outcomeStatus.body.meta.rewardApplication, 'durable-entitlement-evidence-only-not-yet-applied-to-next-drop-cache');
+assert.equal(outcomeStatus.body.application.applied, true);
+assert.equal(outcomeStatus.body.meta.rewardApplication, 'supported-outcomes-are-reconciled-into-winner-world-account-pending-next-drop-rewards');
+assert.equal(outcomeStatus.body.meta.rewardAdmission, 'host-derived-consequence-does-not-consume-participant-apm-human-machine-identical');
 
 const filteredOutcomes = api.handle({
   method: 'GET',
@@ -169,10 +213,40 @@ const replayedOutcome = replayedApi.handle({
 });
 assert.equal(replayedOutcome.status, 200);
 assert.deepEqual(replayedOutcome.body.outcome, outcomeStatus.body.outcome, 'outcome ledger replays exactly across service reconstruction');
+assert.equal(replayedOutcome.body.application.applied, true);
+assert.equal(replayedOutcome.body.meta.startupReconcile.attempted, 1);
+assert.equal(replayedOutcome.body.meta.startupReconcile.reused, 1, 'service reconstruction reuses the world-account event receipt');
 
 const repeatedWin = replayedApi.handle({ method: 'GET', pathname: `/api/world/events/${encodeURIComponent(event.id)}` });
 assert.equal(repeatedWin.status, 200);
-assert.equal(eventStores.get('__world-event-outcomes__').readAll().length, 1, 'replayed completed encounter cannot bank the reward twice');
+assert.equal(eventStores.get('__world-event-outcomes__').readAll().length, 1, 'replayed completed encounter cannot bank the durable outcome twice');
+assert.deepEqual(authority.participant(human.participantId).dropCache, winnerCacheSnapshot, 'replayed completed encounter cannot apply next-drop contents twice');
+
+const restoredAuthority = createWorldSessionAuthority({
+  worldEpochMs: epochMs,
+  store: createMemoryWorldJournalStore(),
+  accountStore
+});
+const restoredBaseApi = createWorldHttpApiService({ authority: restoredAuthority, writeMode: 'dev', clock: () => hostNowMs });
+const restoredApi = createWorldEventHttpApiService({
+  authority: restoredAuthority,
+  baseApi: restoredBaseApi,
+  writeMode: 'dev',
+  clock: () => hostNowMs,
+  storeFactory
+});
+const restoredWinner = restoredAuthority.participant(human.participantId);
+assert.equal(restoredWinner.dropCache.appliedWorldEventBonuses.length, 1, 'world-account receipt survives authority reconstruction');
+assert.deepEqual(restoredWinner.dropCache.pendingNextDropRewards, winnerCacheSnapshot.pendingNextDropRewards, 'next-drop reward payload survives account restart restoration');
+assert.equal(restoredWinner.dropCache.openedCrates, winnerCacheSnapshot.openedCrates, 'reward cache serial survives account restart restoration');
+const restoredOutcome = restoredApi.handle({
+  method: 'GET',
+  pathname: `/api/world/event-outcomes/${encodeURIComponent(event.id)}`
+});
+assert.equal(restoredOutcome.status, 200);
+assert.equal(restoredOutcome.body.meta.startupReconcile.attempted, 1);
+assert.equal(restoredOutcome.body.meta.startupReconcile.reused, 1, 'durable outcome reconciles against restored account receipt without duplication');
+assert.equal(restoredOutcome.body.application.applied, true);
 
 const tamperedEntries = eventStores.get('__world-event-outcomes__').readAll();
 tamperedEntries[0].command.outcome.reward.amount += 1;
@@ -189,8 +263,9 @@ const meta = api.handle({ method: 'GET', pathname: '/api/world/meta' });
 assert.equal(meta.status, 200);
 assert.equal(meta.body.worldEventAuthority.participantIdentity, 'world-account');
 assert.equal(meta.body.worldEventAuthority.advancement, 'host-clock-derived-only');
+assert.equal(meta.body.worldEventAuthority.rewardAdmission, 'host-derived-reward-consequence-does-not-consume-participant-apm-human-machine-identical');
 assert.equal(meta.body.worldEventAuthority.outcomePersistence.storeKind, 'memory');
-assert.equal(meta.body.worldEventAuthority.outcomePersistence.truthBoundary, 'durable-single-host-event-outcome-ledger-not-production-scale-not-multi-host-consensus-not-yet-reward-consumption');
+assert.equal(meta.body.worldEventAuthority.outcomePersistence.truthBoundary, 'single-host-two-persistence-surface-crash-reconciliation-not-atomic-database-not-production-scale-not-multi-host-consensus');
 
 async function freePort() {
   return await new Promise((resolve, reject) => {
@@ -281,6 +356,7 @@ try {
   const hostMeta = await jsonRequest(baseUrl, '/api/world/meta');
   assert.equal(hostMeta.status, 200);
   assert.equal(hostMeta.body.worldEventAuthority.outcomePersistence.storeKind, 'jsonl-file', 'live host derives durable outcome ledger from configured event journal directory');
+  assert.equal(hostMeta.body.worldEventAuthority.outcomePersistence.rewardPersistence, 'durable-outcome-ledger-plus-idempotent-world-account-receipt-and-account-snapshot');
 
   const liveEvents = await jsonRequest(baseUrl, '/api/world/events');
   assert.equal(liveEvents.status, 200);
@@ -309,6 +385,7 @@ try {
   const restoredMeta = await jsonRequest(baseUrl, '/api/world/meta');
   assert.equal(restoredMeta.status, 200);
   assert.equal(restoredMeta.body.worldEventAuthority.outcomePersistence.storeKind, 'jsonl-file');
+  assert.equal(restoredMeta.body.worldEventAuthority.outcomePersistence.truthBoundary, 'single-host-two-persistence-surface-crash-reconciliation-not-atomic-database-not-production-scale-not-multi-host-consensus');
 } finally {
   await stopServer(host);
   fs.rmSync(tempDir, { recursive: true, force: true });

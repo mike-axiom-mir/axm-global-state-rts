@@ -8,6 +8,7 @@ on:
       - src/session/**
       - src/presentation/**
       - src/sim/local-civilization-gameplay.mjs
+      - src/sim/local-vehicle-gameplay.mjs
       - src/sim/local-combat-gameplay.mjs
       - src/sim/local-continuity-combat-bridge.mjs
       - src/sim/local-casualty-reconciliation.mjs
@@ -21,6 +22,7 @@ on:
       - tests/browser/planet-shell-controller.spec.js
       - tests/browser/gameplay-surface.spec.js
       - tests/browser/local-civilization-gameplay.spec.js
+      - tests/browser/local-convoy-supply.spec.js
       - .github/workflows/planet-shell-controller.yml
       - package.json
   push:
@@ -49,12 +51,14 @@ jobs:
           node tests/local-civilization-gameplay-selftest.mjs
           node tests/local-combat-gameplay-selftest.mjs
           node --check src/sim/local-civilization-gameplay.mjs
+          node --check src/sim/local-vehicle-gameplay.mjs
           node --check src/sim/local-continuity-combat-bridge.mjs
           node --check src/sim/local-combat-gameplay.mjs
           node --check game/app.mjs
           node --check game/gameplay-surface.mjs
           node --check tests/browser/gameplay-surface.spec.js
           node --check tests/browser/local-civilization-gameplay.spec.js
+          node --check tests/browser/local-convoy-supply.spec.js
       - name: Install pinned Playwright test runner
         run: npm install --no-save @playwright/test@1.55.0
       - name: Install Chromium runtime
@@ -71,8 +75,8 @@ jobs:
           done
           cat /tmp/axm-global-state-rts-server.log
           exit 1
-      - name: Exercise controllers, machine seat, construction, production, and gameplay surface in Chromium
-        run: npx playwright test tests/browser/planet-shell-controller.spec.js tests/browser/gameplay-surface.spec.js tests/browser/local-civilization-gameplay.spec.js --reporter=line
+      - name: Exercise controllers, machine seat, construction, production, convoy supply, and gameplay surface in Chromium
+        run: npx playwright test tests/browser/planet-shell-controller.spec.js tests/browser/gameplay-surface.spec.js tests/browser/local-civilization-gameplay.spec.js tests/browser/local-convoy-supply.spec.js --reporter=line
       - name: Preserve browser evidence
         if: always()
         uses: actions/upload-artifact@v4

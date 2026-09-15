@@ -1,0 +1,49 @@
+name: LOCAL casualty reconciliation
+
+on:
+  pull_request:
+    paths:
+      - 'src/sim/local-casualty-reconciliation.mjs'
+      - 'src/sim/local-region-sim.mjs'
+      - 'src/sim/local-party-gameplay.mjs'
+      - 'src/sim/local-civilization-gameplay.mjs'
+      - 'src/sim/party-registry.mjs'
+      - 'src/sim/civilization-manpower.mjs'
+      - 'src/sim/civilization-production.mjs'
+      - 'tests/local-casualty-reconciliation-selftest.mjs'
+      - '.github/workflows/local-casualty-reconciliation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/sim/local-casualty-reconciliation.mjs'
+      - 'src/sim/local-region-sim.mjs'
+      - 'src/sim/local-party-gameplay.mjs'
+      - 'src/sim/local-civilization-gameplay.mjs'
+      - 'src/sim/party-registry.mjs'
+      - 'src/sim/civilization-manpower.mjs'
+      - 'src/sim/civilization-production.mjs'
+      - 'tests/local-casualty-reconciliation-selftest.mjs'
+      - '.github/workflows/local-casualty-reconciliation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  reconcile-local-casualties:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Syntax check focused gameplay seam
+        run: |
+          node --check src/sim/local-casualty-reconciliation.mjs
+          node --check tests/local-casualty-reconciliation-selftest.mjs
+      - name: Prove LOCAL casualty coherence
+        run: node tests/local-casualty-reconciliation-selftest.mjs
+      - name: Existing deterministic regression suite
+        run: npm test

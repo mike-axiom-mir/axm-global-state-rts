@@ -131,6 +131,15 @@ function ensureStrategicSummary(state) {
   if (!state?.strategic) return;
   const text = `strategic · ${strategicSummaryText(state.strategic)}`;
   if (strategicSummary.textContent !== text) strategicSummary.textContent = text;
+
+  let compatibilityMirror = summary.querySelector('[data-primary-strategic-summary-mirror]');
+  if (!compatibilityMirror) {
+    compatibilityMirror = document.createElement('span');
+    compatibilityMirror.dataset.primaryStrategicSummaryMirror = 'true';
+    compatibilityMirror.hidden = true;
+    summary.appendChild(compatibilityMirror);
+  }
+  if (compatibilityMirror.textContent !== text) compatibilityMirror.textContent = text;
 }
 
 function routeDefinitions(state) {

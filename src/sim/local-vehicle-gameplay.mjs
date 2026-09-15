@@ -1,11 +1,14 @@
 import { VEHICLE_LICENSES } from './civilization-manpower.mjs';
 import { createVehicleFabric, VEHICLE_CATALOG } from './vehicle-fabric.mjs';
 
-export const LOCAL_VEHICLE_GAMEPLAY_SCHEMA = 'axm.global-state-rts.local-vehicle-gameplay/v0.1';
+export const LOCAL_VEHICLE_GAMEPLAY_SCHEMA = 'axm.global-state-rts.local-vehicle-gameplay/v0.2';
 export const LOCAL_VEHICLE_PLAN_IDS = Object.freeze(VEHICLE_CATALOG.map(definition => definition.id));
 
 const DRIVER_ROLE_ID = 'citizen';
 const DRIVER_LICENSE_ID = 'light-vehicle';
+const CONVOY_SUPPLY_RESOURCE_ID = 'scrap';
+const CONVOY_SUPPLY_LOAD_BATCH = 100;
+const EPSILON = 1e-9;
 
 function freezeResult(fields = {}) {
   return Object.freeze({ handled: true, ...fields });
@@ -59,7 +62,7 @@ export class LocalVehicleGameplay {
     if (!normalizedSeatId) throw new TypeError('seatId required');
     if (!Number.isFinite(regionHalfSizeM) || regionHalfSizeM <= 0) throw new RangeError('regionHalfSizeM must be finite and positive');
     if (!simulation || !Array.isArray(simulation.crew)) throw new TypeError('local simulation required');
-    if (!stockpile?.amount || !stockpile?.canAfford || !stockpile?.debit) throw new TypeError('stockpile required');
+    if (!stockpile?.amount || !stockpile?.canAfford || !stockpile?.debit || !stockpile?.credit) throw new TypeError('stockpile required');
     if (!manpower?.snapshot || !manpower?.train || !manpower?.license) throw new TypeError('manpower training authority required');
     if (!blueprintLedger?.has) throw new TypeError('blueprintLedger required');
     if (!(localToManpowerUnit instanceof Map)) throw new TypeError('localToManpowerUnit map required');
@@ -78,6 +81,7 @@ export class LocalVehicleGameplay {
     this.selectedVehicleIndex = 0;
     this.nextVehicleSerial = 1;
     this.driverPrepSequence = 0;
+    this.convoySupplySequence = 0;
     this.lastOutcome = Object.freeze({ kind: 'ready', message: 'Vehicle control ready. Vehicle state is browser-local.' });
 
     this.fabric = createVehicleFabric({
@@ -106,6 +110,134 @@ export class LocalVehicleGameplay {
       if (unit) units.push({ localCrewId, unit });
     }
     return units;
+  }
+
+  #selectedDrivenVehicles(localCrewIds = []) {
+    const selectedUnitIds = new Set(this.#mappedUnits(localCrewIds).map(({ unit }) => unit.id));
+    return this.fabric.snapshot().vehicles
+      .filter(vehicle => !vehicle.destroyed && vehicle.driverUnitId && selectedUnitIds.has(vehicle.driverUnitId))
+      .sort((a, b) => a.instanceId.localeCompare(b.instanceId));
+  }
+
+  #convoyReadiness(localCrewIds, vehicles = this.#selectedDrivenVehicles(localCrewIds)) {
+    const memberCount = normalizeCrewIds(localCrewIds).length;
+    if (!vehicles.length) {
+      return Object.freeze({ accepted: false, reason: 'no-selected-convoy-vehicles', memberCount, vehicleCount: 0, seatCapacity: 0 });
+    }
+    return this.fabric.transportProfile(vehicles.map(vehicle => vehicle.instanceId), { memberCount });
+  }
+
+  #convoyReadinessText(localCrewIds, vehicles) {
+    const profile = this.#convoyReadiness(localCrewIds, vehicles);
+    if (profile.accepted) {
+      return `departure profile ${profile.vehicleCount} vehicles · ${profile.seatCapacity}/${profile.memberCount} seats · ${profile.cargoCapacity} cargo capacity`;
+    }
+    if (profile.reason === 'insufficient-vehicle-seats') {
+      return `departure profile blocked · ${profile.seatCapacity}/${profile.memberCount} seats`;
+    }
+    return `departure profile blocked · ${profile.reason}`;
+  }
+
+  #loadSelectedConvoySupply(localCrewIds) {
+    const vehicles = this.#selectedDrivenVehicles(localCrewIds);
+    if (!vehicles.length) {
+      this.lastOutcome = Object.freeze({ kind: 'blocked', message: 'Convoy supply load blocked · selected party has no driven live vehicle.' });
+      return freezeResult({ accepted: false, reason: 'no-selected-convoy-vehicles', message: this.lastOutcome.message });
+    }
+    const available = Math.max(0, Number(this.stockpile.amount(CONVOY_SUPPLY_RESOURCE_ID)) || 0);
+    if (available <= EPSILON) {
+      this.lastOutcome = Object.freeze({ kind: 'blocked', message: 'Convoy supply load blocked · local storage has no scrap available.' });
+      return freezeResult({ accepted: false, reason: 'no-convoy-supply-available', message: this.lastOutcome.message });
+    }
+
+    const totalRoom = vehicles.reduce((sum, vehicle) => sum + Math.max(0, (Number(vehicle.cargoCapacity) || 0) - (Number(vehicle.cargoAmount) || 0)), 0);
+    const requested = Math.min(CONVOY_SUPPLY_LOAD_BATCH, available, totalRoom);
+    if (requested <= EPSILON) {
+      this.lastOutcome = Object.freeze({ kind: 'blocked', message: 'Convoy supply load blocked · selected-party vehicle cargo is full.' });
+      return freezeResult({ accepted: false, reason: 'selected-convoy-cargo-full', message: this.lastOutcome.message });
+    }
+
+    let remaining = requested;
+    let touchedVehicles = 0;
+    for (const vehicle of vehicles) {
+      if (remaining <= EPSILON) break;
+      const room = Math.max(0, (Number(vehicle.cargoCapacity) || 0) - (Number(vehicle.cargoAmount) || 0));
+      const amount = Math.min(room, remaining);
+      if (amount <= EPSILON) continue;
+      const result = this.fabric.loadCargo(vehicle.instanceId, CONVOY_SUPPLY_RESOURCE_ID, amount, {
+        eventId: `browser-local:convoy-supply:${this.seatId}:${++this.convoySupplySequence}:load:${vehicle.instanceId}`
+      });
+      if (!result.accepted) throw new Error(`convoy supply preflight drifted: ${result.reason}`);
+      remaining -= amount;
+      touchedVehicles += 1;
+    }
+    const loaded = requested - remaining;
+    const readiness = this.#convoyReadinessText(localCrewIds, this.#selectedDrivenVehicles(localCrewIds));
+    this.lastOutcome = Object.freeze({
+      kind: 'convoy-supply-loaded',
+      message: `${Math.round(loaded * 10) / 10} scrap loaded into ${touchedVehicles} selected-party convoy vehicle${touchedVehicles === 1 ? '' : 's'} in one aggregate command · ${readiness} · strategic departure remains disabled until the LOCAL↔strategic handoff is authoritative.`
+    });
+    return freezeResult({
+      accepted: true,
+      action: 'load-convoy-supply',
+      resourceId: CONVOY_SUPPLY_RESOURCE_ID,
+      loaded,
+      vehicleCount: touchedVehicles,
+      transportProfile: this.#convoyReadiness(localCrewIds),
+      message: this.lastOutcome.message
+    });
+  }
+
+  #unloadSelectedConvoySupply(localCrewIds) {
+    const vehicles = this.#selectedDrivenVehicles(localCrewIds);
+    if (!vehicles.length) {
+      this.lastOutcome = Object.freeze({ kind: 'blocked', message: 'Convoy supply unload blocked · selected party has no driven live vehicle.' });
+      return freezeResult({ accepted: false, reason: 'no-selected-convoy-vehicles', message: this.lastOutcome.message });
+    }
+    const totalCarried = vehicles.reduce((sum, vehicle) => sum + Math.max(0, Number(vehicle.cargo?.[CONVOY_SUPPLY_RESOURCE_ID]) || 0), 0);
+    if (totalCarried <= EPSILON) {
+      this.lastOutcome = Object.freeze({ kind: 'blocked', message: 'Convoy supply unload blocked · selected-party convoy carries no scrap.' });
+      return freezeResult({ accepted: false, reason: 'selected-convoy-supply-empty', message: this.lastOutcome.message });
+    }
+
+    const storageRoom = Math.max(0, (Number(this.simulation.storage?.capacity) || 0) - (Number(this.simulation.storage?.scrap) || 0));
+    let remaining = Math.min(totalCarried, storageRoom);
+    if (remaining <= EPSILON) {
+      this.lastOutcome = Object.freeze({ kind: 'blocked', message: 'Convoy supply unload blocked · local scrap storage is full.' });
+      return freezeResult({ accepted: false, reason: 'local-scrap-storage-full', message: this.lastOutcome.message });
+    }
+
+    const unloadTarget = remaining;
+    let touchedVehicles = 0;
+    for (const vehicle of vehicles) {
+      if (remaining <= EPSILON) break;
+      const carried = Math.max(0, Number(vehicle.cargo?.[CONVOY_SUPPLY_RESOURCE_ID]) || 0);
+      const amount = Math.min(carried, remaining);
+      if (amount <= EPSILON) continue;
+      const result = this.fabric.unloadCargo(vehicle.instanceId, CONVOY_SUPPLY_RESOURCE_ID, amount, {
+        eventId: `browser-local:convoy-supply:${this.seatId}:${++this.convoySupplySequence}:unload:${vehicle.instanceId}`
+      });
+      if (!result.accepted) throw new Error(`convoy unload preflight drifted: ${result.reason}`);
+      remaining -= amount;
+      touchedVehicles += 1;
+    }
+    const unloaded = unloadTarget - remaining;
+    const stillCarried = totalCarried - unloaded;
+    const partial = stillCarried > EPSILON ? ` · ${Math.round(stillCarried * 10) / 10} scrap remains carried because local storage lacks room` : '';
+    this.lastOutcome = Object.freeze({
+      kind: 'convoy-supply-unloaded',
+      message: `${Math.round(unloaded * 10) / 10} scrap unloaded from ${touchedVehicles} selected-party convoy vehicle${touchedVehicles === 1 ? '' : 's'} into physical local storage${partial} · no remote stockpile teleport.`
+    });
+    return freezeResult({
+      accepted: true,
+      action: 'unload-convoy-supply',
+      resourceId: CONVOY_SUPPLY_RESOURCE_ID,
+      unloaded,
+      remainingCarried: stillCarried,
+      vehicleCount: touchedVehicles,
+      transportProfile: this.#convoyReadiness(localCrewIds),
+      message: this.lastOutcome.message
+    });
   }
 
   #cycleVehicle(offset) {
@@ -241,7 +373,7 @@ export class LocalVehicleGameplay {
     }
     const availableDrivers = licensedDrivers.filter(({ localCrewId }) => {
       const physical = this.simulation.crew.find(crew => crew.id === localCrewId);
-      return physical && physical.phase === 'idle' && (Number(physical.carrying) || 0) <= 1e-9;
+      return physical && physical.phase === 'idle' && (Number(physical.carrying) || 0) <= EPSILON;
     });
     if (!availableDrivers.length) {
       this.lastOutcome = Object.freeze({ kind: 'blocked', message: 'Selected-party driver assignment blocked · licensed Crew must be idle and carrying no scrap before taking a vehicle.' });
@@ -286,6 +418,8 @@ export class LocalVehicleGameplay {
     const action = String(actionId || '');
     if (action === 'ui-up') return this.#cycleVehicle(-1);
     if (action === 'ui-down') return this.#cycleVehicle(1);
+    if (action === 'ui-right') return this.#loadSelectedConvoySupply(selectedCrewIds);
+    if (action === 'ui-left') return this.#unloadSelectedConvoySupply(selectedCrewIds);
     if (action === 'confirm') return this.#constructSelected(cursorXM, cursorZM);
     if (action === 'party-menu') return this.#prepareDrivers(selectedCrewIds);
     if (action === 'context') return this.#toggleSelectedDrivers(selectedCrewIds);
@@ -312,6 +446,8 @@ export class LocalVehicleGameplay {
       });
     });
     const drivers = fabric.vehicles.filter(vehicle => vehicle.driverUnitId).length;
+    const cargoAmount = fabric.vehicles.reduce((sum, vehicle) => sum + (Number(vehicle.cargoAmount) || 0), 0);
+    const cargoCapacity = fabric.vehicles.reduce((sum, vehicle) => sum + (Number(vehicle.cargoCapacity) || 0), 0);
     return Object.freeze({
       schema: LOCAL_VEHICLE_GAMEPLAY_SCHEMA,
       selectedPlan: plans[this.selectedVehicleIndex] || null,
@@ -320,6 +456,11 @@ export class LocalVehicleGameplay {
       activeVehicleCount: fabric.activeVehicleCount,
       driverCount: drivers,
       uncrewedCount: fabric.vehicles.filter(vehicle => !vehicle.destroyed && !vehicle.driverUnitId).length,
+      cargoAmount,
+      cargoCapacity,
+      convoySupplyResourceId: CONVOY_SUPPLY_RESOURCE_ID,
+      convoySupplyLoadBatch: CONVOY_SUPPLY_LOAD_BATCH,
+      strategicDepartureState: 'blocked-until-local-strategic-handoff-authoritative',
       vehicles: fabric.vehicles,
       lastOutcome: this.lastOutcome
     });

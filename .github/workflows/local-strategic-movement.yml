@@ -6,6 +6,7 @@ on:
       - 'src/sim/local-strategic-gameplay.mjs'
       - 'src/sim/local-vehicle-gameplay.mjs'
       - 'src/sim/aggregate-raid-local-combat.mjs'
+      - 'src/session/world-browser-client.mjs'
       - 'game/strategic-movement.html'
       - 'game/strategic-movement.mjs'
       - 'game/primary-strategic-gameplay.mjs'
@@ -16,6 +17,7 @@ on:
       - 'tests/local-strategic-gameplay-selftest.mjs'
       - 'tests/primary-city-pressure-convergence-selftest.mjs'
       - 'tests/aggregate-raid-local-combat-selftest.mjs'
+      - 'tests/world-browser-client-selftest.mjs'
       - 'tests/browser/local-strategic-movement.spec.js'
       - 'tests/browser/primary-strategic-surface.spec.js'
       - 'tests/browser/primary-world-objective-surface.spec.js'
@@ -46,15 +48,18 @@ jobs:
           node tests/local-strategic-gameplay-selftest.mjs
           node tests/primary-city-pressure-convergence-selftest.mjs
           node tests/aggregate-raid-local-combat-selftest.mjs
+          node tests/world-browser-client-selftest.mjs
           node --check src/sim/local-strategic-gameplay.mjs
           node --check src/sim/local-vehicle-gameplay.mjs
           node --check src/sim/aggregate-raid-local-combat.mjs
+          node --check src/session/world-browser-client.mjs
           node --check game/strategic-movement.mjs
           node --check game/primary-strategic-gameplay.mjs
           node --check game/primary-strategic-surface.mjs
           node --check game/primary-world-objective-surface.mjs
           node --check tests/primary-city-pressure-convergence-selftest.mjs
           node --check tests/aggregate-raid-local-combat-selftest.mjs
+          node --check tests/world-browser-client-selftest.mjs
           node --check tests/browser/local-strategic-movement.spec.js
           node --check tests/browser/primary-strategic-surface.spec.js
           node --check tests/browser/primary-world-objective-surface.spec.js
@@ -64,7 +69,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Start local browser shell
         run: |
-          node scripts/serve.mjs > /tmp/axm-global-state-rts-strategic-server.log 2>&1 &
+          AXM_SHARED_WRITE_MODE=dev node scripts/serve.mjs > /tmp/axm-global-state-rts-strategic-server.log 2>&1 &
           echo $! > /tmp/axm-global-state-rts-strategic-server.pid
           for i in {1..30}; do
             if curl --fail --silent http://127.0.0.1:4174/game/strategic-movement.html > /dev/null; then
@@ -84,6 +89,7 @@ jobs:
           path: |
             test-results/global-state-rts-strategic-convoy-*.png
             test-results/global-state-rts-primary-strategic-*.png
+            test-results/global-state-rts-host-announced-world-objective.png
             /tmp/axm-global-state-rts-strategic-server.log
           if-no-files-found: warn
           retention-days: 14

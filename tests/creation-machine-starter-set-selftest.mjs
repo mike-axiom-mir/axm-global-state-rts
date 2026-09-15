@@ -68,7 +68,7 @@ for (let seat = 1; seat <= 4; seat += 1) {
 const sourceIndex = fs.readFileSync(new URL('../assets/creation-machine/asset-index.csv', import.meta.url), 'utf8');
 assert.match(
   sourceIndex,
-  /^repair-garage,buildings,assets\/repair-garage\/repair-garage\.gltf,assets\/repair-garage\/repair-garage-lod1\.gltf,False,False$/m
+  /^repair-garage,buildings,assets\/repair-garage\/repair-garage\.gltf,assets\/repair-garage\/repair-garage-lod1\.gltf,False,False\r?$/m
 );
 const sourceReadme = fs.readFileSync(new URL('../assets/creation-machine/README.md', import.meta.url), 'utf8');
 assert.match(sourceReadme, /83 assets/);

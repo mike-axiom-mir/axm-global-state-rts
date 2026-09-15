@@ -46,9 +46,6 @@ async function pulse(page, gamepadIndex, buttonIndex, holdMs = 70) {
 }
 
 test('command deck makes construction and aggregate production immediately playable without animation dependency', async ({ page }) => {
-  // This integration gate intentionally captures full-page visual evidence after exercising live production.
-  // Shared CI runners have twice completed all gameplay assertions but exhausted the default 30s budget while
-  // beginning that evidence screenshot. Give the evidence step bounded headroom without changing product timing claims.
   test.setTimeout(60_000);
 
   const failures = captureRuntimeFailures(page);
@@ -57,7 +54,7 @@ test('command deck makes construction and aggregate production immediately playa
 
   await page.locator('[data-gameplay-action="map-toggle"]').click();
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
-  await expect(page.locator('#gameplaySummary')).toContainText('100/5000 scrap · 260 timber');
+  await expect(page.locator('#gameplaySummary')).toContainText('100/5000 scrap · 260 timber · 25 industrial-metal');
   await expect(page.locator('#gameplaySummary')).toContainText('browser-local-not-host-persistent');
 
   await page.locator('[data-gameplay-action="ui-right"]').click();
@@ -66,7 +63,7 @@ test('command deck makes construction and aggregate production immediately playa
   await page.locator('[data-gameplay-action="confirm"]').click();
   await expect(page.locator('#inputStatus')).toContainText('seat-1 · construct · Shallow Mine constructed');
   await expect(page.locator('#gameplaySummary')).toContainText('1 placed · Shallow Mine');
-  await expect(page.locator('#gameplaySummary')).toContainText('10/5000 scrap · 190 timber');
+  await expect(page.locator('#gameplaySummary')).toContainText('10/5000 scrap · 190 timber · 25 industrial-metal');
 
   let civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1'));
   expect(civilization.structures).toHaveLength(1);
@@ -127,5 +124,120 @@ test('human controller seat uses D-pad build/production menus through the same a
   await pulse(page, 1, 2); // X: release workers.
   civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-2'));
   expect(civilization.production.jobs[0].workerCount).toBe(0);
+
+  await pulse(page, 1, 1); // B: close production menu.
+  await pulse(page, 1, 12); // D-pad up: vehicle menu.
+  civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-2'));
+  expect(civilization.menuKind).toBe('vehicle');
+  expect(civilization.vehicles.selectedPlan.id).toBe('vehicle:utility-hauler');
+  await pulse(page, 1, 1); // B: close vehicle menu.
+  expect(failures, failures.join('\n')).toEqual([]);
+});
+
+test('vehicle menu reuses real vehicle/manpower authority with aggregate driver assignment and ground-order exclusion', async ({ page }) => {
+  test.setTimeout(90_000);
+  const failures = captureRuntimeFailures(page);
+  const response = await page.goto('http://127.0.0.1:4174/game/?players=1', { waitUntil: 'networkidle' });
+  expect(response?.ok()).toBe(true);
+
+  await page.locator('[data-gameplay-action="map-toggle"]').click();
+  await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
+
+  // Admit the real gather order through the player surface, then advance that exact
+  // deterministic browser simulation directly so CI wall time does not become
+  // gameplay tuning. Stop only on a real delivery boundary with empty hands.
+  await page.locator('[data-gameplay-action="gather-scrap"]').click();
+  await expect(page.locator('#inputStatus')).toContainText('seat-1 · gather-scrap');
+  const gatherEvidence = await page.evaluate(async () => {
+    const { activeLocalRegionSimulation } = await import('../src/sim/local-region-sim.mjs');
+    const simulation = activeLocalRegionSimulation('seat-1');
+    if (!simulation) throw new Error('seat-1 active local simulation is unavailable');
+    const before = simulation.debugCanonicalSnapshot();
+    if (before.order?.type !== 'gather-scrap') throw new Error('admitted gather input did not create a gather order');
+
+    let advancedSteps = 0;
+    let snapshot = before;
+    while (advancedSteps < 2400) {
+      simulation.advance(250);
+      advancedSteps += 1;
+      snapshot = simulation.debugCanonicalSnapshot();
+      const emptyHands = snapshot.crew.every(crew => Number(crew.carrying || 0) <= 1e-9);
+      if (snapshot.storage.scrap >= 240 && emptyHands) break;
+    }
+    return {
+      advancedSteps,
+      storageScrap: snapshot.storage.scrap,
+      emptyHands: snapshot.crew.every(crew => Number(crew.carrying || 0) <= 1e-9),
+      orderType: snapshot.order?.type || null
+    };
+  });
+  expect(gatherEvidence.storageScrap).toBeGreaterThanOrEqual(240);
+  expect(gatherEvidence.emptyHands).toBe(true);
+  expect(gatherEvidence.orderType).toBe('gather-scrap');
+
+  // Replace the endless gather loop with a normal player-issued move order, then
+  // deterministically advance that admitted order to its real idle end-state.
+  await page.locator('[data-gameplay-action="explore"]').click();
+  await expect(page.locator('#inputStatus')).toContainText('seat-1 · explore');
+  const idleEvidence = await page.evaluate(async () => {
+    const { activeLocalRegionSimulation } = await import('../src/sim/local-region-sim.mjs');
+    const simulation = activeLocalRegionSimulation('seat-1');
+    if (!simulation) throw new Error('seat-1 active local simulation is unavailable');
+    let advancedSteps = 0;
+    let snapshot = simulation.debugCanonicalSnapshot();
+    while (snapshot.order && advancedSteps < 2400) {
+      simulation.advance(250);
+      advancedSteps += 1;
+      snapshot = simulation.debugCanonicalSnapshot();
+    }
+    return {
+      advancedSteps,
+      orderType: snapshot.order?.type || null,
+      allIdle: snapshot.crew.every(crew => crew.phase === 'idle'),
+      emptyHands: snapshot.crew.every(crew => Number(crew.carrying || 0) <= 1e-9)
+    };
+  });
+  expect(idleEvidence.orderType).toBeNull();
+  expect(idleEvidence.allIdle).toBe(true);
+  expect(idleEvidence.emptyHands).toBe(true);
+
+  await page.locator('[data-gameplay-action="ui-up"]').click();
+  await expect(page.locator('#gameplaySummary')).toContainText('vehicle menu open');
+  await expect(page.locator('#gameplaySummary')).toContainText('Utility Hauler');
+
+  await page.locator('[data-gameplay-action="party-menu"]').click();
+  await expect(page.locator('#inputStatus')).toContainText('light driver');
+  await page.locator('[data-gameplay-action="confirm"]').click();
+  await expect(page.locator('#inputStatus')).toContainText('Utility Hauler constructed');
+
+  let civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1'));
+  expect(civilization.vehicles.vehicleCount).toBe(1);
+  expect(civilization.vehicles.driverCount).toBe(0);
+  expect(civilization.vehicles.vehicles[0].definitionId).toBe('vehicle:utility-hauler');
+
+  await page.locator('[data-gameplay-action="context"]').click();
+  civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1'));
+  expect(civilization.vehicles.driverCount).toBe(1);
+  expect(civilization.vehicles.vehicles[0].driverUnitId).toBeTruthy();
+  await expect(page.locator('#gameplaySummary')).toContainText('1 vehicles · 1 drivers · 0 uncrewed');
+
+  await page.locator('[data-gameplay-action="cancel"]').click();
+  await page.locator('[data-gameplay-action="gather-scrap"]').click();
+  await expect(page.locator('#inputStatus')).toContainText('selected-party-has-vehicle-drivers');
+  const blockedSimulation = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'));
+  expect(blockedSimulation.order).toBeNull();
+
+  await page.locator('[data-gameplay-action="ui-up"]').click();
+  await page.locator('[data-gameplay-action="context"]').click();
+  civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1'));
+  expect(civilization.vehicles.driverCount).toBe(0);
+  await page.locator('[data-gameplay-action="cancel"]').click();
+
+  await page.locator('[data-gameplay-action="gather-scrap"]').click();
+  await expect.poll(async () => page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1').order?.type || null), {
+    timeout: 5_000
+  }).toBe('gather-scrap');
+
+  await page.screenshot({ path: 'test-results/global-state-rts-vehicle-driver-control.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);
 });

@@ -4,8 +4,9 @@ import { createCivilizationProduction } from './civilization-production.mjs';
 import { createCivilizationStockpile, STOCKPILE_RESOURCE_IDS } from './civilization-stockpile.mjs';
 import { createConstructionEconomy } from './construction-economy.mjs';
 import { LOCAL_REGION_SIM_SCHEMA } from './local-region-sim.mjs';
+import { createLocalVehicleGameplay } from './local-vehicle-gameplay.mjs';
 
-export const LOCAL_CIVILIZATION_GAMEPLAY_SCHEMA = 'axm.global-state-rts.local-civilization-gameplay/v0.1';
+export const LOCAL_CIVILIZATION_GAMEPLAY_SCHEMA = 'axm.global-state-rts.local-civilization-gameplay/v0.2';
 
 export const LOCAL_BUILD_PLAN_IDS = Object.freeze([
   'building:shallow-mine',
@@ -15,12 +16,14 @@ export const LOCAL_BUILD_PLAN_IDS = Object.freeze([
 
 export const LOCAL_STARTER_MATERIALS = Object.freeze({
   scrap: 100,
-  timber: 260
+  timber: 260,
+  'industrial-metal': 25
 });
 
 const EPSILON = 1e-9;
 const PRODUCTION_STEP_SECONDS = 1;
 const PRODUCTION_STORAGE_GUARD = 1;
+const GROUND_ORDER_ACTIONS = new Set(['confirm', 'context', 'gather-scrap', 'repair-core', 'explore']);
 
 function finiteNonNegative(value, label) {
   const number = Number(value ?? 0);
@@ -43,7 +46,9 @@ function normalizedDelta(delta = {}) {
 }
 
 function costText(cost = {}) {
-  const parts = Object.entries(cost).filter(([, value]) => Number(value) > 0).map(([id, value]) => `${Math.ceil(value)} ${id}`);
+  const parts = Object.entries(cost)
+    .filter(([, value]) => Number(value) > 0)
+    .map(([id, value]) => `${Math.ceil(value)} ${id}`);
   return parts.length ? parts.join(' + ') : 'free';
 }
 
@@ -101,9 +106,7 @@ class LocalSimulationWallet {
     const scrap = normalized.scrap || 0;
     if (scrap > 0) {
       const next = this.simulation.storage.scrap + scrap;
-      if (next > this.simulation.storage.capacity + EPSILON) {
-        throw new RangeError('local scrap production exceeds physical storage capacity');
-      }
+      if (next > this.simulation.storage.capacity + EPSILON) throw new RangeError('local scrap production exceeds physical storage capacity');
       this.simulation.storage.scrap = next;
       this.simulation.revision += 1;
     }
@@ -144,15 +147,13 @@ export class LocalCivilizationGameplay {
     this.selectedProductionIndex = 0;
     this.nextBuildingSerial = 1;
     this.productionAccumulatorSeconds = 0;
-    this.lastOutcome = Object.freeze({ kind: 'ready', message: 'Local construction ready. State is browser-local and not host-persistent.' });
+    this.lastOutcome = Object.freeze({ kind: 'ready', message: 'Local construction, production and vehicle control ready. State is browser-local and not host-persistent.' });
     this.lastProduction = Object.freeze({ produced: Object.freeze({}), activeJobs: 0, assignedWorkers: 0 });
 
     const normalizedStarter = normalizedDelta(starterMaterials);
     const starterScrap = normalizedStarter.scrap || 0;
     if (starterScrap > 0) {
-      if (simulation.storage.scrap + starterScrap > simulation.storage.capacity + EPSILON) {
-        throw new RangeError('starter scrap exceeds local storage capacity');
-      }
+      if (simulation.storage.scrap + starterScrap > simulation.storage.capacity + EPSILON) throw new RangeError('starter scrap exceeds local storage capacity');
       simulation.storage.scrap += starterScrap;
       simulation.revision += 1;
     }
@@ -180,6 +181,17 @@ export class LocalCivilizationGameplay {
       stockpile: this.wallet,
       manpower: this.manpower,
       construction: this.construction
+    });
+    this.vehicleGameplay = createLocalVehicleGameplay({
+      civilizationId: this.civilizationId,
+      seatId: this.seatId,
+      runId: this.runId,
+      regionHalfSizeM: simulation.region.halfSizeM,
+      simulation,
+      stockpile: this.wallet,
+      manpower: this.manpower,
+      blueprintLedger: this.blueprints,
+      localToManpowerUnit: this.localToManpowerUnit
     });
   }
 
@@ -236,9 +248,7 @@ export class LocalCivilizationGameplay {
       eventId: `browser-local:construct:${instanceId}`
     });
     if (!result.accepted) {
-      const missing = result.missing
-        ? ` · missing ${Object.entries(result.missing).map(([id, amount]) => `${Math.ceil(amount)} ${id}`).join(', ')}`
-        : '';
+      const missing = result.missing ? ` · missing ${Object.entries(result.missing).map(([id, amount]) => `${Math.ceil(amount)} ${id}`).join(', ')}` : '';
       this.lastOutcome = Object.freeze({ kind: 'blocked', message: `${definition.label} blocked · ${result.reason}${missing}` });
       return freezeResult({ ...result, action: 'construct' });
     }
@@ -300,10 +310,7 @@ export class LocalCivilizationGameplay {
       this.lastOutcome = Object.freeze({ kind: 'blocked', message: `Production assignment blocked · ${result.reason}` });
       return freezeResult({ ...result, action: 'assign-production' });
     }
-    this.lastOutcome = Object.freeze({
-      kind: 'assigned',
-      message: `${workerIds.length} Crew assigned to ${building.instanceId} · source ${source.id}`
-    });
+    this.lastOutcome = Object.freeze({ kind: 'assigned', message: `${workerIds.length} Crew assigned to ${building.instanceId} · source ${source.id}` });
     return freezeResult({ accepted: true, action: 'assign-production', job: result.job });
   }
 
@@ -356,7 +363,9 @@ export class LocalCivilizationGameplay {
       const before = new Map(this.production.snapshot().jobs
         .filter(job => job.source)
         .map(job => [job.buildingId, { id: job.source.id, remaining: job.source.remaining }]));
-      last = this.production.advance(PRODUCTION_STEP_SECONDS, { eventId: `browser-local:production:${this.seatId}:${Math.floor(performance?.now?.() || Date.now())}` });
+      last = this.production.advance(PRODUCTION_STEP_SECONDS, {
+        eventId: `browser-local:production:${this.seatId}:${Math.floor(globalThis.performance?.now?.() || Date.now())}`
+      });
       const after = this.production.snapshot();
       for (const job of after.jobs) {
         const previous = before.get(job.buildingId);
@@ -377,6 +386,21 @@ export class LocalCivilizationGameplay {
   handleAction(actionId, { cursorXM = 0, cursorZM = 0, selectedCrewIds = [] } = {}) {
     const action = String(actionId || '');
     if (!this.menuKind) {
+      if (GROUND_ORDER_ACTIONS.has(action)) {
+        const assignedDriverCrewIds = this.vehicleGameplay.assignedLocalCrewIds(selectedCrewIds);
+        if (assignedDriverCrewIds.length) {
+          this.lastOutcome = Object.freeze({
+            kind: 'blocked',
+            message: `Ground order blocked · selected party contains ${assignedDriverCrewIds.length} vehicle driver${assignedDriverCrewIds.length === 1 ? '' : 's'}. Split/cycle party or release drivers first.`
+          });
+          return freezeResult({
+            accepted: false,
+            reason: 'selected-party-has-vehicle-drivers',
+            assignedDriverCrewIds,
+            message: this.lastOutcome.message
+          });
+        }
+      }
       if (action === 'ui-right') {
         this.menuKind = 'build';
         const definition = this.#buildDefinition();
@@ -388,6 +412,12 @@ export class LocalCivilizationGameplay {
         const selected = this.#selectedProductionBuilding();
         this.lastOutcome = Object.freeze({ kind: 'menu', message: selected ? `Production menu · ${selected.instanceId}` : 'Production menu · build a Shallow Mine first' });
         return freezeResult({ accepted: true, action: 'production-menu-open' });
+      }
+      if (action === 'ui-up') {
+        this.menuKind = 'vehicle';
+        const selected = this.vehicleGameplay.snapshot().selectedPlan;
+        this.lastOutcome = Object.freeze({ kind: 'menu', message: `Vehicle menu · ${selected.label} · ${selected.costText}` });
+        return freezeResult({ accepted: true, action: 'vehicle-menu-open' });
       }
       return null;
     }
@@ -404,16 +434,27 @@ export class LocalCivilizationGameplay {
       return freezeResult({ accepted: false, reason: 'build-menu-open' });
     }
 
-    if (action === 'cancel' || action === 'ui-left') {
-      this.menuKind = null;
-      this.lastOutcome = Object.freeze({ kind: 'menu', message: 'Production menu closed.' });
-      return freezeResult({ accepted: true, action: 'production-menu-close' });
+    if (this.menuKind === 'production') {
+      if (action === 'cancel' || action === 'ui-left') {
+        this.menuKind = null;
+        this.lastOutcome = Object.freeze({ kind: 'menu', message: 'Production menu closed.' });
+        return freezeResult({ accepted: true, action: 'production-menu-close' });
+      }
+      if (action === 'ui-up') return this.#cycleProduction(-1);
+      if (action === 'ui-down') return this.#cycleProduction(1);
+      if (action === 'confirm') return this.#assignSelectedParty(selectedCrewIds);
+      if (action === 'context') return this.#releaseSelectedProduction();
+      return freezeResult({ accepted: false, reason: 'production-menu-open' });
     }
-    if (action === 'ui-up') return this.#cycleProduction(-1);
-    if (action === 'ui-down') return this.#cycleProduction(1);
-    if (action === 'confirm') return this.#assignSelectedParty(selectedCrewIds);
-    if (action === 'context') return this.#releaseSelectedProduction();
-    return freezeResult({ accepted: false, reason: 'production-menu-open' });
+
+    if (action === 'cancel') {
+      this.menuKind = null;
+      this.lastOutcome = Object.freeze({ kind: 'menu', message: 'Vehicle menu closed.' });
+      return freezeResult({ accepted: true, action: 'vehicle-menu-close' });
+    }
+    const vehicleCommand = this.vehicleGameplay.handleAction(action, { cursorXM, cursorZM, selectedCrewIds });
+    if (vehicleCommand) this.lastOutcome = this.vehicleGameplay.snapshot().lastOutcome;
+    return vehicleCommand;
   }
 
   snapshot() {
@@ -439,12 +480,13 @@ export class LocalCivilizationGameplay {
       schema: LOCAL_CIVILIZATION_GAMEPLAY_SCHEMA,
       seatId: this.seatId,
       stateScope: 'browser-local-not-host-persistent',
-      starterMaterialBoundary: '100 physical LOCAL scrap + 260 browser-local timber bootstrap; not next-drop/host progression',
+      starterMaterialBoundary: '100 physical LOCAL scrap + 260 browser-local timber + 25 browser-local industrial-metal bootstrap; not next-drop/host progression',
       menuOpen: Boolean(this.menuKind),
       menuKind: this.menuKind,
       buildOptions: Object.freeze(buildOptions),
       selectedBuild: buildOptions[this.selectedBuildIndex] || null,
       resources: wallet.resources,
+      manpower: this.manpower.snapshot(),
       structures: construction.buildings,
       production: Object.freeze({
         selectedBuildingId: selectedProduction?.instanceId || null,
@@ -453,6 +495,7 @@ export class LocalCivilizationGameplay {
         totalProduced: production.totalProduced,
         last: this.lastProduction
       }),
+      vehicles: this.vehicleGameplay.snapshot(),
       lastOutcome: this.lastOutcome
     });
   }

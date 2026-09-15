@@ -3,7 +3,7 @@ import { LOCAL_PARTY_GAMEPLAY_SCHEMA } from './local-party-gameplay.mjs';
 import { LOCAL_REGION_SIM_SCHEMA } from './local-region-sim.mjs';
 
 export const LOCAL_CASUALTY_RECONCILIATION_SCHEMA =
-  'axm.global-state-rts.local-casualty-reconciliation/v0.1';
+  'axm.global-state-rts.local-casualty-reconciliation/v0.2';
 
 function normalizeCrewIds(value) {
   if (!Array.isArray(value)) throw new TypeError('casualtyCrewIds must be an array');
@@ -13,15 +13,10 @@ function normalizeCrewIds(value) {
 }
 
 function requireLocalState(simulation, partyGameplay, civilizationGameplay) {
-  if (!simulation || simulation.schema !== LOCAL_REGION_SIM_SCHEMA) {
-    throw new TypeError('LocalRegionSimulation required');
-  }
-  if (!partyGameplay || partyGameplay.schema !== LOCAL_PARTY_GAMEPLAY_SCHEMA) {
-    throw new TypeError('LocalPartyGameplay required');
-  }
-  if (!civilizationGameplay || civilizationGameplay.schema !== LOCAL_CIVILIZATION_GAMEPLAY_SCHEMA) {
-    throw new TypeError('LocalCivilizationGameplay required');
-  }
+  if (!simulation || simulation.schema !== LOCAL_REGION_SIM_SCHEMA) throw new TypeError('LocalRegionSimulation required');
+  if (!partyGameplay || partyGameplay.schema !== LOCAL_PARTY_GAMEPLAY_SCHEMA) throw new TypeError('LocalPartyGameplay required');
+  if (!civilizationGameplay || civilizationGameplay.schema !== LOCAL_CIVILIZATION_GAMEPLAY_SCHEMA) throw new TypeError('LocalCivilizationGameplay required');
+  if (!civilizationGameplay.vehicleGameplay?.releaseManpowerUnitIds) throw new TypeError('Local vehicle gameplay reconciliation required');
 }
 
 function freezeReceipt(fields) {
@@ -89,9 +84,11 @@ export function reconcileLocalCasualties({
     0
   );
 
-  // Production releases must happen while manpower identities still exist because
-  // production derives each worker's aggregate role factors during removal.
+  // Production and vehicle releases must happen while manpower identities still
+  // exist. That keeps a casualty from lingering as an aggregate worker or a
+  // parked vehicle's ghost driver after the authoritative manpower removal.
   const production = civilizationGameplay.production.releaseUnitIds(manpowerUnitIds);
+  const vehicles = civilizationGameplay.vehicleGameplay.releaseManpowerUnitIds(manpowerUnitIds, { eventId });
   const parties = partyGameplay.registry.unregisterUnits(crewIds);
   const manpower = civilizationGameplay.manpower.removeUnits(manpowerUnitIds, {
     reason: String(reason || 'combat-casualty'),
@@ -116,8 +113,6 @@ export function reconcileLocalCasualties({
   }
   simulation.revision += 1;
 
-  // Force selection fallback now so a wiped selected party cannot linger as a
-  // player-visible ghost selection. The gameplay wrapper already owns that rule.
   const selectedParty = partyGameplay.selectedParty();
 
   return freezeReceipt({
@@ -131,6 +126,10 @@ export function reconcileLocalCasualties({
     production: Object.freeze({
       releasedWorkers: production.released,
       affectedBuildingIds: production.affectedBuildingIds
+    }),
+    vehicles: Object.freeze({
+      releasedDrivers: vehicles.released,
+      affectedVehicleIds: vehicles.vehicleIds
     }),
     parties: Object.freeze({
       removedKnownUnits: parties.removedKnownUnits,
@@ -147,6 +146,6 @@ export function reconcileLocalCasualties({
       activeOrderCrewCount: simulation.order?.crewIds?.length || 0,
       orderDisposition
     }),
-    truthBoundary: 'reconciliation-only-no-combat-origin-no-host-persistence; carried scrap on removed Crew is recorded as unrecovered and is not silently credited elsewhere'
+    truthBoundary: 'reconciliation-only-no-combat-origin-no-host-persistence; vehicle drivers are released before manpower removal; carried scrap on removed Crew is recorded as unrecovered and is not silently credited elsewhere'
   });
 }

@@ -49,19 +49,65 @@ test('bound world run shows host food and territory feedback without claiming LO
   expect(projection.goldMultiplier).toBe(admitted.body.progression.activeRun.economy.goldMultiplier);
   expect(projection.foodFromDestruction).toBe(admitted.body.progression.activeRun.economy.foodFromDestruction);
 
+  const baselineDelta = await page.evaluate(() => window.__AXM_WORLD_RUN_RESOURCE_FEEDBACK__.describeDelta());
+  expect(baselineDelta.runId).toBe(projection.runId);
+  expect(baselineDelta.food).toBe(0);
+  expect(baselineDelta.scrap).toBe(0);
+  expect(baselineDelta.peakGlobalControlPoints).toBe(0);
+  expect(baselineDelta.goldMultiplier).toBe(0);
+  expect(baselineDelta.foodFromDestruction).toBe(0);
+  expect(baselineDelta.foodPolicyChanged).toBeNull();
+
   await expect(page.locator('#worldRunResourceSummary')).toBeVisible();
   await expect(page.locator('#worldRunResourceSummary')).toContainText('Host-persistent resources');
   await expect(page.locator('#worldRunResourceSummary')).toContainText('Normal food policy');
   await expect(page.locator('#worldRunResourceSummary')).toContainText('territory peak 0.0%');
   await expect(page.locator('#worldRunResourceSummary')).toContainText('close-score multiplier x1.00');
+  await expect(page.locator('#worldRunResourceChange')).toBeVisible();
+  await expect(page.locator('#worldRunResourceChange')).toContainText('no durable host resource change observed since this command-deck baseline');
   await expect(page.locator('#worldRunResourceBoundary')).toContainText('LOCAL battlefield materials');
+  await expect(page.locator('#worldRunResourceBoundary')).toContainText('browser baseline is presentation evidence');
 
-  await page.locator('#worldRunResourceSummary').scrollIntoViewIfNeeded();
+  const territoryMutation = await page.evaluate(async runId => {
+    const response = await fetch('/api/world/run/global-control', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        participantId: 'world:browser-run-resources',
+        runId,
+        mutationId: `browser-resource-feedback:territory:${runId}`,
+        percent: 12.5
+      })
+    });
+    const body = await response.json();
+    await window.__AXM_WORLD_RUN_LIFECYCLE__.refresh({ force: true });
+    window.__AXM_WORLD_RUN_RESOURCE_FEEDBACK__.render();
+    return {
+      status: response.status,
+      body,
+      projection: window.__AXM_WORLD_RUN_RESOURCE_FEEDBACK__.describe(),
+      delta: window.__AXM_WORLD_RUN_RESOURCE_FEEDBACK__.describeDelta()
+    };
+  }, projection.runId);
+  expect(territoryMutation.status).toBe(200);
+  expect(territoryMutation.projection.peakGlobalControlPercent).toBe(12.5);
+  expect(territoryMutation.delta.runId).toBe(projection.runId);
+  expect(territoryMutation.delta.peakGlobalControlPoints).toBe(12.5);
+  expect(territoryMutation.delta.food).toBe(0);
+  expect(territoryMutation.delta.scrap).toBe(0);
+  expect(territoryMutation.delta.foodPolicyChanged).toBeNull();
+
+  await expect(page.locator('#worldRunResourceSummary')).toContainText('territory peak 12.5%');
+  await expect(page.locator('#worldRunResourceChange')).toContainText('Host resource change since command-deck baseline');
+  await expect(page.locator('#worldRunResourceChange')).toContainText('territory peak +12.5pp');
+
+  await page.locator('#worldRunResourceChange').scrollIntoViewIfNeeded();
   await page.screenshot({ path: 'test-results/global-state-rts-host-run-resources.png', fullPage: true });
 
   await page.locator('#endWorldRun').click();
   await expect(page.locator('#returnToNextDrop')).toBeVisible();
   await expect(page.locator('#worldRunResourceSummary')).toBeHidden();
+  await expect(page.locator('#worldRunResourceChange')).toBeHidden();
   await expect(page.locator('#worldRunResourceBoundary')).toBeHidden();
 
   expect(failures, failures.join('\n')).toEqual([]);

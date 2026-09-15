@@ -41,14 +41,17 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Prepare deterministic checked-in Shallow Mine far derivative
+      - name: Prepare deterministic checked-in mine-head far derivatives
         run: |
           set -euo pipefail
           python3 assets/creation-machine/prepare_runtime_glb.py \
             --asset shallow-mine-entrance \
             --variant far
+          python3 assets/creation-machine/prepare_runtime_glb.py \
+            --asset deep-mine-head \
+            --variant far
 
-      - name: Verify source identity, stable ID and live construction target
+      - name: Verify source identities, stable ID and live construction target
         run: node tests/creation-machine-resource-set-selftest.mjs
 
       - name: Syntax-check focused runtime seam
@@ -72,13 +75,15 @@ jobs:
       - name: Install Chromium runtime
         run: npx playwright install --with-deps chromium
 
-      - name: Start actual Global State RTS shell with prepared resource derivative
+      - name: Start actual Global State RTS shell with prepared resource derivatives
         run: |
           node scripts/serve.mjs > /tmp/axm-global-state-rts-creation-machine-resource.log 2>&1 &
           for i in {1..30}; do
             if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null \
               && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/shallow-mine-entrance-lod1.glb > /dev/null \
-              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/shallow-mine-entrance-lod1.receipt.json > /dev/null; then
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/shallow-mine-entrance-lod1.receipt.json > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/deep-mine-head-lod1.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/deep-mine-head-lod1.receipt.json > /dev/null; then
               exit 0
             fi
             sleep 1
@@ -86,11 +91,12 @@ jobs:
           cat /tmp/axm-global-state-rts-creation-machine-resource.log
           exit 1
 
-      - name: Exercise live Shallow Mine construction then explicit static adoption
+      - name: Exercise live Shallow Mine construction then explicit source-specific static adoption
         run: |
           npx playwright test tests/browser/creation-machine-resource-set.spec.js --workers=1 --reporter=line
           mkdir -p evidence/creation-machine-resource-runtime
           cp test-results/global-state-rts-creation-machine-shallow-mine-4seat.png evidence/creation-machine-resource-runtime/
+          cp test-results/global-state-rts-creation-machine-deep-mine-head-4seat.png evidence/creation-machine-resource-runtime/
 
       - name: Regress player-facing LOCAL construction browser path
         run: npx playwright test tests/browser/local-civilization-gameplay.spec.js --workers=1 --reporter=line
@@ -102,6 +108,7 @@ jobs:
           name: global-state-rts-creation-machine-resource-runtime-evidence
           path: |
             assets/creation-machine/runtime-prepared/shallow-mine-entrance-lod1.receipt.json
+            assets/creation-machine/runtime-prepared/deep-mine-head-lod1.receipt.json
             evidence/creation-machine-resource-runtime/*.png
             test-results/global-state-rts-*.png
             /tmp/axm-global-state-rts-creation-machine-resource.log

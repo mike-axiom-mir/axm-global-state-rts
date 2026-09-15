@@ -17,6 +17,7 @@ export {
 
 export const WORLD_RUN_TRAIN_UNIT_ACTION = 'train-unit-specialization';
 export const WORLD_RUN_LICENSE_UNIT_ACTION = 'license-unit-vehicle';
+export const WORLD_RUN_CRAFT_WEAPON_ACTION = 'craft-weapon';
 
 function nonEmpty(value, label) {
   const text = String(value ?? '').trim();
@@ -27,6 +28,12 @@ function nonEmpty(value, label) {
 function finiteTimestamp(value, label = 'timestampMs') {
   const number = Number(value);
   if (!Number.isFinite(number) || number < 0) throw new RangeError(`${label} must be finite and non-negative`);
+  return number;
+}
+
+function positiveSafeInteger(value, label) {
+  const number = Number(value);
+  if (!Number.isSafeInteger(number) || number < 1) throw new RangeError(`${label} must be a positive safe integer`);
   return number;
 }
 
@@ -74,6 +81,11 @@ function trainingReceipt(run, mutationId) {
 function vehicleLicenseReceipt(run, mutationId) {
   const eventId = `host-run-license:${mutationId}`;
   return run?.manpower?.snapshot?.().trainingReceipts?.find(receipt => receipt.eventId === eventId) || null;
+}
+
+function weaponCraftReceipt(run, mutationId) {
+  const eventId = `host-run-craft:${mutationId}`;
+  return run?.equipment?.snapshot?.().receipts?.find(receipt => receipt.eventId === eventId) || null;
 }
 
 export class DurableWorldRunCommandAuthority {
@@ -149,6 +161,12 @@ export class DurableWorldRunCommandAuthority {
       const licensed = run.licenseUnit(unitId, licenseId, { eventId: `host-run-license:${mutation.mutationId}` });
       if (!licensed.accepted) throw new Error(`durable unit vehicle license replay rejected: ${progression.playerId}:${mutation.mutationId}:${licensed.reason}`);
       result = Object.freeze({ licensing: cloneJson(licensed), runRevision: run.revision });
+    } else if (mutation.action === WORLD_RUN_CRAFT_WEAPON_ACTION) {
+      const weaponId = nonEmpty(mutation.payload?.weaponId, 'weaponId');
+      const count = positiveSafeInteger(mutation.payload?.count, 'count');
+      const crafted = run.craftWeapon(weaponId, count, { eventId: `host-run-craft:${mutation.mutationId}` });
+      if (!crafted.accepted) throw new Error(`durable weapon crafting replay rejected: ${progression.playerId}:${mutation.mutationId}:${crafted.reason}`);
+      result = Object.freeze({ crafting: cloneJson(crafted), runRevision: run.revision });
     } else if (mutation.action === WORLD_RUN_CLOSE_ACTION) {
       if (!sameJson(mutation.payload, {})) throw new Error(`durable run close payload must be empty: ${progression.playerId}:${mutation.mutationId}`);
       const closed = progression.closeActiveRun();
@@ -335,15 +353,21 @@ export class DurableWorldRunCommandAuthority {
     return null;
   }
 
+  #weaponCraftPreflight(context, weaponId, count) {
+    const gate = context.progression.activeRun.equipment.canCraft(weaponId, count);
+    if (!gate.accepted) return gate;
+    return null;
+  }
+
   progressionPersistenceMeta() {
     const base = this.base.progressionPersistenceMeta();
     return Object.freeze({
       ...base,
-      durableMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION, WORLD_RUN_FOOD_POLICY_ACTION, WORLD_RUN_TRAIN_UNIT_ACTION, WORLD_RUN_LICENSE_UNIT_ACTION, WORLD_RUN_CLOSE_ACTION]),
+      durableMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION, WORLD_RUN_FOOD_POLICY_ACTION, WORLD_RUN_TRAIN_UNIT_ACTION, WORLD_RUN_LICENSE_UNIT_ACTION, WORLD_RUN_CRAFT_WEAPON_ACTION, WORLD_RUN_CLOSE_ACTION]),
       restoredMutationsThisProcess: this.mutationRestoreReport.restored,
       mutationParticipantsRestoredThisProcess: this.mutationRestoreReport.participantIds,
       truthBoundary: this.runStartStore
-        ? 'initial-run-start-plus-host-admitted-global-control-food-policy-unit-training-vehicle-licensing-and-terminal-run-close-mutations-are-durable-and-replayed-in-command-order;other-local-rts-mutations-remain-separate-gaps'
+        ? 'initial-run-start-plus-host-admitted-global-control-food-policy-unit-training-vehicle-licensing-weapon-crafting-and-terminal-run-close-mutations-are-durable-and-replayed-in-command-order;other-local-rts-mutations-remain-separate-gaps'
         : 'active-player-progression-and-run-mutations-remain-process-memory-only-without-a-durable-run-start-store'
     });
   }
@@ -375,7 +399,7 @@ export class DurableWorldRunCommandAuthority {
         : terminalCloseApplied
           ? 'host-run-status-replays-the-terminal-close-and-durable-score-history-for-this-run;the-separate-archive-bound-rollover-layer-governs-next-generation handoff'
           : mutations.length
-            ? 'host-run-status-includes-durable-replay-for-the-bounded-global-control-food-policy-unit-training-vehicle-licensing-and-run-close-actions-only;other-run-mutations-remain-outside-this-contract'
+            ? 'host-run-status-includes-durable-replay-for-the-bounded-global-control-food-policy-unit-training-vehicle-licensing-weapon-crafting-and-run-close-actions-only;other-run-mutations-remain-outside-this-contract'
             : base.truthBoundary
     });
   }
@@ -462,6 +486,38 @@ export class DurableWorldRunCommandAuthority {
     return this.#admitPersistApply({ ...context, actionId: 'world-run-license-unit', action: WORLD_RUN_LICENSE_UNIT_ACTION, payload: { unitId: unit, licenseId: license }, timestampMs, successTruthBoundary: 'host-admitted-vehicle-license-command-was-durably-recorded-before-stockpile-and-manpower-application-and-replays-in-command-order-after-restart' });
   }
 
+  craftWeapon({ participantId, runId, mutationId, weaponId, count = 1, timestampMs } = {}) {
+    const weapon = nonEmpty(weaponId, 'weaponId');
+    const amount = positiveSafeInteger(count, 'count');
+    const context = this.#activeRunCommandContext({ participantId, runId, mutationId, action: WORLD_RUN_CRAFT_WEAPON_ACTION, payload: { weaponId: weapon, count: amount } });
+    if (context.rejection) return context.rejection;
+    if (context.existing) {
+      return this.#reconcileExisting({
+        ...context,
+        resultFactory: progression => ({
+          crafting: Object.freeze({ accepted: true, receipt: weaponCraftReceipt(progression.activeRun, context.commandId), inventory: progression.activeRun.equipment.snapshot().inventory }),
+          runRevision: progression.activeRun.revision
+        })
+      });
+    }
+    const preflight = this.#weaponCraftPreflight(context, weapon, amount);
+    if (preflight) {
+      return Object.freeze({
+        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+        accepted: false,
+        reason: preflight.reason,
+        participantId: context.record.participantId,
+        runId: context.expectedRunId,
+        mutationId: context.commandId,
+        crafting: preflight,
+        progressionPersistence: this.progressionPersistenceMeta(),
+        progression: context.progression.snapshot(),
+        truthBoundary: 'weapon-crafting-was-not-admitted-or-persisted-because-the-authoritative-active-run-preconditions-were-not-met'
+      });
+    }
+    return this.#admitPersistApply({ ...context, actionId: 'world-run-craft-weapon', action: WORLD_RUN_CRAFT_WEAPON_ACTION, payload: { weaponId: weapon, count: amount }, timestampMs, successTruthBoundary: 'host-admitted-weapon-crafting-command-was-durably-recorded-before-stockpile-and-equipment-application-and-replays-in-command-order-after-restart' });
+  }
+
   closeActiveRun({ participantId, runId, mutationId, timestampMs } = {}) {
     const record = this.#record(participantId);
     const expectedRunId = nonEmpty(runId, 'runId');
@@ -510,7 +566,7 @@ export class DurableWorldRunCommandAuthority {
       mutationRestoreReport: this.mutationRestoreReport,
       unpersistedMutations: Object.freeze([...this.unpersistedMutations.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([participantId, error]) => Object.freeze({ participantId, error }))),
       truthBoundary: this.runStartStore
-        ? 'bounded-host-global-control-food-policy-unit-training-vehicle-licensing-and-terminal-run-close-mutations-replay-in-order-after-the-durable-run-start;other-local-rts-mutations-remain-separate-gaps'
+        ? 'bounded-host-global-control-food-policy-unit-training-vehicle-licensing-weapon-crafting-and-terminal-run-close-mutations-replay-in-order-after-the-durable-run-start;other-local-rts-mutations-remain-separate-gaps'
         : 'run mutations remain process-memory-only without durable-run-start storage'
     });
   }

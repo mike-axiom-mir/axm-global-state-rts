@@ -1,0 +1,43 @@
+name: World run host weapon crafting authority
+
+on:
+  pull_request:
+    paths:
+      - 'src/hosted/durable-world-run-command-authority.mjs'
+      - 'src/hosted/world-run-http-api.mjs'
+      - 'tests/world-run-global-control-replay-selftest.mjs'
+      - 'tests/world-run-close-replay-selftest.mjs'
+      - 'tests/world-run-unit-training-authority-selftest.mjs'
+      - 'tests/world-run-vehicle-license-authority-selftest.mjs'
+      - 'tests/world-run-weapon-crafting-authority-selftest.mjs'
+      - '.github/workflows/world-run-weapon-crafting-authority.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  durable-weapon-crafting-authority:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check authority sources
+        run: |
+          node --check src/hosted/durable-world-run-command-authority.mjs
+          node --check src/hosted/world-run-http-api.mjs
+          node --check tests/world-run-global-control-replay-selftest.mjs
+          node --check tests/world-run-close-replay-selftest.mjs
+          node --check tests/world-run-unit-training-authority-selftest.mjs
+          node --check tests/world-run-vehicle-license-authority-selftest.mjs
+          node --check tests/world-run-weapon-crafting-authority-selftest.mjs
+      - name: Run full deterministic source suite
+        run: npm test
+      - name: Exercise durable weapon crafting authority and restart replay
+        run: node tests/world-run-weapon-crafting-authority-selftest.mjs

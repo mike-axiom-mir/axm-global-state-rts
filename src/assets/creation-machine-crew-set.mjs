@@ -88,6 +88,15 @@ export const CREATION_MACHINE_CREW_SET = Object.freeze([
     note: 'Explicit alternate full static Crew candidate for the same real worker-marked preview instances. It cannot displace the procedural or crew-worker primary presentation without a source-specific runtime call.'
   }),
   freezeEntry({
+    candidateId: 'crew-worker-citizen-harvester-alternate',
+    candidateRole: 'alternate',
+    fixtureAssetId: 'crew-worker-kit-a',
+    sourceAsset: 'citizen-harvester',
+    gameplayTarget: 'starter-region:crew-worker',
+    roleBoundary: 'Worker-role presentation alternate only; citizen/harvester naming is source provenance and grants no citizen class, harvesting profession, gather rate, resource bonus, or action authority.',
+    note: 'Second explicit alternate full static Crew candidate for the same real worker-marked preview instances. It remains source-selected only and cannot displace the procedural presentation or crew-worker primary candidate.'
+  }),
+  freezeEntry({
     candidateId: 'crew-rifle-rifle-guard-primary',
     candidateRole: 'primary',
     fixtureAssetId: 'crew-rifle-kit-a',

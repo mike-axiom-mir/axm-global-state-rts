@@ -2,20 +2,21 @@
 
 Status: **REPRESENTATIVE RUNTIME TRIAL · NOT DEFAULT-ADOPTED · NOT VISUALLY ACCEPTED · STATIC ONLY**
 
-This slice connects three existing stable Crew presentation IDs to checked-in Creation Machine static source assets. `crew-worker-kit-a` now has one explicit alternate source in addition to its existing primary candidate. It deliberately does not change Crew rules, combat authority, movement, party logic, role statistics, repair authority, or animation.
+This slice connects three existing stable Crew presentation IDs to checked-in Creation Machine static source assets. `crew-worker-kit-a` now has two explicit alternate sources in addition to its existing primary candidate. It deliberately does not change Crew rules, combat authority, movement, party logic, role statistics, gathering authority, repair authority, or animation.
 
 | Existing RTS presentation ID | Creation Machine source | Candidate role | Live gameplay/state target | Trial scope |
 | --- | --- | --- | --- | --- |
 | `crew-base-a` | `scavenger` | primary | generic Crew already present in the deterministic local Crew simulation | replace one representative preview Crew instance |
 | `crew-worker-kit-a` | `crew-worker` | primary | worker-marked Crew already present in the deterministic local Crew simulation | replace one representative preview Crew instance |
 | `crew-worker-kit-a` | `mechanic-repair-crew` | alternate | the same worker-marked Crew simulation instances | explicit source-selected replacement of one representative preview Crew instance |
+| `crew-worker-kit-a` | `citizen-harvester` | alternate | the same worker-marked Crew simulation instances | explicit source-selected replacement of one representative preview Crew instance |
 | `crew-rifle-kit-a` | `rifle-guard` | primary | rifle-marked Crew already present in the deterministic local Crew simulation | replace the single representative preview Crew instance |
 
-The mapping preserves the existing RTS IDs. Creation Machine source IDs remain source/provenance identities rather than becoming new gameplay IDs. The `mechanic-repair-crew` name is provenance only: this slice does not create a mechanic profession, repair stat, repair action, tool authority, or new Crew type.
+The mapping preserves the existing RTS IDs. Creation Machine source IDs remain source/provenance identities rather than becoming new gameplay IDs. The `mechanic-repair-crew` name is provenance only: this slice does not create a mechanic profession, repair stat, repair action, tool authority, or new Crew type. Likewise, `citizen-harvester` does not create a citizen class, harvesting profession, gather-rate change, resource bonus, or new action authority.
 
 ## Source boundary
 
-The checked-in Creation Machine index marks all four source assets as `crew` and static (`animated=False`). The transfer manifest retains the original source pack identity, hashes and both supplied near/far model members. The Creation Machine manifest describes the delivered reconstructions as authored static candidates, not exact reference matches, with no certified collision. Their editable-source/provenance chain remains in the existing Creation Machine transfer/manifest records.
+The checked-in Creation Machine index marks all five source assets as `crew` and static (`animated=False`). The transfer manifest retains the original source pack identity, hashes and both supplied near/far model members. The Creation Machine manifest describes the delivered reconstructions as authored static candidates, not exact reference matches, with no certified collision. Their editable-source/provenance chain remains in the existing Creation Machine transfer/manifest records.
 
 The `crew-worker-kit-a` and `crew-rifle-kit-a` names are existing RTS presentation IDs. The source assets used here are **full static Crew reconstructions**, not proven detachable equipment kits. This trial therefore makes no modular-kit claim.
 
@@ -29,7 +30,7 @@ The existing static runtime installer resolves an existing `previewCrew` record 
 
 ## Browser evidence gate
 
-Each source candidate gets a fresh four-seat machine-player page. All four seats independently enter LOCAL RTS through the existing admitted action path. Seat 1 explicitly imports one source-pinned static Crew candidate; seats 2–4 remain procedural. A separate omission check requires `crew-worker-kit-a` to continue selecting `crew-worker`, proving that registering the mechanic alternate does not silently promote it.
+Each source candidate gets a fresh four-seat machine-player page. All four seats independently enter LOCAL RTS through the existing admitted action path. Seat 1 explicitly imports one source-pinned static Crew candidate; seats 2–4 remain procedural. A separate omission check requires `crew-worker-kit-a` to continue selecting `crew-worker`, proving that registering either alternate does not silently promote it.
 
 The gate requires:
 
@@ -56,10 +57,10 @@ Near and far source variants exist, but this slice proves only the far/lod1 runt
 
 ## Animation handoff
 
-All four source assets are static and this slice claims zero animation clips. No rig, skinning, locomotion, repair motion, weapon handling, secondary motion, blend tree, or animation quality is added. Bespoke animation remains a later pass after static Crew identity/readability has enough human acceptance to justify it.
+All five source assets are static and this slice claims zero animation clips. No rig, skinning, locomotion, repair motion, gathering motion, weapon handling, secondary motion, blend tree, or animation quality is added. Bespoke animation remains a later pass after static Crew identity/readability has enough human acceptance to justify it.
 
 ## Truth boundary
 
-Passing this slice means: four source-pinned static Crew candidates are structurally mapped onto three existing live Crew presentation IDs, their source identities remain explicit, the worker alternate cannot silently replace its primary, one representative per candidate can be imported in the real four-seat LOCAL RTS route, and sibling seats keep procedural fallback.
+Passing this slice means: five source-pinned static Crew candidates are structurally mapped onto three existing live Crew presentation IDs, their source identities remain explicit, the two worker alternates cannot silently replace the primary, one representative per candidate can be imported in the real four-seat LOCAL RTS route, and sibling seats keep procedural fallback.
 
-It does **not** mean the candidates are default visuals, accepted art, modular kits, mechanic-role implementations, animation-ready characters, collision-ready bodies, production-performance assets, or family-wide replacements.
+It does **not** mean the candidates are default visuals, accepted art, modular kits, mechanic-role implementations, citizen/harvester-role implementations, animation-ready characters, collision-ready bodies, production-performance assets, or family-wide replacements.

@@ -7,8 +7,6 @@ const HUMAN_KEY_BY_ACTION = Object.freeze({
   'ui-up': '[',
   'ui-down': ']',
   'ui-left': 'p',
-  'ui-right': 'b',
-  'party-menu': 'Tab',
   confirm: 'Enter',
   context: 'x',
   cancel: 'Escape'
@@ -46,7 +44,21 @@ const seatSelect = root.querySelector('#gameplaySeat');
 const summary = root.querySelector('#gameplaySummary');
 const actions = root.querySelector('#gameplayActions');
 const feedback = root.querySelector('#gameplayFeedback');
-let renderedActionSignature = '';
+
+const strategicSummary = document.createElement('div');
+strategicSummary.id = 'primaryStrategicSummary';
+strategicSummary.className = 'status';
+strategicSummary.dataset.primaryStrategicSummary = 'true';
+strategicSummary.setAttribute('aria-live', 'polite');
+summary.insertAdjacentElement('afterend', strategicSummary);
+
+const strategicActions = document.createElement('div');
+strategicActions.id = 'primaryStrategicActions';
+strategicActions.className = 'gameplay-actions';
+strategicActions.hidden = true;
+actions.insertAdjacentElement('afterend', strategicActions);
+
+let renderedRouteSignature = '';
 
 function selectedSeat() {
   const seatId = seatSelect?.value || 'seat-1';
@@ -75,7 +87,7 @@ function dispatchHumanAction(actionId) {
   document.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true }));
 }
 
-function submitAction(actionId) {
+function submitStrategicAction(actionId) {
   const state = selectedState();
   if (!state?.seat) return;
   if (!canClickSeat(state.seat)) {
@@ -93,9 +105,7 @@ function submitAction(actionId) {
     setTimeout(() => {
       const after = selectedState();
       const outcome = after?.strategic?.lastOutcome?.message;
-      if (outcome && (after.strategic.menuOpen || after.strategic.deployedLocalCrewIds?.length)) {
-        feedback.textContent = `${state.seat.id} · ${outcome}`;
-      }
+      if (outcome) feedback.textContent = `${state.seat.id} · ${outcome}`;
       render();
     }, 0);
   } catch (error) {
@@ -118,14 +128,9 @@ function strategicSummaryText(state) {
 }
 
 function ensureStrategicSummary(state) {
-  if (!summary || !state?.strategic) return;
-  let row = summary.querySelector('[data-primary-strategic-summary]');
-  if (!row) {
-    row = document.createElement('span');
-    row.dataset.primaryStrategicSummary = 'true';
-    summary.appendChild(row);
-  }
-  row.innerHTML = `strategic <b>${strategicSummaryText(state.strategic)}</b>`;
+  if (!state?.strategic) return;
+  const text = `strategic · ${strategicSummaryText(state.strategic)}`;
+  if (strategicSummary.textContent !== text) strategicSummary.textContent = text;
 }
 
 function routeDefinitions(state) {
@@ -148,48 +153,35 @@ function routeDefinitions(state) {
   ];
 }
 
-function vehicleDefinitions(state) {
-  const civilization = state.civilization;
-  const selected = civilization?.vehicles?.selectedPlan;
-  const supplyBatch = civilization?.vehicles?.convoySupplyLoadBatch || 100;
+function strategicOpenDefinition(state) {
   const deployed = state.strategic?.deployedLocalCrewIds?.length || 0;
   const selectedDeployed = strategic.blocksSelectedLocalCrew(state.seat.id, state.party?.selectedCrewIds || []);
-  const routeLabel = deployed
+  const label = deployed
     ? (selectedDeployed ? `Strategic route · control ${deployed}-Crew convoy · L3 / F` : `Strategic route · select deployed ${deployed}-Crew party · L3 / F`)
     : `Strategic route · ${state.strategic?.destinationNodeId || 'destination'} · L3 / F`;
-  return [
-    { id: 'ui-up', label: 'Previous vehicle plan', localVehicleAction: true },
-    { id: 'ui-down', label: 'Next vehicle plan', localVehicleAction: true },
-    { id: 'ui-right', label: `Load ${supplyBatch} scrap → selected-party convoy`, localVehicleAction: true },
-    { id: 'ui-left', label: 'Unload selected-party convoy scrap → local storage', localVehicleAction: true },
-    { id: 'confirm', label: selected ? `Construct ${selected.label}` : 'Construct selected vehicle', localVehicleAction: true },
-    { id: 'party-menu', label: 'Prepare selected-party light drivers', localVehicleAction: true },
-    { id: 'context', label: 'Assign / release selected-party drivers', localVehicleAction: true },
-    { id: 'explore', label: routeLabel, strategicOpen: true, disabled: Boolean(deployed && !selectedDeployed) },
-    { id: 'cancel', label: 'Close vehicle menu' }
-  ];
+  return Object.freeze({
+    id: 'explore',
+    label,
+    disabled: Boolean(deployed && !selectedDeployed)
+  });
 }
 
-function commandButton(state, definition, { route = false } = {}) {
+function commandButton(state, definition, { route = false, strategicOpen = false } = {}) {
   const button = document.createElement('button');
   button.type = 'button';
   button.dataset.gameplayAction = definition.id;
   if (route) button.dataset.primaryStrategicAction = definition.id;
-  if (definition.strategicOpen) button.dataset.primaryStrategicOpen = 'true';
+  if (strategicOpen) button.dataset.primaryStrategicOpen = 'true';
   button.textContent = definition.label;
-  const selectedDeployed = strategic.blocksSelectedLocalCrew(state.seat.id, state.party?.selectedCrewIds || []);
-  const deployedLocalBlock = Boolean(selectedDeployed && definition.localVehicleAction);
-  button.disabled = Boolean(definition.disabled) || deployedLocalBlock || !canClickSeat(state.seat);
+  button.disabled = Boolean(definition.disabled) || !canClickSeat(state.seat);
   if (!canClickSeat(state.seat)) button.title = 'Human seats 2–4 remain controller-owned; use the bound controller.';
-  else if (deployedLocalBlock) button.title = 'Selected Crew are strategically deployed. Use Strategic Route or close Vehicles.';
-  else if (definition.disabled && definition.strategicOpen) button.title = 'Select the deployed convoy party before controlling its strategic route.';
-  button.addEventListener('click', () => submitAction(definition.id));
+  else if (definition.disabled && strategicOpen) button.title = 'Select the deployed convoy party before controlling its strategic route.';
+  button.addEventListener('click', () => submitStrategicAction(definition.id));
   return button;
 }
 
-function actionSignature(mode, state, definitions) {
+function routeSignature(state, definitions) {
   return JSON.stringify({
-    mode,
     seatId: state.seat.id,
     seatKind: state.seat.kind,
     selectedCrewIds: state.party?.selectedCrewIds || [],
@@ -197,26 +189,52 @@ function actionSignature(mode, state, definitions) {
   });
 }
 
-function installActionDefinitions(mode, state, definitions) {
-  const signature = actionSignature(mode, state, definitions);
-  const expectedSelector = mode === 'route' ? '[data-primary-strategic-action]' : '[data-primary-strategic-open]';
-  if (signature === renderedActionSignature && actions.querySelector(expectedSelector)) return;
-  renderedActionSignature = signature;
-  actions.replaceChildren(...definitions.map(definition => commandButton(state, definition, { route: mode === 'route' })));
+function renderRouteActions(state) {
+  const definitions = routeDefinitions(state);
+  const signature = routeSignature(state, definitions);
+  if (signature === renderedRouteSignature && strategicActions.querySelector('[data-primary-strategic-action]')) return;
+  renderedRouteSignature = signature;
+  strategicActions.replaceChildren(...definitions.map(definition => commandButton(state, definition, { route: true })));
+}
+
+function ensureStrategicOpenControl(state) {
+  const definition = strategicOpenDefinition(state);
+  let button = actions.querySelector('[data-primary-strategic-open]');
+  if (!button) {
+    button = commandButton(state, definition, { strategicOpen: true });
+    actions.appendChild(button);
+    return;
+  }
+  button.textContent = definition.label;
+  button.disabled = Boolean(definition.disabled) || !canClickSeat(state.seat);
+  if (!canClickSeat(state.seat)) button.title = 'Human seats 2–4 remain controller-owned; use the bound controller.';
+  else if (definition.disabled) button.title = 'Select the deployed convoy party before controlling its strategic route.';
+  else button.removeAttribute('title');
+}
+
+function rememberBaseButtonState(button) {
+  if (!Object.prototype.hasOwnProperty.call(button.dataset, 'strategicBaseDisabled')) {
+    button.dataset.strategicBaseDisabled = button.disabled ? 'true' : 'false';
+    button.dataset.strategicBaseTitle = button.getAttribute('title') || '';
+  }
 }
 
 function applyDeploymentGuards(state) {
-  if (!actions || !state.strategic) return;
   const selectedDeployed = strategic.blocksSelectedLocalCrew(state.seat.id, state.party?.selectedCrewIds || []);
-  if (!selectedDeployed) return;
-
   for (const button of actions.querySelectorAll('[data-gameplay-action]')) {
-    const actionId = button.dataset.gameplayAction;
-    const strategicAction = button.hasAttribute('data-primary-strategic-action') || button.hasAttribute('data-primary-strategic-open');
-    if (strategicAction) continue;
-    if (DEPLOYED_LOCAL_BLOCKED_ACTIONS.has(actionId)) {
-      button.disabled = true;
+    if (button.hasAttribute('data-primary-strategic-open')) continue;
+    rememberBaseButtonState(button);
+    const blocked = Boolean(selectedDeployed && DEPLOYED_LOCAL_BLOCKED_ACTIONS.has(button.dataset.gameplayAction));
+    const baseDisabled = button.dataset.strategicBaseDisabled === 'true';
+    button.disabled = baseDisabled || blocked;
+    if (blocked) {
+      button.dataset.primaryStrategicBlocked = 'true';
       button.title = 'Selected Crew are strategically deployed. Cycle to a LOCAL party or return the convoy home.';
+    } else if (button.dataset.primaryStrategicBlocked === 'true') {
+      delete button.dataset.primaryStrategicBlocked;
+      const baseTitle = button.dataset.strategicBaseTitle || '';
+      if (baseTitle) button.title = baseTitle;
+      else button.removeAttribute('title');
     }
   }
 }
@@ -227,16 +245,17 @@ function render() {
   ensureStrategicSummary(state);
 
   if (state.strategic.menuOpen) {
-    installActionDefinitions('route', state, routeDefinitions(state));
+    actions.hidden = true;
+    strategicActions.hidden = false;
+    renderRouteActions(state);
     return;
   }
 
-  if (state.civilization?.menuKind === 'vehicle') {
-    installActionDefinitions('vehicle', state, vehicleDefinitions(state));
-    return;
-  }
+  actions.hidden = false;
+  strategicActions.hidden = true;
+  renderedRouteSignature = '';
 
-  renderedActionSignature = '';
+  if (state.civilization?.menuKind === 'vehicle') ensureStrategicOpenControl(state);
   applyDeploymentGuards(state);
 }
 

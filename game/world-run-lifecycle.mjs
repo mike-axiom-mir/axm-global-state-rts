@@ -1,3 +1,5 @@
+import { localDefeatRunCloseReadiness } from './local-defeat-run-close-bridge.mjs';
+
 const gameplaySurface = document.getElementById('gameplaySurface');
 if (!gameplaySurface) throw new Error('missing #gameplaySurface mount');
 
@@ -77,11 +79,28 @@ function closeMutationId(runId) {
   return `browser-terminal-close:${String(runId)}`;
 }
 
+function terminalLocalDefeat() {
+  const bound = binding();
+  let combat = null;
+  try {
+    combat = bridge.describeSeatCombat?.('seat-1') || null;
+  } catch {
+    combat = null;
+  }
+  return localDefeatRunCloseReadiness({
+    binding: bound,
+    hostStatus: retainedStatus,
+    combat
+  });
+}
+
 function render() {
   const bound = binding();
   const run = activeRun();
   const isWorldAccount = bound?.profileKind === 'world-account';
+  const localDefeat = terminalLocalDefeat();
   endButton.disabled = Boolean(closeInFlight) || !isWorldAccount || !run;
+  endButton.textContent = localDefeat.accepted ? 'Score defeated civilization run' : 'End civilization run';
   returnLink.hidden = Boolean(run);
 
   if (!bound) {
@@ -101,7 +120,11 @@ function render() {
   if (run) {
     const persistence = retainedStatus.progressionPersistence?.kind || 'unknown persistence';
     summary.textContent = `${bound.participantId} · active ${run.runId} · ${persistence}`;
-    feedback.textContent = 'End civilization run is an explicit terminal host action. It scores/closes the active host run; this control is not claiming combat death, LOCAL-state persistence, or automatic next-run rollover.';
+    if (localDefeat.accepted) {
+      feedback.textContent = `LOCAL civilization continuity is terminal for the browser simulation bootstrapped from ${run.runId}. The close control can now carry that client-observed defeat into the existing durable host close/score path. The host close is authoritative once accepted; the defeat cause is still browser-local evidence, not host-replayed combat proof.`;
+    } else {
+      feedback.textContent = 'End civilization run is an explicit terminal host action. It scores/closes the active host run; this control is not claiming combat death, LOCAL-state persistence, or automatic next-run rollover. When the correlated browser-local civilization reaches terminal continuity, this surface will label that client-observed defeat before close.';
+    }
     return;
   }
 
@@ -111,7 +134,7 @@ function render() {
     ? `${bound.participantId} · host run closed ${last.runId} · score ${last.finalGold} · banked ${retainedStatus.progression?.bankedGold ?? 0}`
     : `${bound.participantId} · no active host civilization run`;
   feedback.textContent = last
-    ? 'Terminal close is host-authoritative and durable when the configured run-start journal reports persistence. The current LOCAL browser simulation remains separate and should not be treated as the next civilization.'
+    ? 'Terminal close is host-authoritative and durable when the configured run-start journal reports persistence. Any LOCAL defeat used to motivate that close remains client-observed until a host replay/verifier owns combat consequences.'
     : 'No active host run is available to close.';
 }
 
@@ -161,11 +184,14 @@ async function closeActiveRun() {
     return Object.freeze({ accepted: false, reason: 'no-active-run' });
   }
 
+  const localDefeat = terminalLocalDefeat();
   const participantId = bound.participantId;
   const runId = run.runId;
   const mutationId = closeMutationId(runId);
   endButton.disabled = true;
-  feedback.textContent = `Closing ${runId} through host authority…`;
+  feedback.textContent = localDefeat.accepted
+    ? `Projecting client-observed terminal LOCAL continuity for ${runId} into the durable host close/score path…`
+    : `Closing ${runId} through host authority…`;
   closeInFlight = (async () => {
     try {
       const result = await requestJson('/api/world/run/close', {
@@ -177,14 +203,16 @@ async function closeActiveRun() {
       const latestClosed = history[history.length - 1] || null;
       const finalGold = result.result?.finalGold ?? latestClosed?.finalGold ?? 0;
       const bankedGold = result.result?.bankedGold ?? retainedStatus.progression?.bankedGold ?? 0;
-      feedback.textContent = `Host terminal close accepted · score ${finalGold} · banked ${bankedGold} · return to Shared World Entry for the next-drop surface.`;
+      feedback.textContent = localDefeat.accepted
+        ? `Client-observed LOCAL defeat carried into durable host terminal close · score ${finalGold} · banked ${bankedGold} · return to Shared World Entry for the next-drop surface. The close/score is host-authoritative; the combat cause remains unverified by host replay.`
+        : `Host terminal close accepted · score ${finalGold} · banked ${bankedGold} · return to Shared World Entry for the next-drop surface.`;
       render();
-      return Object.freeze({ accepted: true, result, status: retainedStatus, mutationId });
+      return Object.freeze({ accepted: true, result, status: retainedStatus, mutationId, localDefeat });
     } catch (error) {
       const reason = error?.body?.reason || error?.body?.error || error?.message || String(error);
       feedback.textContent = `Host terminal close rejected · ${reason}`;
       await refresh({ force: true });
-      return Object.freeze({ accepted: false, reason, status: error?.status || 0, body: error?.body || null, runId, mutationId });
+      return Object.freeze({ accepted: false, reason, status: error?.status || 0, body: error?.body || null, runId, mutationId, localDefeat });
     } finally {
       closeInFlight = null;
       render();
@@ -200,6 +228,7 @@ Object.defineProperty(window, '__AXM_WORLD_RUN_LIFECYCLE__', {
   value: Object.freeze({
     refresh: options => refresh(options),
     status: () => retainedStatus,
+    terminalLocalDefeat,
     closeActiveRun
   })
 });

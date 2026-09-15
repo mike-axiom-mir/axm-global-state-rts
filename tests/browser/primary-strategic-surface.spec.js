@@ -234,16 +234,20 @@ test('primary RTS deck drives one aggregate strategic convoy, mobilizes an arriv
   expect(state.workUnits.aggregateConvoyUnits).toBe(1);
   expect(state.workUnits.perCrewMovementTicks).toBe(0);
   expect(state.cargo.cargo.scrap).toBeCloseTo(100, 6);
-  await expect(page.locator('#gameplayFeedback')).toContainText(`Objective route targets nearest transport landmark ${objectiveLandmarkId}`);
-  await expect(page.locator('#gameplayFeedback')).toContainText('does not join, claim, or settle a reward');
+  expect(state.lastOutcome?.message).toContain(`Objective route targets nearest transport landmark ${objectiveLandmarkId}`);
+  expect(state.lastOutcome?.message).toContain('does not join, claim, or settle a reward');
+  await expect(page.locator('#inputStatus')).toContainText('strategic-objective-route');
+  await expect(page.locator('#inputStatus')).toContainText(`nearest transport landmark ${objectiveLandmarkId}`);
 
   await page.waitForTimeout(700);
   await pulse(page, 15); // A second route request cannot reroute or teleport while physically between landmarks.
   const blockedMidEdge = await primaryStrategicSnapshot(page);
   expect(blockedMidEdge.journey?.status).toBe('transit');
   expect(blockedMidEdge.journey?.destinationNodeId).toBe(objectiveLandmarkId);
-  await expect(page.locator('#gameplayFeedback')).toContainText('convoy is between landmarks');
-  await expect(page.locator('#gameplayFeedback')).toContainText('no mid-edge teleport or hidden reroute');
+  expect(blockedMidEdge.lastOutcome?.message).toContain('convoy is between landmarks');
+  expect(blockedMidEdge.lastOutcome?.message).toContain('no mid-edge teleport or hidden reroute');
+  await expect(page.locator('#inputStatus')).toContainText('convoy-between-landmarks');
+  await expect(page.locator('#inputStatus')).toContainText('no mid-edge teleport or hidden reroute');
   await page.screenshot({ path: 'test-results/global-state-rts-primary-objective-route-transit.png', fullPage: true });
 
   state = await advanceUntilArrived(page);

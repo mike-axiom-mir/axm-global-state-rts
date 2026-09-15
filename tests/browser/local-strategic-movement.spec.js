@@ -4,7 +4,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -79,7 +79,7 @@ test('controller-admitted selected-party convoy travels strategic route and retu
   expect(initialCivilization.vehicles.driverCount).toBe(1);
 
   await pulse(page, 10); // L3 / Explore opens strategic route menu using the standard profile.
-  await expect(page.locator('#strategicFeedback')).toContainText('strategic-menu-open');
+  await expect(page.locator('#strategicFeedback')).toContainText('Strategic route menu open');
   await expect(page.locator('[data-strategic-action="confirm"]')).toContainText('Depart');
 
   await pulse(page, 0); // A / confirm departs.

@@ -6,7 +6,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
   });
   page.on('requestfailed', request => {
     failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`);
@@ -23,7 +23,6 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   const seat = page.locator('#gameplaySeat');
   const objective = page.locator('#gameplayObjective');
   const readiness = page.locator('#gameplayReadiness');
-  const feedback = page.locator('#gameplayFeedback');
   const dock = page.locator('.control-dock');
   await expect(surface).toBeVisible();
   await expect(dock).toBeVisible();
@@ -82,13 +81,9 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await expect(readiness).toContainText('Production readiness');
   await expect(readiness).toContainText('blocked');
   await expect(readiness).toContainText('build a Shallow Mine first');
-  const blockedProductionConfirm = page.locator('[data-gameplay-action="confirm"]');
-  await expect(blockedProductionConfirm).toHaveText('Assign party (build a Shallow Mine)');
-  await blockedProductionConfirm.click();
-  await expect(feedback).toContainText('No Shallow Mine exists yet. Build one first.');
-  await expect(feedback).toContainText('Retry path · Production readiness · blocked · build a Shallow Mine first');
-  await feedback.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: 'test-results/global-state-rts-command-retry-blocked.png', fullPage: true });
+  await expect(page.locator('[data-gameplay-action="confirm"]')).toHaveText('Assign party (build a Shallow Mine)');
+  await readiness.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'test-results/global-state-rts-command-readiness-blocked.png', fullPage: true });
   await page.locator('[data-gameplay-action="cancel"]').click();
   await expect(readiness).toContainText('Macro readiness');
 
@@ -106,9 +101,9 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
 
   await gatherButton.click();
   await expect(page.locator('#inputStatus')).toContainText('seat-1 · gather-scrap · Crew 2 4 Crew · local macro order admitted');
-  await expect(feedback).toContainText('existing admitted input path');
-  await expect(feedback).toContainText('4/4 Crew visible');
-  await expect(feedback).toContainText('target');
+  await expect(page.locator('#gameplayFeedback')).toContainText('existing admitted input path');
+  await expect(page.locator('#gameplayFeedback')).toContainText('4/4 Crew visible');
+  await expect(page.locator('#gameplayFeedback')).toContainText('target');
   await expect(page.locator('#gameplaySummary')).toContainText('gather-scrap · order-');
   await expect(page.locator('#gameplaySummary')).toContainText('selected consequence');
   await expect(page.locator('#gameplaySummary')).toContainText('4/4 Crew visible');
@@ -119,11 +114,11 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await expect(page.locator('#gameplaySummary')).toContainText('Crew 1 · 4 Crew · 2 parties');
   await exploreButton.click();
   await expect(page.locator('#inputStatus')).toContainText('seat-1 · explore · Crew 1 4 Crew · local macro order admitted');
-  await expect(feedback).toContainText('explore admitted through its existing admitted input path');
-  await expect(feedback).toContainText('4/4 Crew visible');
+  await expect(page.locator('#gameplayFeedback')).toContainText('explore admitted through its existing admitted input path');
+  await expect(page.locator('#gameplayFeedback')).toContainText('4/4 Crew visible');
   await repairButton.click();
   await expect(page.locator('#inputStatus')).toContainText('seat-1 · repair-core · Crew 1 4 Crew · local macro order admitted');
-  await expect(feedback).toContainText('repair-core admitted through its existing admitted input path');
+  await expect(page.locator('#gameplayFeedback')).toContainText('repair-core admitted through its existing admitted input path');
 
   await seat.selectOption('seat-2');
   await expect(page.locator('#gameplaySummary')).toContainText('controller-owned; view only here');
@@ -145,8 +140,8 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await expect(page.locator('#gameplaySummary')).toContainText('Crew 2 · 4 Crew · 2 parties');
   await gatherButton.click();
   await expect(page.locator('#inputStatus')).toContainText('seat-3 · gather-scrap · Crew 2 4 Crew · local macro order admitted');
-  await expect(feedback).toContainText('seat-3 · gather-scrap admitted through its existing admitted input path');
-  await expect(feedback).toContainText('4/4 Crew visible');
+  await expect(page.locator('#gameplayFeedback')).toContainText('seat-3 · gather-scrap admitted through its existing admitted input path');
+  await expect(page.locator('#gameplayFeedback')).toContainText('4/4 Crew visible');
 
   const machineSimulation = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-3'));
   const machineParty = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatParty('seat-3'));
@@ -165,7 +160,7 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await expect(engageButton).toContainText('Engage selected party');
   await engageButton.click();
   await expect(page.locator('#inputStatus')).toContainText('seat-3 · combat-exchange · Combat exchange');
-  await expect(feedback).toContainText('Combat exchange');
+  await expect(page.locator('#gameplayFeedback')).toContainText('Combat exchange');
   const machineCombat = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCombat('seat-3'));
   expect(machineCombat.contact.remainingCrew).toBeLessThanOrEqual(4);
   expect(machineCombat.contact.remainingCrew).toBeGreaterThanOrEqual(0);

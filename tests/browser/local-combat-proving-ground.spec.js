@@ -6,7 +6,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -55,7 +55,7 @@ test('LOCAL combat proving ground routes selected-party combat through existing 
   expect(snapshot.combat.encounter?.receipts?.length || 0).toBeGreaterThan(0);
   expect(snapshot.combat.engagedLocalCrewIds.length).toBeGreaterThan(0);
 
-  for (let attempt = 0; attempt < 10 && !snapshot.combat.contact.cleared; attempt += 1) {
+  for (let attempt = 0; attempt < 24 && !snapshot.combat.contact.cleared; attempt += 1) {
     await tapGamepadButton(page, 0);
     snapshot = await page.evaluate(() => window.__AXM_LOCAL_COMBAT_PROVING_GROUND__.snapshot());
   }

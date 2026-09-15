@@ -26,6 +26,7 @@ const BASE_ACTIONS = Object.freeze([
   Object.freeze({ id: 'ui-right', label: 'Build menu', localOnly: true, civilizationMenu: true }),
   Object.freeze({ id: 'ui-left', label: 'Production menu', localOnly: true, civilizationMenu: true }),
   Object.freeze({ id: 'ui-up', label: 'Vehicles menu', localOnly: true, civilizationMenu: true }),
+  Object.freeze({ id: 'ui-down', label: 'Combat menu', localOnly: true, combatMenu: true }),
   Object.freeze({ id: 'party-menu', label: 'Party menu', localOnly: true }),
   Object.freeze({ id: 'party-prev', label: 'Previous party', localOnly: true }),
   Object.freeze({ id: 'party-next', label: 'Next party', localOnly: true }),
@@ -201,15 +202,28 @@ function vehicleMenuActions(civilization) {
   ]);
 }
 
-function renderActions(seat, mode, party, civilization) {
+function combatMenuActions(combat) {
+  const remaining = combat?.contact?.remainingCrew ?? 0;
+  const initial = combat?.contact?.initialCrew ?? 0;
+  const engaged = combat?.engagedLocalCrewIds?.length || 0;
+  return Object.freeze([
+    Object.freeze({ id: 'confirm', label: combat?.encounter ? `Advance combat · ${remaining}/${initial} hostiles` : `Engage selected party · ${remaining}/${initial} hostiles`, localOnly: true, disabled: Boolean(combat?.contact?.cleared) }),
+    Object.freeze({ id: 'cancel', label: engaged ? `Retreat ${engaged} engaged Crew` : 'Close combat menu', localOnly: true })
+  ]);
+}
+
+function renderActions(seat, mode, party, civilization, combat) {
   const partyMenuOpen = Boolean(party?.menuOpen);
   const civilizationMenu = civilization?.menuKind || null;
+  const combatMenuOpen = Boolean(combat?.menuOpen);
   const selectedBuild = civilization?.selectedBuild?.id || 'none';
   const selectedProduction = civilization?.production?.selectedBuildingId || 'none';
   const selectedVehicle = civilization?.vehicles?.selectedPlan?.id || 'none';
   const vehicleCount = civilization?.vehicles?.vehicleCount || 0;
   const driverCount = civilization?.vehicles?.driverCount || 0;
-  const signature = `${seat?.id || 'none'}:${seat?.kind || 'none'}:${mode}:${canClickSeat(seat) ? 'clickable' : 'view-only'}:${partyMenuOpen ? 'party-open' : 'party-closed'}:${civilizationMenu || 'civ-closed'}:${selectedBuild}:${selectedProduction}:${selectedVehicle}:${vehicleCount}:${driverCount}`;
+  const combatRemaining = combat?.contact?.remainingCrew ?? 'unknown';
+  const combatRevision = combat?.revision ?? 0;
+  const signature = `${seat?.id || 'none'}:${seat?.kind || 'none'}:${mode}:${canClickSeat(seat) ? 'clickable' : 'view-only'}:${partyMenuOpen ? 'party-open' : 'party-closed'}:${civilizationMenu || 'civ-closed'}:${combatMenuOpen ? 'combat-open' : 'combat-closed'}:${combatRemaining}:${combatRevision}:${selectedBuild}:${selectedProduction}:${selectedVehicle}:${vehicleCount}:${driverCount}`;
   if (signature === lastActionSignature) return;
   lastActionSignature = signature;
 
@@ -218,6 +232,7 @@ function renderActions(seat, mode, party, civilization) {
   if (civilizationMenu === 'build') definitions = buildMenuActions(civilization);
   if (civilizationMenu === 'production') definitions = productionMenuActions(civilization);
   if (civilizationMenu === 'vehicle') definitions = vehicleMenuActions(civilization);
+  if (combatMenuOpen) definitions = combatMenuActions(combat);
 
   actions.replaceChildren(...definitions.map(definition => {
     const button = document.createElement('button');
@@ -225,11 +240,13 @@ function renderActions(seat, mode, party, civilization) {
     button.dataset.gameplayAction = definition.id;
     button.textContent = definition.label;
     const unavailableMode = definition.localOnly && mode !== 'local-rts';
-    const blockedByPartyMenu = Boolean(partyMenuOpen && (definition.gameplayOrder || definition.civilizationMenu));
-    button.disabled = unavailableMode || blockedByPartyMenu || !canClickSeat(seat);
+    const blockedByPartyMenu = Boolean(partyMenuOpen && (definition.gameplayOrder || definition.civilizationMenu || definition.combatMenu));
+    const clearedCombatContact = Boolean(definition.combatMenu && combat?.contact?.cleared);
+    button.disabled = unavailableMode || blockedByPartyMenu || clearedCombatContact || Boolean(definition.disabled) || !canClickSeat(seat);
     if (!canClickSeat(seat)) button.title = 'Human seats 2–4 remain controller-owned; this panel does not bypass their input binding.';
     else if (unavailableMode) button.title = 'Enter LOCAL RTS first.';
     else if (blockedByPartyMenu) button.title = 'Close the party menu before issuing another macro command.';
+    else if (clearedCombatContact) button.title = 'The finite browser-local hostile contact is already cleared.';
     button.addEventListener('click', () => submitAction(definition.id));
     return button;
   }));
@@ -245,8 +262,10 @@ function submitAction(actionId) {
     }
     let beforeCivilization = null;
     let beforeSimulation = null;
+    let beforeCombat = null;
     try { beforeCivilization = bridge.describeSeatCivilization(seat.id); } catch { beforeCivilization = null; }
     try { beforeSimulation = bridge.describeSeatSimulation(seat.id); } catch { beforeSimulation = null; }
+    try { beforeCombat = bridge.describeSeatCombat(seat.id); } catch { beforeCombat = null; }
     if (seat.kind === 'machine') {
       const result = bridge.submitMachineAction({ seatId: seat.id, actionId, timestampMs: performance.now() });
       if (!result?.accepted) {
@@ -258,7 +277,10 @@ function submitAction(actionId) {
     setTimeout(() => {
       try {
         const civilization = bridge.describeSeatCivilization(seat.id);
-        if (LOCAL_MACRO_ORDER_ACTIONS.has(actionId)) {
+        const combat = bridge.describeSeatCombat(seat.id);
+        if (combat?.revision !== beforeCombat?.revision || combat?.lastOutcome?.message !== beforeCombat?.lastOutcome?.message) {
+          feedback.textContent = `${seat.id} · ${combat.lastOutcome?.message || actionId}`;
+        } else if (LOCAL_MACRO_ORDER_ACTIONS.has(actionId)) {
           feedback.textContent = macroAdmissionFeedback(seat, actionId, beforeSimulation?.order?.id || null);
         } else if (beforeCivilization?.menuOpen || actionId === 'ui-left' || actionId === 'ui-right' || actionId === 'ui-up') {
           feedback.textContent = `${seat.id} · ${civilization.lastOutcome?.message || actionId}`;
@@ -304,6 +326,13 @@ function vehicleSummary(civilization) {
   return `${vehicles.vehicleCount || 0} vehicles · ${vehicles.driverCount || 0} drivers · ${vehicles.uncrewedCount || 0} uncrewed · ${capacity} seats`;
 }
 
+function combatSummary(combat) {
+  if (!combat?.contact) return 'combat state unavailable';
+  const engaged = combat.engagedLocalCrewIds?.length || 0;
+  const state = combat.contact.cleared ? 'cleared' : combat.menuOpen ? 'menu open' : 'ready';
+  return `${combat.contact.remainingCrew}/${combat.contact.initialCrew} hostiles · ${engaged} engaged Crew · ${state}`;
+}
+
 function render() {
   const seats = syncSeatOptions();
   if (!seats.length) return;
@@ -316,9 +345,11 @@ function render() {
   let simulation = null;
   let party = null;
   let civilization = null;
+  let combat = null;
   try { simulation = bridge.describeSeatSimulation(seat.id); } catch { simulation = null; }
   try { party = bridge.describeSeatParty(seat.id); } catch { party = null; }
   try { civilization = bridge.describeSeatCivilization(seat.id); } catch { civilization = null; }
+  try { combat = bridge.describeSeatCombat(seat.id); } catch { combat = null; }
 
   const order = simulation?.order?.type || 'idle';
   const orderId = simulation?.order?.id || 'none';
@@ -333,7 +364,7 @@ function render() {
   const controlNote = canClickSeat(seat)
     ? (seat.kind === 'machine' ? 'machine tool path' : 'keyboard-pointer path')
     : 'controller-owned; view only here';
-  const menu = civilization?.menuKind ? `${civilization.menuKind} menu open` : party?.menuOpen ? 'party menu open' : 'none';
+  const menu = combat?.menuOpen ? 'combat menu open' : civilization?.menuKind ? `${civilization.menuKind} menu open` : party?.menuOpen ? 'party menu open' : 'none';
   const selectedPlan = civilization?.selectedBuild ? `${civilization.selectedBuild.label} · ${civilization.selectedBuild.costText}` : 'none';
   const selectedVehiclePlan = civilization?.vehicles?.selectedPlan
     ? `${civilization.vehicles.selectedPlan.label} · ${civilization.vehicles.selectedPlan.costText}${civilization.vehicles.selectedPlan.constructible ? '' : ` · ${civilization.vehicles.selectedPlan.reason}`}`
@@ -351,16 +382,17 @@ function render() {
     <span>structures <b>${structureSummary(civilization)}</b></span>
     <span>production <b>${productionSummary(civilization)}</b></span>
     <span>vehicles <b>${vehicleSummary(civilization)}</b></span>
+    <span>combat <b>${combatSummary(combat)}</b></span>
     <span>build plan <b>${selectedPlan}</b></span>
     <span>vehicle plan <b>${selectedVehiclePlan}</b></span>
     <span>menu <b>${menu}</b></span>
-    <span>result <b>${civilization?.lastOutcome?.message || 'local civilization state unavailable'}</b></span>
+    <span>result <b>${combat?.menuOpen || ['exchange', 'victory', 'defeat', 'retreat'].includes(combat?.lastOutcome?.kind) ? combat.lastOutcome?.message : civilization?.lastOutcome?.message || 'local gameplay state unavailable'}</b></span>
     <span>crew <b>${phaseSummary(simulation?.crew) || 'none'}</b></span>
     <span>time <b>${worldTime}</b></span>
     <span>input <b>${controlNote}</b></span>
-    <span>state <b>${civilization?.stateScope || 'unknown'} · placeholder structures/vehicles; no bespoke animation</b></span>
+    <span>state <b>${civilization?.stateScope || 'unknown'} · combat ${combat?.stateScope || 'unknown'} · placeholder state visuals; no bespoke animation</b></span>
   `;
-  renderActions(seat, mode, party, civilization);
+  renderActions(seat, mode, party, civilization, combat);
 }
 
 seatSelect.addEventListener('change', () => {

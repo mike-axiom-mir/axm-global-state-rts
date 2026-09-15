@@ -56,12 +56,15 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   const repairButton = page.locator('[data-gameplay-action="repair-core"]');
   const exploreButton = page.locator('[data-gameplay-action="explore"]');
   const partyMenuButton = page.locator('[data-gameplay-action="party-menu"]');
+  const combatMenuButton = page.locator('[data-gameplay-action="ui-down"]');
 
   await expect(gatherButton).toBeDisabled();
+  await expect(combatMenuButton).toBeDisabled();
   await mapButton.click();
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
   await expect(gatherButton).toBeEnabled();
   await expect(partyMenuButton).toBeEnabled();
+  await expect(combatMenuButton).toBeEnabled();
 
   await partyMenuButton.click();
   await expect(page.locator('#gameplaySummary')).toContainText('menu open');
@@ -121,6 +124,24 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   expect(machineSimulation.order?.crewIds).toHaveLength(4);
   expect(machineParty.partyCount).toBe(2);
   expect(machineParty.selectedCrewIds).toHaveLength(4);
+
+  await combatMenuButton.click();
+  await expect(page.locator('#inputStatus')).toContainText('seat-3 · combat-menu-open · Combat menu');
+  await expect(page.locator('#gameplaySummary')).toContainText('combat menu open');
+  await expect(page.locator('#gameplaySummary')).toContainText('4/4 hostiles');
+  const engageButton = page.locator('[data-gameplay-action="confirm"]');
+  await expect(engageButton).toContainText('Engage selected party');
+  await engageButton.click();
+  await expect(page.locator('#inputStatus')).toContainText('seat-3 · combat-exchange · Combat exchange');
+  await expect(page.locator('#gameplayFeedback')).toContainText('Combat exchange');
+  const machineCombat = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCombat('seat-3'));
+  expect(machineCombat.contact.remainingCrew).toBeLessThanOrEqual(4);
+  expect(machineCombat.contact.remainingCrew).toBeGreaterThanOrEqual(0);
+  await page.screenshot({ path: 'test-results/global-state-rts-primary-combat.png', fullPage: true });
+  const retreatButton = page.locator('[data-gameplay-action="cancel"]');
+  await retreatButton.click();
+  await expect(page.locator('#inputStatus')).toContainText('seat-3 · combat-retreat');
+  await expect(page.locator('#gameplaySummary')).not.toContainText('combat menu open');
 
   await page.screenshot({ path: 'test-results/global-state-rts-gameplay-surface.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);

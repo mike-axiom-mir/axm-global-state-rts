@@ -121,6 +121,20 @@ test('four local controller seats get independent globe/local views and local ma
   await pulse(page, 3, 10); // L3: explicit explore order at the current seat cursor.
   await expect(page.locator('#inputStatus')).toContainText('seat-4 · explore · Crew 1 8 Crew · local macro order admitted');
 
+  await pulse(page, 3, 13); // D-pad down: Combat menu on the primary RTS surface.
+  await expect(page.locator('#inputStatus')).toContainText('seat-4 · combat-menu-open · Combat menu');
+  let controllerCombat = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCombat('seat-4'));
+  expect(controllerCombat.menuOpen).toBe(true);
+  expect(controllerCombat.contact.remainingCrew).toBe(4);
+  await pulse(page, 3, 0); // A/confirm: engage/advance one aggregate formation exchange.
+  await expect(page.locator('#inputStatus')).toContainText('seat-4 · combat-exchange · Combat exchange');
+  controllerCombat = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCombat('seat-4'));
+  expect(controllerCombat.contact.remainingCrew).toBeLessThanOrEqual(4);
+  await pulse(page, 3, 1); // B/cancel: explicit retreat/close.
+  await expect(page.locator('#inputStatus')).toContainText('seat-4 · combat-retreat');
+  controllerCombat = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCombat('seat-4'));
+  expect(controllerCombat.menuOpen).toBe(false);
+
   const visibleSimulation = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-4'));
   expect(visibleSimulation.resources).toHaveLength(1);
   expect(visibleSimulation.knowledge.knownResourceIds).toHaveLength(1);

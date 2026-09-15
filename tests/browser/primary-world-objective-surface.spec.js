@@ -23,8 +23,9 @@ test('primary command dock surfaces deterministic world objectives and honest th
 
   await expect(objective).toContainText('world objective · active');
   await expect(objective).toContainText('reward');
-  await expect(objective).toContainText('routing/claim control not yet promoted');
-  await expect(objective).toHaveAttribute('data-state-scope', 'deterministic-browser-visible-not-route-integrated');
+  await expect(objective).toContainText('objective route · tracked nearest landmark');
+  await expect(objective).toContainText('event marker remains off-network');
+  await expect(objective).toHaveAttribute('data-state-scope', 'deterministic-browser-route-projection-not-event-participation');
 
   await expect(cityIntel).toContainText('no arrived remote city');
   await expect(cityIntel).toHaveAttribute('data-state-scope', 'browser-local-world-runtime-not-host-persistent');

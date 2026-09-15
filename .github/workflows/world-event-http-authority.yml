@@ -5,6 +5,8 @@ on:
     paths:
       - 'src/hosted/world-event-http-api.mjs'
       - 'src/hosted/world-event-outcome-authority.mjs'
+      - 'src/hosted/world-participant-registry.mjs'
+      - 'src/sim/hourly-drop-cache.mjs'
       - 'scripts/serve.mjs'
       - 'tests/world-event-http-authority-selftest.mjs'
       - '.github/workflows/world-event-http-authority.yml'
@@ -13,6 +15,8 @@ on:
     paths:
       - 'src/hosted/world-event-http-api.mjs'
       - 'src/hosted/world-event-outcome-authority.mjs'
+      - 'src/hosted/world-participant-registry.mjs'
+      - 'src/sim/hourly-drop-cache.mjs'
       - 'scripts/serve.mjs'
       - 'tests/world-event-http-authority-selftest.mjs'
       - '.github/workflows/world-event-http-authority.yml'
@@ -35,9 +39,11 @@ jobs:
         run: |
           node --check src/hosted/world-event-http-api.mjs
           node --check src/hosted/world-event-outcome-authority.mjs
+          node --check src/hosted/world-participant-registry.mjs
+          node --check src/sim/hourly-drop-cache.mjs
           node --check scripts/serve.mjs
           node --check tests/world-event-http-authority-selftest.mjs
-      - name: Prove account-bound HTTP encounter parity, durable outcomes, and restart replay
+      - name: Prove account-bound encounter parity, durable outcome application, and restart reconciliation
         run: node tests/world-event-http-authority-selftest.mjs
       - name: Existing deterministic regression suite
         run: npm test

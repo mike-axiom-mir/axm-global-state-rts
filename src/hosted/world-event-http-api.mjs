@@ -3,7 +3,7 @@ import { createWorldEventEncounterAuthority } from './world-event-encounter-auth
 import { createWorldEventOutcomeAuthority } from './world-event-outcome-authority.mjs';
 import { activeWorldEvents } from '../world/world-events.mjs';
 
-export const WORLD_EVENT_HTTP_API_SCHEMA = 'axm.global-state-rts.world-event-http-api/v0.1';
+export const WORLD_EVENT_HTTP_API_SCHEMA = 'axm.global-state-rts.world-event-http-api/v0.2';
 
 function response(status, body) {
   return Object.freeze({ status, body: Object.freeze(body) });
@@ -48,6 +48,12 @@ export class WorldEventHttpApiService {
     outcomeStore = null
   } = {}) {
     if (!authority?.participants || !authority?.sharedState) throw new TypeError('world session authority required');
+    if (typeof authority.participants.applyWorldEventReward !== 'function') {
+      throw new TypeError('world participant registry with applyWorldEventReward required');
+    }
+    if (typeof authority.exportWorldAccounts !== 'function') {
+      throw new TypeError('world session authority with exportWorldAccounts required');
+    }
     if (typeof baseApi?.handle !== 'function') throw new TypeError('baseApi with handle required');
     if (typeof clock !== 'function') throw new TypeError('clock must be a function');
     if (typeof storeFactory !== 'function') throw new TypeError('storeFactory must be a function');
@@ -58,6 +64,7 @@ export class WorldEventHttpApiService {
     this.clock = clock;
     this.storeFactory = storeFactory;
     this.encounters = new Map();
+    this.appliedOutcomeIdsThisProcess = new Set();
     const resolvedOutcomeStore = outcomeStore || this.storeFactory(Object.freeze({
       id: '__world-event-outcomes__',
       kind: 'host-outcome-ledger'
@@ -69,6 +76,7 @@ export class WorldEventHttpApiService {
       participantRegistry: this.authority.participants,
       store: resolvedOutcomeStore
     });
+    this.rewardReconcileReport = this.#reconcileDurableOutcomes();
   }
 
   #worldNow() {
@@ -102,6 +110,105 @@ export class WorldEventHttpApiService {
     return encounter;
   }
 
+  #accountPersistenceMeta() {
+    return typeof this.authority.accountPersistenceMeta === 'function'
+      ? this.authority.accountPersistenceMeta()
+      : Object.freeze({ enabled: false, kind: 'unknown' });
+  }
+
+  #persistWorldAccounts() {
+    const accountStore = this.authority.accountStore;
+    if (!accountStore?.replaceAll) {
+      return Object.freeze({
+        ...this.#accountPersistenceMeta(),
+        persisted: false,
+        truthBoundary: 'world-event-reward-is-process-memory-only-without-a-world-account-persistence-adapter'
+      });
+    }
+    const write = accountStore.replaceAll(this.authority.exportWorldAccounts());
+    return Object.freeze({
+      ...this.#accountPersistenceMeta(),
+      persisted: true,
+      write,
+      truthBoundary: 'world-event-reward-receipt-and-next-drop-state-written-through-the-world-account-persistence-adapter'
+    });
+  }
+
+  #applyOutcome(outcome) {
+    if (!outcome) throw new TypeError('durable world-event outcome required');
+    const result = this.authority.participants.applyWorldEventReward({
+      participantId: outcome.winnerParticipantId,
+      eventId: outcome.eventId,
+      reward: outcome.reward
+    });
+    if (!result.accepted) {
+      const error = new Error(`world-event reward application rejected: ${result.reason}`);
+      error.code = 'WORLD_EVENT_REWARD_APPLICATION_REJECTED';
+      throw error;
+    }
+
+    let accountPersistence = this.#accountPersistenceMeta();
+    if (!this.appliedOutcomeIdsThisProcess.has(outcome.eventId)) {
+      accountPersistence = this.#persistWorldAccounts();
+      this.appliedOutcomeIdsThisProcess.add(outcome.eventId);
+    }
+    return Object.freeze({
+      accepted: true,
+      reused: Boolean(result.reused),
+      eventId: outcome.eventId,
+      participantId: outcome.winnerParticipantId,
+      reward: outcome.reward,
+      receipt: result.receipt || null,
+      dropCache: result.dropCache,
+      accountPersistence,
+      admission: 'host-derived-consequence-no-participant-apm-action',
+      humanMachineParity: 'same-world-account-reward-application-path-regardless-of-controller-kind',
+      truthBoundary: accountPersistence.persisted
+        ? 'durable-outcome-reconciled-into-world-account-next-drop-state-with-idempotent-event-receipt'
+        : 'outcome-reconciled-into-process-memory-next-drop-state-no-restart-durability-without-account-store'
+    });
+  }
+
+  #reconcileDurableOutcomes() {
+    const outcomes = this.outcomes.outcomes();
+    const applications = [];
+    for (const outcome of outcomes) applications.push(this.#applyOutcome(outcome));
+    return Object.freeze({
+      attempted: outcomes.length,
+      applied: applications.filter(item => !item.reused).length,
+      reused: applications.filter(item => item.reused).length,
+      eventIds: Object.freeze(outcomes.map(outcome => outcome.eventId).sort()),
+      truthBoundary: 'single-host-startup-reconciliation-between-durable-outcome-ledger-and-world-account-reward-receipts'
+    });
+  }
+
+  #outcomeApplicationStatus(outcome) {
+    if (!outcome) return null;
+    const participant = this.authority.participants.participant(outcome.winnerParticipantId);
+    const receipt = participant?.dropCache?.appliedWorldEventBonuses?.find(item => item.eventId === outcome.eventId) || null;
+    return Object.freeze({
+      eventId: outcome.eventId,
+      participantId: outcome.winnerParticipantId,
+      applied: Boolean(receipt),
+      receipt: receipt ? Object.freeze({ ...receipt }) : null,
+      accountPersistence: this.#accountPersistenceMeta(),
+      truthBoundary: receipt
+        ? 'winner-world-account-carries-idempotent-reward-application-receipt'
+        : 'durable-outcome-exists-without-observed-world-account-application-receipt'
+    });
+  }
+
+  #outcomeMeta() {
+    return Object.freeze({
+      ...this.outcomes.meta(),
+      rewardApplication: 'supported-outcomes-are-reconciled-into-winner-world-account-pending-next-drop-rewards',
+      rewardAdmission: 'host-derived-consequence-does-not-consume-participant-apm-human-machine-identical',
+      rewardPersistence: 'durable-outcome-ledger-plus-idempotent-world-account-receipt-and-account-snapshot',
+      startupReconcile: this.rewardReconcileReport,
+      truthBoundary: 'single-host-two-persistence-surface-crash-reconciliation-not-atomic-database-not-production-scale-not-multi-host-consensus'
+    });
+  }
+
   #sync(encounter, encounterNowMs) {
     const result = encounter.advance({ nowMs: encounterNowMs });
     if (!result.accepted) {
@@ -117,6 +224,7 @@ export class WorldEventHttpApiService {
         error.code = 'WORLD_EVENT_OUTCOME_REJECTED';
         throw error;
       }
+      this.#applyOutcome(finalized.outcome);
     }
     return snapshot;
   }
@@ -131,11 +239,13 @@ export class WorldEventHttpApiService {
     }
     const encounter = this.#encounterFor(event);
     const snapshot = this.#sync(encounter, encounterNowMs);
+    const outcome = this.outcomes.outcome(event.id);
     return Object.freeze({
       event,
       authoritativeEncounter: true,
       encounter: snapshot,
-      outcome: this.outcomes.outcome(event.id),
+      outcome,
+      outcomeApplication: this.#outcomeApplicationStatus(outcome),
       meta: encounter.meta()
     });
   }
@@ -154,8 +264,10 @@ export class WorldEventHttpApiService {
         localSeatSemantics: 'seat-1-through-seat-4-remain-client-local-presentation-and-are-not-global-event-identities',
         advancement: 'host-clock-derived-only-clients-cannot-supply-delta-or-event-time',
         outcomeAuthority: 'host-derived-completed-encounter-outcomes-are-journaled-once-by-event-id',
-        rewardApplication: 'next-drop-cache-bonus-is-durable-entitlement-evidence-only-not-yet-consumed',
-        truthBoundary: 'single-host-durable-encounter-http-seam-not-production-scale-not-multi-host-consensus'
+        rewardApplication: 'supported-next-drop-cache-bonus-outcomes-are-applied-once-to-winner-world-account-pending-next-drop-rewards',
+        rewardAdmission: 'host-derived-reward-consequence-does-not-consume-participant-apm-human-machine-identical',
+        rewardPersistence: 'durable-outcome-ledger-plus-idempotent-world-account-receipt-with-account-snapshot-reconciliation',
+        truthBoundary: 'single-host-durable-encounter-and-reward-reconciliation-seam-not-production-scale-not-multi-host-consensus-not-atomic-cross-store-transaction'
       })
     });
   }
@@ -165,7 +277,7 @@ export class WorldEventHttpApiService {
     return Object.freeze({
       schema: WORLD_EVENT_HTTP_API_SCHEMA,
       outcomes: this.outcomes.outcomes({ participantId }),
-      meta: this.outcomes.meta()
+      meta: this.#outcomeMeta()
     });
   }
 
@@ -186,7 +298,12 @@ export class WorldEventHttpApiService {
         const eventId = decodeURIComponent(outcomeMatch[1]);
         const outcome = this.outcomes.outcome(eventId);
         if (!outcome) return response(404, { error: 'durable world event outcome not found', eventId });
-        return response(200, { schema: WORLD_EVENT_HTTP_API_SCHEMA, outcome, meta: this.outcomes.meta() });
+        return response(200, {
+          schema: WORLD_EVENT_HTTP_API_SCHEMA,
+          outcome,
+          application: this.#outcomeApplicationStatus(outcome),
+          meta: this.#outcomeMeta()
+        });
       }
 
       const statusMatch = route.match(/^\/api\/world\/events\/([^/]+)$/);
@@ -233,10 +350,11 @@ export class WorldEventHttpApiService {
             supportedEncounterKinds: Object.freeze(['king-of-hill:hold-zone']),
             participantIdentity: 'world-account',
             admission: 'world-participant-registry-shared-rolling-window-100-actions-per-60-seconds',
+            rewardAdmission: 'host-derived-reward-consequence-does-not-consume-participant-apm-human-machine-identical',
             advancement: 'host-clock-derived-only',
             persistence: 'per-event-append-only-journal-when-a-durable-store-factory-is-configured',
-            outcomePersistence: this.outcomes.meta(),
-            truthBoundary: 'single-host-durable-encounter-http-seam-not-production-scale-not-multi-host-consensus'
+            outcomePersistence: this.#outcomeMeta(),
+            truthBoundary: 'single-host-durable-encounter-and-reward-reconciliation-http-seam-not-production-scale-not-multi-host-consensus-not-atomic-cross-store-transaction'
           })
         });
       }
@@ -246,7 +364,7 @@ export class WorldEventHttpApiService {
       const message = String(error?.message || error);
       const status = /unknown participant/.test(message)
         ? 404
-        : /journal|revision|previousHash|beforeStateHash|entryHash|host advance rejected|outcome finalization rejected/.test(message)
+        : /journal|revision|previousHash|beforeStateHash|entryHash|host advance rejected|outcome finalization rejected|reward application rejected/.test(message)
           ? 503
           : 400;
       return response(status, { error: message });

@@ -7,7 +7,7 @@ import {
 } from '../session/seat-contract.mjs';
 import { describeWorldTime } from './world-clock.mjs';
 
-export const WORLD_PARTICIPANT_REGISTRY_SCHEMA = 'axm.global-state-rts.world-participant-registry/v0.1';
+export const WORLD_PARTICIPANT_REGISTRY_SCHEMA = 'axm.global-state-rts.world-participant-registry/v0.2';
 export const WORLD_PARTICIPANT_SCHEMA = 'axm.global-state-rts.world-participant/v0.1';
 export const PARTICIPANT_PROFILE_KINDS = Object.freeze(['guest', 'world-account']);
 export const PARTICIPANT_CONTROLLER_KINDS = Object.freeze(['human', 'machine']);
@@ -81,6 +81,7 @@ export class WorldParticipantRegistry {
     openedCrates = 0,
     pendingNextDropRewards = null,
     nextDropClaim = null,
+    appliedWorldEventBonuses = [],
     anchorWorldHour = createdAtWorldHour,
     credentialMode = 'none',
     storageDurability
@@ -111,6 +112,7 @@ export class WorldParticipantRegistry {
         openedCrates,
         pendingNextDropRewards,
         nextDropClaim,
+        appliedWorldEventBonuses,
         cap: this.dropCacheCap
       })
     };
@@ -185,6 +187,7 @@ export class WorldParticipantRegistry {
       openedCrates: cache.openedCrates,
       pendingNextDropRewards: cache.pendingNextDropRewards,
       nextDropClaim: cache.nextDropClaim,
+      appliedWorldEventBonuses: cache.appliedWorldEventBonuses,
       credentialMode: snapshot.credentialMode || 'none',
       storageDurability: 'restored-through-external-persistence-adapter'
     }));
@@ -210,6 +213,42 @@ export class WorldParticipantRegistry {
     const result = record.dropCache.open(count, options);
     if (result.accepted) this.revision += 1;
     return result;
+  }
+
+  applyWorldEventReward({ participantId, eventId, reward } = {}) {
+    const record = this.participants.get(String(participantId));
+    if (!record) throw new RangeError(`unknown participant: ${participantId}`);
+    if (record.profileKind !== 'world-account') {
+      return Object.freeze({
+        accepted: false,
+        reason: 'world-event-reward-requires-world-account',
+        participantId: record.participantId,
+        profileKind: record.profileKind
+      });
+    }
+    const kind = String(reward?.kind || '');
+    if (kind !== 'next-drop-cache-bonus') {
+      return Object.freeze({
+        accepted: false,
+        reason: 'unsupported-world-event-reward',
+        participantId: record.participantId,
+        rewardKind: kind || null
+      });
+    }
+    const result = record.dropCache.creditWorldEventNextDropBonus({
+      eventId: nonEmpty(eventId, 'eventId'),
+      amount: reward.amount
+    });
+    if (result.accepted && !result.reused) this.revision += 1;
+    return Object.freeze({
+      ...result,
+      participantId: record.participantId,
+      controllerKind: record.controllerKind,
+      profileKind: record.profileKind,
+      dropCache: record.dropCache.snapshot(),
+      authority: 'host-derived-world-event-consequence-no-participant-action-admission-consumed',
+      humanMachineParity: 'same-world-account-reward-application-path-regardless-of-controller-kind'
+    });
   }
 
   claimNextDropRewards(participantId, runId) {

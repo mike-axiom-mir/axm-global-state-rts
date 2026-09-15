@@ -1,6 +1,6 @@
 import { DEFAULT_BLUEPRINT_CATALOG } from './blueprint-ledger.mjs';
 
-export const HOURLY_DROP_CACHE_SCHEMA = 'axm.global-state-rts.hourly-drop-cache/v0.4';
+export const HOURLY_DROP_CACHE_SCHEMA = 'axm.global-state-rts.hourly-drop-cache/v0.5';
 export const DROP_CACHE_HOUR_MS = 60 * 60 * 1000;
 export const DEFAULT_DROP_CACHE_CAP = 24;
 
@@ -26,6 +26,12 @@ function worldHour(value, label = 'worldHourIndex') {
 function nonNegativeSafeInteger(value, label) {
   if (!Number.isSafeInteger(value) || value < 0) throw new RangeError(`${label} must be a non-negative safe integer`);
   return value;
+}
+
+function positiveSafeInteger(value, label) {
+  const number = nonNegativeSafeInteger(Number(value), label);
+  if (number < 1) throw new RangeError(`${label} must be a positive safe integer`);
+  return number;
 }
 
 function checkedAdd(left, right, label) {
@@ -109,6 +115,32 @@ function snapshotPendingNextDropRewards(rewards) {
     itemCounts: Object.freeze({ ...rewards.itemCounts }),
     blueprintIds: Object.freeze([...rewards.blueprintIds])
   });
+}
+
+function normalizeWorldEventBonusReceipts(value) {
+  if (value === null || value === undefined) return [];
+  if (!Array.isArray(value)) throw new TypeError('appliedWorldEventBonuses must be an array');
+  const seen = new Set();
+  const receipts = value.map((entry, index) => {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new TypeError(`appliedWorldEventBonuses[${index}] must be an object`);
+    }
+    const eventId = nonEmpty(entry.eventId, `appliedWorldEventBonuses[${index}].eventId`);
+    const rewardKind = String(entry.rewardKind || 'next-drop-cache-bonus');
+    if (rewardKind !== 'next-drop-cache-bonus') {
+      throw new RangeError(`unsupported applied world-event reward kind: ${rewardKind}`);
+    }
+    const amount = positiveSafeInteger(entry.amount, `appliedWorldEventBonuses[${index}].amount`);
+    if (seen.has(eventId)) throw new Error(`duplicate applied world-event bonus receipt: ${eventId}`);
+    seen.add(eventId);
+    return { eventId, rewardKind, amount };
+  });
+  receipts.sort((left, right) => left.eventId.localeCompare(right.eventId));
+  return receipts;
+}
+
+function snapshotWorldEventBonusReceipts(receipts) {
+  return Object.freeze(receipts.map(receipt => Object.freeze({ ...receipt })));
 }
 
 function normalizeNextDropClaim(value, catalog) {
@@ -195,6 +227,7 @@ export class HourlyDropCache {
     openedCrates = 0,
     pendingNextDropRewards = null,
     nextDropClaim = null,
+    appliedWorldEventBonuses = [],
     cap = DEFAULT_DROP_CACHE_CAP,
     catalog = DEFAULT_BLUEPRINT_CATALOG
   } = {}) {
@@ -218,6 +251,7 @@ export class HourlyDropCache {
     this.catalog = catalog;
     this.pendingNextDropRewards = normalizePendingNextDropRewards(pendingNextDropRewards, catalog);
     this.nextDropClaim = normalizeNextDropClaim(nextDropClaim, catalog);
+    this.appliedWorldEventBonuses = normalizeWorldEventBonusReceipts(appliedWorldEventBonuses);
     this.revision = 0;
   }
 
@@ -261,7 +295,7 @@ export class HourlyDropCache {
     const opened = [];
     for (let index = 0; index < count; index++) {
       this.storedCrates -= 1;
-      this.openedCrates += 1;
+      this.openedCrates = checkedAdd(this.openedCrates, 1, 'opened crate serial');
       const contents = describeDropCacheContents({
         playerSeed: this.playerSeed,
         serial: this.openedCrates,
@@ -283,6 +317,53 @@ export class HourlyDropCache {
       opened: Object.freeze(opened),
       storedCrates: this.storedCrates,
       pendingNextDropRewards: snapshotPendingNextDropRewards(this.pendingNextDropRewards)
+    });
+  }
+
+  creditWorldEventNextDropBonus({ eventId, amount } = {}) {
+    const id = nonEmpty(eventId, 'eventId');
+    const count = positiveSafeInteger(amount, 'amount');
+    const existing = this.appliedWorldEventBonuses.find(receipt => receipt.eventId === id) || null;
+    if (existing) {
+      if (existing.amount !== count) {
+        return Object.freeze({
+          accepted: false,
+          reason: 'world-event-bonus-conflict',
+          existing: Object.freeze({ ...existing }),
+          attempted: Object.freeze({ eventId: id, rewardKind: 'next-drop-cache-bonus', amount: count })
+        });
+      }
+      return Object.freeze({
+        accepted: true,
+        reused: true,
+        receipt: Object.freeze({ ...existing }),
+        opened: Object.freeze([]),
+        pendingNextDropRewards: snapshotPendingNextDropRewards(this.pendingNextDropRewards)
+      });
+    }
+
+    const opened = [];
+    for (let index = 0; index < count; index++) {
+      this.openedCrates = checkedAdd(this.openedCrates, 1, 'opened crate serial');
+      const contents = describeDropCacheContents({
+        playerSeed: this.playerSeed,
+        serial: this.openedCrates,
+        catalog: this.catalog
+      });
+      addContentsToPendingNextDropRewards(this.pendingNextDropRewards, contents);
+      opened.push(contents);
+    }
+    const receipt = Object.freeze({ eventId: id, rewardKind: 'next-drop-cache-bonus', amount: count });
+    this.appliedWorldEventBonuses.push(receipt);
+    this.appliedWorldEventBonuses.sort((left, right) => left.eventId.localeCompare(right.eventId));
+    this.revision += 1;
+    return Object.freeze({
+      accepted: true,
+      reused: false,
+      receipt,
+      opened: Object.freeze(opened),
+      pendingNextDropRewards: snapshotPendingNextDropRewards(this.pendingNextDropRewards),
+      truthBoundary: 'host-world-event-bonus-materialized-as-deterministic-next-drop-cache-contents-without-consuming-hourly-stored-crates'
     });
   }
 
@@ -345,6 +426,7 @@ export class HourlyDropCache {
       openedCrates: this.openedCrates,
       pendingNextDropRewards: snapshotPendingNextDropRewards(this.pendingNextDropRewards),
       nextDropClaim: snapshotNextDropClaim(this.nextDropClaim),
+      appliedWorldEventBonuses: snapshotWorldEventBonusReceipts(this.appliedWorldEventBonuses),
       anchorMs: this.anchorMs,
       nextAccrualAtMs: this.anchorMs + DROP_CACHE_HOUR_MS,
       anchorWorldHour: this.anchorWorldHour,

@@ -1,4 +1,4 @@
-export const CREATION_MACHINE_STARTER_SET_SCHEMA = 'axm.global-state-rts.creation-machine-starter-static-set/v0.3';
+export const CREATION_MACHINE_STARTER_SET_SCHEMA = 'axm.global-state-rts.creation-machine-starter-static-set/v0.2';
 
 const DELIVERY_ROOT = '../assets/creation-machine/runtime-prepared';
 const STATUS = 'CREATED_CANDIDATE_RUNTIME_TRIAL_ONLY';
@@ -96,15 +96,6 @@ export const CREATION_MACHINE_STARTER_SET = Object.freeze([
     sourceFamily: 'industry',
     gameplayTarget: 'starter-region:resource-scrap-collector',
     note: 'Visual candidate for the already-present starter scrap collector fixture; it does not invent a new construction rule.'
-  }),
-  freezeEntry({
-    candidateId: 'scrap-node-salvage-scrap-node-primary',
-    candidateRole: 'primary',
-    fixtureAssetId: 'resource-node-scrap-a',
-    sourceAsset: 'salvage-scrap-node',
-    sourceFamily: 'world',
-    gameplayTarget: 'starter-region:resource-node-scrap',
-    note: 'Static candidate for the already-present starter-region scrap-node fixtures. The LOCAL simulation remains authoritative for discovery, amount and depletion; this presentation cannot create or replenish scrap.'
   }),
   freezeEntry({
     candidateId: 'light-tower-light-tower-primary',

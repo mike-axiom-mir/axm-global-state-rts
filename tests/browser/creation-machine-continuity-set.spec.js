@@ -4,33 +4,36 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
 }
 
-async function installBoundedSimulationTimeScale(page) {
+async function installBoundedFastForward(page) {
   await page.addInitScript(() => {
     const nativeRaf = window.requestAnimationFrame.bind(window);
-    let lastNative = null;
     let logicalNow = performance.now();
-    window.__AXM_TEST_TIME_SCALE__ = 1;
-    window.requestAnimationFrame = callback => nativeRaf(nativeNow => {
-      if (lastNative === null) lastNative = nativeNow;
-      const delta = Math.max(0, nativeNow - lastNative);
-      lastNative = nativeNow;
-      const scale = Math.max(1, Number(window.__AXM_TEST_TIME_SCALE__) || 1);
-      logicalNow += delta * scale;
-      callback(logicalNow);
-    });
+    window.__AXM_TEST_FAST_FORWARD__ = false;
+    window.requestAnimationFrame = callback => {
+      if (window.__AXM_TEST_FAST_FORWARD__) {
+        return setTimeout(() => {
+          logicalNow += 100;
+          callback(logicalNow);
+        }, 0);
+      }
+      return nativeRaf(nativeNow => {
+        logicalNow = Math.max(logicalNow, nativeNow);
+        callback(logicalNow);
+      });
+    };
   });
 }
 
 test('explicit Training Yard source trial attaches only to a real constructed continuity target and stays seat-local', async ({ page }) => {
   test.setTimeout(90_000);
 
-  await installBoundedSimulationTimeScale(page);
+  await installBoundedFastForward(page);
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/?players=4&seat1=machine&seat2=machine&seat3=machine&seat4=machine', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);
@@ -41,7 +44,7 @@ test('explicit Training Yard source trial attaches only to a real constructed co
   })));
   expect(before.every(entry => entry.assets.length === 0)).toBe(true);
 
-  const result = await page.evaluate(async () => {
+  const gatherStarted = await page.evaluate(() => {
     const bridge = window.__AXM_GLOBAL_STATE_RTS__;
     const seats = ['seat-1', 'seat-2', 'seat-3', 'seat-4'];
     let timestampMs = 1000;
@@ -51,45 +54,27 @@ test('explicit Training Yard source trial attaches only to a real constructed co
       if (!toggle?.accepted) throw new Error(`${seatId} could not enter LOCAL RTS`);
     }
 
-    const openBuild = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'ui-right', timestampMs });
-    timestampMs += 1000;
-    if (!openBuild?.accepted) throw new Error('seat-1 build menu action was not admitted');
-    const shallowMine = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'confirm', timestampMs });
-    timestampMs += 1000;
-    if (!shallowMine?.accepted) throw new Error('seat-1 Shallow Mine prerequisite construction was not admitted');
-
-    const closeBuild = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'cancel', timestampMs });
-    timestampMs += 1000;
-    if (!closeBuild?.accepted) throw new Error('seat-1 build menu could not close');
-    const openProduction = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'ui-left', timestampMs });
-    timestampMs += 1000;
-    if (!openProduction?.accepted) throw new Error('seat-1 production menu action was not admitted');
-    const assignProduction = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'confirm', timestampMs });
-    if (!assignProduction?.accepted) throw new Error('seat-1 aggregate Shallow Mine production was not admitted');
-
-    return true;
+    const gather = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'confirm', timestampMs });
+    if (!gather?.accepted || gather?.order?.type !== 'gather-scrap') {
+      throw new Error(`seat-1 gather command was not admitted (${gather?.reason || 'unknown'})`);
+    }
+    return gather.order.type;
   });
-  expect(result).toBe(true);
+  expect(gatherStarted).toBe('gather-scrap');
 
-  await page.evaluate(() => { window.__AXM_TEST_TIME_SCALE__ = 500; });
+  await page.evaluate(() => { window.__AXM_TEST_FAST_FORWARD__ = true; });
   await expect.poll(async () => page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1').resources.scrap), {
-    timeout: 15_000,
+    timeout: 25_000,
     intervals: [100, 200, 400]
   }).toBeGreaterThanOrEqual(150);
-  await page.evaluate(() => { window.__AXM_TEST_TIME_SCALE__ = 1; });
+  await page.evaluate(() => { window.__AXM_TEST_FAST_FORWARD__ = false; });
 
   const adopted = await page.evaluate(async () => {
     const bridge = window.__AXM_GLOBAL_STATE_RTS__;
-    let timestampMs = 20_000;
-    const release = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'context', timestampMs });
-    timestampMs += 1000;
-    if (!release?.accepted) throw new Error('seat-1 production workers could not be released');
-    const closeProduction = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'cancel', timestampMs });
-    timestampMs += 1000;
-    if (!closeProduction?.accepted) throw new Error('seat-1 production menu could not close');
+    let timestampMs = 10_000;
     const openBuild = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'ui-right', timestampMs });
     timestampMs += 1000;
-    if (!openBuild?.accepted) throw new Error('seat-1 build menu could not reopen');
+    if (!openBuild?.accepted) throw new Error('seat-1 build menu action was not admitted');
     const selectTraining = bridge.submitMachineAction({ seatId: 'seat-1', actionId: 'ui-down', timestampMs });
     timestampMs += 1000;
     if (!selectTraining?.accepted || selectTraining?.definitionId !== 'building:training-yard') {

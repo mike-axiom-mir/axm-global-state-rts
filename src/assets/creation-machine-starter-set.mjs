@@ -1,4 +1,4 @@
-export const CREATION_MACHINE_STARTER_SET_SCHEMA = 'axm.global-state-rts.creation-machine-starter-static-set/v0.2';
+export const CREATION_MACHINE_STARTER_SET_SCHEMA = 'axm.global-state-rts.creation-machine-starter-static-set/v0.3';
 
 const DELIVERY_ROOT = '../assets/creation-machine/runtime-prepared';
 const STATUS = 'CREATED_CANDIDATE_RUNTIME_TRIAL_ONLY';
@@ -69,6 +69,15 @@ export const CREATION_MACHINE_STARTER_SET = Object.freeze([
     sourceFamily: 'buildings',
     gameplayTarget: 'building:settlement-core',
     note: 'Explicit alternate static presentation candidate for the same real settlement-core fixture. It does not create a civic-shelter gameplay entity or displace the primary candidate by default.'
+  }),
+  freezeEntry({
+    candidateId: 'settlement-core-command-signal-hall-alternate',
+    candidateRole: 'alternate',
+    fixtureAssetId: 'building-settlement-core-a',
+    sourceAsset: 'command-signal-hall',
+    sourceFamily: 'buildings',
+    gameplayTarget: 'building:settlement-core',
+    note: 'Explicit alternate static presentation candidate for the same real settlement-core fixture and continuity target. Its command/signal identity is visual provenance only; it adds no command, communications, aura, power, range, or other gameplay mechanic and cannot displace the procedural or primary settlement presentation by default.'
   }),
   freezeEntry({
     candidateId: 'workshop-improvised-workshop-primary',

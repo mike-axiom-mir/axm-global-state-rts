@@ -1,4 +1,4 @@
-export const CREATION_MACHINE_VEHICLE_SET_SCHEMA = 'axm.global-state-rts.creation-machine-vehicle-static-set/v0.2';
+export const CREATION_MACHINE_VEHICLE_SET_SCHEMA = 'axm.global-state-rts.creation-machine-vehicle-static-set/v0.3';
 
 const DELIVERY_ROOT = '../assets/creation-machine/runtime-prepared';
 const STATUS = 'CREATED_CANDIDATE_RUNTIME_TRIAL_ONLY';
@@ -49,7 +49,7 @@ function freezeEntry({ candidateId, stableAssetId, sourceAsset, sourceFamily, ga
     }),
     animation: Object.freeze({
       status: 'HANDOFF_LATER',
-      reason: 'Wheel rotation, steering, suspension, driver entry/exit, cargo motion, damage and destruction motion remain outside this static lane.'
+      reason: 'Wheel rotation, steering, suspension, driver entry/exit, cargo or equipment motion, damage and destruction motion remain outside this static lane.'
     }),
     note
   });
@@ -73,6 +73,15 @@ export const CREATION_MACHINE_VEHICLE_SET = Object.freeze([
     gameplayDefinitionId: 'vehicle:utility-hauler',
     candidateRole: 'explicit-alternate-static-candidate',
     note: 'Alternate flatbed/logistics presentation candidate for the same existing generic cargo-truck stable ID and live Utility Hauler target. It does not invent convoy mechanics or claim the active strategic-route lane.'
+  }),
+  freezeEntry({
+    candidateId: 'vehicle-scrap-truck-a:crane-truck',
+    stableAssetId: 'vehicle-scrap-truck-a',
+    sourceAsset: 'crane-truck',
+    sourceFamily: 'vehicles',
+    gameplayDefinitionId: 'vehicle:utility-hauler',
+    candidateRole: 'explicit-alternate-static-candidate',
+    note: 'Alternate utility-truck presentation candidate for the same existing generic cargo-truck stable ID and live Utility Hauler target. Crane geometry is visual provenance only and grants no lifting, towing, repair, construction, cargo, seat, speed or route authority.'
   })
 ]);
 

@@ -77,6 +77,39 @@ function rejection(reason, details = {}) {
   return Object.freeze({ accepted: false, reason, ...details });
 }
 
+export function localCheckpointAdoptionCompatibility({ regionSeatId } = {}) {
+  try {
+    const normalizedRegionSeatId = normalizeSeatId(regionSeatId);
+    const target = activeLocalRegionSimulation(normalizedRegionSeatId);
+    if (!target) return rejection('active-local-simulation-not-found', { regionSeatId: normalizedRegionSeatId });
+
+    const bootstrap = target.worldRunBootstrap || null;
+    if (bootstrap?.applied) {
+      return rejection('active-host-run-bootstrap-not-in-host-local-journal-genesis', {
+        regionSeatId: normalizedRegionSeatId,
+        runId: bootstrap.runId ?? null,
+        bootstrapSchema: bootstrap.schema ?? null,
+        localStarterScrap: Number.isFinite(Number(bootstrap.localStarterScrap))
+          ? Number(bootstrap.localStarterScrap)
+          : null,
+        hostStartingScrap: Number.isFinite(Number(bootstrap.hostStartingScrap))
+          ? Number(bootstrap.hostStartingScrap)
+          : null,
+        truthBoundary:
+          'active-host-run-bootstrap-is-not-represented-in-host-local-journal-genesis-browser-state-left-unchanged'
+      });
+    }
+
+    return Object.freeze({
+      accepted: true,
+      regionSeatId: normalizedRegionSeatId,
+      truthBoundary: 'no-active-host-run-bootstrap-conflict-detected-for-explicit-checkpoint-adoption'
+    });
+  } catch (error) {
+    return rejection('checkpoint-adoption-compatibility-invalid', { detail: String(error?.message || error) });
+  }
+}
+
 export function replayLocalCheckpointForAdoption(checkpoint, {
   expectedRegionSeatId = null
 } = {}) {
@@ -185,6 +218,19 @@ export function adoptLocalCheckpointIntoActiveSimulation(checkpoint, {
 } = {}) {
   const replay = replayLocalCheckpointForAdoption(checkpoint, { expectedRegionSeatId });
   if (!replay.accepted) return replay;
+
+  const compatibility = localCheckpointAdoptionCompatibility({ regionSeatId: replay.regionSeatId });
+  if (!compatibility.accepted) {
+    return Object.freeze({
+      ...compatibility,
+      checkpointId: replay.checkpointId,
+      revision: replay.revision,
+      headHash: replay.headHash,
+      stateHash: replay.stateHash,
+      replayedCommands: replay.replayedCommands
+    });
+  }
+
   const target = activeLocalRegionSimulation(replay.regionSeatId);
   if (!target) return rejection('active-local-simulation-not-found', { regionSeatId: replay.regionSeatId });
   const replacement = target.adoptStateFrom(replay.simulation);

@@ -92,6 +92,16 @@ test('world account reaches LOCAL RTS and can explicitly close one host civiliza
   expect(shellEvidence.localCivilization.resources.scrap).toBe(shellEvidence.localSimulation.storage.scrap, 'playable construction wallet sees the bridged physical scrap');
   expect(shellEvidence.localCivilization.stateScope).toBe('browser-local-not-host-persistent', 'later LOCAL mutations remain explicitly non-authoritative');
 
+  const checkpointCompatibility = await page.evaluate(async () => {
+    const { localCheckpointAdoptionCompatibility } = await import('/src/session/local-checkpoint-adoption.mjs');
+    return localCheckpointAdoptionCompatibility({ regionSeatId: 'seat-1' });
+  });
+  expect(checkpointCompatibility.accepted).toBe(false);
+  expect(checkpointCompatibility.reason).toBe('active-host-run-bootstrap-not-in-host-local-journal-genesis');
+  expect(checkpointCompatibility.runId).toBe(shellEvidence.activeRunId);
+  expect(checkpointCompatibility.hostStartingScrap).toBe(shellEvidence.hostRunScrap);
+  expect(checkpointCompatibility.truthBoundary).toBe('active-host-run-bootstrap-is-not-represented-in-host-local-journal-genesis-browser-state-left-unchanged');
+
   await expect(page.locator('#worldRunLifecycleSurface')).toBeVisible();
   await expect(page.locator('#endWorldRun')).toBeEnabled();
   await expect(page.locator('#worldRunLifecycleSummary')).toContainText('active run:world:browser-run-lifecycle:drop-1');

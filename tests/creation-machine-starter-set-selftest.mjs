@@ -19,6 +19,7 @@ const expectedFixtureIds = [
 const expectedSources = [
   'settlement-hub',
   'civic-shelter',
+  'command-signal-hall',
   'improvised-workshop',
   'repair-garage',
   'storage-hall',
@@ -30,10 +31,13 @@ assert.equal(CREATION_MACHINE_STARTER_SET.length, expectedSources.length);
 assert.deepEqual([...new Set(CREATION_MACHINE_STARTER_SET.map(entry => entry.fixtureAssetId))], expectedFixtureIds);
 assert.deepEqual(CREATION_MACHINE_STARTER_SET.map(entry => entry.sourceAsset), expectedSources);
 assert.equal(creationMachineStarterSetEntry('building-settlement-core-a').sourceAsset, 'settlement-hub');
-assert.equal(creationMachineStarterSetCandidates('building-settlement-core-a').length, 2);
+assert.equal(creationMachineStarterSetCandidates('building-settlement-core-a').length, 3);
 assert.equal(creationMachineStarterSetCandidates('building-settlement-core-a')[1].sourceAsset, 'civic-shelter');
 assert.equal(creationMachineStarterSetCandidates('building-settlement-core-a')[1].candidateRole, 'alternate');
+assert.equal(creationMachineStarterSetCandidates('building-settlement-core-a')[2].sourceAsset, 'command-signal-hall');
+assert.equal(creationMachineStarterSetCandidates('building-settlement-core-a')[2].candidateRole, 'alternate');
 assert.equal(creationMachineStarterSetEntry('building-settlement-core-a', { sourceAsset: 'civic-shelter' }).sourceAsset, 'civic-shelter');
+assert.equal(creationMachineStarterSetEntry('building-settlement-core-a', { sourceAsset: 'command-signal-hall' }).sourceAsset, 'command-signal-hall');
 assert.equal(creationMachineStarterSetEntry('building-workshop-a').sourceAsset, 'improvised-workshop');
 assert.equal(creationMachineStarterSetCandidates('building-workshop-a').length, 2);
 assert.equal(creationMachineStarterSetCandidates('building-workshop-a')[1].sourceAsset, 'repair-garage');
@@ -70,6 +74,13 @@ assert.match(
   sourceIndex,
   /^repair-garage,buildings,assets\/repair-garage\/repair-garage\.gltf,assets\/repair-garage\/repair-garage-lod1\.gltf,False,False\r?$/m
 );
+assert.match(
+  sourceIndex,
+  /^command-signal-hall,buildings,assets\/command-signal-hall\/command-signal-hall\.gltf,assets\/command-signal-hall\/command-signal-hall-lod1\.gltf,False,False\r?$/m
+);
+const transferManifest = fs.readFileSync(new URL('../assets/creation-machine/transfer-manifest.json', import.meta.url), 'utf8');
+assert.match(transferManifest, /"path": "packs\/command-signal-hall\.zip"/);
+assert.match(transferManifest, /"assets\/command-signal-hall\/command-signal-hall-lod1\.gltf"/);
 const sourceReadme = fs.readFileSync(new URL('../assets/creation-machine/README.md', import.meta.url), 'utf8');
 assert.match(sourceReadme, /83 assets/);
 assert.match(sourceReadme, /no new rigs,\s*animations, certified colliders or sockets/i);

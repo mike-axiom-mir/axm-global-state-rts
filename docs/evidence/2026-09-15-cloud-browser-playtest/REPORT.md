@@ -84,10 +84,11 @@ Visible:
 - **The systems breadth is unusually far along:** gathering, repair, construction, production, parties, vehicles, combat and strategic convoy state all meet in one shell.
 - **Truth boundaries are explicit:** browser-local state, host limits and placeholder visuals are not hidden.
 - **Split-screen ambition is concrete:** the four-seat frame proves the renderer is being exercised beyond a single-player mock-up.
+- **The tiny-unit scale is intentional and appropriate:** this is a mass-macro RTS, so Crew and vehicles should remain physically small relative to settlements, regions and the Planet.
 
 ## What currently weakens the game feeling
 
-1. **LOCAL terrain is too empty and low-contrast.** Units, salvage and structures are tiny against a broad olive field. The simulation may know what everything is, but the player has to hunt for it.
+1. **Aggregate formations are not yet legible enough at macro scale.** Individual Crew and vehicles correctly remain tiny. The gap is reading party/army/convoy strength, ownership, direction and engagement without having to enlarge the individual units.
 2. **Planet-to-LOCAL continuity is visually under-explained.** The globe is clearly the Foundation Planet, but these stills do not show which world location owns a LOCAL surface or how the camera travels between them.
 3. **The command deck reads like a diagnostic console.** Important game actions compete with long state strings, host lifecycle information and a full control manual.
 4. **The globe needs stronger strategic readability.** Route lines and landmarks are thin; territory, city identity, convoy direction and selected destination should read immediately.
@@ -103,11 +104,12 @@ Show a selected world marker, draw the active route, and make the GLOBE → LOCA
 
 Prioritize:
 
-- larger and more distinct Crew/vehicle silhouettes;
-- selected-party outlines and destination lines;
-- visible settlement footprints, roads and resource clusters;
-- terrain variation that communicates traversable space and biome;
-- combat contact markers and construction progress in the world.
+- preserve the deliberately tiny physical Crew and vehicles;
+- add zoom-aware aggregate formation footprints, density clouds, banners/contours and strength indicators;
+- show selected-party boundaries and destination lines around groups rather than enlarging every member;
+- add settlement influence zones, roads and readable resource clusters;
+- add terrain variation that communicates traversable space and biome at macro zoom;
+- show combat fronts, construction progress and convoy movement as aggregate world signals.
 
 ### 3. Separate game controls from evidence/debug information
 
@@ -123,7 +125,7 @@ The managed cloud browser used for this review did not expose WebGL, so the publ
 
 ## Current impression
 
-This is a real Foundation Planet RTS systems prototype, not a detached menu experiment. Its strongest achievement is that planet-scale, LOCAL, human/machine, party, production, combat and convoy concepts are already sharing one executable shell. The next leap is mainly presentation and player purpose: make the world state readable without decoding the evidence console.
+This is a real Foundation Planet RTS systems prototype, not a detached menu experiment. Its strongest achievement is that planet-scale, LOCAL, human/machine, party, production, combat and convoy concepts are already sharing one executable shell. The next leap is mainly presentation and player purpose: make mass formations and world state readable without sacrificing the intentionally enormous scale.
 
 ## Truth boundary
 

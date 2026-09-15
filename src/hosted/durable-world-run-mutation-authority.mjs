@@ -1,7 +1,9 @@
+import { FOOD_POLICIES } from '../sim/civilization-food.mjs';
 import { createWorldRunSessionAuthority } from './world-run-session-authority.mjs';
 
-export const DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA = 'axm.global-state-rts.durable-world-run-mutation-authority/v0.2';
+export const DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA = 'axm.global-state-rts.durable-world-run-mutation-authority/v0.3';
 export const WORLD_RUN_GLOBAL_CONTROL_ACTION = 'record-global-control-percent';
+export const WORLD_RUN_FOOD_POLICY_ACTION = 'set-food-policy';
 export const WORLD_RUN_CLOSE_ACTION = 'close-active-run';
 
 function nonEmpty(value, label) {
@@ -20,6 +22,12 @@ function boundedPercent(value) {
   const number = Number(value);
   if (!Number.isFinite(number) || number < 0 || number > 100) throw new RangeError('percent must be finite and between 0 and 100');
   return number;
+}
+
+function foodPolicyId(value) {
+  const id = nonEmpty(value, 'policyId');
+  if (!Object.prototype.hasOwnProperty.call(FOOD_POLICIES, id)) throw new RangeError(`unknown food policy: ${id}`);
+  return id;
 }
 
 function cloneJson(value) {
@@ -112,6 +120,12 @@ export class DurableWorldRunMutationAuthority {
         throw new Error(`durable run mutation did not advance exactly one run revision: ${progression.playerId}:${mutation.mutationId}`);
       }
       result = Object.freeze({ peakGlobalControlPercent, runRevision: run.revision });
+    } else if (mutation.action === WORLD_RUN_FOOD_POLICY_ACTION) {
+      const policy = run.setFoodPolicy(foodPolicyId(mutation.payload?.policyId));
+      if (run.revision !== mutation.beforeRunRevision + 1) {
+        throw new Error(`durable run mutation did not advance exactly one run revision: ${progression.playerId}:${mutation.mutationId}`);
+      }
+      result = Object.freeze({ policy, runRevision: run.revision });
     } else if (mutation.action === WORLD_RUN_CLOSE_ACTION) {
       if (!sameJson(mutation.payload, {})) throw new Error(`durable run close payload must be empty: ${progression.playerId}:${mutation.mutationId}`);
       const closed = progression.closeActiveRun();
@@ -201,15 +215,167 @@ export class DurableWorldRunMutationAuthority {
     });
   }
 
+  #activeRunCommandContext({ participantId, runId, mutationId, action, payload }) {
+    const record = this.#record(participantId);
+    const expectedRunId = nonEmpty(runId, 'runId');
+    const commandId = nonEmpty(mutationId, 'mutationId');
+    if (record.profileKind !== 'world-account') {
+      return { rejection: Object.freeze({
+        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+        accepted: false,
+        reason: 'run-mutation-requires-world-account',
+        participantId: record.participantId,
+        runId: expectedRunId,
+        mutationId: commandId,
+        progressionPersistence: this.progressionPersistenceMeta()
+      }) };
+    }
+    const progression = this.#progression(record.participantId);
+    if (!progression?.activeRun || progression.activeRun.closed) {
+      return { rejection: Object.freeze({
+        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+        accepted: false,
+        reason: 'no-active-run',
+        participantId: record.participantId,
+        runId: expectedRunId,
+        mutationId: commandId,
+        progressionPersistence: this.progressionPersistenceMeta()
+      }) };
+    }
+    if (progression.activeRun.runId !== expectedRunId) {
+      return { rejection: Object.freeze({
+        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+        accepted: false,
+        reason: 'run-id-mismatch',
+        participantId: record.participantId,
+        runId: expectedRunId,
+        activeRunId: progression.activeRun.runId,
+        mutationId: commandId,
+        progressionPersistence: this.progressionPersistenceMeta()
+      }) };
+    }
+    const durable = this.runStartStore ? this.#durableRecord(record.participantId) : null;
+    const existing = durable?.mutations?.find(mutation => mutation.mutationId === commandId) || null;
+    if (existing && (durable.runId !== expectedRunId || existing.action !== action || !sameJson(existing.payload, payload))) {
+      throw new Error(`durable run mutation id conflict: ${record.participantId}:${commandId}`);
+    }
+    return { record, progression, durable, existing, expectedRunId, commandId };
+  }
+
+  #reconcileExisting({ record, progression, existing, expectedRunId, commandId, resultFactory }) {
+    const key = mutationKey(record.participantId, commandId);
+    if (!this.appliedMutationKeys.has(key)) {
+      if (progression.activeRun.revision !== existing.beforeRunRevision) {
+        throw new Error(`durable run mutation application state ambiguous: ${record.participantId}:${commandId}`);
+      }
+      this.#applyMutation(progression, { ...existing, runId: expectedRunId });
+    }
+    return Object.freeze({
+      schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+      accepted: true,
+      reconciled: true,
+      participantId: record.participantId,
+      runId: expectedRunId,
+      mutationId: commandId,
+      result: Object.freeze(resultFactory(progression)),
+      mutationPersistence: Object.freeze({
+        enabled: true,
+        persisted: true,
+        reused: true,
+        kind: this.runStartStore.kind || 'external',
+        sequence: existing.sequence,
+        mutation: cloneJson(existing)
+      }),
+      progressionPersistence: this.progressionPersistenceMeta(),
+      progression: progression.snapshot(),
+      truthBoundary: 'duplicate-mutation-id-reconciled-against-the-existing-durable-command-without-consuming-a-second-action-admission'
+    });
+  }
+
+  #admitPersistApply({ record, progression, expectedRunId, commandId, actionId, action, payload, timestampMs, successTruthBoundary }) {
+    const effectiveTimestamp = finiteTimestamp(timestampMs === undefined ? this.clock() : timestampMs);
+    const admission = this.worldAuthority.participants.submitAction({
+      participantId: record.participantId,
+      actionId,
+      timestampMs: effectiveTimestamp
+    });
+    if (!admission.accepted) {
+      return Object.freeze({
+        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+        accepted: false,
+        reason: 'participant-action-rate-limited',
+        participantId: record.participantId,
+        runId: expectedRunId,
+        mutationId: commandId,
+        admission,
+        progressionPersistence: this.progressionPersistenceMeta()
+      });
+    }
+    const mutation = {
+      mutationId: commandId,
+      action,
+      timestampMs: effectiveTimestamp,
+      beforeRunRevision: progression.activeRun.revision,
+      payload: cloneJson(payload)
+    };
+    let mutationPersistence;
+    try {
+      mutationPersistence = this.#persistMutation({ participantId: record.participantId, runId: expectedRunId, mutation });
+    } catch (error) {
+      const message = String(error?.message || error);
+      this.unpersistedMutations.set(record.participantId, message);
+      return Object.freeze({
+        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+        accepted: false,
+        reason: 'mutation-persistence-failed-before-apply',
+        participantId: record.participantId,
+        runId: expectedRunId,
+        mutationId: commandId,
+        admission,
+        persistenceError: message,
+        progressionPersistence: this.progressionPersistenceMeta(),
+        progression: progression.snapshot(),
+        truthBoundary: 'host-refused-to-apply-the-in-run-mutation-because-durable-command-evidence-could-not-be-written-first'
+      });
+    }
+    const result = this.#applyMutation(progression, {
+      ...mutation,
+      sequence: mutationPersistence.sequence,
+      runId: expectedRunId
+    });
+    this.unpersistedMutations.delete(record.participantId);
+    return Object.freeze({
+      schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+      accepted: true,
+      reconciled: false,
+      participantId: record.participantId,
+      runId: expectedRunId,
+      mutationId: commandId,
+      admission,
+      result,
+      mutationPersistence,
+      progressionPersistence: this.progressionPersistenceMeta(),
+      progression: progression.snapshot(),
+      humanMachineParity: 'same-world-account-command-path-action-budget-and-durable-mutation-order-regardless-of-controller-kind',
+      truthBoundary: mutationPersistence.persisted
+        ? successTruthBoundary
+        : 'host-admitted-run-mutation-was-applied-in-process-only-and-will-not-survive-restart'
+    });
+  }
+
   progressionPersistenceMeta() {
     const base = this.base.progressionPersistenceMeta();
     return Object.freeze({
       ...base,
-      durableMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION, WORLD_RUN_CLOSE_ACTION]),
+      durableMutationActions: Object.freeze([
+        WORLD_RUN_GLOBAL_CONTROL_ACTION,
+        WORLD_RUN_FOOD_POLICY_ACTION,
+        WORLD_RUN_CLOSE_ACTION
+      ]),
       restoredMutationsThisProcess: this.mutationRestoreReport.restored,
       mutationParticipantsRestoredThisProcess: this.mutationRestoreReport.participantIds,
       truthBoundary: this.runStartStore
-        ? 'initial-run-start-plus-host-admitted-global-control-and-terminal-run-close-mutations-are-durable-and-replayed;closed-run-record-rollover-into-a-new-durable-run-is-still-a-separate-gap'
+        ? 'initial-run-start-plus-host-admitted-global-control-food-policy-and-terminal-run-close-mutations-are-durable-and-replayed-in-command-order;other-local-rts-mutations-and-closed-run-rollover-remain-separate-gaps'
         : 'active-player-progression-and-run-mutations-remain-process-memory-only-without-a-durable-run-start-store'
     });
   }
@@ -249,7 +415,7 @@ export class DurableWorldRunMutationAuthority {
         : terminalCloseApplied
           ? 'host-run-status-replays-the-terminal-close-and-durable-score-history-for-this-run;starting-the-next-durable-run-still-needs-an-explicit-closed-record-rollover-seam'
           : mutations.length
-            ? 'host-run-status-includes-durable-replay-for-the-bounded-global-control-and-run-close-actions-only;other-run-mutations-remain-outside-this-contract'
+            ? 'host-run-status-includes-durable-replay-for-the-bounded-global-control-food-policy-and-run-close-actions-only;other-run-mutations-remain-outside-this-contract'
             : base.truthBoundary
     });
   }
@@ -259,150 +425,54 @@ export class DurableWorldRunMutationAuthority {
   }
 
   recordGlobalControlPercent({ participantId, runId, mutationId, percent, timestampMs } = {}) {
-    const record = this.#record(participantId);
-    const expectedRunId = nonEmpty(runId, 'runId');
-    const commandId = nonEmpty(mutationId, 'mutationId');
     const value = boundedPercent(percent);
-    if (record.profileKind !== 'world-account') {
-      return Object.freeze({
-        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
-        accepted: false,
-        reason: 'run-mutation-requires-world-account',
-        participantId: record.participantId,
-        runId: expectedRunId,
-        mutationId: commandId,
-        progressionPersistence: this.progressionPersistenceMeta()
-      });
-    }
-
-    const progression = this.#progression(record.participantId);
-    if (!progression?.activeRun || progression.activeRun.closed) {
-      return Object.freeze({
-        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
-        accepted: false,
-        reason: 'no-active-run',
-        participantId: record.participantId,
-        runId: expectedRunId,
-        mutationId: commandId,
-        progressionPersistence: this.progressionPersistenceMeta()
-      });
-    }
-    if (progression.activeRun.runId !== expectedRunId) {
-      return Object.freeze({
-        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
-        accepted: false,
-        reason: 'run-id-mismatch',
-        participantId: record.participantId,
-        runId: expectedRunId,
-        activeRunId: progression.activeRun.runId,
-        mutationId: commandId,
-        progressionPersistence: this.progressionPersistenceMeta()
-      });
-    }
-
-    const durable = this.runStartStore ? this.#durableRecord(record.participantId) : null;
-    const existing = durable?.mutations?.find(mutation => mutation.mutationId === commandId) || null;
-    if (existing) {
-      if (existing.action !== WORLD_RUN_GLOBAL_CONTROL_ACTION || !sameJson(existing.payload, { percent: value })) {
-        throw new Error(`durable run mutation id conflict: ${record.participantId}:${commandId}`);
-      }
-      const key = mutationKey(record.participantId, commandId);
-      if (!this.appliedMutationKeys.has(key)) {
-        if (progression.activeRun.revision !== existing.beforeRunRevision) {
-          throw new Error(`durable run mutation application state ambiguous: ${record.participantId}:${commandId}`);
-        }
-        this.#applyMutation(progression, { ...existing, runId: expectedRunId });
-      }
-      return Object.freeze({
-        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
-        accepted: true,
-        reconciled: true,
-        participantId: record.participantId,
-        runId: expectedRunId,
-        mutationId: commandId,
-        result: Object.freeze({ peakGlobalControlPercent: progression.activeRun.economy.peakGlobalControlPercent }),
-        mutationPersistence: Object.freeze({
-          enabled: true,
-          persisted: true,
-          reused: true,
-          kind: this.runStartStore.kind || 'external',
-          sequence: existing.sequence,
-          mutation: cloneJson(existing)
-        }),
-        progressionPersistence: this.progressionPersistenceMeta(),
-        progression: progression.snapshot(),
-        truthBoundary: 'duplicate-mutation-id-reconciled-against-the-existing-durable-command-without-consuming-a-second-action-admission'
-      });
-    }
-
-    const effectiveTimestamp = finiteTimestamp(timestampMs === undefined ? this.clock() : timestampMs);
-    const admission = this.worldAuthority.participants.submitAction({
-      participantId: record.participantId,
-      actionId: 'world-run-record-global-control-percent',
-      timestampMs: effectiveTimestamp
-    });
-    if (!admission.accepted) {
-      return Object.freeze({
-        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
-        accepted: false,
-        reason: 'participant-action-rate-limited',
-        participantId: record.participantId,
-        runId: expectedRunId,
-        mutationId: commandId,
-        admission,
-        progressionPersistence: this.progressionPersistenceMeta()
-      });
-    }
-
-    const mutation = {
-      mutationId: commandId,
+    const context = this.#activeRunCommandContext({
+      participantId,
+      runId,
+      mutationId,
       action: WORLD_RUN_GLOBAL_CONTROL_ACTION,
-      timestampMs: effectiveTimestamp,
-      beforeRunRevision: progression.activeRun.revision,
       payload: { percent: value }
-    };
-    let mutationPersistence;
-    try {
-      mutationPersistence = this.#persistMutation({ participantId: record.participantId, runId: expectedRunId, mutation });
-    } catch (error) {
-      const message = String(error?.message || error);
-      this.unpersistedMutations.set(record.participantId, message);
-      return Object.freeze({
-        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
-        accepted: false,
-        reason: 'mutation-persistence-failed-before-apply',
-        participantId: record.participantId,
-        runId: expectedRunId,
-        mutationId: commandId,
-        admission,
-        persistenceError: message,
-        progressionPersistence: this.progressionPersistenceMeta(),
-        progression: progression.snapshot(),
-        truthBoundary: 'host-refused-to-apply-the-in-run-mutation-because-durable-command-evidence-could-not-be-written-first'
+    });
+    if (context.rejection) return context.rejection;
+    if (context.existing) {
+      return this.#reconcileExisting({
+        ...context,
+        resultFactory: progression => ({ peakGlobalControlPercent: progression.activeRun.economy.peakGlobalControlPercent })
       });
     }
-
-    const result = this.#applyMutation(progression, {
-      ...mutation,
-      sequence: mutationPersistence.sequence,
-      runId: expectedRunId
+    return this.#admitPersistApply({
+      ...context,
+      actionId: 'world-run-record-global-control-percent',
+      action: WORLD_RUN_GLOBAL_CONTROL_ACTION,
+      payload: { percent: value },
+      timestampMs,
+      successTruthBoundary: 'host-admitted-global-control-mutation-was-durably-recorded-before-application-and-can-be-replayed-after-restart'
     });
-    this.unpersistedMutations.delete(record.participantId);
-    return Object.freeze({
-      schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
-      accepted: true,
-      reconciled: false,
-      participantId: record.participantId,
-      runId: expectedRunId,
-      mutationId: commandId,
-      admission,
-      result,
-      mutationPersistence,
-      progressionPersistence: this.progressionPersistenceMeta(),
-      progression: progression.snapshot(),
-      truthBoundary: mutationPersistence.persisted
-        ? 'host-admitted-global-control-mutation-was-durably-recorded-before-application-and-can-be-replayed-after-restart'
-        : 'host-admitted-global-control-mutation-was-applied-in-process-only-and-will-not-survive-restart'
+  }
+
+  setFoodPolicy({ participantId, runId, mutationId, policyId, timestampMs } = {}) {
+    const policy = foodPolicyId(policyId);
+    const context = this.#activeRunCommandContext({
+      participantId,
+      runId,
+      mutationId,
+      action: WORLD_RUN_FOOD_POLICY_ACTION,
+      payload: { policyId: policy }
+    });
+    if (context.rejection) return context.rejection;
+    if (context.existing) {
+      return this.#reconcileExisting({
+        ...context,
+        resultFactory: progression => ({ policy: progression.activeRun.food.policy, runRevision: progression.activeRun.revision })
+      });
+    }
+    return this.#admitPersistApply({
+      ...context,
+      actionId: 'world-run-set-food-policy',
+      action: WORLD_RUN_FOOD_POLICY_ACTION,
+      payload: { policyId: policy },
+      timestampMs,
+      successTruthBoundary: 'host-admitted-food-policy-command-was-durably-recorded-before-application-and-replays-in-order-after-restart'
     });
   }
 
@@ -565,7 +635,7 @@ export class DurableWorldRunMutationAuthority {
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([participantId, error]) => Object.freeze({ participantId, error }))),
       truthBoundary: this.runStartStore
-        ? 'bounded-host-global-control-and-terminal-run-close-mutations-replay-after-the-durable-run-start;closed-record-rollover-and-general-active-run-checkpointing-remain-separate gaps'
+        ? 'bounded-host-global-control-food-policy-and-terminal-run-close-mutations-replay-in-order-after-the-durable-run-start;other-local-rts-mutations-closed-record-rollover-and-general-active-run-checkpointing-remain-separate-gaps'
         : 'run mutations remain process-memory-only without durable-run-start storage'
     });
   }

@@ -1,13 +1,16 @@
 import { createWorldHttpApiService } from './world-http-api.mjs';
 import {
-  ARCHIVED_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
-  createArchivedWorldRunMutationAuthority
+  ARCHIVED_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA
 } from './archived-world-run-mutation-authority.mjs';
 import {
   DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
   WORLD_RUN_CLOSE_ACTION,
   WORLD_RUN_GLOBAL_CONTROL_ACTION
 } from './durable-world-run-mutation-authority.mjs';
+import {
+  PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA,
+  createPreparedWorldRunRolloverAuthority
+} from './prepared-world-run-rollover-authority.mjs';
 import {
   WORLD_RUN_DURABLE_CHECKPOINT_SCHEMA,
   createWorldRunDurableCheckpointAuthority
@@ -37,7 +40,17 @@ function runMutationStatus(result) {
   if (result?.accepted) return 200;
   if (result?.reason === 'participant-action-rate-limited') return 429;
   if (result?.reason === 'mutation-persistence-failed-before-apply') return 503;
-  if (result?.reason === 'run-start-rejected' || result?.reason === 'no-active-run' || result?.reason === 'run-id-mismatch') return 409;
+  if (result?.reason === 'durable-run-and-archive-storage-required') return 503;
+  if ([
+    'run-start-rejected',
+    'no-active-run',
+    'run-id-mismatch',
+    'no-durable-run-record',
+    'previous-run-id-mismatch',
+    'previous-run-not-terminal',
+    'terminal-archive-not-durable',
+    'next-run-id-already-archived'
+  ].includes(result?.reason)) return 409;
   if (String(result?.reason || '').includes('claim')) return 409;
   return 400;
 }
@@ -59,9 +72,9 @@ export class WorldRunHttpApiService {
     this.authority = authority;
     this.writeMode = String(writeMode || 'off');
     this.clock = clock;
-    this.runAuthority = runAuthority?.archivedRuns
+    this.runAuthority = runAuthority?.prepareNextDropRollover
       ? runAuthority
-      : createArchivedWorldRunMutationAuthority({ worldAuthority: authority, runAuthority, runStartStore, runArchiveStore, clock });
+      : createPreparedWorldRunRolloverAuthority({ worldAuthority: authority, runAuthority, runStartStore, runArchiveStore, clock });
     this.checkpointAuthority = createWorldRunDurableCheckpointAuthority({
       runAuthority: this.runAuthority,
       runStartStore
@@ -102,6 +115,18 @@ export class WorldRunHttpApiService {
         return response(runMutationStatus(result), result);
       }
 
+      if (verb === 'POST' && route === '/api/world/run/prepare-rollover') {
+        if (this.writeMode !== 'dev') return response(403, { error: 'world writes disabled', writeMode: this.writeMode });
+        const result = this.runAuthority.prepareNextDropRollover({
+          participantId: body.participantId,
+          previousRunId: body.previousRunId,
+          nextRunId: body.nextRunId,
+          runOptions: body.runOptions,
+          timestampMs: finiteHostTime(this.clock)
+        });
+        return response(runMutationStatus(result), result);
+      }
+
       if (verb === 'POST' && route === '/api/world/run/global-control') {
         if (this.writeMode !== 'dev') return response(403, { error: 'world writes disabled', writeMode: this.writeMode });
         const result = this.runAuthority.recordGlobalControlPercent({
@@ -135,16 +160,20 @@ export class WorldRunHttpApiService {
             schema: WORLD_RUN_SESSION_AUTHORITY_SCHEMA,
             mutationAuthoritySchema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
             terminalArchiveAuthoritySchema: ARCHIVED_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+            rolloverPreparationAuthoritySchema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA,
             durableCheckpointSchema: WORLD_RUN_DURABLE_CHECKPOINT_SCHEMA,
             progressionPersistence: persistence,
             hostAuthoritativeMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION, WORLD_RUN_CLOSE_ACTION]),
             durableArchiveEndpoint: '/api/world/run/archive?participantId=<world-account-participant-id>',
             durableCheckpointEndpoint: '/api/world/run/checkpoint?participantId=<world-account-participant-id>',
-            truthBoundary: persistence.terminalRunArchive?.enabled
-              ? 'next-drop-run-start-plus-bounded-global-control-and-terminal-run-close-mutations-are-host-authoritative-and-replayable;terminal-runs-are-idempotently-copied-into-a-separate-durable-archive;the-current-closed-record-is-retained-so-safe-next-run-rollover-and-general-rollback-remain-separate-gaps'
-              : persistence.enabled
-                ? 'next-drop-run-start-plus-bounded-global-control-and-terminal-run-close-mutations-are-host-authoritative-and-replayable-from-durable-evidence;read-only-deterministic-checkpoint-fingerprints-can-compare-that-evidence-across-restart;terminal-archive-storage-closed-record-rollover-and-general-rollback-remain-separate-gaps'
-                : 'next-drop-run-start-global-control-and-run-close-commands-are-host-authoritative-in-process-but-active-progression-and-durable-checkpoint-evidence-remain-unavailable-without-durable-run-start-storage'
+            durableRolloverPreparationEndpoint: '/api/world/run/prepare-rollover',
+            truthBoundary: persistence.durableRolloverPreparation?.enabled
+              ? 'next-drop-run-start-plus-bounded-global-control-and-terminal-run-close-mutations-are-host-authoritative-and-replayable;terminal-runs-are-idempotently-archived;the-host-can-durably-bind-a-next-run-rollover-intent-to-the-exact-terminal-archive-before-any-record-replacement-but-does-not-yet-execute-that-rollover'
+              : persistence.terminalRunArchive?.enabled
+                ? 'next-drop-run-start-plus-bounded-global-control-and-terminal-run-close-mutations-are-host-authoritative-and-replayable;terminal-runs-are-idempotently-copied-into-a-separate-durable-archive;the-current-closed-record-is-retained-so-safe-next-run-rollover-and-general-rollback-remain-separate-gaps'
+                : persistence.enabled
+                  ? 'next-drop-run-start-plus-bounded-global-control-and-terminal-run-close-mutations-are-host-authoritative-and-replayable-from-durable-evidence;read-only-deterministic-checkpoint-fingerprints-can-compare-that-evidence-across-restart;terminal-archive-storage-closed-record-rollover-and-general-rollback-remain-separate-gaps'
+                  : 'next-drop-run-start-global-control-and-run-close-commands-are-host-authoritative-in-process-but-active-progression-and-durable-checkpoint-evidence-remain-unavailable-without-durable-run-start-storage'
           })
         });
       }
@@ -152,7 +181,7 @@ export class WorldRunHttpApiService {
       return this.baseApi.handle({ method, pathname, searchParams, body });
     } catch (error) {
       const message = String(error?.message || error);
-      const status = /already exists|id conflict|application state ambiguous|archive conflict/.test(message)
+      const status = /already exists|id conflict|application state ambiguous|archive conflict|rollover intent conflict|rollover intent archive mismatch/.test(message)
         ? 409
         : /unknown participant/.test(message)
           ? 404

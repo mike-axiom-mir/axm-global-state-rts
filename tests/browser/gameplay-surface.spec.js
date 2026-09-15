@@ -21,6 +21,7 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
 
   const surface = page.locator('#gameplaySurface');
   const seat = page.locator('#gameplaySeat');
+  const objective = page.locator('#gameplayObjective');
   const dock = page.locator('.control-dock');
   await expect(surface).toBeVisible();
   await expect(dock).toBeVisible();
@@ -43,6 +44,8 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   expect(surfaceBox.y).toBeLessThan(viewport.height);
 
   await expect(seat.locator('option')).toHaveCount(3);
+  await expect(objective).toContainText('Immediate objective');
+  await expect(objective).toContainText('Enter LOCAL RTS');
   await expect(page.locator('#gameplaySummary')).toContainText('seat-1');
   await expect(page.locator('#gameplaySummary')).toContainText('Crew 1 · 8 Crew · 1 parties');
   await expect(page.locator('#gameplaySummary')).toContainText('selected consequence');
@@ -62,6 +65,8 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await expect(combatMenuButton).toBeDisabled();
   await mapButton.click();
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
+  await expect(objective).toContainText('Stabilize continuity core');
+  await expect(objective).toContainText('68%');
   await expect(gatherButton).toBeEnabled();
   await expect(partyMenuButton).toBeEnabled();
   await expect(combatMenuButton).toBeEnabled();
@@ -108,6 +113,7 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await expect(mapButton).toBeEnabled();
   await mapButton.click();
   await expect(page.locator('[data-seat-id="seat-3"]')).toContainText('LOCAL RTS');
+  await expect(objective).toContainText('Stabilize continuity core');
   await expect(gatherButton).toBeEnabled();
   await partyMenuButton.click();
   await page.locator('[data-gameplay-action="confirm"]').click();

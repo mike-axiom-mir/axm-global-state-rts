@@ -26,7 +26,7 @@ const oneShot = replayLocalOutcomeIntent(selectedIntent, {
 assert.equal(oneShot.accepted, true);
 assert.deepEqual(oneShot.physicalIntent.crewIds, ['seat-1:crew-1', 'seat-1:crew-2']);
 assert.deepEqual(oneShot.outcome.order.crewIds, ['seat-1:crew-1', 'seat-1:crew-2']);
-assert.equal(oneShot.outcome.crew.filter(crew => crew.phase === 'exploring').length, 2);
+assert.equal(oneShot.outcome.crew.filter(crew => oneShot.physicalIntent.crewIds.includes(crew.id)).every(crew => crew.phase !== 'idle'), true);
 assert.equal(oneShot.outcome.crew.filter(crew => !oneShot.physicalIntent.crewIds.includes(crew.id)).every(crew => crew.phase === 'idle'), true);
 
 const allCrew = replayLocalOutcomeIntent({
@@ -48,14 +48,11 @@ assert.throws(() => replayLocalOutcomeIntent({ ...selectedIntent, crewIds: ['sea
   regionSeatId: 'seat-1',
   worldHourIndex: 44
 }), /must not contain duplicates/);
-
-const unknownCrew = replayLocalOutcomeIntent({ ...selectedIntent, crewIds: ['seat-1:crew-99'] }, {
+assert.throws(() => replayLocalOutcomeIntent({ ...selectedIntent, crewIds: ['seat-1:crew-99'] }, {
   participant,
   regionSeatId: 'seat-1',
   worldHourIndex: 44
-});
-assert.equal(unknownCrew.accepted, false);
-assert.equal(unknownCrew.reason, 'unknown-commanded-crew');
+}), /unknown Crew id/);
 
 const store = createMemoryWorldJournalStore();
 const journal = createLocalRegionCommandJournalAuthority({

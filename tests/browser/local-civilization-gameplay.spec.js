@@ -143,21 +143,63 @@ test('vehicle menu reuses real vehicle/manpower authority with aggregate driver 
   await page.locator('[data-gameplay-action="map-toggle"]').click();
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
 
-  // Earn the missing scrap through the real LOCAL gather loop instead of injecting test currency.
+  // Admit the real gather order through the player surface, then advance that exact
+  // deterministic browser simulation directly so CI wall time does not become
+  // gameplay tuning. Stop only on a real delivery boundary with empty hands.
   await page.locator('[data-gameplay-action="gather-scrap"]').click();
-  await expect.poll(async () => page.evaluate(() => {
-    const bridge = window.__AXM_GLOBAL_STATE_RTS__;
-    const simulation = bridge.describeSeatSimulation('seat-1');
-    const allEmpty = simulation.crew.every(crew => Number(crew.carrying || 0) <= 1e-9);
-    return allEmpty ? simulation.storage.scrap : 0;
-  }), { timeout: 35_000, intervals: [250, 500, 1000] }).toBeGreaterThanOrEqual(240);
+  await expect(page.locator('#inputStatus')).toContainText('seat-1 · gather-scrap');
+  const gatherEvidence = await page.evaluate(async () => {
+    const { activeLocalRegionSimulation } = await import('../src/sim/local-region-sim.mjs');
+    const simulation = activeLocalRegionSimulation('seat-1');
+    if (!simulation) throw new Error('seat-1 active local simulation is unavailable');
+    const before = simulation.debugCanonicalSnapshot();
+    if (before.order?.type !== 'gather-scrap') throw new Error('admitted gather input did not create a gather order');
 
-  // Move to an ordinary idle end-state so a vehicle driver cannot also be a ground worker.
+    let advancedSteps = 0;
+    let snapshot = before;
+    while (advancedSteps < 2400) {
+      simulation.advance(250);
+      advancedSteps += 1;
+      snapshot = simulation.debugCanonicalSnapshot();
+      const emptyHands = snapshot.crew.every(crew => Number(crew.carrying || 0) <= 1e-9);
+      if (snapshot.storage.scrap >= 240 && emptyHands) break;
+    }
+    return {
+      advancedSteps,
+      storageScrap: snapshot.storage.scrap,
+      emptyHands: snapshot.crew.every(crew => Number(crew.carrying || 0) <= 1e-9),
+      orderType: snapshot.order?.type || null
+    };
+  });
+  expect(gatherEvidence.storageScrap).toBeGreaterThanOrEqual(240);
+  expect(gatherEvidence.emptyHands).toBe(true);
+  expect(gatherEvidence.orderType).toBe('gather-scrap');
+
+  // Replace the endless gather loop with a normal player-issued move order, then
+  // deterministically advance that admitted order to its real idle end-state.
   await page.locator('[data-gameplay-action="explore"]').click();
-  await expect.poll(async () => page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1').order), {
-    timeout: 30_000,
-    intervals: [250, 500, 1000]
-  }).toBeNull();
+  await expect(page.locator('#inputStatus')).toContainText('seat-1 · explore');
+  const idleEvidence = await page.evaluate(async () => {
+    const { activeLocalRegionSimulation } = await import('../src/sim/local-region-sim.mjs');
+    const simulation = activeLocalRegionSimulation('seat-1');
+    if (!simulation) throw new Error('seat-1 active local simulation is unavailable');
+    let advancedSteps = 0;
+    let snapshot = simulation.debugCanonicalSnapshot();
+    while (snapshot.order && advancedSteps < 2400) {
+      simulation.advance(250);
+      advancedSteps += 1;
+      snapshot = simulation.debugCanonicalSnapshot();
+    }
+    return {
+      advancedSteps,
+      orderType: snapshot.order?.type || null,
+      allIdle: snapshot.crew.every(crew => crew.phase === 'idle'),
+      emptyHands: snapshot.crew.every(crew => Number(crew.carrying || 0) <= 1e-9)
+    };
+  });
+  expect(idleEvidence.orderType).toBeNull();
+  expect(idleEvidence.allIdle).toBe(true);
+  expect(idleEvidence.emptyHands).toBe(true);
 
   await page.locator('[data-gameplay-action="ui-up"]').click();
   await expect(page.locator('#gameplaySummary')).toContainText('vehicle menu open');

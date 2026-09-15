@@ -84,13 +84,13 @@ assert.equal(second.parties.selectedPartyId, 'party-1', 'wiped selected party fa
 assert.equal(partyGameplay.snapshot().partyCount, 1);
 assert.equal(partyGameplay.snapshot().selectedCrewIds.length, 4);
 assert.equal(civilizationGameplay.snapshot().production.jobs[0].workerCount, 0);
-assert.equal(civilizationGameplay.snapshot().manpower.population, 4);
+assert.equal(civilizationGameplay.manpower.snapshot().population, 4);
 assert.equal(simulation.snapshot().crew.length, 4);
 assert.equal(simulation.snapshot().order, null);
 
 const beforeRejected = {
   crew: simulation.snapshot().crew.length,
-  population: civilizationGameplay.snapshot().manpower.population,
+  population: civilizationGameplay.manpower.snapshot().population,
   partyCount: partyGameplay.snapshot().partyCount
 };
 const rejected = reconcileLocalCasualties({
@@ -103,7 +103,7 @@ assert.equal(rejected.accepted, false);
 assert.equal(rejected.reason, 'casualty-crew-not-live');
 assert.deepEqual({
   crew: simulation.snapshot().crew.length,
-  population: civilizationGameplay.snapshot().manpower.population,
+  population: civilizationGameplay.manpower.snapshot().population,
   partyCount: partyGameplay.snapshot().partyCount
 }, beforeRejected, 'rejected reconciliation is atomic and does not mutate local gameplay state');
 

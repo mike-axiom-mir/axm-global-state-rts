@@ -31,7 +31,7 @@ test('primary command dock surfaces deterministic world objectives and honest th
 
   await expect(threatIntel).toContainText('no known world-pressure target');
   await expect(threatIntel).toContainText('no raid warning');
-  await expect(threatIntel).toHaveAttribute('data-state-scope', 'browser-local-world-pressure-warning-not-combat-admission');
+  await expect(threatIntel).toHaveAttribute('data-state-scope', 'browser-local-world-pressure-and-local-combat-not-host-authority');
 
   await page.screenshot({ path: 'test-results/global-state-rts-primary-strategic-world-objective.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);

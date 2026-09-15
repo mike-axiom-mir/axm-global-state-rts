@@ -12,11 +12,16 @@ function requireRuntimeBridge() {
   return bridge;
 }
 
-function requirePlanEntry(fixtureAssetId) {
+function requirePlanEntry(fixtureAssetId, { sourceAsset = null } = {}) {
   const key = String(fixtureAssetId || '');
-  const entry = creationMachineCrewTrialPlan().find(candidate => candidate.fixtureAssetId === key);
-  if (!entry) throw new Error(`no Creation Machine Crew candidate registered for ${key || 'empty fixture id'}`);
-  return entry;
+  const candidates = creationMachineCrewTrialPlan().filter(candidate => candidate.fixtureAssetId === key);
+  if (!candidates.length) throw new Error(`no Creation Machine Crew candidate registered for ${key || 'empty fixture id'}`);
+  if (sourceAsset) {
+    const selected = candidates.find(candidate => candidate.sourceAsset === String(sourceAsset));
+    if (!selected) throw new Error(`no Creation Machine Crew source ${sourceAsset} registered for ${key}`);
+    return selected;
+  }
+  return candidates.find(candidate => candidate.candidateRole === 'primary') || candidates[0];
 }
 
 async function fetchCandidate(plan, { includeBytes = true } = {}) {
@@ -50,6 +55,8 @@ export async function inspectCreationMachineCrewSet() {
     schema: CREATION_MACHINE_CREW_SET_SCHEMA,
     status: 'PREPARED_CREW_SET_AVAILABLE_NOT_ACCEPTED',
     candidates: Object.freeze(candidates.map(candidate => Object.freeze({
+      candidateId: candidate.plan.candidateId,
+      candidateRole: candidate.plan.candidateRole,
       fixtureAssetId: candidate.plan.fixtureAssetId,
       sourceAsset: candidate.plan.sourceAsset,
       variant: candidate.receipt.variant,
@@ -66,10 +73,11 @@ export async function inspectCreationMachineCrewSet() {
 export async function adoptCreationMachineCrewRepresentative({
   seatId = 'seat-1',
   fixtureAssetId,
+  sourceAsset = null,
   focus = false
 } = {}) {
   const bridge = requireRuntimeBridge();
-  const plan = requirePlanEntry(fixtureAssetId);
+  const plan = requirePlanEntry(fixtureAssetId, { sourceAsset });
   const candidate = await fetchCandidate(plan);
   const receipt = await bridge.installExternalStaticAsset({
     seatId,
@@ -85,6 +93,8 @@ export async function adoptCreationMachineCrewRepresentative({
     schema: CREATION_MACHINE_CREW_SET_SCHEMA,
     status: 'RUNTIME_IMPORTED_ONE_CREW_REPRESENTATIVE_NOT_VISUALLY_ACCEPTED',
     seatId,
+    candidateId: candidate.plan.candidateId,
+    candidateRole: candidate.plan.candidateRole,
     fixtureAssetId: candidate.plan.fixtureAssetId,
     sourceAsset: candidate.plan.sourceAsset,
     representativeFixtureId: receipt.fixtureId,
@@ -93,6 +103,7 @@ export async function adoptCreationMachineCrewRepresentative({
     nonclaims: Object.freeze([
       'Only one representative preview Crew instance is replaced by this bounded runtime trial.',
       'The procedural Crew presentation remains the default and sibling instances are not silently promoted.',
+      'An alternate source is reachable only through an explicit source-specific runtime call; omission preserves the primary candidate.',
       'A full static Crew source model is not evidence of detachable kit modularity or role-stat behavior.',
       'Static import does not establish visual acceptance, scale acceptance, collision, navigation, split-screen readability or target-device FPS.',
       'Near/far source variants do not yet have an evidence-backed automatic LOD handoff.',

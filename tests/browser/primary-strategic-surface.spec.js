@@ -6,7 +6,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -210,8 +210,8 @@ test('primary RTS deck drives one aggregate strategic convoy, mobilizes an arriv
   const threatIntel = page.locator('#primaryWorldThreat');
   await expect(threatIntel).toContainText('incoming raid');
   await expect(threatIntel).toContainText('nearest ETA');
-  await expect(threatIntel).toContainText('not yet admitted into LOCAL combat');
-  await expect(threatIntel).toHaveAttribute('data-state-scope', 'browser-local-world-pressure-warning-not-combat-admission');
+  await expect(threatIntel).toContainText('browser-local transit');
+  await expect(threatIntel).toHaveAttribute('data-state-scope', 'browser-local-world-pressure-and-local-combat-not-host-authority');
   await page.screenshot({ path: 'test-results/global-state-rts-primary-strategic-city-response.png', fullPage: true });
 
   await pulse(page, 14); // Repeating the same visit does not manufacture a second city consequence.

@@ -6,6 +6,7 @@ import { createGlobalWorldRuntime } from '../src/world/global-world-runtime.mjs'
 const INSTALL_MARK = Symbol.for('axm.global-state-rts.primary-strategic-gameplay/v0.1');
 const civilizationsBySeat = new Map();
 const strategicBySeat = new Map();
+const lastCityInteractionBySeat = new Map();
 const strategicWorldRuntime = createGlobalWorldRuntime({
   worldSeed: 'primary-local-strategic-gameplay',
   majorCityCount: 2,
@@ -49,6 +50,68 @@ function recordStrategicOutcome(civilization, strategic) {
   return outcome;
 }
 
+function currentCityForStrategic(strategic) {
+  const state = strategic?.snapshot?.() || null;
+  const journey = state?.journey || null;
+  if (!journey || journey.status !== 'arrived' || !journey.currentNodeId || journey.currentNodeId === state.homeNodeId) return null;
+  const city = strategicWorldRuntime.cityFabric.city(journey.currentNodeId);
+  return city?.snapshot?.() || null;
+}
+
+function provokeCurrentCity(civilization, strategic, selectedCrewIds) {
+  const state = strategic.snapshot(selectedCrewIds);
+  const journey = state.journey;
+  if (!journey || journey.status !== 'arrived' || !journey.currentNodeId || journey.currentNodeId === state.homeNodeId) {
+    const message = 'City contact blocked · convoy must be physically arrived at a non-home city landmark.';
+    civilization.lastOutcome = Object.freeze({ kind: 'blocked', message });
+    return blockedResult('convoy-not-at-remote-city', message);
+  }
+  if (!strategic.blocksLocalCrew(selectedCrewIds)) {
+    const message = `City contact blocked · select the deployed ${state.deployedLocalCrewIds.length}-Crew convoy party first.`;
+    civilization.lastOutcome = Object.freeze({ kind: 'blocked', message });
+    return blockedResult('deployed-convoy-party-not-selected', message, {
+      deployedLocalCrewIds: state.deployedLocalCrewIds
+    });
+  }
+
+  const city = strategicWorldRuntime.cityFabric.city(journey.currentNodeId);
+  if (!city) {
+    const message = `City contact blocked · ${journey.currentNodeId} has no aggregate city simulation.`;
+    civilization.lastOutcome = Object.freeze({ kind: 'blocked', message });
+    return blockedResult('strategic-landmark-has-no-city', message);
+  }
+
+  const previous = lastCityInteractionBySeat.get(civilization.seatId) || null;
+  if (previous?.journeyId === journey.id && previous?.cityId === city.id) {
+    const message = `${city.id} is already mobilized against this convoy visit; repeated contact does not create another consequence.`;
+    civilization.lastOutcome = Object.freeze({ kind: 'blocked', message });
+    return blockedResult('city-already-provoked-by-convoy', message, { city: city.snapshot() });
+  }
+
+  const attackerId = `${civilization.seatId}:strategic-convoy`;
+  const citySnapshot = strategicWorldRuntime.provokeCity(city.id, attackerId);
+  const interaction = Object.freeze({
+    kind: 'provoked-city-defense',
+    cityId: city.id,
+    journeyId: journey.id,
+    attackerId,
+    cityRevision: citySnapshot.revision,
+    responseState: citySnapshot.responseState,
+    stateScope: 'browser-local-world-runtime-not-host-persistent'
+  });
+  lastCityInteractionBySeat.set(civilization.seatId, interaction);
+  const message = `${city.id} aggregate defense mobilized against the arrived convoy · this consequence is browser-local world runtime state, not host-persistent authority.`;
+  civilization.lastOutcome = Object.freeze({ kind: 'city-contact', message });
+  return Object.freeze({
+    handled: true,
+    accepted: true,
+    action: 'strategic-city-provoke',
+    city: citySnapshot,
+    interaction,
+    message
+  });
+}
+
 if (!LocalCivilizationGameplay.prototype[INSTALL_MARK]) {
   Object.defineProperty(LocalCivilizationGameplay.prototype, INSTALL_MARK, { value: true });
   const originalSnapshot = LocalCivilizationGameplay.prototype.snapshot;
@@ -67,6 +130,9 @@ if (!LocalCivilizationGameplay.prototype[INSTALL_MARK]) {
     const action = String(actionId || '');
 
     if (strategicState.menuOpen) {
+      if (action === 'ui-left' && currentCityForStrategic(strategic)) {
+        return provokeCurrentCity(this, strategic, crewIds);
+      }
       const command = strategic.handleAction(action, {
         selectedCrewIds: crewIds,
         vehicleMenuOpen: this.menuKind === 'vehicle'
@@ -146,7 +212,13 @@ const publicBridge = Object.freeze({
         crewIds = [];
       }
     }
-    return strategic.snapshot(crewIds);
+    const state = strategic.snapshot(crewIds);
+    return Object.freeze({
+      ...state,
+      currentCity: currentCityForStrategic(strategic),
+      lastCityInteraction: lastCityInteractionBySeat.get(normalizedSeatId) || null,
+      cityInteractionTruthBoundary: 'arrived convoy can provoke the existing aggregate city simulation in this browser runtime; city consequence is not yet host-persistent or host-replay-authoritative'
+    });
   },
   blocksSelectedLocalCrew(seatId, selectedCrewIds = []) {
     const civilization = civilizationsBySeat.get(String(seatId || ''));

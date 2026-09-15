@@ -1,0 +1,54 @@
+name: Automation commit vehicle assignment source
+
+on:
+  push:
+    branches:
+      - automation/world-run-vehicle-assignment-authority
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch with foundation planet
+        uses: actions/checkout@v4
+        with:
+          ref: automation/world-run-vehicle-assignment-authority
+          fetch-depth: 0
+          submodules: recursive
+      - name: Reuse tested bounded patch program
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          source = Path('.github/workflows/automation-build-vehicle-assignment.yml').read_text().splitlines()
+          start = source.index("          python - <<'PY'") + 1
+          end = source.index('          PY', start)
+          script = '\n'.join(line[10:] if line.startswith('          ') else line for line in source[start:end]) + '\n'
+          Path('/tmp/vehicle-assignment-patch.py').write_text(script)
+          PY
+          python /tmp/vehicle-assignment-patch.py
+      - name: Verify focused authority evidence
+        run: |
+          node --check src/hosted/durable-world-run-command-authority.mjs
+          node --check src/hosted/world-run-http-api.mjs
+          node --check src/hosted/shared-world-authority-contract.mjs
+          node --check tests/world-run-vehicle-assignment-authority-selftest.mjs
+          node tests/shared-world-authority-contract-selftest.mjs
+          node tests/world-run-vehicle-assignment-authority-selftest.mjs
+      - name: Commit only source and tests
+        shell: bash
+        run: |
+          rm -f .github/workflows/world-run-vehicle-assignment-authority.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/hosted/durable-world-run-command-authority.mjs src/hosted/world-run-http-api.mjs src/hosted/shared-world-authority-contract.mjs tests/shared-world-authority-contract-selftest.mjs tests/world-run-vehicle-assignment-authority-selftest.mjs
+          if git diff --cached --name-only | grep '^.github/workflows/'; then
+            echo 'Refusing workflow mutation in bot source commit'
+            exit 1
+          fi
+          git commit -m 'Persist host-authoritative vehicle assignment across restart'
+          git push origin HEAD:automation/world-run-vehicle-assignment-authority

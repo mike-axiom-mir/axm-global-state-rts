@@ -2,14 +2,15 @@ import { expect, test } from '@playwright/test';
 
 const CANDIDATES = Object.freeze([
   'spotlight-tower',
-  'crane-section-watchtower'
+  'crane-section-watchtower',
+  'light-tower'
 ]);
 
 function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;

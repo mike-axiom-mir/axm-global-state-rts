@@ -181,6 +181,7 @@ try {
     'set-food-policy',
     'train-unit-specialization',
     'license-unit-vehicle',
+    'craft-weapon',
     'close-active-run'
   ]);
   assert.deepEqual(meta.body.runLifecycle.progressionPersistence.durableMutationActions, [
@@ -188,6 +189,7 @@ try {
     'set-food-policy',
     'train-unit-specialization',
     'license-unit-vehicle',
+    'craft-weapon',
     'close-active-run'
   ]);
 

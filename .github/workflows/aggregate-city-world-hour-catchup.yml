@@ -43,12 +43,15 @@ jobs:
         run: npm install --no-save @playwright/test@1.55.0
       - name: Install Chromium runtime
         run: npx playwright install --with-deps chromium
-      - name: Start local browser shell
+      - name: Start development world host
         run: |
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-logical-catchup-world-journal.json \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-logical-catchup-world-accounts.json \
           node scripts/serve.mjs > /tmp/axm-global-state-rts-logical-catchup-server.log 2>&1 &
           echo $! > /tmp/axm-global-state-rts-logical-catchup-server.pid
           for i in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null; then
+            if curl --fail --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null; then
               exit 0
             fi
             sleep 1

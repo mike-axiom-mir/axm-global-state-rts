@@ -46,6 +46,7 @@ const seatSelect = root.querySelector('#gameplaySeat');
 const summary = root.querySelector('#gameplaySummary');
 const actions = root.querySelector('#gameplayActions');
 const feedback = root.querySelector('#gameplayFeedback');
+let renderedActionSignature = '';
 
 function selectedSeat() {
   const seatId = seatSelect?.value || 'seat-1';
@@ -186,6 +187,24 @@ function commandButton(state, definition, { route = false } = {}) {
   return button;
 }
 
+function actionSignature(mode, state, definitions) {
+  return JSON.stringify({
+    mode,
+    seatId: state.seat.id,
+    seatKind: state.seat.kind,
+    selectedCrewIds: state.party?.selectedCrewIds || [],
+    definitions: definitions.map(({ id, label, disabled = false }) => ({ id, label, disabled }))
+  });
+}
+
+function installActionDefinitions(mode, state, definitions) {
+  const signature = actionSignature(mode, state, definitions);
+  const expectedSelector = mode === 'route' ? '[data-primary-strategic-action]' : '[data-primary-strategic-open]';
+  if (signature === renderedActionSignature && actions.querySelector(expectedSelector)) return;
+  renderedActionSignature = signature;
+  actions.replaceChildren(...definitions.map(definition => commandButton(state, definition, { route: mode === 'route' })));
+}
+
 function applyDeploymentGuards(state) {
   if (!actions || !state.strategic) return;
   const selectedDeployed = strategic.blocksSelectedLocalCrew(state.seat.id, state.party?.selectedCrewIds || []);
@@ -208,15 +227,16 @@ function render() {
   ensureStrategicSummary(state);
 
   if (state.strategic.menuOpen) {
-    actions.replaceChildren(...routeDefinitions(state).map(definition => commandButton(state, definition, { route: true })));
+    installActionDefinitions('route', state, routeDefinitions(state));
     return;
   }
 
   if (state.civilization?.menuKind === 'vehicle') {
-    actions.replaceChildren(...vehicleDefinitions(state).map(definition => commandButton(state, definition)));
+    installActionDefinitions('vehicle', state, vehicleDefinitions(state));
     return;
   }
 
+  renderedActionSignature = '';
   applyDeploymentGuards(state);
 }
 

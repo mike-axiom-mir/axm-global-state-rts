@@ -8,6 +8,7 @@ import { createWorldBrowserClient } from '../src/session/world-browser-client.mj
 import { createWorldSeatBindingRuntime, readWorldSeatHandoff } from '../src/session/world-seat-binding.mjs';
 import { describeBoundLocalWorldTime } from '../src/session/world-time-local-sync.mjs';
 import { createLocalCivilizationGameplay } from '../src/sim/local-civilization-gameplay.mjs';
+import { createLocalCombatGameplay } from '../src/sim/local-combat-gameplay.mjs';
 import { createLocalPartyGameplay } from '../src/sim/local-party-gameplay.mjs';
 import { createLocalRegionSimulation } from '../src/sim/local-region-sim.mjs';
 import { createStarterRegion } from '../src/world/starter-region.mjs';
@@ -45,6 +46,7 @@ const keys = new Set();
 const simulations = new Map();
 const partyGameplays = new Map();
 const civilizationGameplays = new Map();
+const combatGameplays = new Map();
 const constructionAssetTrialsBySeat = new Map();
 const worldTimeSyncBySeat = new Map();
 const worldTimeRefreshTimers = new Map();
@@ -106,6 +108,20 @@ function civilizationGameplayForSeat(seatId) {
   return civilizationGameplay;
 }
 
+function combatGameplayForSeat(seatId) {
+  let combatGameplay = combatGameplays.get(seatId);
+  if (!combatGameplay) {
+    combatGameplay = createLocalCombatGameplay({
+      seatId,
+      simulation: simulationForSeat(seatId),
+      partyGameplay: partyGameplayForSeat(seatId),
+      civilizationGameplay: civilizationGameplayForSeat(seatId)
+    });
+    combatGameplays.set(seatId, combatGameplay);
+  }
+  return combatGameplay;
+}
+
 function constructionAssetTrialsForSeat(seatId) {
   let trials = constructionAssetTrialsBySeat.get(seatId);
   if (!trials) {
@@ -124,11 +140,12 @@ function simulationLabel(seatId) {
   const snapshot = simulationForSeat(seatId).snapshot();
   const party = partyGameplayForSeat(seatId).snapshot();
   const civilization = civilizationGameplayForSeat(seatId).snapshot();
+  const combat = combatGameplayForSeat(seatId).snapshot();
   const order = snapshot.order?.type || 'idle';
   const world = renderer.describeSeatView(seatId)?.local?.world;
   const worldLabel = world ? ` · vision ${world.visibleCells} · features ${world.visibleFeatures}` : '';
   const activeProductionWorkers = civilization.production.jobs.reduce((sum, job) => sum + job.workerCount, 0);
-  return ` · core ${Math.round(snapshot.core.integrity)}% · scrap ${Math.floor(snapshot.storage.scrap)} · ${party.selectedPartyLabel} ${party.selectedCrewIds.length}/${snapshot.crew.length} · structures ${civilization.structures.length} · production ${activeProductionWorkers} Crew · ${order} · light ${snapshot.environment.lightingPhase}${worldLabel}`;
+  return ` · core ${Math.round(snapshot.core.integrity)}% · scrap ${Math.floor(snapshot.storage.scrap)} · ${party.selectedPartyLabel} ${party.selectedCrewIds.length}/${snapshot.crew.length} · structures ${civilization.structures.length} · production ${activeProductionWorkers} Crew · hostiles ${combat.contact.remainingCrew}/${combat.contact.initialCrew} · ${order} · light ${snapshot.environment.lightingPhase}${worldLabel}`;
 }
 
 function worldBindingLabel(seatId) {
@@ -232,6 +249,7 @@ function bindAvailableInputs() {
     simulationForSeat(seat.id);
     partyGameplayForSeat(seat.id);
     civilizationGameplayForSeat(seat.id);
+    combatGameplayForSeat(seat.id);
     if (seat.kind === 'machine') {
       runtime.bindInput({ seatId: seat.id, sourceKind: 'machine' });
       continue;
@@ -348,17 +366,29 @@ function reportCivilizationCommand(seatId, command, civilizationGameplay) {
   return command;
 }
 
+function reportCombatCommand(seatId, command, combatGameplay) {
+  const outcome = combatGameplay.snapshot().lastOutcome;
+  if (command.accepted) setStatus(`${seatId} · ${command.action || 'combat-action'} · ${outcome.message}`);
+  else setStatus(`${seatId} · ${command.reason || 'combat-action-rejected'} · ${outcome.message}`);
+  return command;
+}
+
 function issueLocalSimulationAction(event) {
   if (renderer.getSeatMode(event.seatId) !== 'local-rts') return null;
   const simulation = simulationForSeat(event.seatId);
   const partyGameplay = partyGameplayForSeat(event.seatId);
   const civilizationGameplay = civilizationGameplayForSeat(event.seatId);
+  const combatGameplay = combatGameplayForSeat(event.seatId);
   const view = renderer.describeSeatView(event.seatId);
   const commandContext = () => ({
     cursorXM: view?.local?.cursorXM ?? 0,
     cursorZM: view?.local?.cursorZM ?? 0,
     selectedCrewIds: partyGameplay.snapshot().selectedCrewIds
   });
+
+  if (combatGameplay.snapshot().menuOpen) {
+    return reportCombatCommand(event.seatId, combatGameplay.handleAction(event.actionId, commandContext()), combatGameplay);
+  }
 
   if (civilizationGameplay.snapshot().menuOpen) {
     return reportCivilizationCommand(event.seatId, civilizationGameplay.handleAction(event.actionId, commandContext()), civilizationGameplay);
@@ -390,6 +420,9 @@ function issueLocalSimulationAction(event) {
 
   const civilizationCommand = civilizationGameplay.handleAction(event.actionId, commandContext());
   if (civilizationCommand) return reportCivilizationCommand(event.seatId, civilizationCommand, civilizationGameplay);
+
+  const combatCommand = combatGameplay.handleAction(event.actionId, commandContext());
+  if (combatCommand) return reportCombatCommand(event.seatId, combatCommand, combatGameplay);
 
   const party = partyGameplay.snapshot();
   const command = simulation.issueLocalAction(event.actionId, {
@@ -551,6 +584,11 @@ const publicBridge = {
     const seat = activeSeats(roster).find(candidate => candidate.id === seatId);
     if (!seat) throw new Error(`${seatId || 'seat'} is not active`);
     return civilizationGameplayForSeat(seatId).snapshot();
+  },
+  describeSeatCombat(seatId) {
+    const seat = activeSeats(roster).find(candidate => candidate.id === seatId);
+    if (!seat) throw new Error(`${seatId || 'seat'} is not active`);
+    return combatGameplayForSeat(seatId).snapshot();
   },
   listSeats() {
     return activeSeats(roster).map(seat => ({

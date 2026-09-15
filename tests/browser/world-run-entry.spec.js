@@ -4,13 +4,13 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
 }
 
-test('world account can explicitly apply pending next-drop value to one host run and carry admitted scrap into a fresh LOCAL seat', async ({ page }) => {
+test('world account reaches LOCAL RTS and can explicitly close one host civilization run', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/world-entry.html', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);
@@ -91,6 +91,47 @@ test('world account can explicitly apply pending next-drop value to one host run
   expect(shellEvidence.localSimulation.storage.scrap).toBe(shellEvidence.hostRunScrap + 100, 'admitted host-run scrap is added exactly once to the explicit browser-local starter fixture');
   expect(shellEvidence.localCivilization.resources.scrap).toBe(shellEvidence.localSimulation.storage.scrap, 'playable construction wallet sees the bridged physical scrap');
   expect(shellEvidence.localCivilization.stateScope).toBe('browser-local-not-host-persistent', 'later LOCAL mutations remain explicitly non-authoritative');
+
+  await expect(page.locator('#worldRunLifecycleSurface')).toBeVisible();
+  await expect(page.locator('#endWorldRun')).toBeEnabled();
+  await expect(page.locator('#worldRunLifecycleSummary')).toContainText('active run:world:browser-run-lifecycle:drop-1');
+  await expect(page.locator('#worldRunLifecycleFeedback')).toContainText('not claiming combat death');
+
+  await page.locator('#endWorldRun').click();
+  await expect(page.locator('#endWorldRun')).toBeDisabled();
+  await expect(page.locator('#returnToNextDrop')).toBeVisible();
+  await expect(page.locator('#worldRunLifecycleSummary')).toContainText('host run closed run:world:browser-run-lifecycle:drop-1');
+
+  const closed = await page.evaluate(async () => {
+    const surface = window.__AXM_WORLD_RUN_LIFECYCLE__;
+    await surface.refresh({ force: true });
+    const status = surface.status();
+    const retryResponse = await fetch('/api/world/run/close', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        participantId: 'world:browser-run-lifecycle',
+        runId: 'run:world:browser-run-lifecycle:drop-1',
+        mutationId: 'browser-terminal-close:run:world:browser-run-lifecycle:drop-1'
+      })
+    });
+    return {
+      status,
+      retryStatus: retryResponse.status,
+      retry: await retryResponse.json()
+    };
+  });
+
+  expect(closed.status.progression.activeRun).toBeNull();
+  expect(closed.status.progression.runHistory).toHaveLength(1);
+  expect(closed.status.progression.runHistory[0].runId).toBe('run:world:browser-run-lifecycle:drop-1');
+  expect(closed.status.progression.bankedGold).toBe(closed.status.progression.runHistory[0].finalGold);
+  expect(closed.status.mutationContinuity.terminalCloseApplied).toBe(true);
+  expect(closed.status.mutationContinuity.lastDurableMutation.action).toBe('close-active-run');
+  expect(closed.retryStatus).toBe(200);
+  expect(closed.retry.accepted).toBe(true);
+  expect(closed.retry.reconciled).toBe(true);
+  expect(closed.retry.progression.runHistory).toHaveLength(1);
 
   await page.screenshot({ path: 'test-results/global-state-rts-world-run-entry.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);

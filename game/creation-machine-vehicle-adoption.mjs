@@ -12,11 +12,15 @@ function requireRuntimeBridge() {
   return bridge;
 }
 
-function requirePlanEntry(stableAssetId) {
+function requirePlanEntry(stableAssetId, sourceAsset = null) {
   const key = String(stableAssetId || '');
-  const entry = creationMachineVehicleTrialPlan().find(candidate => candidate.stableAssetId === key);
-  if (!entry) throw new Error(`no Creation Machine vehicle candidate registered for ${key || 'empty stable asset id'}`);
-  return entry;
+  const candidates = creationMachineVehicleTrialPlan().filter(candidate => candidate.stableAssetId === key);
+  if (!candidates.length) throw new Error(`no Creation Machine vehicle candidate registered for ${key || 'empty stable asset id'}`);
+  if (!sourceAsset) return candidates[0];
+  const sourceKey = String(sourceAsset || '');
+  const exact = candidates.find(candidate => candidate.sourceAsset === sourceKey);
+  if (!exact) throw new Error(`no Creation Machine vehicle source ${sourceKey || 'empty source id'} registered for ${key}`);
+  return exact;
 }
 
 async function fetchCandidate(plan, { includeBytes = true } = {}) {
@@ -63,8 +67,10 @@ export async function inspectCreationMachineVehicleSet() {
     schema: CREATION_MACHINE_VEHICLE_SET_SCHEMA,
     status: 'PREPARED_VEHICLE_SET_AVAILABLE_NOT_ACCEPTED',
     candidates: Object.freeze(candidates.map(candidate => Object.freeze({
+      candidateId: candidate.plan.candidateId,
       stableAssetId: candidate.plan.stableAssetId,
       sourceAsset: candidate.plan.sourceAsset,
+      candidateRole: candidate.plan.candidateRole,
       gameplayDefinitionId: candidate.plan.gameplayDefinitionId,
       variant: candidate.receipt.variant,
       sha256: candidate.receipt.outputGlbSha256,
@@ -80,11 +86,12 @@ export async function inspectCreationMachineVehicleSet() {
 export async function adoptCreationMachineVehicleAsset({
   seatId = 'seat-1',
   stableAssetId = 'vehicle-scrap-truck-a',
+  sourceAsset = null,
   vehicleInstanceId = null,
   focus = false
 } = {}) {
   const bridge = requireRuntimeBridge();
-  const plan = requirePlanEntry(stableAssetId);
+  const plan = requirePlanEntry(stableAssetId, sourceAsset);
   const target = resolveLiveVehicleTarget(bridge, seatId, plan, vehicleInstanceId);
   const candidate = await fetchCandidate(plan);
   const receipt = await bridge.installExternalVehicleAsset({
@@ -102,13 +109,16 @@ export async function adoptCreationMachineVehicleAsset({
     schema: CREATION_MACHINE_VEHICLE_SET_SCHEMA,
     status: 'RUNTIME_IMPORTED_SINGLE_VEHICLE_ASSET_NOT_VISUALLY_ACCEPTED',
     seatId,
+    candidateId: plan.candidateId,
     stableAssetId: plan.stableAssetId,
     sourceAsset: plan.sourceAsset,
+    candidateRole: plan.candidateRole,
     vehicleInstanceId: target.instanceId,
     gameplayDefinitionId: plan.gameplayDefinitionId,
     receipt,
     nonclaims: Object.freeze([
-      'Explicit runtime import does not make this alternate vehicle presentation the default.',
+      'Explicit runtime import does not make this vehicle presentation candidate the default.',
+      'Multiple Creation Machine sources may remain candidates for the same stable RTS presentation identity; selecting one here is not acceptance of either source.',
       'The source asset does not create, drive, load, unload, damage, destroy, repair, persist or otherwise authorize vehicle gameplay state.',
       'This trial does not establish visual acceptance, source-to-world scale acceptance, collision, navigation, gameplay footprint, or target-device FPS.',
       'The supplied near/far variants do not yet have an evidence-backed automatic LOD handoff distance.',

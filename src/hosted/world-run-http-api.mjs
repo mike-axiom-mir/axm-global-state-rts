@@ -6,8 +6,10 @@ import {
   DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
   WORLD_RUN_CLOSE_ACTION,
   WORLD_RUN_FOOD_POLICY_ACTION,
-  WORLD_RUN_GLOBAL_CONTROL_ACTION
-} from './durable-world-run-mutation-authority.mjs';
+  WORLD_RUN_GLOBAL_CONTROL_ACTION,
+  WORLD_RUN_TRAIN_UNIT_ACTION,
+  createDurableWorldRunCommandAuthority
+} from './durable-world-run-command-authority.mjs';
 import {
   PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA,
   createPreparedWorldRunRolloverAuthority
@@ -18,7 +20,7 @@ import {
 } from './world-run-durable-checkpoint-authority.mjs';
 import { WORLD_RUN_SESSION_AUTHORITY_SCHEMA } from './world-run-session-authority.mjs';
 
-export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.8';
+export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.9';
 
 function queryValue(searchParams, key) {
   if (!searchParams) return null;
@@ -87,9 +89,14 @@ export class WorldRunHttpApiService {
     this.authority = authority;
     this.writeMode = String(writeMode || 'off');
     this.clock = clock;
-    this.runAuthority = runAuthority?.prepareNextDropRollover
-      ? runAuthority
-      : createPreparedWorldRunRolloverAuthority({ worldAuthority: authority, runAuthority, runStartStore, runArchiveStore, clock });
+    const commandAuthority = runAuthority || createDurableWorldRunCommandAuthority({
+      worldAuthority: authority,
+      runStartStore,
+      clock
+    });
+    this.runAuthority = commandAuthority?.prepareNextDropRollover
+      ? commandAuthority
+      : createPreparedWorldRunRolloverAuthority({ worldAuthority: authority, runAuthority: commandAuthority, runStartStore, runArchiveStore, clock });
     this.checkpointAuthority = createWorldRunDurableCheckpointAuthority({
       runAuthority: this.runAuthority,
       runStartStore
@@ -179,6 +186,21 @@ export class WorldRunHttpApiService {
         return response(runMutationStatus(result), result);
       }
 
+      if (verb === 'POST' && route === '/api/world/run/train-unit') {
+        if (this.writeMode !== 'dev') return response(403, { error: 'world writes disabled', writeMode: this.writeMode });
+        const trainingAuthority = authorityWithMethod(this.runAuthority, 'trainUnit');
+        if (!trainingAuthority) return response(503, { error: 'host unit-training authority unavailable' });
+        const result = trainingAuthority.trainUnit({
+          participantId: body.participantId,
+          runId: body.runId,
+          mutationId: body.mutationId,
+          unitId: body.unitId,
+          roleId: body.roleId,
+          timestampMs: finiteHostTime(this.clock)
+        });
+        return response(runMutationStatus(result), result);
+      }
+
       if (verb === 'POST' && route === '/api/world/run/close') {
         if (this.writeMode !== 'dev') return response(403, { error: 'world writes disabled', writeMode: this.writeMode });
         const result = this.runAuthority.closeActiveRun({
@@ -206,6 +228,7 @@ export class WorldRunHttpApiService {
             hostAuthoritativeMutationActions: Object.freeze([
               WORLD_RUN_GLOBAL_CONTROL_ACTION,
               WORLD_RUN_FOOD_POLICY_ACTION,
+              WORLD_RUN_TRAIN_UNIT_ACTION,
               WORLD_RUN_CLOSE_ACTION
             ]),
             durableArchiveEndpoint: '/api/world/run/archive?participantId=<world-account-participant-id>',
@@ -213,13 +236,14 @@ export class WorldRunHttpApiService {
             durableRolloverPreparationEndpoint: '/api/world/run/prepare-rollover',
             durableRolloverExecutionEndpoint: '/api/world/run/execute-rollover',
             durableFoodPolicyEndpoint: '/api/world/run/food-policy',
+            durableUnitTrainingEndpoint: '/api/world/run/train-unit',
             truthBoundary: persistence.durableRolloverPreparation?.enabled
-              ? 'next-drop-run-start plus bounded global-control food-policy and terminal-close mutations are host-authoritative and replayable;terminal runs are archived;archive-bound rollover can be prepared and then executed into one new durable generation carrying only banked score/run history,with run-store-first account reconciliation across restart but no multi-host or atomic-database claim'
+              ? 'next-drop-run-start plus bounded global-control food-policy unit-training and terminal-close mutations are host-authoritative and replayable;terminal runs are archived;archive-bound rollover can be prepared and then executed into one new durable generation carrying only banked score/run history,with run-store-first account reconciliation across restart but no multi-host or atomic-database claim'
               : persistence.terminalRunArchive?.enabled
-                ? 'next-drop-run-start plus bounded global-control food-policy and terminal-close mutations are host-authoritative and replayable;terminal runs are idempotently archived while safe generation rollover still requires durable run-start storage'
+                ? 'next-drop-run-start plus bounded global-control food-policy unit-training and terminal-close mutations are host-authoritative and replayable;terminal runs are idempotently archived while safe generation rollover still requires durable run-start storage'
                 : persistence.enabled
-                  ? 'next-drop-run-start plus bounded global-control food-policy and terminal-close mutations are host-authoritative and replayable from durable evidence;read-only deterministic checkpoints compare that evidence across restart'
-                  : 'next-drop-run-start global-control food-policy and run-close commands are host-authoritative in-process but active progression and durable checkpoint evidence remain unavailable without durable run-start storage'
+                  ? 'next-drop-run-start plus bounded global-control food-policy unit-training and terminal-close mutations are host-authoritative and replayable from durable evidence;read-only deterministic checkpoints compare that evidence across restart'
+                  : 'next-drop-run-start global-control food-policy unit-training and run-close commands are host-authoritative in-process but active progression and durable checkpoint evidence remain unavailable without durable run-start storage'
           })
         });
       }

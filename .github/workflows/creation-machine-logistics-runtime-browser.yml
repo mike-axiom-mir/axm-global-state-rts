@@ -41,11 +41,14 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Prepare deterministic checked-in clustered storage far derivative
+      - name: Prepare deterministic checked-in logistics far derivatives
         run: |
           set -euo pipefail
           python3 assets/creation-machine/prepare_runtime_glb.py \
             --asset clustered-storage-bins \
+            --variant far
+          python3 assets/creation-machine/prepare_runtime_glb.py \
+            --asset storage-hall \
             --variant far
 
       - name: Verify source identity, stable ID and live Storage Depot target
@@ -66,6 +69,7 @@ jobs:
           node tests/creation-machine-resource-set-selftest.mjs
           node tests/creation-machine-defense-set-selftest.mjs
           node tests/creation-machine-continuity-set-selftest.mjs
+          node tests/creation-machine-industry-set-selftest.mjs
           npm run test:shell
 
       - name: Install pinned Playwright browser test route
@@ -74,13 +78,15 @@ jobs:
       - name: Install Chromium runtime
         run: npx playwright install --with-deps chromium
 
-      - name: Start actual Global State RTS shell with prepared logistics derivative
+      - name: Start actual Global State RTS shell with prepared logistics derivatives
         run: |
           node scripts/serve.mjs > /tmp/axm-global-state-rts-creation-machine-logistics.log 2>&1 &
           for i in {1..30}; do
             if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null \
               && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/clustered-storage-bins-lod1.glb > /dev/null \
-              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/clustered-storage-bins-lod1.receipt.json > /dev/null; then
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/clustered-storage-bins-lod1.receipt.json > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/storage-hall-lod1.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/storage-hall-lod1.receipt.json > /dev/null; then
               exit 0
             fi
             sleep 1
@@ -88,11 +94,12 @@ jobs:
           cat /tmp/axm-global-state-rts-creation-machine-logistics.log
           exit 1
 
-      - name: Exercise live Storage Depot construction then explicit static adoption
+      - name: Exercise explicit Storage Depot alternates in four-seat LOCAL RTS
         run: |
           npx playwright test tests/browser/creation-machine-logistics-set.spec.js --workers=1 --reporter=line
           mkdir -p evidence/creation-machine-logistics-runtime
-          cp test-results/global-state-rts-creation-machine-storage-bins-4seat.png evidence/creation-machine-logistics-runtime/
+          cp test-results/global-state-rts-creation-machine-clustered-storage-bins-4seat.png evidence/creation-machine-logistics-runtime/
+          cp test-results/global-state-rts-creation-machine-storage-hall-4seat.png evidence/creation-machine-logistics-runtime/
 
       - name: Regress player-facing LOCAL construction browser path
         run: npx playwright test tests/browser/local-civilization-gameplay.spec.js --workers=1 --reporter=line
@@ -104,6 +111,7 @@ jobs:
           name: global-state-rts-creation-machine-logistics-runtime-evidence
           path: |
             assets/creation-machine/runtime-prepared/clustered-storage-bins-lod1.receipt.json
+            assets/creation-machine/runtime-prepared/storage-hall-lod1.receipt.json
             evidence/creation-machine-logistics-runtime/*.png
             test-results/global-state-rts-*.png
             /tmp/axm-global-state-rts-creation-machine-logistics.log

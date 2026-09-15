@@ -57,8 +57,8 @@ test('selected LOCAL party is preserved through host journal command and explici
   const selected = new Set(prepared.party.selectedCrewIds);
   expect(journaled.result.outcome.crew.filter(crew => selected.has(crew.id)).every(crew => crew.phase !== 'idle')).toBe(true);
   expect(journaled.result.outcome.crew.filter(crew => !selected.has(crew.id)).every(crew => crew.phase === 'idle')).toBe(true);
-  await expect(page.locator('#hostLocalCommandStatus')).toContainText('host selected-party gather accepted');
-  await expect(page.locator('#hostLocalCommandStatus')).toContainText('4 Crew');
+  await expect(page.locator('#hostLocalCommandStatus')).toContainText('host journal gather accepted');
+  await expect(page.locator('#hostLocalCommandStatus')).toContainText('selected party 4 Crew');
 
   const adopted = await page.evaluate(async () => {
     const result = await window.__AXM_HOST_LOCAL_SEAT__.adoptHostCheckpoint({ seatId: 'seat-1' });

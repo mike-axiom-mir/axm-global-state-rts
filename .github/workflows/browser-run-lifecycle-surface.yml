@@ -119,6 +119,7 @@ jobs:
         with:
           name: global-state-rts-browser-run-lifecycle
           path: |
+            test-results/global-state-rts-local-defeat-run-close.png
             test-results/global-state-rts-world-run-entry.png
             /tmp/axm-browser-run-accounts.json
             /tmp/axm-browser-run-starts.json

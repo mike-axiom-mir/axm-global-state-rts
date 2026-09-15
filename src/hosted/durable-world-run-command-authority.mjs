@@ -1,4 +1,5 @@
 import { FOOD_POLICIES } from '../sim/civilization-food.mjs';
+import { VEHICLE_LICENSES } from '../sim/civilization-manpower.mjs';
 import {
   DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
   WORLD_RUN_CLOSE_ACTION,
@@ -15,6 +16,7 @@ export {
 };
 
 export const WORLD_RUN_TRAIN_UNIT_ACTION = 'train-unit-specialization';
+export const WORLD_RUN_LICENSE_UNIT_ACTION = 'license-unit-vehicle';
 
 function nonEmpty(value, label) {
   const text = String(value ?? '').trim();
@@ -66,6 +68,11 @@ function closeHistoryEntry(progression, runId) {
 
 function trainingReceipt(run, mutationId) {
   const eventId = `host-run-training:${mutationId}`;
+  return run?.manpower?.snapshot?.().trainingReceipts?.find(receipt => receipt.eventId === eventId) || null;
+}
+
+function vehicleLicenseReceipt(run, mutationId) {
+  const eventId = `host-run-license:${mutationId}`;
   return run?.manpower?.snapshot?.().trainingReceipts?.find(receipt => receipt.eventId === eventId) || null;
 }
 
@@ -136,6 +143,12 @@ export class DurableWorldRunCommandAuthority {
       const trained = run.trainUnit(unitId, roleId, { eventId: `host-run-training:${mutation.mutationId}` });
       if (!trained.accepted) throw new Error(`durable unit training replay rejected: ${progression.playerId}:${mutation.mutationId}:${trained.reason}`);
       result = Object.freeze({ training: cloneJson(trained), runRevision: run.revision });
+    } else if (mutation.action === WORLD_RUN_LICENSE_UNIT_ACTION) {
+      const unitId = nonEmpty(mutation.payload?.unitId, 'unitId');
+      const licenseId = nonEmpty(mutation.payload?.licenseId, 'licenseId');
+      const licensed = run.licenseUnit(unitId, licenseId, { eventId: `host-run-license:${mutation.mutationId}` });
+      if (!licensed.accepted) throw new Error(`durable unit vehicle license replay rejected: ${progression.playerId}:${mutation.mutationId}:${licensed.reason}`);
+      result = Object.freeze({ licensing: cloneJson(licensed), runRevision: run.revision });
     } else if (mutation.action === WORLD_RUN_CLOSE_ACTION) {
       if (!sameJson(mutation.payload, {})) throw new Error(`durable run close payload must be empty: ${progression.playerId}:${mutation.mutationId}`);
       const closed = progression.closeActiveRun();
@@ -303,15 +316,34 @@ export class DurableWorldRunCommandAuthority {
     return null;
   }
 
+  #vehicleLicensePreflight(context, unitId, licenseId) {
+    const run = context.progression.activeRun;
+    const unit = run.manpower.unit(unitId);
+    if (!unit) throw new RangeError(`unknown unit: ${unitId}`);
+    const definition = VEHICLE_LICENSES[licenseId];
+    if (!definition) throw new RangeError(`unknown vehicle license: ${licenseId}`);
+    if (unit.role === 'crew') return Object.freeze({ accepted: false, reason: 'specialize-before-vehicle-license', unit });
+    if (unit.licenses.includes(licenseId)) return Object.freeze({ accepted: false, reason: 'license-already-held', unit });
+    if (definition.prerequisite && !unit.licenses.includes(definition.prerequisite)) {
+      return Object.freeze({ accepted: false, reason: 'license-prerequisite-missing', prerequisite: definition.prerequisite, unit });
+    }
+    if (!run.stockpile.canAfford(definition.trainingCost)) {
+      const resources = run.stockpile.snapshot().resources;
+      const missing = Object.fromEntries(Object.entries(definition.trainingCost).filter(([id, value]) => Number(resources[id] || 0) < value).map(([id, value]) => [id, value - Number(resources[id] || 0)]));
+      return Object.freeze({ accepted: false, reason: 'insufficient-resources', missing: Object.freeze(missing) });
+    }
+    return null;
+  }
+
   progressionPersistenceMeta() {
     const base = this.base.progressionPersistenceMeta();
     return Object.freeze({
       ...base,
-      durableMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION, WORLD_RUN_FOOD_POLICY_ACTION, WORLD_RUN_TRAIN_UNIT_ACTION, WORLD_RUN_CLOSE_ACTION]),
+      durableMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION, WORLD_RUN_FOOD_POLICY_ACTION, WORLD_RUN_TRAIN_UNIT_ACTION, WORLD_RUN_LICENSE_UNIT_ACTION, WORLD_RUN_CLOSE_ACTION]),
       restoredMutationsThisProcess: this.mutationRestoreReport.restored,
       mutationParticipantsRestoredThisProcess: this.mutationRestoreReport.participantIds,
       truthBoundary: this.runStartStore
-        ? 'initial-run-start-plus-host-admitted-global-control-food-policy-unit-training-and-terminal-run-close-mutations-are-durable-and-replayed-in-command-order;other-local-rts-mutations-remain-separate-gaps'
+        ? 'initial-run-start-plus-host-admitted-global-control-food-policy-unit-training-vehicle-licensing-and-terminal-run-close-mutations-are-durable-and-replayed-in-command-order;other-local-rts-mutations-remain-separate-gaps'
         : 'active-player-progression-and-run-mutations-remain-process-memory-only-without-a-durable-run-start-store'
     });
   }
@@ -343,7 +375,7 @@ export class DurableWorldRunCommandAuthority {
         : terminalCloseApplied
           ? 'host-run-status-replays-the-terminal-close-and-durable-score-history-for-this-run;the-separate-archive-bound-rollover-layer-governs-next-generation handoff'
           : mutations.length
-            ? 'host-run-status-includes-durable-replay-for-the-bounded-global-control-food-policy-unit-training-and-run-close-actions-only;other-run-mutations-remain-outside-this-contract'
+            ? 'host-run-status-includes-durable-replay-for-the-bounded-global-control-food-policy-unit-training-vehicle-licensing-and-run-close-actions-only;other-run-mutations-remain-outside-this-contract'
             : base.truthBoundary
     });
   }
@@ -398,6 +430,38 @@ export class DurableWorldRunCommandAuthority {
     return this.#admitPersistApply({ ...context, actionId: 'world-run-train-unit', action: WORLD_RUN_TRAIN_UNIT_ACTION, payload: { unitId: unit, roleId: role }, timestampMs, successTruthBoundary: 'host-admitted-unit-training-command-was-durably-recorded-before-stockpile-and-manpower-application-and-replays-in-command-order-after-restart' });
   }
 
+  licenseUnit({ participantId, runId, mutationId, unitId, licenseId, timestampMs } = {}) {
+    const unit = nonEmpty(unitId, 'unitId');
+    const license = nonEmpty(licenseId, 'licenseId');
+    const context = this.#activeRunCommandContext({ participantId, runId, mutationId, action: WORLD_RUN_LICENSE_UNIT_ACTION, payload: { unitId: unit, licenseId: license } });
+    if (context.rejection) return context.rejection;
+    if (context.existing) {
+      return this.#reconcileExisting({
+        ...context,
+        resultFactory: progression => ({
+          licensing: Object.freeze({ accepted: true, unit: progression.activeRun.manpower.unit(unit), receipt: vehicleLicenseReceipt(progression.activeRun, context.commandId) }),
+          runRevision: progression.activeRun.revision
+        })
+      });
+    }
+    const preflight = this.#vehicleLicensePreflight(context, unit, license);
+    if (preflight) {
+      return Object.freeze({
+        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+        accepted: false,
+        reason: preflight.reason,
+        participantId: context.record.participantId,
+        runId: context.expectedRunId,
+        mutationId: context.commandId,
+        licensing: preflight,
+        progressionPersistence: this.progressionPersistenceMeta(),
+        progression: context.progression.snapshot(),
+        truthBoundary: 'vehicle-licensing-was-not-admitted-or-persisted-because-the-authoritative-active-run-preconditions-were-not-met'
+      });
+    }
+    return this.#admitPersistApply({ ...context, actionId: 'world-run-license-unit', action: WORLD_RUN_LICENSE_UNIT_ACTION, payload: { unitId: unit, licenseId: license }, timestampMs, successTruthBoundary: 'host-admitted-vehicle-license-command-was-durably-recorded-before-stockpile-and-manpower-application-and-replays-in-command-order-after-restart' });
+  }
+
   closeActiveRun({ participantId, runId, mutationId, timestampMs } = {}) {
     const record = this.#record(participantId);
     const expectedRunId = nonEmpty(runId, 'runId');
@@ -446,7 +510,7 @@ export class DurableWorldRunCommandAuthority {
       mutationRestoreReport: this.mutationRestoreReport,
       unpersistedMutations: Object.freeze([...this.unpersistedMutations.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([participantId, error]) => Object.freeze({ participantId, error }))),
       truthBoundary: this.runStartStore
-        ? 'bounded-host-global-control-food-policy-unit-training-and-terminal-run-close-mutations-replay-in-order-after-the-durable-run-start;other-local-rts-mutations-remain-separate-gaps'
+        ? 'bounded-host-global-control-food-policy-unit-training-vehicle-licensing-and-terminal-run-close-mutations-replay-in-order-after-the-durable-run-start;other-local-rts-mutations-remain-separate-gaps'
         : 'run mutations remain process-memory-only without durable-run-start storage'
     });
   }

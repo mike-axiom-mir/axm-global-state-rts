@@ -12,6 +12,7 @@ import {
   WORLD_RUN_LICENSE_UNIT_ACTION,
   WORLD_RUN_CONSTRUCT_VEHICLE_ACTION,
   WORLD_RUN_ASSIGN_VEHICLE_ACTION,
+  WORLD_RUN_UNASSIGN_VEHICLE_ACTION,
   WORLD_RUN_TRAIN_UNIT_ACTION,
   createDurableWorldRunCommandAuthority
 } from './durable-world-run-command-authority.mjs';
@@ -27,7 +28,7 @@ import { WORLD_RUN_SESSION_AUTHORITY_SCHEMA } from './world-run-session-authorit
 import { LOCAL_STARTER_MATERIALS } from '../sim/local-civilization-gameplay.mjs';
 import { WORLD_RUN_LOCAL_BOOTSTRAP_SCHEMA } from '../session/world-seat-binding.mjs';
 
-export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.13';
+export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.14';
 
 function queryValue(searchParams, key) {
   if (!searchParams) return null;
@@ -263,6 +264,21 @@ export class WorldRunHttpApiService {
         return response(runMutationStatus(result), result);
       }
 
+      if (verb === 'POST' && route === '/api/world/run/unassign-vehicle') {
+        if (this.writeMode !== 'dev') return response(403, { error: 'world writes disabled', writeMode: this.writeMode });
+        const unassignmentAuthority = authorityWithMethod(this.runAuthority, 'unassignUnitVehicle');
+        if (!unassignmentAuthority) return response(503, { error: 'host vehicle-unassignment authority unavailable' });
+        const result = unassignmentAuthority.unassignUnitVehicle({
+          participantId: body.participantId,
+          runId: body.runId,
+          mutationId: body.mutationId,
+          unitId: body.unitId,
+          vehicleId: body.vehicleId,
+          timestampMs: finiteHostTime(this.clock)
+        });
+        return response(runMutationStatus(result), result);
+      }
+
       if (verb === 'POST' && route === '/api/world/run/craft-weapon') {
         if (this.writeMode !== 'dev') return response(403, { error: 'world writes disabled', writeMode: this.writeMode });
         const craftingAuthority = authorityWithMethod(this.runAuthority, 'craftWeapon');
@@ -371,6 +387,7 @@ export class WorldRunHttpApiService {
               WORLD_RUN_LICENSE_UNIT_ACTION,
               WORLD_RUN_CONSTRUCT_VEHICLE_ACTION,
               WORLD_RUN_ASSIGN_VEHICLE_ACTION,
+              WORLD_RUN_UNASSIGN_VEHICLE_ACTION,
               WORLD_RUN_CRAFT_WEAPON_ACTION,
               WORLD_RUN_EQUIP_WEAPON_ACTION,
               WORLD_RUN_CLOSE_ACTION
@@ -384,15 +401,16 @@ export class WorldRunHttpApiService {
             durableVehicleLicensingEndpoint: '/api/world/run/license-unit',
             durableVehicleConstructionEndpoint: '/api/world/run/construct-vehicle',
             durableVehicleAssignmentEndpoint: '/api/world/run/assign-vehicle',
+            durableVehicleUnassignmentEndpoint: '/api/world/run/unassign-vehicle',
             durableWeaponCraftingEndpoint: '/api/world/run/craft-weapon',
             durableWeaponEquippingEndpoint: '/api/world/run/equip-weapon',
             truthBoundary: persistence.durableRolloverPreparation?.enabled
-              ? 'next-drop-run-start plus bounded global-control food-policy unit-training vehicle-licensing vehicle-construction vehicle-registry-validated-assignment weapon-crafting weapon-equipping and terminal-close mutations are host-authoritative and replayable;terminal runs are archived;archive-bound rollover can be prepared and then executed into one new durable generation carrying only banked score/run history,with run-store-first account reconciliation across restart but no multi-host or atomic-database claim'
+              ? 'next-drop-run-start plus bounded global-control food-policy unit-training vehicle-licensing vehicle-construction vehicle-registry-validated-assignment vehicle-driver-release weapon-crafting weapon-equipping and terminal-close mutations are host-authoritative and replayable;terminal runs are archived;archive-bound rollover can be prepared and then executed into one new durable generation carrying only banked score/run history,with run-store-first account reconciliation across restart but no multi-host or atomic-database claim'
               : persistence.terminalRunArchive?.enabled
-                ? 'next-drop-run-start plus bounded global-control food-policy unit-training vehicle-licensing vehicle-construction vehicle-registry-validated-assignment weapon-crafting weapon-equipping and terminal-close mutations are host-authoritative and replayable;terminal runs are idempotently archived while safe generation rollover still requires durable run-start storage'
+                ? 'next-drop-run-start plus bounded global-control food-policy unit-training vehicle-licensing vehicle-construction vehicle-registry-validated-assignment vehicle-driver-release weapon-crafting weapon-equipping and terminal-close mutations are host-authoritative and replayable;terminal runs are idempotently archived while safe generation rollover still requires durable run-start storage'
                 : persistence.enabled
-                  ? 'next-drop-run-start plus bounded global-control food-policy unit-training vehicle-licensing vehicle-construction vehicle-registry-validated-assignment weapon-crafting weapon-equipping and terminal-close mutations are host-authoritative and replayable from durable evidence;read-only deterministic checkpoints compare that evidence across restart'
-                  : 'next-drop-run-start global-control food-policy unit-training vehicle-licensing vehicle-construction vehicle-registry-validated-assignment weapon-crafting weapon-equipping and run-close commands are host-authoritative in-process but active progression and durable checkpoint evidence remain unavailable without durable run-start storage'
+                  ? 'next-drop-run-start plus bounded global-control food-policy unit-training vehicle-licensing vehicle-construction vehicle-registry-validated-assignment vehicle-driver-release weapon-crafting weapon-equipping and terminal-close mutations are host-authoritative and replayable from durable evidence;read-only deterministic checkpoints compare that evidence across restart'
+                  : 'next-drop-run-start global-control food-policy unit-training vehicle-licensing vehicle-construction vehicle-registry-validated-assignment vehicle-driver-release weapon-crafting weapon-equipping and run-close commands are host-authoritative in-process but active progression and durable checkpoint evidence remain unavailable without durable run-start storage'
           })
         });
       }

@@ -1,4 +1,4 @@
-export const CREATION_MACHINE_CREW_SET_SCHEMA = 'axm.global-state-rts.creation-machine-crew-static-set/v0.1';
+export const CREATION_MACHINE_CREW_SET_SCHEMA = 'axm.global-state-rts.creation-machine-crew-static-set/v0.2';
 
 const DELIVERY_ROOT = '../assets/creation-machine/runtime-prepared';
 const STATUS = 'CREATED_CANDIDATE_RUNTIME_TRIAL_ONLY';
@@ -104,6 +104,15 @@ export const CREATION_MACHINE_CREW_SET = Object.freeze([
     gameplayTarget: 'starter-region:crew-rifle',
     roleBoundary: 'Rifle-role presentation candidate only; source is a full static Crew model and does not alter combat authority.',
     note: 'Representative visual candidate for the existing rifle-marked Crew preview instance.'
+  }),
+  freezeEntry({
+    candidateId: 'crew-rifle-shotgun-raider-alternate',
+    candidateRole: 'alternate',
+    fixtureAssetId: 'crew-rifle-kit-a',
+    sourceAsset: 'shotgun-raider',
+    gameplayTarget: 'starter-region:crew-rifle',
+    roleBoundary: 'Rifle-role presentation alternate only; shotgun/raider naming is source provenance and grants no shotgun weapon, hostile faction, combat-stat change, targeting behavior, or action authority.',
+    note: 'Explicit alternate full static Crew candidate for the same real rifle-marked preview instance. It is source-selected only and cannot displace the procedural presentation or rifle-guard primary candidate.'
   })
 ]);
 

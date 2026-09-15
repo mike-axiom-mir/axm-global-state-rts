@@ -1,9 +1,12 @@
 import { createWorldHttpApiService } from './world-http-api.mjs';
 import {
+  ARCHIVED_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+  createArchivedWorldRunMutationAuthority
+} from './archived-world-run-mutation-authority.mjs';
+import {
   DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
   WORLD_RUN_CLOSE_ACTION,
-  WORLD_RUN_GLOBAL_CONTROL_ACTION,
-  createDurableWorldRunMutationAuthority
+  WORLD_RUN_GLOBAL_CONTROL_ACTION
 } from './durable-world-run-mutation-authority.mjs';
 import {
   WORLD_RUN_DURABLE_CHECKPOINT_SCHEMA,
@@ -11,7 +14,7 @@ import {
 } from './world-run-durable-checkpoint-authority.mjs';
 import { WORLD_RUN_SESSION_AUTHORITY_SCHEMA } from './world-run-session-authority.mjs';
 
-export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.5';
+export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.6';
 
 function queryValue(searchParams, key) {
   if (!searchParams) return null;
@@ -44,6 +47,7 @@ export class WorldRunHttpApiService {
     authority,
     runAuthority = null,
     runStartStore = null,
+    runArchiveStore = null,
     baseApi = null,
     writeMode = 'off',
     clock = () => Date.now()
@@ -55,9 +59,9 @@ export class WorldRunHttpApiService {
     this.authority = authority;
     this.writeMode = String(writeMode || 'off');
     this.clock = clock;
-    this.runAuthority = runAuthority?.recordGlobalControlPercent
+    this.runAuthority = runAuthority?.archivedRuns
       ? runAuthority
-      : createDurableWorldRunMutationAuthority({ worldAuthority: authority, runAuthority, runStartStore, clock });
+      : createArchivedWorldRunMutationAuthority({ worldAuthority: authority, runAuthority, runStartStore, runArchiveStore, clock });
     this.checkpointAuthority = createWorldRunDurableCheckpointAuthority({
       runAuthority: this.runAuthority,
       runStartStore
@@ -73,6 +77,12 @@ export class WorldRunHttpApiService {
         const participantId = queryValue(searchParams, 'participantId');
         if (!participantId) return response(400, { error: 'participantId query parameter required' });
         return response(200, this.runAuthority.status(participantId));
+      }
+
+      if (verb === 'GET' && route === '/api/world/run/archive') {
+        const participantId = queryValue(searchParams, 'participantId');
+        if (!participantId) return response(400, { error: 'participantId query parameter required' });
+        return response(200, this.runAuthority.archivedRuns(participantId));
       }
 
       if (verb === 'GET' && route === '/api/world/run/checkpoint') {
@@ -124,13 +134,17 @@ export class WorldRunHttpApiService {
           runLifecycle: Object.freeze({
             schema: WORLD_RUN_SESSION_AUTHORITY_SCHEMA,
             mutationAuthoritySchema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+            terminalArchiveAuthoritySchema: ARCHIVED_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
             durableCheckpointSchema: WORLD_RUN_DURABLE_CHECKPOINT_SCHEMA,
             progressionPersistence: persistence,
             hostAuthoritativeMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION, WORLD_RUN_CLOSE_ACTION]),
+            durableArchiveEndpoint: '/api/world/run/archive?participantId=<world-account-participant-id>',
             durableCheckpointEndpoint: '/api/world/run/checkpoint?participantId=<world-account-participant-id>',
-            truthBoundary: persistence.enabled
-              ? 'next-drop-run-start-plus-bounded-global-control-and-terminal-run-close-mutations-are-host-authoritative-and-replayable-from-durable-evidence;read-only-deterministic-checkpoint-fingerprints-can-compare-that-evidence-across-restart;closed-record-rollover-into-the-next-durable-run-and-general-rollback-remain-separate-gaps'
-              : 'next-drop-run-start-global-control-and-run-close-commands-are-host-authoritative-in-process-but-active-progression-and-durable-checkpoint-evidence-remain-unavailable-without-durable-run-start-storage'
+            truthBoundary: persistence.terminalRunArchive?.enabled
+              ? 'next-drop-run-start-plus-bounded-global-control-and-terminal-run-close-mutations-are-host-authoritative-and-replayable;terminal-runs-are-idempotently-copied-into-a-separate-durable-archive;the-current-closed-record-is-retained-so-safe-next-run-rollover-and-general-rollback-remain-separate-gaps'
+              : persistence.enabled
+                ? 'next-drop-run-start-plus-bounded-global-control-and-terminal-run-close-mutations-are-host-authoritative-and-replayable-from-durable-evidence;read-only-deterministic-checkpoint-fingerprints-can-compare-that-evidence-across-restart;terminal-archive-storage-closed-record-rollover-and-general-rollback-remain-separate-gaps'
+                : 'next-drop-run-start-global-control-and-run-close-commands-are-host-authoritative-in-process-but-active-progression-and-durable-checkpoint-evidence-remain-unavailable-without-durable-run-start-storage'
           })
         });
       }
@@ -138,7 +152,7 @@ export class WorldRunHttpApiService {
       return this.baseApi.handle({ method, pathname, searchParams, body });
     } catch (error) {
       const message = String(error?.message || error);
-      const status = /already exists|id conflict|application state ambiguous/.test(message)
+      const status = /already exists|id conflict|application state ambiguous|archive conflict/.test(message)
         ? 409
         : /unknown participant/.test(message)
           ? 404

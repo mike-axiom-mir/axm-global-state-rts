@@ -45,7 +45,7 @@ const worldThreat = document.createElement('div');
 worldThreat.id = 'primaryWorldThreat';
 worldThreat.className = 'status';
 worldThreat.dataset.primaryWorldThreat = 'true';
-worldThreat.dataset.stateScope = 'browser-local-world-pressure-warning-not-combat-admission';
+worldThreat.dataset.stateScope = 'browser-local-world-pressure-and-local-combat-not-host-authority';
 worldThreat.setAttribute('aria-live', 'assertive');
 
 anchor.insertAdjacentElement('afterend', cityIntel);
@@ -107,11 +107,18 @@ function worldThreatText(state) {
   if (!pressure) return 'threat intel · no known world-pressure target for this seat · no raid warning';
 
   const raids = Array.isArray(pressure.raids) ? pressure.raids : [];
+  const admitted = raids.filter(raid => raid.status === 'admitted-local-combat');
+  if (admitted.length) {
+    const raid = admitted[0];
+    const local = raid.localCombat || {};
+    return `threat intel · RAID IN LOCAL COMBAT · ${finiteRound(raid.units)} aggregate units from ${raid.originCityId || 'unknown-city'} mapped to ${finiteRound(local.localCombatants)} bounded combat packets · ${finiteRound(local.remainingLocalCombatants)} packets remain · survivors will resolve back to the origin city · browser-local, not host authority`;
+  }
+
   const arrived = raids.filter(raid => raid.status === 'arrived-local-drop-perimeter');
   if (arrived.length) {
     const units = arrived.reduce((sum, raid) => sum + finiteRound(raid.units), 0);
     const origins = [...new Set(arrived.map(raid => String(raid.originCityId || 'unknown-city')))];
-    return `threat intel · RAID AT LOCAL DROP PERIMETER · ${units} aggregate raid units from ${origins.join(', ')} · browser-local arrival evidence only · not yet admitted into LOCAL combat or host authority`;
+    return `threat intel · RAID AT LOCAL DROP PERIMETER · ${units} aggregate raid units from ${origins.join(', ')} · awaiting bounded admission into the existing LOCAL combat authority · browser-local, not host authority`;
   }
 
   const transits = raids.filter(raid => raid.status === 'transit-to-local-drop');
@@ -121,10 +128,17 @@ function worldThreatText(state) {
     const materials = transits.reduce((sum, raid) => sum + finiteRound(raid.materialCost), 0);
     const nearest = [...transits].sort((a, b) => Number(a.remainingTravelMs || 0) - Number(b.remainingTravelMs || 0))[0];
     const etaMinutes = Math.max(1, Math.ceil(Number(nearest?.remainingTravelMs || 0) / 60000));
-    return `threat intel · incoming raid · ${units} aggregate units in ${transits.length} finite raid${transits.length === 1 ? '' : 's'} · nearest ETA ${etaMinutes}m from ${nearest?.originCityId || 'unknown-city'} · origin cities spent ${food} food + ${materials} materials · browser-local transit only · not yet admitted into LOCAL combat`;
+    return `threat intel · incoming raid · ${units} aggregate units in ${transits.length} finite raid${transits.length === 1 ? '' : 's'} · nearest ETA ${etaMinutes}m from ${nearest?.originCityId || 'unknown-city'} · origin cities spent ${food} food + ${materials} materials · browser-local transit`;
   }
 
-  return 'threat intel · starter drop known to world pressure · no raid currently in transit · no LOCAL combat consequence claimed';
+  const resolved = raids.filter(raid => raid.status === 'resolved-local-combat');
+  if (resolved.length) {
+    const latest = resolved[resolved.length - 1];
+    const resolution = latest.resolution || {};
+    return `threat intel · raid resolved through LOCAL combat · ${finiteRound(resolution.lostUnits)} aggregate units lost · ${finiteRound(resolution.returnedUnits)} survivors returned to ${latest.originCityId || 'origin city'} · browser-local evidence, not host replay authority`;
+  }
+
+  return 'threat intel · starter drop known to world pressure · no raid currently in transit · no unresolved LOCAL raid contact';
 }
 
 function render() {

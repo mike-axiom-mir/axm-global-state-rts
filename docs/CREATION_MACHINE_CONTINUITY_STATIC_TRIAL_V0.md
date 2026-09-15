@@ -33,9 +33,9 @@ Training activity, doors/gates, build motion, damage motion and destruction moti
 
 ## Browser evidence route
 
-The focused browser gate uses four machine-user seats and the normal LOCAL command path. Seat 1 first constructs the already-playable Shallow Mine and assigns aggregate production workers. The test then uses a bounded **test-only simulation clock multiplier** so existing deterministic production can reach the Training Yard's real resource cost without spending many wall-clock minutes in CI. It does not alter product tuning or source gameplay code.
+The focused browser gate uses four machine-user seats and the normal LOCAL command path. Seat 1 issues the existing gather-scrap order and earns enough real browser-local scrap to pay the Training Yard's existing construction cost. The test uses a bounded **test-only fast-forward scheduler** while that already-admitted deterministic gather order resolves, so CI does not spend the same wall-clock time as the playable simulation. It changes no product tuning, resource amount, movement rate, gather rate, construction rule, or source gameplay code.
 
-After sufficient resources exist, Seat 1 selects and constructs the real Training Yard through admitted machine actions, then explicitly attaches the prepared source to that exact construction instance. Seats 2–4 must remain untouched.
+After sufficient resources physically reach storage, Seat 1 selects and constructs the real Training Yard through admitted machine actions, then explicitly attaches the prepared source to that exact construction instance. Seats 2–4 must remain untouched.
 
 ## Evidence gate
 
@@ -44,7 +44,7 @@ The focused workflow must:
 1. prepare the source-pinned far Training Yard GLB and receipt;
 2. verify source identity, stable ID, continuity eligibility and current LOCAL build-plan membership;
 3. open the actual four-seat machine-user LOCAL RTS browser route;
-4. obtain the required construction resources through the existing Shallow Mine production path, using only test-time clock acceleration;
+4. obtain the required construction scrap through the existing gather/deliver simulation path, using only a test-time scheduler acceleration;
 5. construct a real `building:training-yard` instance through admitted machine controls;
 6. explicitly install the candidate only on that exact Seat 1 construction instance;
 7. retain Seats 2–4 on their original presentation paths;

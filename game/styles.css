@@ -50,6 +50,10 @@ button, select { font: inherit; }
   letter-spacing: .04em;
   overflow-wrap: anywhere;
 }
+.seat-label:first-child:nth-last-child(4),
+.seat-label:first-child:nth-last-child(4) ~ .seat-label {
+  max-width: calc(50% - 16px);
+}
 
 .control-dock {
   min-width: 0;

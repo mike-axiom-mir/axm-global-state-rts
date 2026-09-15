@@ -1,0 +1,92 @@
+name: Bound primary host macros
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/session/local-seat-runtime.mjs'
+      - 'tests/bound-primary-host-macro-selftest.mjs'
+      - 'tests/browser/bound-primary-host-macros.spec.js'
+      - 'docs/BOUND_PRIMARY_HOST_MACROS_V0.md'
+      - '.github/workflows/bound-primary-host-macros.yml'
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-routing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Full deterministic and source suite
+        run: npm test
+      - name: Bound authority routing source gate
+        run: |
+          node --check src/session/local-seat-runtime.mjs
+          node --check tests/bound-primary-host-macro-selftest.mjs
+          node --check tests/browser/bound-primary-host-macros.spec.js
+          node tests/bound-primary-host-macro-selftest.mjs
+
+  chromium-bound-primary-routing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Deterministic/source prerequisite
+        run: |
+          npm test
+          node tests/bound-primary-host-macro-selftest.mjs
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start clean development world host
+        run: |
+          rm -rf /tmp/axm-bound-primary-local-seat-journals
+          rm -f /tmp/axm-bound-primary-local-seat-bindings.json /tmp/axm-bound-primary-world-journal.json /tmp/axm-bound-primary-world-accounts.json
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-bound-primary-world-journal.json \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-bound-primary-world-accounts.json \
+          AXM_LOCAL_SEAT_BINDINGS_PATH=/tmp/axm-bound-primary-local-seat-bindings.json \
+          AXM_LOCAL_SEAT_JOURNAL_DIR=/tmp/axm-bound-primary-local-seat-journals \
+          node scripts/serve.mjs > /tmp/axm-bound-primary-host.log 2>&1 &
+          echo $! > /tmp/axm-bound-primary-host.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-bound-primary-host.log
+          exit 1
+      - name: Exercise ordinary bound gather repair explore route in Chromium
+        run: npx playwright test tests/browser/bound-primary-host-macros.spec.js --workers=1 --reporter=line
+      - name: Preserve browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bound-primary-host-macros
+          path: |
+            test-results/global-state-rts-bound-primary-host-macros.png
+            /tmp/axm-bound-primary-host.log
+            /tmp/axm-bound-primary-world-accounts.json
+            /tmp/axm-bound-primary-local-seat-bindings.json
+            /tmp/axm-bound-primary-local-seat-journals/*.jsonl
+          if-no-files-found: warn
+          retention-days: 14

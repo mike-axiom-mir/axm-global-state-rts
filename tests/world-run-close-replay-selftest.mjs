@@ -179,11 +179,13 @@ try {
   assert.deepEqual(meta.body.runLifecycle.hostAuthoritativeMutationActions, [
     'record-global-control-percent',
     'set-food-policy',
+    'train-unit-specialization',
     'close-active-run'
   ]);
   assert.deepEqual(meta.body.runLifecycle.progressionPersistence.durableMutationActions, [
     'record-global-control-percent',
     'set-food-policy',
+    'train-unit-specialization',
     'close-active-run'
   ]);
 

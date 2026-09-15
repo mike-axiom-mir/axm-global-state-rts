@@ -1,4 +1,4 @@
-export const CREATION_MACHINE_VEHICLE_SET_SCHEMA = 'axm.global-state-rts.creation-machine-vehicle-static-set/v0.1';
+export const CREATION_MACHINE_VEHICLE_SET_SCHEMA = 'axm.global-state-rts.creation-machine-vehicle-static-set/v0.2';
 
 const DELIVERY_ROOT = '../assets/creation-machine/runtime-prepared';
 const STATUS = 'CREATED_CANDIDATE_RUNTIME_TRIAL_ONLY';
@@ -12,15 +12,17 @@ function freezeVariant(sourceAsset, role, filenameSuffix) {
   });
 }
 
-function freezeEntry({ stableAssetId, sourceAsset, sourceFamily, gameplayDefinitionId, note }) {
+function freezeEntry({ candidateId, stableAssetId, sourceAsset, sourceFamily, gameplayDefinitionId, candidateRole = 'primary-static-candidate', note }) {
   return Object.freeze({
     schema: CREATION_MACHINE_VEHICLE_SET_SCHEMA,
     status: STATUS,
+    candidateId,
     stableAssetId,
     sourceAsset,
     sourceFamily,
     gameplayDefinitionId,
     targetKind: 'vehicle-instance',
+    candidateRole,
     provenance: Object.freeze({
       delivery: 'assets/creation-machine/transfer-manifest.json',
       index: 'assets/creation-machine/asset-index.csv',
@@ -55,27 +57,52 @@ function freezeEntry({ stableAssetId, sourceAsset, sourceFamily, gameplayDefinit
 
 export const CREATION_MACHINE_VEHICLE_SET = Object.freeze([
   freezeEntry({
+    candidateId: 'vehicle-scrap-truck-a:utility-hauler',
     stableAssetId: 'vehicle-scrap-truck-a',
     sourceAsset: 'utility-hauler',
     sourceFamily: 'vehicles',
     gameplayDefinitionId: 'vehicle:utility-hauler',
+    candidateRole: 'primary-static-candidate',
     note: 'Static cargo-hauler candidate for an actually constructed LOCAL Utility Hauler. It never creates, drives, loads, unloads, damages or persists vehicle state.'
+  }),
+  freezeEntry({
+    candidateId: 'vehicle-scrap-truck-a:flatbed-convoy-truck',
+    stableAssetId: 'vehicle-scrap-truck-a',
+    sourceAsset: 'flatbed-convoy-truck',
+    sourceFamily: 'vehicles',
+    gameplayDefinitionId: 'vehicle:utility-hauler',
+    candidateRole: 'explicit-alternate-static-candidate',
+    note: 'Alternate flatbed/logistics presentation candidate for the same existing generic cargo-truck stable ID and live Utility Hauler target. It does not invent convoy mechanics or claim the active strategic-route lane.'
   })
 ]);
 
-const BY_STABLE_ID = new Map(CREATION_MACHINE_VEHICLE_SET.map(entry => [entry.stableAssetId, entry]));
+const BY_CANDIDATE_ID = new Map(CREATION_MACHINE_VEHICLE_SET.map(entry => [entry.candidateId, entry]));
+const BY_STABLE_ID = new Map();
+for (const entry of CREATION_MACHINE_VEHICLE_SET) {
+  const candidates = BY_STABLE_ID.get(entry.stableAssetId) || [];
+  candidates.push(entry);
+  BY_STABLE_ID.set(entry.stableAssetId, candidates);
+}
 
-export function creationMachineVehicleSetEntry(stableAssetId) {
-  return BY_STABLE_ID.get(String(stableAssetId || '')) || null;
+export function creationMachineVehicleSetEntry(stableAssetId, sourceAsset = null) {
+  const candidates = BY_STABLE_ID.get(String(stableAssetId || '')) || [];
+  if (!sourceAsset) return candidates[0] || null;
+  return candidates.find(entry => entry.sourceAsset === String(sourceAsset)) || null;
+}
+
+export function creationMachineVehicleCandidate(candidateId) {
+  return BY_CANDIDATE_ID.get(String(candidateId || '')) || null;
 }
 
 export function creationMachineVehicleTrialPlan() {
   return Object.freeze(CREATION_MACHINE_VEHICLE_SET.map(entry => Object.freeze({
+    candidateId: entry.candidateId,
     stableAssetId: entry.stableAssetId,
     sourceAsset: entry.sourceAsset,
     sourceFamily: entry.sourceFamily,
     gameplayDefinitionId: entry.gameplayDefinitionId,
     targetKind: entry.targetKind,
+    candidateRole: entry.candidateRole,
     variant: entry.runtimeTrial.variant,
     glbUrl: entry.variants.far.preparedGlb,
     receiptUrl: entry.variants.far.preparedReceipt,

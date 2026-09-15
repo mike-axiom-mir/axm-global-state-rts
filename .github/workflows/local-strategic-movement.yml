@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'src/sim/local-strategic-gameplay.mjs'
+      - 'src/sim/local-vehicle-gameplay.mjs'
       - 'game/strategic-movement.html'
       - 'game/strategic-movement.mjs'
       - 'game/primary-strategic-gameplay.mjs'
@@ -40,6 +41,7 @@ jobs:
           npm test
           node tests/local-strategic-gameplay-selftest.mjs
           node --check src/sim/local-strategic-gameplay.mjs
+          node --check src/sim/local-vehicle-gameplay.mjs
           node --check game/strategic-movement.mjs
           node --check game/primary-strategic-gameplay.mjs
           node --check game/primary-strategic-surface.mjs

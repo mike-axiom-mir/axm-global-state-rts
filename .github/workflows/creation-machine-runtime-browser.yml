@@ -46,7 +46,7 @@ jobs:
       - name: Prepare deterministic checked-in Creation Machine starter-set derivatives
         run: |
           set -euo pipefail
-          for asset in settlement-hub civic-shelter improvised-workshop storage-hall scrap-sorting-yard light-tower; do
+          for asset in settlement-hub civic-shelter improvised-workshop storage-hall scrap-sorting-yard salvage-scrap-node light-tower; do
             echo "preparing ${asset}"
             python3 assets/creation-machine/prepare_runtime_glb.py \
               --asset "$asset" \
@@ -78,7 +78,7 @@ jobs:
           node scripts/serve.mjs > /tmp/axm-global-state-rts-creation-machine.log 2>&1 &
           for i in {1..30}; do
             ready=1
-            for asset in settlement-hub civic-shelter improvised-workshop storage-hall scrap-sorting-yard light-tower; do
+            for asset in settlement-hub civic-shelter improvised-workshop storage-hall scrap-sorting-yard salvage-scrap-node light-tower; do
               curl --fail --silent "http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/${asset}-lod1.glb" > /dev/null || ready=0
               curl --fail --silent "http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/${asset}-lod1.receipt.json" > /dev/null || ready=0
             done

@@ -175,7 +175,7 @@ export class LocalVehicleGameplay {
     const readiness = this.#convoyReadinessText(localCrewIds, this.#selectedDrivenVehicles(localCrewIds));
     this.lastOutcome = Object.freeze({
       kind: 'convoy-supply-loaded',
-      message: `${Math.round(loaded * 10) / 10} scrap loaded into ${touchedVehicles} selected-party convoy vehicle${touchedVehicles === 1 ? '' : 's'} in one aggregate command · ${readiness} · strategic departure remains disabled until the LOCAL↔strategic handoff is authoritative.`
+      message: `${Math.round(loaded * 10) / 10} scrap loaded into ${touchedVehicles} selected-party convoy vehicle${touchedVehicles === 1 ? '' : 's'} in one aggregate command · ${readiness} · Strategic Route can depart this selected party when its aggregate convoy profile is valid.`
     });
     return freezeResult({
       accepted: true,
@@ -460,7 +460,7 @@ export class LocalVehicleGameplay {
       cargoCapacity,
       convoySupplyResourceId: CONVOY_SUPPLY_RESOURCE_ID,
       convoySupplyLoadBatch: CONVOY_SUPPLY_LOAD_BATCH,
-      strategicDepartureState: 'blocked-until-local-strategic-handoff-authoritative',
+      strategicDepartureState: 'available-through-primary-strategic-route-when-convoy-ready',
       vehicles: fabric.vehicles,
       lastOutcome: this.lastOutcome
     });

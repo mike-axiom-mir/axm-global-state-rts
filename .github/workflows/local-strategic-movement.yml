@@ -4,14 +4,17 @@ on:
   pull_request:
     paths:
       - 'src/sim/local-strategic-gameplay.mjs'
+      - 'src/sim/local-vehicle-gameplay.mjs'
       - 'game/strategic-movement.html'
       - 'game/strategic-movement.mjs'
       - 'game/primary-strategic-gameplay.mjs'
       - 'game/primary-strategic-surface.mjs'
+      - 'game/primary-world-objective-surface.mjs'
       - 'game/index.html'
       - 'tests/local-strategic-gameplay-selftest.mjs'
       - 'tests/browser/local-strategic-movement.spec.js'
       - 'tests/browser/primary-strategic-surface.spec.js'
+      - 'tests/browser/primary-world-objective-surface.spec.js'
       - '.github/workflows/local-strategic-movement.yml'
   push:
     branches:
@@ -38,11 +41,14 @@ jobs:
           npm test
           node tests/local-strategic-gameplay-selftest.mjs
           node --check src/sim/local-strategic-gameplay.mjs
+          node --check src/sim/local-vehicle-gameplay.mjs
           node --check game/strategic-movement.mjs
           node --check game/primary-strategic-gameplay.mjs
           node --check game/primary-strategic-surface.mjs
+          node --check game/primary-world-objective-surface.mjs
           node --check tests/browser/local-strategic-movement.spec.js
           node --check tests/browser/primary-strategic-surface.spec.js
+          node --check tests/browser/primary-world-objective-surface.spec.js
       - name: Install pinned Playwright test runner
         run: npm install --no-save @playwright/test@1.55.0
       - name: Install Chromium runtime
@@ -60,7 +66,7 @@ jobs:
           cat /tmp/axm-global-state-rts-strategic-server.log
           exit 1
       - name: Exercise proving and primary strategic movement in Chromium
-        run: npx playwright test tests/browser/local-strategic-movement.spec.js tests/browser/primary-strategic-surface.spec.js --reporter=line
+        run: npx playwright test tests/browser/local-strategic-movement.spec.js tests/browser/primary-strategic-surface.spec.js tests/browser/primary-world-objective-surface.spec.js --reporter=line
       - name: Preserve strategic browser evidence
         if: always()
         uses: actions/upload-artifact@v4

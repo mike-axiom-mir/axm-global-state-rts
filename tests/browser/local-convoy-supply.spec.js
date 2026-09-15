@@ -94,7 +94,7 @@ async function gatherThenIdle(page) {
   expect(idled.emptyHands).toBe(true);
 }
 
-test('selected-party convoy loads and unloads physical scrap through command-deck and controller parity without faking strategic departure', async ({ page }) => {
+test('selected-party convoy loads and unloads physical scrap through command-deck and controller parity with promoted strategic-route truth', async ({ page }) => {
   test.setTimeout(90_000);
   const failures = captureRuntimeFailures(page);
   await installVirtualGamepad(page);
@@ -123,18 +123,18 @@ test('selected-party convoy loads and unloads physical scrap through command-dec
   expect(beforeScrap).toBeGreaterThanOrEqual(100);
   expect(beforeLoad.vehicles.driverCount).toBe(1);
   expect(beforeLoad.vehicles.cargoAmount).toBe(0);
-  expect(beforeLoad.vehicles.strategicDepartureState).toBe('blocked-until-local-strategic-handoff-authoritative');
+  expect(beforeLoad.vehicles.strategicDepartureState).toBe('available-through-primary-strategic-route-when-convoy-ready');
 
   await page.locator('[data-gameplay-action="ui-right"]').click();
   await expect(page.locator('#gameplayFeedback')).toContainText('100 scrap loaded');
   await expect(page.locator('#gameplayFeedback')).toContainText('2/8 seats');
-  await expect(page.locator('#gameplayFeedback')).toContainText('strategic departure remains disabled');
+  await expect(page.locator('#gameplayFeedback')).toContainText('Strategic Route can depart this selected party');
   let civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1'));
   expect(civilization.resources.scrap).toBeCloseTo(beforeScrap - 100, 6);
   expect(civilization.vehicles.cargoAmount).toBeCloseTo(100, 6);
   expect(civilization.vehicles.vehicles[0].cargo.scrap).toBeCloseTo(100, 6);
   await expect(page.locator('#gameplaySummary')).toContainText('100/700 cargo');
-  await expect(page.locator('#gameplaySummary')).toContainText('strategic departure handoff pending');
+  await expect(page.locator('#gameplaySummary')).toContainText('available-through-primary-strategic-route-when-convoy-ready');
   await page.screenshot({ path: 'test-results/global-state-rts-convoy-supply-loaded.png', fullPage: true });
 
   await pulse(page, 14); // D-pad left: unload selected-party convoy supply.

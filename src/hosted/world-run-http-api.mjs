@@ -22,8 +22,10 @@ import {
   createWorldRunDurableCheckpointAuthority
 } from './world-run-durable-checkpoint-authority.mjs';
 import { WORLD_RUN_SESSION_AUTHORITY_SCHEMA } from './world-run-session-authority.mjs';
+import { LOCAL_STARTER_MATERIALS } from '../sim/local-civilization-gameplay.mjs';
+import { WORLD_RUN_LOCAL_BOOTSTRAP_SCHEMA } from '../session/world-seat-binding.mjs';
 
-export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.12';
+export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.13';
 
 function queryValue(searchParams, key) {
   if (!searchParams) return null;
@@ -40,6 +42,12 @@ function finiteHostTime(clock) {
   const nowMs = Number(clock());
   if (!Number.isFinite(nowMs) || nowMs < 0) throw new RangeError('host clock must return a finite non-negative timestamp');
   return nowMs;
+}
+
+function finiteNonNegative(value, label) {
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) throw new RangeError(`${label} must be finite and non-negative`);
+  return number;
 }
 
 function runMutationStatus(result) {
@@ -258,6 +266,53 @@ export class WorldRunHttpApiService {
           timestampMs: finiteHostTime(this.clock)
         });
         return response(runMutationStatus(result), result);
+      }
+
+      if (verb === 'GET' && route === '/api/world/local-seat/adoption') {
+        const base = this.baseApi.handle({ method, pathname, searchParams, body });
+        if (base.status !== 200) return base;
+        const participantId = queryValue(searchParams, 'participantId');
+        if (!participantId) return base;
+        const runStatus = this.runAuthority.status(participantId);
+        const activeRun = runStatus?.progression?.activeRun || null;
+        if (!activeRun) return base;
+        if (String(activeRun.civilizationId || '') !== participantId) {
+          throw new Error('active run civilization does not match local checkpoint participant');
+        }
+        const checkpoint = base.body?.checkpoint || null;
+        if (!checkpoint) return base;
+        const runId = String(activeRun.runId || '').trim();
+        if (!runId) throw new Error('active run id required for local checkpoint provenance');
+        const hostStartingScrap = finiteNonNegative(activeRun.stockpile?.resources?.scrap, 'active run scrap');
+        const localStarterScrap = finiteNonNegative(LOCAL_STARTER_MATERIALS.scrap, 'LOCAL starter scrap');
+        const hostPopulation = finiteNonNegative(activeRun.manpower?.population ?? 0, 'active run population');
+        const genesisBootstrap = Object.freeze({
+          schema: WORLD_RUN_LOCAL_BOOTSTRAP_SCHEMA,
+          bootstrapKey: `${participantId}|${runId}`,
+          participantId,
+          seatId: checkpoint.regionSeatId,
+          runId,
+          applied: true,
+          source: 'host-revalidated-active-run-for-local-journal-delta-translation',
+          hostStartingScrap,
+          localStarterScrap,
+          combinedStartingScrap: localStarterScrap + hostStartingScrap,
+          hostPopulation,
+          truthBoundary:
+            'The host journal remains a zero-baseline replay. This descriptor revalidates the currently active run scrap plus the canonical LOCAL starter scrap so a browser with the exact same bootstrap can explicitly translate that journal as a delta; it does not turn starter value into earned salvage or shared-world currency.'
+        });
+        return response(200, {
+          ...base.body,
+          checkpoint: Object.freeze({
+            ...checkpoint,
+            genesisBootstrap,
+            truthBoundary:
+              'host-issued-zero-baseline-replay-package-with-host-revalidated-active-run-bootstrap-provenance-for-explicit-browser-delta-translation-no-shared-world-promotion'
+          }),
+          runBootstrapTranslation: genesisBootstrap,
+          truthBoundary:
+            'host-revalidated-active-run-provenance-attached-to-local-checkpoint-the-browser-must-still-match-its-own-bootstrap-and-adopt-explicitly'
+        });
       }
 
       if (verb === 'GET' && route === '/api/world/meta') {

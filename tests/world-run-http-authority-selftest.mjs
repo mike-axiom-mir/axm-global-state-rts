@@ -6,6 +6,7 @@ import { WORLD_HOUR_MS } from '../src/hosted/world-clock.mjs';
 import { createFileWorldAccountStore } from '../src/hosted/world-account-store.mjs';
 import { createWorldSessionAuthority } from '../src/hosted/world-session-authority.mjs';
 import { createWorldRunHttpApiService } from '../src/hosted/world-run-http-api.mjs';
+import { LOCAL_STARTER_MATERIALS } from '../src/sim/local-civilization-gameplay.mjs';
 
 function post(api, pathname, body = {}) {
   return api.handle({ method: 'POST', pathname, body });
@@ -79,6 +80,49 @@ try {
   assert.equal(started.body.run.stockpile.resources.scrap >= human.pending.scrap, true);
   assert.equal(started.body.progressionPersistence.enabled, false);
   assert.equal(started.body.progressionPersistence.kind, 'process-memory');
+
+  const localBind = post(api, '/api/world/local-seat/bind', {
+    participantId: human.participantId,
+    regionSeatId: 'seat-1',
+    expectedControllerKind: 'human'
+  });
+  assert.equal(localBind.status, 200);
+  assert.equal(localBind.body.accepted, true);
+  assert.equal(localBind.body.journal.revision, 0);
+
+  const runAwareAdoption = get(api, '/api/world/local-seat/adoption', {
+    participantId: human.participantId,
+    regionSeatId: 'seat-1',
+    expectedRevision: 0
+  });
+  assert.equal(runAwareAdoption.status, 200);
+  assert.equal(runAwareAdoption.body.accepted, true);
+  assert.equal(runAwareAdoption.body.checkpoint.revision, 0);
+  assert.equal(
+    runAwareAdoption.body.checkpoint.genesisBootstrap.schema,
+    'axm.global-state-rts.world-run-local-bootstrap/v0.1'
+  );
+  assert.equal(runAwareAdoption.body.checkpoint.genesisBootstrap.participantId, human.participantId);
+  assert.equal(runAwareAdoption.body.checkpoint.genesisBootstrap.seatId, 'seat-1');
+  assert.equal(runAwareAdoption.body.checkpoint.genesisBootstrap.runId, 'run:human:001');
+  assert.equal(runAwareAdoption.body.checkpoint.genesisBootstrap.applied, true);
+  assert.equal(
+    runAwareAdoption.body.checkpoint.genesisBootstrap.localStarterScrap,
+    LOCAL_STARTER_MATERIALS.scrap
+  );
+  assert.equal(
+    runAwareAdoption.body.checkpoint.genesisBootstrap.hostStartingScrap,
+    started.body.run.stockpile.resources.scrap
+  );
+  assert.equal(
+    runAwareAdoption.body.checkpoint.genesisBootstrap.combinedStartingScrap,
+    LOCAL_STARTER_MATERIALS.scrap + started.body.run.stockpile.resources.scrap
+  );
+  assert.equal(
+    runAwareAdoption.body.checkpoint.genesisBootstrap.source,
+    'host-revalidated-active-run-for-local-journal-delta-translation'
+  );
+  assert.equal(runAwareAdoption.body.runBootstrapTranslation.bootstrapKey, `${human.participantId}|run:human:001`);
 
   clockState.nowMs += 1;
   const reconciled = post(api, '/api/world/run/begin-next-drop', {
@@ -164,7 +208,7 @@ try {
   assert.equal(secondAction.status, 429);
   assert.equal(secondAction.body.reason, 'participant-action-rate-limited');
 
-  console.log('world run HTTP authority claim/retry/account persistence/parity/APM/restart-boundary selftest: PASS');
+  console.log('world run HTTP authority claim/retry/account persistence/parity/APM/restart-boundary/run-local-checkpoint-provenance selftest: PASS');
 } finally {
   fs.rmSync(tempDir, { recursive: true, force: true });
 }

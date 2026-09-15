@@ -80,6 +80,15 @@ export const CREATION_MACHINE_STARTER_SET = Object.freeze([
     note: 'Visual candidate for the existing starter workshop fixture and construction-economy improvised workshop.'
   }),
   freezeEntry({
+    candidateId: 'workshop-repair-garage-alternate',
+    candidateRole: 'alternate',
+    fixtureAssetId: 'building-workshop-a',
+    sourceAsset: 'repair-garage',
+    sourceFamily: 'buildings',
+    gameplayTarget: 'building:improvised-workshop',
+    note: 'Explicit alternate static presentation candidate for the same real workshop fixture and improvised-workshop construction target. It does not invent a separate repair-garage gameplay entity or replace the procedural/primary workshop presentation by default.'
+  }),
+  freezeEntry({
     candidateId: 'storage-depot-storage-hall-primary',
     candidateRole: 'primary',
     fixtureAssetId: 'building-storage-depot-a',

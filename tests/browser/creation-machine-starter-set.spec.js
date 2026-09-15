@@ -4,6 +4,7 @@ const CANDIDATES = Object.freeze([
   ['building-settlement-core-a', 'settlement-hub', 'primary'],
   ['building-settlement-core-a', 'civic-shelter', 'alternate'],
   ['building-workshop-a', 'improvised-workshop', 'primary'],
+  ['building-workshop-a', 'repair-garage', 'alternate'],
   ['building-storage-depot-a', 'storage-hall', 'primary'],
   ['resource-scrap-collector-a', 'scrap-sorting-yard', 'primary'],
   ['defense-light-tower-a', 'light-tower', 'primary']
@@ -21,9 +22,6 @@ function captureRuntimeFailures(page) {
 
 for (const [fixtureAssetId, sourceAsset, candidateRole] of CANDIDATES) {
   test(`explicit ${sourceAsset} trial imports in a real four-seat LOCAL RTS layout without cross-seat adoption`, async ({ page }) => {
-    // Each source gets a fresh page/context so alternate candidates sharing a stable fixture ID
-    // cannot replace one another inside the evidence route. This proves only the bounded claim:
-    // the explicitly selected source can enter the real four-seat LOCAL RTS route on seat 1.
     test.setTimeout(75_000);
 
     const failures = captureRuntimeFailures(page);

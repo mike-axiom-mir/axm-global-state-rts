@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {
   CREATION_MACHINE_STARTER_SET,
   creationMachineStarterSetCandidates,
@@ -19,6 +20,7 @@ const expectedSources = [
   'settlement-hub',
   'civic-shelter',
   'improvised-workshop',
+  'repair-garage',
   'storage-hall',
   'scrap-sorting-yard',
   'light-tower'
@@ -32,6 +34,11 @@ assert.equal(creationMachineStarterSetCandidates('building-settlement-core-a').l
 assert.equal(creationMachineStarterSetCandidates('building-settlement-core-a')[1].sourceAsset, 'civic-shelter');
 assert.equal(creationMachineStarterSetCandidates('building-settlement-core-a')[1].candidateRole, 'alternate');
 assert.equal(creationMachineStarterSetEntry('building-settlement-core-a', { sourceAsset: 'civic-shelter' }).sourceAsset, 'civic-shelter');
+assert.equal(creationMachineStarterSetEntry('building-workshop-a').sourceAsset, 'improvised-workshop');
+assert.equal(creationMachineStarterSetCandidates('building-workshop-a').length, 2);
+assert.equal(creationMachineStarterSetCandidates('building-workshop-a')[1].sourceAsset, 'repair-garage');
+assert.equal(creationMachineStarterSetCandidates('building-workshop-a')[1].candidateRole, 'alternate');
+assert.equal(creationMachineStarterSetEntry('building-workshop-a', { sourceAsset: 'repair-garage' }).sourceAsset, 'repair-garage');
 
 const constructionIds = new Set(DEFAULT_BUILDING_CATALOG.map(entry => entry.id));
 for (const entry of CREATION_MACHINE_STARTER_SET) {
@@ -58,6 +65,15 @@ for (let seat = 1; seat <= 4; seat += 1) {
   for (const expected of expectedFixtureIds) assert.ok(fixtureIds.has(expected), `${expected} missing from seat-${seat} starter region`);
 }
 
+const sourceIndex = fs.readFileSync(new URL('../assets/creation-machine/asset-index.csv', import.meta.url), 'utf8');
+assert.match(
+  sourceIndex,
+  /^repair-garage,buildings,assets\/repair-garage\/repair-garage\.gltf,assets\/repair-garage\/repair-garage-lod1\.gltf,False,False\r?$/m
+);
+const sourceReadme = fs.readFileSync(new URL('../assets/creation-machine/README.md', import.meta.url), 'utf8');
+assert.match(sourceReadme, /83 assets/);
+assert.match(sourceReadme, /no new rigs,\s*animations, certified colliders or sockets/i);
+
 const plan = creationMachineStarterSetTrialPlan();
 assert.equal(plan.length, expectedSources.length);
 for (const entry of plan) {
@@ -73,7 +89,8 @@ console.log(JSON.stringify({
   checkedFixtures: expectedFixtureIds.length,
   checkedCandidates: expectedSources.length,
   settlementCoreCandidates: creationMachineStarterSetCandidates('building-settlement-core-a').map(entry => entry.sourceAsset),
+  workshopCandidates: creationMachineStarterSetCandidates('building-workshop-a').map(entry => entry.sourceAsset),
   seatsChecked: 4,
   realConstructionTargets: CREATION_MACHINE_STARTER_SET.filter(entry => entry.gameplayTarget.startsWith('building:')).length,
-  truthBoundary: 'Candidate mapping, explicit alternate selection and fallback policy verified; browser import, visual acceptance, scale, collision, navigation, LOD handoff, FPS and animation remain separate evidence.'
+  truthBoundary: 'Candidate mapping, checked-in source identity, explicit alternate selection and fallback policy verified; browser import, visual acceptance, scale, collision, navigation, LOD handoff, FPS and animation remain separate evidence.'
 }, null, 2));

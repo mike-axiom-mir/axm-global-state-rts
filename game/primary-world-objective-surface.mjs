@@ -7,6 +7,7 @@ import { buildWorldLandmarks } from '../src/world/world-landmarks.mjs';
 import { buildWorldTransportNetwork } from '../src/world/world-transport-network.mjs';
 import { planLandmarkRoute } from '../src/world/world-route-planner.mjs';
 import { createWorldScale, greatCircleAngleRad } from '../src/world/world-scale.mjs';
+import { activeLocalStrategicGameplay } from '../src/sim/local-strategic-gameplay.mjs';
 
 const WORLD_SEED = 'primary-local-strategic-gameplay';
 const ROUTE_MAJOR_CITY_COUNT = 2;
@@ -53,8 +54,28 @@ const worldObjective = document.createElement('div');
 worldObjective.id = 'primaryWorldObjective';
 worldObjective.className = 'status';
 worldObjective.dataset.primaryWorldObjective = 'true';
-worldObjective.dataset.stateScope = 'deterministic-browser-route-projection-not-event-participation';
+worldObjective.dataset.stateScope = 'deterministic-browser-nearest-landmark-route-action-not-event-participation';
 worldObjective.setAttribute('aria-live', 'polite');
+
+const objectiveRouteRow = document.createElement('div');
+objectiveRouteRow.className = 'setup-row';
+objectiveRouteRow.dataset.primaryWorldObjectiveRouteRow = 'true';
+
+const objectiveRouteAction = document.createElement('button');
+objectiveRouteAction.id = 'primaryWorldObjectiveRoute';
+objectiveRouteAction.type = 'button';
+objectiveRouteAction.textContent = 'Route selected convoy toward objective';
+objectiveRouteAction.dataset.stateScope = 'browser-local-strategic-route-to-nearest-event-landmark-not-event-participation';
+objectiveRouteAction.disabled = true;
+
+const objectiveRouteStatus = document.createElement('div');
+objectiveRouteStatus.id = 'primaryWorldObjectiveRouteStatus';
+objectiveRouteStatus.className = 'status';
+objectiveRouteStatus.dataset.stateScope = 'browser-local-strategic-route-to-nearest-event-landmark-not-event-participation';
+objectiveRouteStatus.setAttribute('aria-live', 'polite');
+objectiveRouteStatus.textContent = 'objective convoy action · checking selected-party transport';
+
+objectiveRouteRow.append(objectiveRouteAction, objectiveRouteStatus);
 
 const worldThreat = document.createElement('div');
 worldThreat.id = 'primaryWorldThreat';
@@ -65,7 +86,8 @@ worldThreat.setAttribute('aria-live', 'assertive');
 
 anchor.insertAdjacentElement('afterend', cityIntel);
 cityIntel.insertAdjacentElement('afterend', worldObjective);
-worldObjective.insertAdjacentElement('afterend', worldThreat);
+worldObjective.insertAdjacentElement('afterend', objectiveRouteRow);
+objectiveRouteRow.insertAdjacentElement('afterend', worldThreat);
 
 function finiteRound(value) {
   return Number.isFinite(Number(value)) ? Math.round(Number(value)) : 0;
@@ -108,43 +130,99 @@ function nearestObjectiveLandmark(event) {
   return candidates[0] || null;
 }
 
-function objectiveRouteText(event, state) {
+function objectiveRoutePlan(event, state) {
   const nearest = nearestObjectiveLandmark(event);
   if (!nearest) {
-    return 'objective route · unavailable · no transport landmark projection exists · event marker remains off-network; no teleport, join, claim, or reward fallback';
+    return Object.freeze({
+      ready: false,
+      landmarkId: null,
+      description: 'objective route · unavailable · no transport landmark projection exists · event marker remains off-network; no teleport, join, claim, or reward fallback',
+      actionReason: 'no transport landmark projection exists; no route action is invented'
+    });
   }
+
   const landmarkId = nearest.landmark.id;
   const tracked = `objective route · tracked nearest landmark ${landmarkId}`;
   if (!strategicTopologyMatchesProjection(state)) {
-    return `${tracked} · route unavailable because live strategic topology no longer matches the deterministic HUD projection · fail closed; event marker remains off-network`;
+    return Object.freeze({
+      ready: false,
+      landmarkId,
+      description: `${tracked} · route unavailable because live strategic topology no longer matches the deterministic HUD projection · fail closed; event marker remains off-network`,
+      actionReason: 'live strategic topology does not match the deterministic objective projection'
+    });
   }
 
   const journey = state?.journey || null;
   if (journey && !journey.currentNodeId && (journey.status === 'transit' || journey.status === 'halted-crossing')) {
-    return `${tracked} · route recalculation deferred while convoy is between landmarks · no mid-edge teleport or hidden reroute · event marker remains off-network`;
+    return Object.freeze({
+      ready: false,
+      landmarkId,
+      description: `${tracked} · route recalculation deferred while convoy is between landmarks · no mid-edge teleport or hidden reroute · event marker remains off-network`,
+      actionReason: 'convoy is between landmarks; mid-edge reroute is not allowed'
+    });
   }
 
   const originNodeId = journey?.currentNodeId || state?.homeNodeId || null;
   if (!originNodeId || !objectiveRouteNetwork.nodeIds.includes(originNodeId)) {
-    return `${tracked} · route unavailable because no current transport landmark is authoritative for this convoy · event marker remains off-network`;
+    return Object.freeze({
+      ready: false,
+      landmarkId,
+      description: `${tracked} · route unavailable because no current transport landmark is authoritative for this convoy · event marker remains off-network`,
+      actionReason: 'no current transport landmark is authoritative for this convoy'
+    });
   }
 
   const mode = journey?.mode || state?.transportProfile?.movementMode || null;
   if (!ROUTE_MODES.has(mode)) {
-    return `${tracked} · convoy route unavailable until the selected party has one supported driven-vehicle mode · no hidden foot/teleport fallback · event marker remains off-network`;
+    return Object.freeze({
+      ready: false,
+      landmarkId,
+      originNodeId,
+      description: `${tracked} · convoy route unavailable until the selected party has one supported driven-vehicle mode · no hidden foot/teleport fallback · event marker remains off-network`,
+      actionReason: 'selected party needs one supported driven-vehicle mode'
+    });
   }
 
   const route = planLandmarkRoute(objectiveRouteNetwork, objectiveRouteScale, originNodeId, landmarkId, { mode });
   if (!route.reachable) {
-    return `${tracked} · no ${mode} route from ${originNodeId} on the current deterministic transport network · no hidden fallback · event marker remains off-network`;
+    return Object.freeze({
+      ready: false,
+      landmarkId,
+      originNodeId,
+      mode,
+      route,
+      description: `${tracked} · no ${mode} route from ${originNodeId} on the current deterministic transport network · no hidden fallback · event marker remains off-network`,
+      actionReason: `no ${mode} route from ${originNodeId} to ${landmarkId}`
+    });
   }
 
   if (route.edgeIds.length === 0) {
-    return `${tracked} · convoy is already at that landmark · event marker itself remains off-network; exact join/claim/reward control is not promoted`;
+    return Object.freeze({
+      ready: false,
+      landmarkId,
+      originNodeId,
+      mode,
+      route,
+      description: `${tracked} · convoy is already at that landmark · event marker itself remains off-network; exact join/claim/reward control is not promoted`,
+      actionReason: `convoy is already at nearest landmark ${landmarkId}; exact event participation remains unpromoted`
+    });
   }
 
   const minutes = Math.max(1, Math.ceil(route.travelSeconds / 60));
-  return `${tracked} · ${mode} route from ${originNodeId} reachable via ${route.edgeIds.length} aggregate edge${route.edgeIds.length === 1 ? '' : 's'} (~${minutes}m to landmark) · event marker itself remains off-network; exact join/claim/reward control is not promoted`;
+  return Object.freeze({
+    ready: true,
+    landmarkId,
+    originNodeId,
+    mode,
+    route,
+    minutes,
+    description: `${tracked} · ${mode} route from ${originNodeId} reachable via ${route.edgeIds.length} aggregate edge${route.edgeIds.length === 1 ? '' : 's'} (~${minutes}m to landmark) · event marker itself remains off-network; exact join/claim/reward control is not promoted`,
+    actionReason: null
+  });
+}
+
+function objectiveRouteText(event, state) {
+  return objectiveRoutePlan(event, state).description;
 }
 
 function objectiveText(event, nowMs, state, prefix = 'active') {
@@ -167,13 +245,19 @@ function nextDeterministicEvent(nowMs) {
   return null;
 }
 
-function worldObjectiveText(state) {
+function selectedWorldObjective(state) {
   const nowMs = Math.max(0, Number(state?.strategicNowMs) || 0);
   const active = activeWorldEvents(nowMs, { worldSeed: WORLD_SEED });
-  if (active.length) return objectiveText(active[0], nowMs, state, 'active');
+  if (active.length) return Object.freeze({ event: active[0], nowMs, prefix: 'active' });
   const next = nextDeterministicEvent(nowMs);
-  if (next) return objectiveText(next, nowMs, state, 'next');
-  return 'world objective · no deterministic event in the next eight slots · no route projection to invent';
+  if (next) return Object.freeze({ event: next, nowMs, prefix: 'next' });
+  return null;
+}
+
+function worldObjectiveText(state) {
+  const selected = selectedWorldObjective(state);
+  if (selected) return objectiveText(selected.event, selected.nowMs, state, selected.prefix);
+  return 'world objective · no deterministic event in the next eight slots · no route projection or route action to invent';
 }
 
 function worldThreatText(state) {
@@ -215,12 +299,56 @@ function worldThreatText(state) {
   return 'threat intel · starter drop known to world pressure · no raid currently in transit · no unresolved LOCAL raid contact';
 }
 
+function renderObjectiveRouteAction(state) {
+  const selected = selectedWorldObjective(state);
+  if (!selected) {
+    objectiveRouteAction.disabled = true;
+    objectiveRouteAction.dataset.destinationNodeId = '';
+    objectiveRouteStatus.textContent = 'objective convoy action · unavailable · no deterministic event exists in the next eight slots';
+    return;
+  }
+  const plan = objectiveRoutePlan(selected.event, state);
+  objectiveRouteAction.disabled = !plan.ready;
+  objectiveRouteAction.dataset.destinationNodeId = plan.landmarkId || '';
+  objectiveRouteStatus.textContent = plan.ready
+    ? `objective convoy action · ready · depart ${plan.originNodeId} → ${plan.landmarkId} through the existing ${plan.mode} route authority · exact event marker, join, claim, and reward remain unpromoted`
+    : `objective convoy action · blocked · ${plan.actionReason}`;
+}
+
+objectiveRouteAction.addEventListener('click', () => {
+  const state = selectedStrategicState();
+  const selected = selectedWorldObjective(state);
+  const plan = selected ? objectiveRoutePlan(selected.event, state) : null;
+  if (!state || !selected || !plan?.ready) {
+    renderObjectiveRouteAction(state);
+    return;
+  }
+
+  const seatId = state.seatId || seatSelect?.value || 'seat-1';
+  let party = null;
+  try { party = bridge.describeSeatParty(seatId); } catch { party = null; }
+  const liveStrategic = activeLocalStrategicGameplay(seatId);
+  if (!liveStrategic || !party?.selectedCrewIds?.length) {
+    objectiveRouteStatus.textContent = 'objective convoy action · blocked · live selected-party strategic authority is unavailable';
+    objectiveRouteAction.disabled = true;
+    return;
+  }
+
+  const result = liveStrategic.departToLandmark(plan.landmarkId, party.selectedCrewIds);
+  objectiveRouteStatus.textContent = result?.accepted
+    ? `objective convoy action · departed toward nearest landmark ${plan.landmarkId} · existing Strategic Route controls remain open for bounded travel · exact event marker is still off-network`
+    : `objective convoy action · blocked by existing strategic authority · ${result?.reason || 'unknown-reason'}`;
+  if (result?.accepted) objectiveRouteAction.disabled = true;
+});
+
 function render() {
   const state = selectedStrategicState();
   if (!state) {
     cityIntel.textContent = 'city intel · strategic state unavailable';
     worldObjective.textContent = 'world objective · strategic state unavailable';
     worldThreat.textContent = 'threat intel · strategic state unavailable';
+    objectiveRouteAction.disabled = true;
+    objectiveRouteStatus.textContent = 'objective convoy action · strategic state unavailable';
     return;
   }
   const nextCityText = cityIntelText(state);
@@ -229,6 +357,7 @@ function render() {
   if (cityIntel.textContent !== nextCityText) cityIntel.textContent = nextCityText;
   if (worldObjective.textContent !== nextObjectiveText) worldObjective.textContent = nextObjectiveText;
   if (worldThreat.textContent !== nextThreatText) worldThreat.textContent = nextThreatText;
+  renderObjectiveRouteAction(state);
 }
 
 render();

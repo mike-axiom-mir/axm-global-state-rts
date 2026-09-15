@@ -4,11 +4,11 @@ import { createGlobalWorldRuntime } from '../src/world/global-world-runtime.mjs'
 import { starterDropAnchor } from '../src/world/starter-region.mjs';
 
 function buildProof() {
-  const world = createGlobalWorldRuntime({
-    worldSeed: 'primary-local-strategic-gameplay',
-    majorCityCount: 2,
-    regionalCityCount: 5
-  });
+  const world = createGlobalWorldRuntime();
+  assert.equal(world.worldSeed, 'axm-global-state-rts-v0');
+  assert.equal(world.landmarks.majorCities.length, 3);
+  assert.equal(world.landmarks.regionalCities.length, 24);
+
   const director = createWorldPressureDirector({
     cityFabric: world.cityFabric,
     worldScale: world.scale,
@@ -17,6 +17,9 @@ function buildProof() {
   const anchor = starterDropAnchor('seat-1');
   const targetCoordinate = Object.freeze({ lat: anchor.latDeg, lon: anchor.lonDeg });
   const provokedCity = world.cityFabric.snapshot().cities[0];
+  const canonicalLandmark = world.landmarks.all.find(landmark => landmark.id === provokedCity.id);
+  assert.ok(canonicalLandmark, 'provoked strategic city must come from the canonical world landmark projection');
+  assert.deepEqual(provokedCity.coordinate, canonicalLandmark.coordinate);
   const beforeById = new Map(world.cityFabric.snapshot().cities.map(city => [city.id, city]));
 
   const mobilized = world.provokeCity(provokedCity.id, 'seat-1:strategic-convoy');
@@ -45,6 +48,12 @@ function buildProof() {
   }
 
   return Object.freeze({
+    worldSeed: world.worldSeed,
+    landmarkCounts: Object.freeze({
+      major: world.landmarks.majorCities.length,
+      regional: world.landmarks.regionalCities.length
+    }),
+    provokedCity: Object.freeze({ id: provokedCity.id, coordinate: provokedCity.coordinate }),
     targetCoordinate,
     raids: dispatched.raids.map(raid => Object.freeze({
       raidId: raid.raidId,
@@ -58,7 +67,7 @@ function buildProof() {
 
 const first = buildProof();
 const second = buildProof();
-assert.deepEqual(second, first, 'same primary world + starter drop must reproduce the same first finite raid transit');
+assert.deepEqual(second, first, 'same canonical world + starter drop must reproduce the same first finite raid transit');
 assert.ok(first.raids.every(raid => raid.arrivesAtMs > 0));
 
-console.log('primary city provocation -> starter-drop world-pressure raid transit convergence selftest: PASS');
+console.log('primary canonical city projection -> starter-drop world-pressure raid transit convergence selftest: PASS');

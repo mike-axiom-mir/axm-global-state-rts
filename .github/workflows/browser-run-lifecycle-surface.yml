@@ -24,6 +24,7 @@ on:
       - 'tests/world-seat-binding-selftest.mjs'
       - 'tests/local-defeat-run-close-bridge-selftest.mjs'
       - 'tests/browser/world-run-entry.spec.js'
+      - 'tests/browser/world-run-resource-feedback.spec.js'
       - '.github/workflows/browser-run-lifecycle-surface.yml'
   workflow_dispatch:
 
@@ -53,6 +54,7 @@ jobs:
           node --check game/world-run-resource-feedback.mjs
           node --check game/local-defeat-run-close-bridge.mjs
           node --input-type=module --check < tests/browser/world-run-entry.spec.js
+          node --input-type=module --check < tests/browser/world-run-resource-feedback.spec.js
           node --check src/hosted/world-run-session-authority.mjs
           node --check src/hosted/world-run-http-api.mjs
           node --check src/session/world-browser-client.mjs
@@ -70,7 +72,7 @@ jobs:
       - name: Install Chromium runtime
         run: npx playwright install --with-deps chromium
 
-      - name: Seed one world account with explicit next-drop value
+      - name: Seed world accounts with explicit next-drop value
         run: |
           rm -f /tmp/axm-browser-run-accounts.json /tmp/axm-browser-run-starts.json /tmp/axm-browser-run-world.json /tmp/axm-browser-run-host.log
           node --input-type=module <<'NODE'
@@ -83,16 +85,22 @@ jobs:
             worldEpochMs: 0,
             accountStore: createFileWorldAccountStore('/tmp/axm-browser-run-accounts.json')
           });
-          const participant = authority.createWorldAccount({
-            accountId: 'browser-run-lifecycle',
-            displayName: 'Browser Run Player',
-            controllerKind: 'human',
-            nowMs: nowMs - WORLD_HOUR_MS
-          });
-          authority.accrueChests(participant.participantId, nowMs);
-          const opened = authority.openChests(participant.participantId, 1);
-          if (!opened.accepted || opened.pendingNextDropRewards.openedCratesContributed !== 1) {
-            throw new Error('failed to seed one explicit next-drop chest reward');
+
+          for (const [accountId, displayName] of [
+            ['browser-run-lifecycle', 'Browser Run Player'],
+            ['browser-run-resources', 'Browser Resource Player']
+          ]) {
+            const participant = authority.createWorldAccount({
+              accountId,
+              displayName,
+              controllerKind: 'human',
+              nowMs: nowMs - WORLD_HOUR_MS
+            });
+            authority.accrueChests(participant.participantId, nowMs);
+            const opened = authority.openChests(participant.participantId, 1);
+            if (!opened.accepted || opened.pendingNextDropRewards.openedCratesContributed !== 1) {
+              throw new Error(`failed to seed one explicit next-drop chest reward for ${accountId}`);
+            }
           }
           NODE
 
@@ -112,8 +120,8 @@ jobs:
           cat /tmp/axm-browser-run-host.log
           exit 1
 
-      - name: Exercise next-drop admission, LOCAL bootstrap and terminal host close in Chromium
-        run: npx playwright test tests/browser/world-run-entry.spec.js --reporter=line
+      - name: Exercise resource feedback, LOCAL bootstrap and terminal host close in Chromium
+        run: npx playwright test tests/browser/world-run-resource-feedback.spec.js tests/browser/world-run-entry.spec.js --workers=1 --reporter=line
 
       - name: Preserve browser and durability evidence
         if: always()
@@ -121,6 +129,7 @@ jobs:
         with:
           name: global-state-rts-browser-run-lifecycle
           path: |
+            test-results/global-state-rts-host-run-resources.png
             test-results/global-state-rts-local-defeat-run-close.png
             test-results/global-state-rts-world-run-entry.png
             /tmp/axm-browser-run-accounts.json

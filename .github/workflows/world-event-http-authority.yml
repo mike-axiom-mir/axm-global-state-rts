@@ -1,0 +1,40 @@
+name: world-event-http-authority
+
+on:
+  pull_request:
+    paths:
+      - 'src/hosted/world-event-http-api.mjs'
+      - 'scripts/serve.mjs'
+      - 'tests/world-event-http-authority-selftest.mjs'
+      - '.github/workflows/world-event-http-authority.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/hosted/world-event-http-api.mjs'
+      - 'scripts/serve.mjs'
+      - 'tests/world-event-http-authority-selftest.mjs'
+      - '.github/workflows/world-event-http-authority.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  shared-world-event-http-authority:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Syntax check HTTP authority seam
+        run: |
+          node --check src/hosted/world-event-http-api.mjs
+          node --check scripts/serve.mjs
+          node --check tests/world-event-http-authority-selftest.mjs
+      - name: Prove account-bound HTTP encounter parity and restart replay
+        run: node tests/world-event-http-authority-selftest.mjs
+      - name: Existing deterministic regression suite
+        run: npm test

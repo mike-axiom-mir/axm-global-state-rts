@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { createFileWorldJournalStore, createMemoryWorldJournalStore } from '../src/hosted/journal-store.mjs';
 import { createFileLocalSeatBindingStore } from '../src/hosted/local-seat-binding-store.mjs';
 import { createFileWorldAccountStore, createMemoryWorldAccountStore } from '../src/hosted/world-account-store.mjs';
+import { createWorldEventHttpApiService } from '../src/hosted/world-event-http-api.mjs';
 import { createWorldHttpApiService } from '../src/hosted/world-http-api.mjs';
 import { createWorldRunHttpApiService } from '../src/hosted/world-run-http-api.mjs';
 import { createFileWorldRunStartStore } from '../src/hosted/world-run-start-store.mjs';
@@ -27,6 +28,9 @@ const accountPath = process.env.AXM_WORLD_ACCOUNTS_PATH
 const runStartPath = process.env.AXM_WORLD_RUN_STARTS_PATH
   ? path.resolve(process.env.AXM_WORLD_RUN_STARTS_PATH)
   : null;
+const worldEventJournalDir = process.env.AXM_WORLD_EVENT_JOURNAL_DIR
+  ? path.resolve(process.env.AXM_WORLD_EVENT_JOURNAL_DIR)
+  : null;
 const localSeatBindingsPath = process.env.AXM_LOCAL_SEAT_BINDINGS_PATH
   ? path.resolve(process.env.AXM_LOCAL_SEAT_BINDINGS_PATH)
   : null;
@@ -45,6 +49,9 @@ if (Boolean(localSeatBindingsPath) !== Boolean(localSeatJournalDir)) {
 if (runStartPath && !accountPath) {
   throw new Error('AXM_WORLD_ACCOUNTS_PATH is required when AXM_WORLD_RUN_STARTS_PATH is configured');
 }
+if (worldEventJournalDir && !accountPath) {
+  throw new Error('AXM_WORLD_ACCOUNTS_PATH is required when AXM_WORLD_EVENT_JOURNAL_DIR is configured');
+}
 if (localSeatBindingsPath && !accountPath) {
   throw new Error('AXM_WORLD_ACCOUNTS_PATH is required when LOCAL RTS seat restart persistence is configured');
 }
@@ -59,6 +66,9 @@ const worldEpochMs = Number.isFinite(requestedEpochMs) && requestedEpochMs >= 0 
 const sharedWriteMode = String(process.env.AXM_SHARED_WRITE_MODE || 'off');
 const localSeatStoreFactory = localSeatJournalDir
   ? regionSeatId => createFileWorldJournalStore(path.join(localSeatJournalDir, `${regionSeatId}.jsonl`))
+  : undefined;
+const worldEventStoreFactory = worldEventJournalDir
+  ? event => createFileWorldJournalStore(path.join(worldEventJournalDir, `${String(event.id).replace(/[^a-zA-Z0-9._-]+/g, '_')}.jsonl`))
   : undefined;
 const localSeatBindingStore = localSeatBindingsPath
   ? createFileLocalSeatBindingStore(localSeatBindingsPath)
@@ -111,6 +121,13 @@ apiService = createWorldRunHttpApiService({
   baseApi: apiService,
   writeMode: sharedWriteMode,
   clock: () => Date.now()
+});
+apiService = createWorldEventHttpApiService({
+  authority: worldSession,
+  baseApi: apiService,
+  writeMode: sharedWriteMode,
+  clock: () => Date.now(),
+  ...(worldEventStoreFactory ? { storeFactory: worldEventStoreFactory } : {})
 });
 
 const MIME = new Map([
@@ -240,6 +257,7 @@ server.listen(port, '127.0.0.1', () => {
   const journal = journalPath ? `journal=${journalPath}` : 'journal=memory-only';
   const accounts = accountPath ? `accounts=${accountPath}` : 'accounts=memory-only';
   const runStarts = runStartPath ? `run-starts=${runStartPath}` : 'run-starts=process-only';
+  const worldEvents = worldEventJournalDir ? `world-events=${worldEventJournalDir}` : 'world-events=process-only';
   const localSeats = localSeatBindingsPath
     ? `local-seats=${localSeatBindingsPath}; local-seat-journals=${localSeatJournalDir}`
     : 'local-seats=process-only';
@@ -249,5 +267,5 @@ server.listen(port, '127.0.0.1', () => {
   const globalSalvageCredits = globalSalvageCreditJournalPath
     ? `global-salvage-credits=${globalSalvageCreditJournalPath}`
     : 'global-salvage-credits=disabled';
-  console.log(`AXM Global State RTS shell: http://127.0.0.1:${port}/game/ (${journal}, ${accounts}, ${runStarts}, ${localSeats}, ${salvageTransfers}, ${globalSalvageCredits}, shared-writes=${sharedWriteMode})`);
+  console.log(`AXM Global State RTS shell: http://127.0.0.1:${port}/game/ (${journal}, ${accounts}, ${runStarts}, ${worldEvents}, ${localSeats}, ${salvageTransfers}, ${globalSalvageCredits}, shared-writes=${sharedWriteMode})`);
 });

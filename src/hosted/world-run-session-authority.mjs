@@ -1,7 +1,7 @@
 import { createPlayerProgression } from '../sim/civilization-progression.mjs';
 import { beginClaimedNextDropRun } from '../sim/next-drop-run-bridge.mjs';
 
-export const WORLD_RUN_SESSION_AUTHORITY_SCHEMA = 'axm.global-state-rts.world-run-session-authority/v0.2';
+export const WORLD_RUN_SESSION_AUTHORITY_SCHEMA = 'axm.global-state-rts.world-run-session-authority/v0.3';
 
 function nonEmpty(value, label) {
   const text = String(value ?? '').trim();
@@ -31,6 +31,11 @@ function sameJson(left, right) {
   return canonicalJson(left) === canonicalJson(right);
 }
 
+function executedRolloverIntent(durable) {
+  const intent = durable?.rolloverIntent || null;
+  return intent?.executedAtMs !== undefined && intent?.executedAtMs !== null ? intent : null;
+}
+
 export class WorldRunSessionAuthority {
   constructor({
     worldAuthority,
@@ -55,7 +60,7 @@ export class WorldRunSessionAuthority {
     this.clock = clock;
     this.progressions = new Map();
     this.unpersistedProgressions = new Map();
-    this.restoreReport = Object.freeze({ attempted: 0, restored: 0, participantIds: Object.freeze([]) });
+    this.restoreReport = Object.freeze({ attempted: 0, restored: 0, participantIds: Object.freeze([]), reconciledAccountClaims: Object.freeze([]) });
     this.#restoreDurableRunStarts();
   }
 
@@ -75,7 +80,8 @@ export class WorldRunSessionAuthority {
       kind: `${storeMeta.kind || 'external'}-run-start-replay`,
       store: storeMeta,
       restoredThisProcess: this.restoreReport.restored,
-      truthBoundary: 'only-the-host-admitted-initial-next-drop-run-state-is-durable-and-replayed; later-in-run-mutations-need-their-own-durable-journal-before-restart-restoration-can-claim-them'
+      reconciledRolloverAccountClaimsThisProcess: this.restoreReport.reconciledAccountClaims?.length || 0,
+      truthBoundary: 'host-admitted run starts are replayed from durable evidence; an executed archive-bound rollover may also carry only its proven banked-score/run-history career baseline and can reconcile the matching account claim after a run-store-first crash'
     });
   }
 
@@ -114,6 +120,22 @@ export class WorldRunSessionAuthority {
     return progression;
   }
 
+  #seedExecutedRolloverCareerBaseline(progression, durable) {
+    const intent = executedRolloverIntent(durable);
+    if (!intent) return;
+    const snapshot = durable.initialProgressionSnapshot || {};
+    if (!Number.isFinite(Number(snapshot.bankedGold)) || Number(snapshot.bankedGold) < 0 || !Array.isArray(snapshot.runHistory)) {
+      throw new Error(`executed rollover career baseline is invalid: ${durable.participantId}`);
+    }
+    if (Number(snapshot.bankedGold) !== Number(intent.terminalBankedGold)
+      || snapshot.runHistory.length !== Number(intent.terminalRunHistoryCount)
+      || !snapshot.runHistory.some(entry => entry?.runId === intent.previousRunId)) {
+      throw new Error(`executed rollover career baseline does not match intent evidence: ${durable.participantId}`);
+    }
+    progression.bankedGold = Number(snapshot.bankedGold);
+    progression.runHistory = cloneJson(snapshot.runHistory);
+  }
+
   #progressionFor(participantId) {
     const record = this.#record(participantId);
     if (record.profileKind !== 'world-account') return null;
@@ -125,22 +147,47 @@ export class WorldRunSessionAuthority {
     return progression;
   }
 
+  #reconcileExecutedRolloverClaim(record, durable) {
+    const intent = executedRolloverIntent(durable);
+    if (!intent) return false;
+    const claimed = this.worldAuthority.participants.claimNextDropRewards(record.participantId, durable.runId);
+    if (!claimed.result.accepted) {
+      throw new Error(`executed rollover account claim reconciliation failed: ${record.participantId}:${claimed.result.reason}`);
+    }
+    const acknowledged = this.worldAuthority.participants.acknowledgeNextDropRewards(record.participantId, durable.runId);
+    if (!acknowledged.result.accepted || !sameJson(acknowledged.result.claim, durable.appliedClaim)) {
+      throw new Error(`executed rollover account claim reconciliation mismatch: ${record.participantId}`);
+    }
+    return true;
+  }
+
   #restoreDurableRunStarts() {
     if (!this.runStartStore) return;
     const durableRecords = this.runStartStore.readAll();
     if (!Array.isArray(durableRecords)) throw new TypeError('runStartStore.readAll() must return an array');
     const restored = [];
+    const reconciledAccountClaims = [];
     for (const durable of durableRecords) {
-      const record = this.#record(durable.participantId);
+      let record = this.#record(durable.participantId);
       if (record.profileKind !== 'world-account') throw new Error(`durable run start requires world account: ${record.participantId}`);
-      const accountClaim = record.dropCache?.nextDropClaim || null;
-      if (!accountClaim || accountClaim.status !== 'applied') {
-        throw new Error(`durable run start missing applied world-account claim: ${record.participantId}`);
+      let accountClaim = record.dropCache?.nextDropClaim || null;
+      if (!accountClaim || accountClaim.status !== 'applied' || !sameJson(accountClaim, durable.appliedClaim)) {
+        if (!executedRolloverIntent(durable)) {
+          if (!accountClaim || accountClaim.status !== 'applied') {
+            throw new Error(`durable run start missing applied world-account claim: ${record.participantId}`);
+          }
+          throw new Error(`durable run start claim mismatch: ${record.participantId}`);
+        }
+        this.#reconcileExecutedRolloverClaim(record, durable);
+        reconciledAccountClaims.push(record.participantId);
+        record = this.#record(durable.participantId);
+        accountClaim = record.dropCache?.nextDropClaim || null;
       }
       if (!sameJson(accountClaim, durable.appliedClaim)) {
-        throw new Error(`durable run start claim mismatch: ${record.participantId}`);
+        throw new Error(`durable run start claim mismatch after rollover reconciliation: ${record.participantId}`);
       }
       const progression = this.#newProgression(record);
+      this.#seedExecutedRolloverCareerBaseline(progression, durable);
       const replayClaim = { ...cloneJson(durable.appliedClaim), status: 'claimed' };
       progression.beginRunFromNextDropClaim(replayClaim, cloneJson(durable.runOptions || {}));
       const restoredSnapshot = progression.snapshot();
@@ -150,10 +197,12 @@ export class WorldRunSessionAuthority {
       this.progressions.set(record.participantId, progression);
       restored.push(record.participantId);
     }
+    if (reconciledAccountClaims.length) this.#persistParticipantClaimState();
     this.restoreReport = Object.freeze({
       attempted: durableRecords.length,
       restored: restored.length,
-      participantIds: Object.freeze([...restored].sort())
+      participantIds: Object.freeze([...restored].sort()),
+      reconciledAccountClaims: Object.freeze([...reconciledAccountClaims].sort())
     });
   }
 
@@ -241,7 +290,7 @@ export class WorldRunSessionAuthority {
         : processRestartGap
           ? 'world-account-remembers-applied-next-drop-claim-but-no-replayable-durable-run-start-record-restored-the-progression'
           : restoredFromRunStart
-            ? 'initial-host-admitted-run-state-was-replayed-from-durable-start-evidence;later-in-run-mutations-are-not-covered-by-this-replay-contract'
+            ? 'initial-host-admitted-run-state-was-replayed-from-durable-start-evidence;later-in-run-mutations-require-their-own-durable-journal'
             : 'host-run-status-distinguishes-world-account-claim-state-process-memory-progression-and-optional-durable-run-start-replay'
     });
   }
@@ -337,6 +386,145 @@ export class WorldRunSessionAuthority {
     });
   }
 
+  executeArchiveBoundNextDropRollover({
+    participantId,
+    previousRunId,
+    nextRunId,
+    runOptions = {},
+    rolloverIntent,
+    timestampMs
+  } = {}) {
+    const record = this.#record(participantId);
+    const previous = nonEmpty(previousRunId, 'previousRunId');
+    const next = nonEmpty(nextRunId, 'nextRunId');
+    const effectiveTimestamp = finiteTimestamp(timestampMs === undefined ? this.clock() : timestampMs);
+    if (record.profileKind !== 'world-account') {
+      return Object.freeze({ accepted: false, reason: 'run-rollover-requires-world-account', participantId: record.participantId, previousRunId: previous, nextRunId: next });
+    }
+    if (!this.runStartStore) {
+      return Object.freeze({ accepted: false, reason: 'durable-run-storage-required', participantId: record.participantId, previousRunId: previous, nextRunId: next });
+    }
+    const records = this.runStartStore.readAll();
+    const index = records.findIndex(entry => entry.participantId === record.participantId);
+    if (index < 0) return Object.freeze({ accepted: false, reason: 'no-durable-run-record', participantId: record.participantId, previousRunId: previous, nextRunId: next });
+    const durable = records[index];
+    if (durable.runId !== previous || !sameJson(durable.rolloverIntent, rolloverIntent)) {
+      return Object.freeze({ accepted: false, reason: 'prepared-rollover-record-mismatch', participantId: record.participantId, previousRunId: previous, nextRunId: next, durableRunId: durable.runId });
+    }
+    const currentProgression = this.progressions.get(record.participantId) || null;
+    const currentSnapshot = currentProgression?.snapshot() || null;
+    if (!currentSnapshot || currentSnapshot.activeRun !== null
+      || !currentSnapshot.runHistory?.some(entry => entry?.runId === previous)) {
+      return Object.freeze({ accepted: false, reason: 'previous-run-not-terminal', participantId: record.participantId, previousRunId: previous, nextRunId: next });
+    }
+    if (Number(currentSnapshot.bankedGold) !== Number(rolloverIntent.terminalBankedGold)
+      || currentSnapshot.runHistory.length !== Number(rolloverIntent.terminalRunHistoryCount)) {
+      throw new Error(`prepared rollover terminal career baseline mismatch: ${record.participantId}:${previous}`);
+    }
+
+    const nextProgression = this.#newProgression(record);
+    nextProgression.bankedGold = Number(currentSnapshot.bankedGold);
+    nextProgression.runHistory = cloneJson(currentSnapshot.runHistory);
+
+    let bridge;
+    const existingClaim = this.#record(record.participantId).dropCache?.nextDropClaim || null;
+    if (existingClaim?.status === 'applied' && existingClaim.runId === next) {
+      const replayClaim = { ...cloneJson(existingClaim), status: 'claimed' };
+      const run = nextProgression.beginRunFromNextDropClaim(replayClaim, cloneJson(runOptions || {}));
+      bridge = Object.freeze({
+        accepted: true,
+        reconciled: true,
+        participantId: record.participantId,
+        runId: next,
+        claim: cloneJson(existingClaim),
+        run: run.snapshot()
+      });
+    } else {
+      bridge = beginClaimedNextDropRun({
+        participantRegistry: this.worldAuthority.participants,
+        playerProgression: nextProgression,
+        participantId: record.participantId,
+        runId: next,
+        runOptions: cloneJson(runOptions || {})
+      });
+    }
+    if (!bridge.accepted) {
+      return Object.freeze({
+        ...bridge,
+        accepted: false,
+        reason: bridge.reason || 'run-start-rejected',
+        participantId: record.participantId,
+        previousRunId: previous,
+        nextRunId: next,
+        truthBoundary: 'prepared-rollover-remains-durable-and-the-terminal-run-record-is-retained-when-next-run-start-cannot-be-created'
+      });
+    }
+
+    const executedIntent = Object.freeze({ ...cloneJson(rolloverIntent), executedAtMs: effectiveTimestamp });
+    const nextDurable = {
+      participantId: record.participantId,
+      runId: next,
+      startedAtMs: effectiveTimestamp,
+      appliedClaim: cloneJson(bridge.claim),
+      runOptions: cloneJson(runOptions || {}),
+      initialProgressionSnapshot: cloneJson(nextProgression.snapshot()),
+      rolloverIntent: cloneJson(executedIntent)
+    };
+    let runStartPersistence;
+    try {
+      records[index] = nextDurable;
+      const result = this.runStartStore.replaceAll(records);
+      runStartPersistence = Object.freeze({
+        enabled: true,
+        persisted: true,
+        reused: false,
+        kind: this.runStartStore.kind || 'external',
+        previousRunId: previous,
+        runId: next,
+        result
+      });
+    } catch (error) {
+      return Object.freeze({
+        accepted: false,
+        reason: 'rollover-run-start-persistence-failed-before-account-commit',
+        participantId: record.participantId,
+        previousRunId: previous,
+        nextRunId: next,
+        error: String(error?.message || error),
+        truthBoundary: 'the-old-terminal-run-record-remains-the-durable-source-of-truth;any-in-process-next-claim-can-be-retried-but-was-not-persisted-to-the-world-account-store'
+      });
+    }
+
+    this.progressions.set(record.participantId, nextProgression);
+    this.unpersistedProgressions.delete(record.participantId);
+    let accountPersistence = null;
+    let accountPersistenceError = null;
+    try {
+      accountPersistence = this.#persistParticipantClaimState();
+    } catch (error) {
+      accountPersistenceError = String(error?.message || error);
+      accountPersistence = Object.freeze({ enabled: true, persisted: false, error: accountPersistenceError });
+    }
+
+    return Object.freeze({
+      accepted: true,
+      reused: false,
+      reconciledClaim: Boolean(bridge.reconciled),
+      participantId: record.participantId,
+      previousRunId: previous,
+      nextRunId: next,
+      claim: cloneJson(bridge.claim),
+      rolloverIntent: cloneJson(executedIntent),
+      runStartPersistence,
+      accountPersistence,
+      accountPersistenceError,
+      progression: nextProgression.snapshot(),
+      truthBoundary: accountPersistenceError
+        ? 'the-new-run-generation-is-durable-first;world-account-claim persistence failed and must be reconciled from that durable run evidence on restart'
+        : 'archive-bound terminal career score/history carried into one new durable next-drop run generation;other career subsystems are not claimed to roll over here'
+    });
+  }
+
   authoritativeSnapshot() {
     return Object.freeze({
       schema: WORLD_RUN_SESSION_AUTHORITY_SCHEMA,
@@ -352,7 +540,7 @@ export class WorldRunSessionAuthority {
           snapshot: progression.snapshot()
         }))),
       truthBoundary: this.runStartStore
-        ? 'initial-next-drop-run-state-can-be-replayed-from-durable-start-evidence;later-in-run-mutations-are-not-yet-part-of-this-persistence-contract'
+        ? 'durable run starts can be replayed; executed rollover starts additionally carry only the archive-proven banked-score/run-history baseline before ordinary mutation journals take over'
         : 'process-memory-progression-snapshot-for-host-inspection-not-restart-persistence-evidence'
     });
   }

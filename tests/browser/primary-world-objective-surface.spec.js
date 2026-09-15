@@ -6,7 +6,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -71,7 +71,7 @@ async function advanceStrategicUntilArrived(page, maxSteps = 24) {
     const state = await primaryStrategicSnapshot(page);
     if (state.journey?.status === 'arrived') return state;
     expect(state.journey?.status).toBe('transit');
-    await page.locator('[data-gameplay-action="confirm"]').click();
+    await page.locator('[data-primary-strategic-action="confirm"]').click();
   }
   return primaryStrategicSnapshot(page);
 }
@@ -136,7 +136,7 @@ test('primary command dock surfaces deterministic world objectives and can route
 
     await page.locator('[data-gameplay-action="explore"]').click();
     await expect(page.locator('#inputStatus')).toContainText('strategic-menu-open');
-    await page.locator('[data-gameplay-action="confirm"]').click();
+    await page.locator('[data-primary-strategic-action="confirm"]').click();
     let moved = await primaryStrategicSnapshot(page);
     expect(moved.journey?.status).toBe('transit');
     expect(moved.journey?.destinationNodeId).not.toBe(objectiveLandmarkId);

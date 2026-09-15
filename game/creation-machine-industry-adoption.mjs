@@ -12,10 +12,16 @@ function requireRuntimeBridge() {
   return bridge;
 }
 
-function requirePlanEntry(stableAssetId) {
+function requirePlanEntry(stableAssetId, sourceAsset = null) {
   const key = String(stableAssetId || '');
-  const entry = creationMachineIndustryTrialPlan().find(candidate => candidate.stableAssetId === key);
-  if (!entry) throw new Error(`no Creation Machine industry candidate registered for ${key || 'empty stable asset id'}`);
+  const candidates = creationMachineIndustryTrialPlan().filter(candidate => candidate.stableAssetId === key);
+  const entry = sourceAsset
+    ? candidates.find(candidate => candidate.sourceAsset === String(sourceAsset))
+    : candidates[0];
+  if (!entry) {
+    const sourceSuffix = sourceAsset ? ` from ${String(sourceAsset)}` : '';
+    throw new Error(`no Creation Machine industry candidate registered for ${key || 'empty stable asset id'}${sourceSuffix}`);
+  }
   return entry;
 }
 
@@ -48,6 +54,7 @@ export async function inspectCreationMachineIndustrySet() {
     schema: CREATION_MACHINE_INDUSTRY_SET_SCHEMA,
     status: 'PREPARED_INDUSTRY_SET_AVAILABLE_NOT_ACCEPTED',
     candidates: Object.freeze(candidates.map(candidate => Object.freeze({
+      candidateId: candidate.plan.candidateId,
       stableAssetId: candidate.plan.stableAssetId,
       sourceAsset: candidate.plan.sourceAsset,
       gameplayTarget: candidate.plan.gameplayTarget,
@@ -67,10 +74,11 @@ export async function inspectCreationMachineIndustrySet() {
 export async function adoptCreationMachineIndustryAsset({
   seatId = 'seat-1',
   stableAssetId = 'building-workshop-a',
+  sourceAsset = null,
   focus = false
 } = {}) {
   const bridge = requireRuntimeBridge();
-  const plan = requirePlanEntry(stableAssetId);
+  const plan = requirePlanEntry(stableAssetId, sourceAsset);
   const candidate = await fetchCandidate(plan);
   const receipt = await bridge.installExternalStaticAsset({
     seatId,
@@ -86,6 +94,7 @@ export async function adoptCreationMachineIndustryAsset({
     schema: CREATION_MACHINE_INDUSTRY_SET_SCHEMA,
     status: 'RUNTIME_IMPORTED_SINGLE_INDUSTRY_ALTERNATE_NOT_VISUALLY_ACCEPTED',
     seatId,
+    candidateId: plan.candidateId,
     stableAssetId: plan.stableAssetId,
     sourceAsset: plan.sourceAsset,
     gameplayTarget: plan.gameplayTarget,
@@ -93,7 +102,8 @@ export async function adoptCreationMachineIndustryAsset({
     receipt,
     nonclaims: Object.freeze([
       'Explicit runtime import does not make this alternate workshop asset the default presentation.',
-      'The prior improvised-workshop candidate and procedural fallback remain available; this trial does not invent a separate machine-shop gameplay entity or silently rewrite accepted art state.',
+      'Machine Shop remains the first industry trial candidate when no source is named, and procedural presentation remains the actual default.',
+      'A refinery-shaped source does not create refinery production, recipes, storage, power, fuel or any other gameplay authority.',
       'Static import does not establish visual acceptance, source-to-world scale acceptance, collision, navigation, gameplay footprint, split-screen readability or target-device FPS.',
       'The supplied near/far variants do not yet have an evidence-backed automatic LOD handoff distance.',
       'No doors, machinery, worker activity, damage, destruction or other bespoke animation is added by this static trial.'

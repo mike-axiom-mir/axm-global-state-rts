@@ -132,6 +132,7 @@ root.innerHTML = `
     </label>
   </div>
   <div id="gameplayObjective" class="status" aria-live="polite">Immediate objective · loading current aggregate RTS state…</div>
+  <div id="gameplayReadiness" class="status" aria-live="polite">Command readiness · loading current aggregate RTS state…</div>
   <div id="gameplaySummary" class="gameplay-summary" aria-live="polite"></div>
   <div id="gameplayActions" class="gameplay-actions"></div>
   <div id="gameplayFeedback" class="status" aria-live="polite">Choose a seat. Commands stay on the same admitted human/machine action paths.</div>
@@ -139,6 +140,7 @@ root.innerHTML = `
 
 const seatSelect = root.querySelector('#gameplaySeat');
 const objective = root.querySelector('#gameplayObjective');
+const readiness = root.querySelector('#gameplayReadiness');
 const summary = root.querySelector('#gameplaySummary');
 const actions = root.querySelector('#gameplayActions');
 const feedback = root.querySelector('#gameplayFeedback');
@@ -343,6 +345,60 @@ function combatSummary(combat) {
   return `${combat.contact.remainingCrew}/${combat.contact.initialCrew} hostiles · ${engaged} engaged Crew · ${state}`;
 }
 
+function commandReadiness(mode, simulation, party, civilization, combat) {
+  if (mode !== 'local-rts') return 'Command readiness · Enter LOCAL RTS first. No LOCAL macro command is admitted from the globe.';
+  if (!simulation || !party || !civilization || !combat) return 'Command readiness · LOCAL gameplay state unavailable; no inferred readiness is shown.';
+
+  const selectedCrew = party.selectedCrewIds?.length || 0;
+  if (party.menuOpen) {
+    return `Command readiness · Party editing owns the input layer · ${selectedCrew} selected Crew. Close the party menu before other macro orders.`;
+  }
+
+  if (combat.menuOpen) {
+    if (combat.contact?.cleared) return 'Combat readiness · contact cleared · close combat menu; no further exchange is available.';
+    return `Combat readiness · ${combat.contact?.remainingCrew ?? 0}/${combat.contact?.initialCrew ?? 0} hostiles · ${selectedCrew} selected Crew · engage/advance remains one aggregate combat command.`;
+  }
+
+  if (civilization.menuKind === 'build') {
+    const plan = civilization.selectedBuild;
+    if (!plan) return 'Build readiness · no build plan available.';
+    if (!plan.affordable) {
+      return `Build readiness · ${plan.label} blocked · ${plan.reason || 'resource gate not met'} · ${plan.costText}. Change plan or restore the required material stockpile.`;
+    }
+    return `Build readiness · ${plan.label} · ${plan.costText} · resource gate ready; placement/cursor validation remains authoritative on confirm.`;
+  }
+
+  if (civilization.menuKind === 'production') {
+    const siteId = civilization.production?.selectedBuildingId;
+    if (!siteId) return 'Production readiness · blocked · build a Shallow Mine first. No hidden production site is inferred.';
+    if (!selectedCrew) return `Production readiness · ${siteId} · blocked · selected party has 0 Crew. Select a party before assigning aggregate production.`;
+    const job = (civilization.production?.jobs || []).find(candidate => candidate.buildingId === siteId);
+    const assigned = Number(job?.workerCount) || 0;
+    return `Production readiness · ${siteId} · ${selectedCrew} selected Crew · ${assigned} already assigned here. Confirm revalidates worker/source authority; Context releases the site workforce.`;
+  }
+
+  if (civilization.menuKind === 'vehicle') {
+    const vehicles = civilization.vehicles;
+    const plan = vehicles?.selectedPlan;
+    if (!vehicles || !plan) return 'Vehicle readiness · vehicle state unavailable.';
+    const planGate = plan.constructible
+      ? `construct ${plan.label} ready`
+      : `construct ${plan.label} blocked · ${plan.reason || 'construction gate not met'}`;
+    const cargoAmount = Number(vehicles.cargoAmount) || 0;
+    const cargoCapacity = Number(vehicles.cargoCapacity) || 0;
+    let convoyGate = 'supply controls available · selected-party driven-vehicle validation remains authoritative on command';
+    if (Number(vehicles.vehicleCount) <= 0) convoyGate = 'convoy blocked · construct transport first';
+    else if (Number(vehicles.driverCount) <= 0) convoyGate = 'convoy blocked · prepare/assign drivers first';
+    else if ((Number(simulation.storage?.scrap) || 0) <= 0) convoyGate = 'supply load blocked · local scrap storage is empty';
+    else if (cargoCapacity > 0 && cargoAmount >= cargoCapacity) convoyGate = 'supply load blocked · aggregate vehicle cargo is full';
+    return `Vehicle readiness · ${planGate} · ${finiteFloor(cargoAmount)}/${finiteFloor(cargoCapacity)} cargo · ${convoyGate}.`;
+  }
+
+  if (!selectedCrew) return 'Macro readiness · blocked · selected party has 0 Crew.';
+  const knownResourceCount = (simulation.resources || []).filter(resource => resource?.known !== false && (Number(resource?.amount) || 0) > 0).length;
+  return `Macro readiness · ${selectedCrew} selected Crew · ${knownResourceCount} known resource source${knownResourceCount === 1 ? '' : 's'} · gather/repair/explore remain aggregate and are revalidated by the existing action authority.`;
+}
+
 function operationObjective(mode, simulation, civilization) {
   if (mode !== 'local-rts') return 'Immediate objective · Enter LOCAL RTS with Globe / Local. Guidance is read-only and never bypasses seat input authority.';
   if (!simulation || !civilization) return 'Immediate objective · LOCAL gameplay state unavailable; no inferred objective is shown.';
@@ -426,6 +482,7 @@ function render() {
     : 'none';
 
   objective.textContent = operationObjective(mode, simulation, civilization);
+  readiness.textContent = commandReadiness(mode, simulation, party, civilization, combat);
   summary.innerHTML = `
     <span><b>${seat.id}</b> · ${seat.kind} · ${mode}</span>
     <span>party <b>${partySummary(party)}</b></span>

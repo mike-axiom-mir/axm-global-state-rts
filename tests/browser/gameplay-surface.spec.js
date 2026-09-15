@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test.setTimeout(60_000);
+test.setTimeout(90_000);
 
 function captureRuntimeFailures(page) {
   const failures = [];
@@ -22,6 +22,7 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   const surface = page.locator('#gameplaySurface');
   const seat = page.locator('#gameplaySeat');
   const objective = page.locator('#gameplayObjective');
+  const readiness = page.locator('#gameplayReadiness');
   const dock = page.locator('.control-dock');
   await expect(surface).toBeVisible();
   await expect(dock).toBeVisible();
@@ -46,6 +47,8 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await expect(seat.locator('option')).toHaveCount(3);
   await expect(objective).toContainText('Immediate objective');
   await expect(objective).toContainText('Enter LOCAL RTS');
+  await expect(readiness).toContainText('Command readiness');
+  await expect(readiness).toContainText('Enter LOCAL RTS first');
   await expect(page.locator('#gameplaySummary')).toContainText('seat-1');
   await expect(page.locator('#gameplaySummary')).toContainText('Crew 1 · 8 Crew · 1 parties');
   await expect(page.locator('#gameplaySummary')).toContainText('selected consequence');
@@ -58,6 +61,7 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   const gatherButton = page.locator('[data-gameplay-action="gather-scrap"]');
   const repairButton = page.locator('[data-gameplay-action="repair-core"]');
   const exploreButton = page.locator('[data-gameplay-action="explore"]');
+  const productionMenuButton = page.locator('[data-gameplay-action="ui-left"]');
   const partyMenuButton = page.locator('[data-gameplay-action="party-menu"]');
   const combatMenuButton = page.locator('[data-gameplay-action="ui-down"]');
 
@@ -67,12 +71,25 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
   await expect(objective).toContainText('Stabilize continuity core');
   await expect(objective).toContainText('68%');
+  await expect(readiness).toContainText('Macro readiness');
+  await expect(readiness).toContainText('8 selected Crew');
   await expect(gatherButton).toBeEnabled();
   await expect(partyMenuButton).toBeEnabled();
   await expect(combatMenuButton).toBeEnabled();
 
+  await productionMenuButton.click();
+  await expect(readiness).toContainText('Production readiness');
+  await expect(readiness).toContainText('blocked');
+  await expect(readiness).toContainText('build a Shallow Mine first');
+  await expect(page.locator('[data-gameplay-action="confirm"]')).toHaveText('Assign party (build a Shallow Mine)');
+  await readiness.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'test-results/global-state-rts-command-readiness-blocked.png', fullPage: true });
+  await page.locator('[data-gameplay-action="cancel"]').click();
+  await expect(readiness).toContainText('Macro readiness');
+
   await partyMenuButton.click();
   await expect(page.locator('#gameplaySummary')).toContainText('menu open');
+  await expect(readiness).toContainText('Party editing owns the input layer');
   await expect(gatherButton).toBeDisabled();
   const splitButton = page.locator('[data-gameplay-action="confirm"]');
   await expect(splitButton).toHaveText('Split selected party');
@@ -105,6 +122,7 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
 
   await seat.selectOption('seat-2');
   await expect(page.locator('#gameplaySummary')).toContainText('controller-owned; view only here');
+  await expect(readiness).toContainText('Enter LOCAL RTS first');
   await expect(mapButton).toBeDisabled();
   await expect(gatherButton).toBeDisabled();
 
@@ -114,6 +132,7 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await mapButton.click();
   await expect(page.locator('[data-seat-id="seat-3"]')).toContainText('LOCAL RTS');
   await expect(objective).toContainText('Stabilize continuity core');
+  await expect(readiness).toContainText('Macro readiness');
   await expect(gatherButton).toBeEnabled();
   await partyMenuButton.click();
   await page.locator('[data-gameplay-action="confirm"]').click();
@@ -135,6 +154,8 @@ test('player-facing command deck mirrors admitted local macro and persistent-par
   await expect(page.locator('#inputStatus')).toContainText('seat-3 · combat-menu-open · Combat menu');
   await expect(page.locator('#gameplaySummary')).toContainText('combat menu open');
   await expect(page.locator('#gameplaySummary')).toContainText('4/4 hostiles');
+  await expect(readiness).toContainText('Combat readiness');
+  await expect(readiness).toContainText('4/4 hostiles');
   const engageButton = page.locator('[data-gameplay-action="confirm"]');
   await expect(engageButton).toContainText('Engage selected party');
   await engageButton.click();

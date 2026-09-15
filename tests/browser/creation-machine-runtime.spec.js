@@ -18,6 +18,13 @@ async function readPreparedReceipt(page) {
   });
 }
 
+async function clickAndWaitForAdoption(page) {
+  const button = page.locator('#creationMachineWorkshopAdopt');
+  await button.click();
+  await expect(button).toBeDisabled();
+  await expect(button).toBeEnabled({ timeout: 15_000 });
+}
+
 function assertRuntimeTruthBoundary(installed, sourceReceipt) {
   expect(installed.status).toBe('RUNTIME_IMPORTED_NOT_VISUALLY_ACCEPTED');
   expect(installed.assetId).toBe('building-workshop-a');
@@ -41,7 +48,7 @@ test('player explicitly adopts checked-in Creation Machine workshop while fallba
   expect(sourceReceipt.triangles).toBeGreaterThan(0);
 
   await expect(page.locator('#creationMachineWorkshopStatus')).toContainText('Procedural workshop fallback active');
-  await page.locator('#creationMachineWorkshopAdopt').click();
+  await clickAndWaitForAdoption(page);
   await expect(page.locator('#creationMachineWorkshopStatus')).toContainText('must enter LOCAL RTS');
   expect(await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.externalAssetStatus({
     seatId: 'seat-1',
@@ -50,7 +57,7 @@ test('player explicitly adopts checked-in Creation Machine workshop while fallba
 
   await page.keyboard.press('m');
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
-  await page.locator('#creationMachineWorkshopAdopt').click();
+  await clickAndWaitForAdoption(page);
   await expect(page.locator('#creationMachineWorkshopStatus')).toContainText('runtime imported');
   await expect(page.locator('#creationMachineWorkshopStatus')).toContainText('acceptance NOT TESTED');
 

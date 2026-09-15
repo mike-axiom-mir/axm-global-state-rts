@@ -33,9 +33,11 @@ Training activity, doors/gates, build motion, damage motion and destruction moti
 
 ## Browser evidence route
 
-The focused browser gate uses four machine-user seats and the normal LOCAL command path. Seat 1 issues the existing gather-scrap order and earns enough real browser-local scrap to pay the Training Yard's existing construction cost. The test uses a bounded **test-only fast-forward scheduler** while that already-admitted deterministic gather order resolves, so CI does not spend the same wall-clock time as the playable simulation. It changes no product tuning, resource amount, movement rate, gather rate, construction rule, or source gameplay code.
+The focused browser gate uses four machine-user seats and the normal LOCAL command path. Seat 1 issues the existing gather-scrap order. The test then calls the exported `activeLocalRegionSimulation('seat-1').advance(180000)` seam **inside the live browser page** so the already-admitted deterministic order can resolve without waiting three wall-clock minutes in CI. This is the same simulation `advance` contract driven by the normal render loop; it changes no product tuning, resource amount, movement rate, gather rate, construction rule, or source gameplay code.
 
-After sufficient resources physically reach storage, Seat 1 selects and constructs the real Training Yard through admitted machine actions, then explicitly attaches the prepared source to that exact construction instance. Seats 2–4 must remain untouched.
+The test verifies that the admitted action really created a `gather-scrap` order, that exactly 720 fixed simulation steps were advanced, and that the resulting physical storage balance is the same balance reported by the browser-local civilization wallet. Only after sufficient scrap physically reaches storage does Seat 1 select and construct the real Training Yard through admitted machine actions, then explicitly attach the prepared source to that exact construction instance. Seats 2–4 must remain untouched.
+
+This deterministic time advance is **not** evidence of real-time performance or animation quality. Those remain explicit nonclaims.
 
 ## Evidence gate
 
@@ -44,9 +46,10 @@ The focused workflow must:
 1. prepare the source-pinned far Training Yard GLB and receipt;
 2. verify source identity, stable ID, continuity eligibility and current LOCAL build-plan membership;
 3. open the actual four-seat machine-user LOCAL RTS browser route;
-4. obtain the required construction scrap through the existing gather/deliver simulation path, using only a test-time scheduler acceleration;
-5. construct a real `building:training-yard` instance through admitted machine controls;
-6. explicitly install the candidate only on that exact Seat 1 construction instance;
-7. retain Seats 2–4 on their original presentation paths;
-8. retain screenshot and derivative receipt evidence;
-9. keep visual acceptance, collision, navigation, automatic LOD, target-device performance and bespoke animation as nonclaims.
+4. issue the existing gather command through the machine input surface and verify the active simulation contains that order;
+5. deterministically advance that live browser simulation long enough for the existing gather/deliver mechanics to fund the current Training Yard cost;
+6. construct a real `building:training-yard` instance through admitted machine controls;
+7. explicitly install the candidate only on that exact Seat 1 construction instance;
+8. retain Seats 2–4 on their original presentation paths;
+9. retain screenshot and derivative receipt evidence;
+10. keep visual acceptance, collision, navigation, automatic LOD, target-device performance and bespoke animation as nonclaims.

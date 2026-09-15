@@ -50,6 +50,9 @@ jobs:
           python3 assets/creation-machine/prepare_runtime_glb.py \
             --asset storage-hall \
             --variant far
+          python3 assets/creation-machine/prepare_runtime_glb.py \
+            --asset battery-fuel-station \
+            --variant far
 
       - name: Verify source identity, stable ID and live Storage Depot target
         run: node tests/creation-machine-logistics-set-selftest.mjs
@@ -86,7 +89,9 @@ jobs:
               && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/clustered-storage-bins-lod1.glb > /dev/null \
               && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/clustered-storage-bins-lod1.receipt.json > /dev/null \
               && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/storage-hall-lod1.glb > /dev/null \
-              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/storage-hall-lod1.receipt.json > /dev/null; then
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/storage-hall-lod1.receipt.json > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/battery-fuel-station-lod1.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/battery-fuel-station-lod1.receipt.json > /dev/null; then
               exit 0
             fi
             sleep 1
@@ -100,6 +105,7 @@ jobs:
           mkdir -p evidence/creation-machine-logistics-runtime
           cp test-results/global-state-rts-creation-machine-clustered-storage-bins-4seat.png evidence/creation-machine-logistics-runtime/
           cp test-results/global-state-rts-creation-machine-storage-hall-4seat.png evidence/creation-machine-logistics-runtime/
+          cp test-results/global-state-rts-creation-machine-battery-fuel-station-4seat.png evidence/creation-machine-logistics-runtime/
 
       - name: Regress player-facing LOCAL construction browser path
         run: npx playwright test tests/browser/local-civilization-gameplay.spec.js --workers=1 --reporter=line
@@ -112,6 +118,7 @@ jobs:
           path: |
             assets/creation-machine/runtime-prepared/clustered-storage-bins-lod1.receipt.json
             assets/creation-machine/runtime-prepared/storage-hall-lod1.receipt.json
+            assets/creation-machine/runtime-prepared/battery-fuel-station-lod1.receipt.json
             evidence/creation-machine-logistics-runtime/*.png
             test-results/global-state-rts-*.png
             /tmp/axm-global-state-rts-creation-machine-logistics.log

@@ -1,4 +1,4 @@
-export const CREATION_MACHINE_LOGISTICS_SET_SCHEMA = 'axm.global-state-rts.creation-machine-logistics-static-set/v0.2';
+export const CREATION_MACHINE_LOGISTICS_SET_SCHEMA = 'axm.global-state-rts.creation-machine-logistics-static-set/v0.3';
 
 const DELIVERY_ROOT = '../assets/creation-machine/runtime-prepared';
 const STATUS = 'CREATED_ALTERNATE_CANDIDATE_RUNTIME_TRIAL_ONLY';
@@ -49,7 +49,7 @@ function freezeEntry({ stableAssetId, sourceAsset, sourceFamily, gameplayDefinit
     }),
     animation: Object.freeze({
       status: 'HANDOFF_LATER',
-      reason: 'Loading, doors, cranes, worker activity, damage and destruction motion are deliberately outside this static lane.'
+      reason: 'Loading, doors, pumps, cables, workers, damage and destruction motion are deliberately outside this static lane.'
     }),
     note
   });
@@ -69,6 +69,13 @@ export const CREATION_MACHINE_LOGISTICS_SET = Object.freeze([
     sourceFamily: 'buildings',
     gameplayDefinitionId: 'building:storage-depot',
     note: 'Second explicit static alternate for the same real Storage Depot state target. Source selection is required to trial this candidate; it cannot silently displace procedural presentation or clustered-storage-bins.'
+  }),
+  freezeEntry({
+    stableAssetId: 'building-storage-depot-a',
+    sourceAsset: 'battery-fuel-station',
+    sourceFamily: 'industry',
+    gameplayDefinitionId: 'building:storage-depot',
+    note: 'Third explicit static logistics/storage alternate for the same real Storage Depot state target. Battery/fuel-station naming is source provenance only: it grants no fuel, charging, power, battery, pumping, vehicle-service, production or transfer authority, and it cannot displace the procedural presentation or earlier candidates without an explicit source-specific runtime call.'
   })
 ]);
 

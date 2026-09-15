@@ -10,8 +10,8 @@ import {
 import { DEFAULT_BUILDING_CATALOG } from '../src/sim/construction-economy.mjs';
 import { LOCAL_BUILD_PLAN_IDS } from '../src/sim/local-civilization-gameplay.mjs';
 
-assert.equal(CREATION_MACHINE_LOGISTICS_SET_SCHEMA, 'axm.global-state-rts.creation-machine-logistics-static-set/v0.2');
-assert.equal(CREATION_MACHINE_LOGISTICS_SET.length, 2);
+assert.equal(CREATION_MACHINE_LOGISTICS_SET_SCHEMA, 'axm.global-state-rts.creation-machine-logistics-static-set/v0.3');
+assert.equal(CREATION_MACHINE_LOGISTICS_SET.length, 3);
 
 const bins = creationMachineLogisticsSetEntry('building-storage-depot-a');
 assert.ok(bins);
@@ -41,11 +41,27 @@ assert.equal(hall.fallback.replacementRequiresExplicitRuntimeCall, true);
 assert.equal(hall.collision.footprint, null);
 assert.equal(hall.animation.status, 'HANDOFF_LATER');
 assert.equal(creationMachineLogisticsCandidate(hall.candidateId), hall);
+
+const station = creationMachineLogisticsSetEntry('building-storage-depot-a', 'battery-fuel-station');
+assert.ok(station);
+assert.equal(station.sourceAsset, 'battery-fuel-station');
+assert.equal(station.sourceFamily, 'industry');
+assert.equal(station.gameplayDefinitionId, bins.gameplayDefinitionId);
+assert.equal(station.targetKind, 'construction-instance');
+assert.equal(station.candidateRole, 'explicit-alternate-static-visual-candidate');
+assert.equal(station.candidateId, 'building-storage-depot-a:battery-fuel-station');
+assert.equal(station.runtimeTrial.variant, 'far');
+assert.equal(station.runtimeTrial.automaticLodSelection, false);
+assert.equal(station.fallback.replacementRequiresExplicitRuntimeCall, true);
+assert.equal(station.collision.footprint, null);
+assert.equal(station.animation.status, 'HANDOFF_LATER');
+assert.match(station.note, /grants no fuel, charging, power, battery, pumping, vehicle-service, production or transfer authority/i);
+assert.equal(creationMachineLogisticsCandidate(station.candidateId), station);
 assert.equal(creationMachineLogisticsSetEntry('building-storage-depot-a', 'not-a-real-source'), null);
 
 const plan = creationMachineLogisticsTrialPlan();
-assert.equal(plan.length, 2);
-assert.deepEqual(plan.map(candidate => candidate.sourceAsset), ['clustered-storage-bins', 'storage-hall']);
+assert.equal(plan.length, 3);
+assert.deepEqual(plan.map(candidate => candidate.sourceAsset), ['clustered-storage-bins', 'storage-hall', 'battery-fuel-station']);
 for (const candidate of plan) {
   assert.equal(candidate.stableAssetId, 'building-storage-depot-a');
   assert.equal(candidate.gameplayDefinitionId, 'building:storage-depot');
@@ -71,11 +87,18 @@ assert.match(
   sourceIndex,
   /^storage-hall,buildings,assets\/storage-hall\/storage-hall\.gltf,assets\/storage-hall\/storage-hall-lod1\.gltf,False,False$/m
 );
+assert.match(
+  sourceIndex,
+  /^battery-fuel-station,industry,assets\/battery-fuel-station\/battery-fuel-station\.gltf,assets\/battery-fuel-station\/battery-fuel-station-lod1\.gltf,False,False$/m
+);
 
 const transferManifest = fs.readFileSync(new URL('../assets/creation-machine/transfer-manifest.json', import.meta.url), 'utf8');
 assert.match(transferManifest, /"path": "packs\/storage-hall\.zip"/);
 assert.match(transferManifest, /"sha256": "b9357dc1d383b01f58ed0b9a085a90cd5b78bd90662742ed2699b65170f42fc3"/);
 assert.match(transferManifest, /"assets\/storage-hall\/storage-hall-lod1\.gltf"/);
+assert.match(transferManifest, /"path": "packs\/battery-fuel-station\.zip"/);
+assert.match(transferManifest, /"sha256": "334f75f32bfe0fa92c1594e3ce05bdaf8969718235f3030afcd819694b0e2696"/);
+assert.match(transferManifest, /"assets\/battery-fuel-station\/battery-fuel-station-lod1\.gltf"/);
 
 const sourceReadme = fs.readFileSync(new URL('../assets/creation-machine/README.md', import.meta.url), 'utf8');
 assert.match(sourceReadme, /83 assets/);

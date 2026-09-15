@@ -6,6 +6,7 @@ export const LOCAL_STRATEGIC_GAMEPLAY_SCHEMA = 'axm.global-state-rts.local-strat
 const ROUTE_ACTIONS = new Set(['explore', 'ui-up', 'ui-down', 'confirm', 'context', 'ui-left', 'cancel']);
 const STRATEGIC_STEP_MS = 5 * 60 * 1000;
 const EPSILON = 1e-9;
+const activeStrategicGameplayBySeat = new Map();
 
 function freezeResult(fields = {}) {
   return Object.freeze({ handled: true, ...fields });
@@ -75,6 +76,7 @@ export class LocalStrategicGameplay {
       kind: 'ready',
       message: 'Strategic convoy handoff ready. Route state is browser-local and not host-persistent.'
     });
+    activeStrategicGameplayBySeat.set(this.seatId, this);
   }
 
   #journey() {
@@ -298,6 +300,17 @@ export class LocalStrategicGameplay {
     return intersects(normalizedCrewIds(localCrewIds), this.deployedLocalCrewIds);
   }
 
+  departToLandmark(destinationNodeId, localCrewIds = []) {
+    const existing = this.#journey()?.snapshot() || null;
+    if (existing?.status === 'transit') {
+      this.lastOutcome = Object.freeze({ kind: 'blocked', message: 'Objective route change blocked while the convoy is between landmarks.' });
+      return freezeResult({ accepted: false, reason: 'convoy-in-transit', message: this.lastOutcome.message });
+    }
+    const result = this.#depart(localCrewIds, String(destinationNodeId || ''));
+    if (result?.accepted) this.menuOpen = true;
+    return result;
+  }
+
   handleAction(actionId, { selectedCrewIds = [], vehicleMenuOpen = false } = {}) {
     const action = String(actionId || '');
     if (!ROUTE_ACTIONS.has(action)) return null;
@@ -349,6 +362,10 @@ export class LocalStrategicGameplay {
       })
     });
   }
+}
+
+export function activeLocalStrategicGameplay(seatId = 'seat-1') {
+  return activeStrategicGameplayBySeat.get(String(seatId || '')) || null;
 }
 
 export function createLocalStrategicGameplay(options = {}) {

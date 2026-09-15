@@ -12,10 +12,12 @@ function freezeVariant(sourceAsset, role, filenameSuffix) {
   });
 }
 
-function freezeEntry({ fixtureAssetId, sourceAsset, gameplayTarget, roleBoundary, note }) {
+function freezeEntry({ candidateId, candidateRole, fixtureAssetId, sourceAsset, gameplayTarget, roleBoundary, note }) {
   return Object.freeze({
     schema: CREATION_MACHINE_CREW_SET_SCHEMA,
     status: STATUS,
+    candidateId,
+    candidateRole,
     fixtureAssetId,
     sourceAsset,
     sourceFamily: 'crew',
@@ -59,6 +61,8 @@ function freezeEntry({ fixtureAssetId, sourceAsset, gameplayTarget, roleBoundary
 
 export const CREATION_MACHINE_CREW_SET = Object.freeze([
   freezeEntry({
+    candidateId: 'crew-base-scavenger-primary',
+    candidateRole: 'primary',
     fixtureAssetId: 'crew-base-a',
     sourceAsset: 'scavenger',
     gameplayTarget: 'starter-region:crew-base',
@@ -66,13 +70,26 @@ export const CREATION_MACHINE_CREW_SET = Object.freeze([
     note: 'Representative visual candidate for the existing generic Crew body used by the local deterministic Crew simulation.'
   }),
   freezeEntry({
+    candidateId: 'crew-worker-crew-worker-primary',
+    candidateRole: 'primary',
     fixtureAssetId: 'crew-worker-kit-a',
     sourceAsset: 'crew-worker',
     gameplayTarget: 'starter-region:crew-worker',
     roleBoundary: 'Worker-role presentation candidate only; source is a full static Crew model, not a proven detachable kit.',
-    note: 'Representative visual candidate for the existing worker-marked Crew preview instances.'
+    note: 'Primary representative visual candidate for the existing worker-marked Crew preview instances.'
   }),
   freezeEntry({
+    candidateId: 'crew-worker-mechanic-repair-alternate',
+    candidateRole: 'alternate',
+    fixtureAssetId: 'crew-worker-kit-a',
+    sourceAsset: 'mechanic-repair-crew',
+    gameplayTarget: 'starter-region:crew-worker',
+    roleBoundary: 'Worker-role presentation alternate only; mechanic/repair naming is source provenance and grants no repair profession, stat, tool, or action authority.',
+    note: 'Explicit alternate full static Crew candidate for the same real worker-marked preview instances. It cannot displace the procedural or crew-worker primary presentation without a source-specific runtime call.'
+  }),
+  freezeEntry({
+    candidateId: 'crew-rifle-rifle-guard-primary',
+    candidateRole: 'primary',
     fixtureAssetId: 'crew-rifle-kit-a',
     sourceAsset: 'rifle-guard',
     gameplayTarget: 'starter-region:crew-rifle',
@@ -81,14 +98,27 @@ export const CREATION_MACHINE_CREW_SET = Object.freeze([
   })
 ]);
 
-const BY_FIXTURE = new Map(CREATION_MACHINE_CREW_SET.map(entry => [entry.fixtureAssetId, entry]));
+const BY_FIXTURE = new Map();
+for (const entry of CREATION_MACHINE_CREW_SET) {
+  const candidates = BY_FIXTURE.get(entry.fixtureAssetId) || [];
+  candidates.push(entry);
+  BY_FIXTURE.set(entry.fixtureAssetId, candidates);
+}
 
-export function creationMachineCrewSetEntry(fixtureAssetId) {
-  return BY_FIXTURE.get(String(fixtureAssetId || '')) || null;
+export function creationMachineCrewSetCandidates(fixtureAssetId) {
+  return Object.freeze([...(BY_FIXTURE.get(String(fixtureAssetId || '')) || [])]);
+}
+
+export function creationMachineCrewSetEntry(fixtureAssetId, { sourceAsset = null } = {}) {
+  const candidates = BY_FIXTURE.get(String(fixtureAssetId || '')) || [];
+  if (sourceAsset) return candidates.find(entry => entry.sourceAsset === String(sourceAsset)) || null;
+  return candidates.find(entry => entry.candidateRole === 'primary') || candidates[0] || null;
 }
 
 export function creationMachineCrewTrialPlan() {
   return Object.freeze(CREATION_MACHINE_CREW_SET.map(entry => Object.freeze({
+    candidateId: entry.candidateId,
+    candidateRole: entry.candidateRole,
     fixtureAssetId: entry.fixtureAssetId,
     sourceAsset: entry.sourceAsset,
     variant: entry.runtimeTrial.variant,

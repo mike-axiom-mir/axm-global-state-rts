@@ -1,5 +1,6 @@
 import { createMemoryWorldJournalStore } from './journal-store.mjs';
 import { createWorldEventEncounterAuthority } from './world-event-encounter-authority.mjs';
+import { createWorldEventOutcomeAuthority } from './world-event-outcome-authority.mjs';
 import { activeWorldEvents } from '../world/world-events.mjs';
 
 export const WORLD_EVENT_HTTP_API_SCHEMA = 'axm.global-state-rts.world-event-http-api/v0.1';
@@ -27,18 +28,32 @@ function mutationStatus(result) {
   return 400;
 }
 
+function optionalSearchParam(searchParams, key) {
+  if (!searchParams) return null;
+  if (typeof searchParams.get === 'function') {
+    const value = searchParams.get(key);
+    return value == null || value === '' ? null : value;
+  }
+  const value = searchParams[key];
+  return value == null || value === '' ? null : String(value);
+}
+
 export class WorldEventHttpApiService {
   constructor({
     authority,
     baseApi,
     writeMode = 'off',
     clock = () => Date.now(),
-    storeFactory = () => createMemoryWorldJournalStore()
+    storeFactory = () => createMemoryWorldJournalStore(),
+    outcomeStore = createMemoryWorldJournalStore()
   } = {}) {
     if (!authority?.participants || !authority?.sharedState) throw new TypeError('world session authority required');
     if (typeof baseApi?.handle !== 'function') throw new TypeError('baseApi with handle required');
     if (typeof clock !== 'function') throw new TypeError('clock must be a function');
     if (typeof storeFactory !== 'function') throw new TypeError('storeFactory must be a function');
+    if (!outcomeStore || typeof outcomeStore.readAll !== 'function' || typeof outcomeStore.append !== 'function') {
+      throw new TypeError('outcomeStore with readAll and append required');
+    }
     this.schema = WORLD_EVENT_HTTP_API_SCHEMA;
     this.authority = authority;
     this.baseApi = baseApi;
@@ -46,6 +61,10 @@ export class WorldEventHttpApiService {
     this.clock = clock;
     this.storeFactory = storeFactory;
     this.encounters = new Map();
+    this.outcomes = createWorldEventOutcomeAuthority({
+      participantRegistry: this.authority.participants,
+      store: outcomeStore
+    });
   }
 
   #worldNow() {
@@ -86,7 +105,16 @@ export class WorldEventHttpApiService {
       error.code = 'WORLD_EVENT_ADVANCE_REJECTED';
       throw error;
     }
-    return result.snapshot;
+    const snapshot = result.snapshot;
+    if (snapshot.ended && snapshot.contest?.closed && snapshot.contest?.winnerId && snapshot.contest?.reward) {
+      const finalized = this.outcomes.finalizeEncounter(snapshot);
+      if (!finalized.accepted) {
+        const error = new Error(`world-event outcome finalization rejected: ${finalized.reason}`);
+        error.code = 'WORLD_EVENT_OUTCOME_REJECTED';
+        throw error;
+      }
+    }
+    return snapshot;
   }
 
   #describeEvent(event, encounterNowMs) {
@@ -99,7 +127,13 @@ export class WorldEventHttpApiService {
     }
     const encounter = this.#encounterFor(event);
     const snapshot = this.#sync(encounter, encounterNowMs);
-    return Object.freeze({ event, authoritativeEncounter: true, encounter: snapshot, meta: encounter.meta() });
+    return Object.freeze({
+      event,
+      authoritativeEncounter: true,
+      encounter: snapshot,
+      outcome: this.outcomes.outcome(event.id),
+      meta: encounter.meta()
+    });
   }
 
   #eventIndex() {
@@ -115,8 +149,19 @@ export class WorldEventHttpApiService {
         humanMachineParity: 'same-world-account-command-path-and-100-actions-per-rolling-60-seconds-gate',
         localSeatSemantics: 'seat-1-through-seat-4-remain-client-local-presentation-and-are-not-global-event-identities',
         advancement: 'host-clock-derived-only-clients-cannot-supply-delta-or-event-time',
+        outcomeAuthority: 'host-derived-completed-encounter-outcomes-are-journaled-once-by-event-id',
+        rewardApplication: 'next-drop-cache-bonus-is-durable-entitlement-evidence-only-not-yet-consumed',
         truthBoundary: 'single-host-durable-encounter-http-seam-not-production-scale-not-multi-host-consensus'
       })
+    });
+  }
+
+  #outcomeIndex(searchParams) {
+    const participantId = optionalSearchParam(searchParams, 'participantId');
+    return Object.freeze({
+      schema: WORLD_EVENT_HTTP_API_SCHEMA,
+      outcomes: this.outcomes.outcomes({ participantId }),
+      meta: this.outcomes.meta()
     });
   }
 
@@ -126,6 +171,18 @@ export class WorldEventHttpApiService {
     try {
       if (verb === 'GET' && route === '/api/world/events') {
         return response(200, this.#eventIndex());
+      }
+
+      if (verb === 'GET' && route === '/api/world/event-outcomes') {
+        return response(200, this.#outcomeIndex(searchParams));
+      }
+
+      const outcomeMatch = route.match(/^\/api\/world\/event-outcomes\/([^/]+)$/);
+      if (verb === 'GET' && outcomeMatch) {
+        const eventId = decodeURIComponent(outcomeMatch[1]);
+        const outcome = this.outcomes.outcome(eventId);
+        if (!outcome) return response(404, { error: 'durable world event outcome not found', eventId });
+        return response(200, { schema: WORLD_EVENT_HTTP_API_SCHEMA, outcome, meta: this.outcomes.meta() });
       }
 
       const statusMatch = route.match(/^\/api\/world\/events\/([^/]+)$/);
@@ -174,6 +231,7 @@ export class WorldEventHttpApiService {
             admission: 'world-participant-registry-shared-rolling-window-100-actions-per-60-seconds',
             advancement: 'host-clock-derived-only',
             persistence: 'per-event-append-only-journal-when-a-durable-store-factory-is-configured',
+            outcomePersistence: this.outcomes.meta(),
             truthBoundary: 'single-host-durable-encounter-http-seam-not-production-scale-not-multi-host-consensus'
           })
         });
@@ -184,7 +242,7 @@ export class WorldEventHttpApiService {
       const message = String(error?.message || error);
       const status = /unknown participant/.test(message)
         ? 404
-        : /journal|revision|previousHash|beforeStateHash|entryHash|host advance rejected/.test(message)
+        : /journal|revision|previousHash|beforeStateHash|entryHash|host advance rejected|outcome finalization rejected/.test(message)
           ? 503
           : 400;
       return response(status, { error: message });

@@ -14,12 +14,12 @@ const gatherButton = document.createElement('button');
 gatherButton.id = 'hostLocalGather';
 gatherButton.type = 'button';
 gatherButton.disabled = true;
-gatherButton.textContent = 'Journal gather at cursor';
+gatherButton.textContent = 'Journal selected-party gather';
 const commandStatus = document.createElement('div');
 commandStatus.id = 'hostLocalCommandStatus';
 commandStatus.className = 'status';
 commandStatus.setAttribute('aria-live', 'polite');
-commandStatus.textContent = 'Host journal gather requires a bound participant in LOCAL RTS.';
+commandStatus.textContent = 'Host journal gather requires a bound participant with a selected LOCAL party.';
 commandRow.append(gatherButton, commandStatus);
 statusElement.insertAdjacentElement('afterend', commandRow);
 
@@ -87,17 +87,23 @@ function previewGatherAtCursor({ seatId = 'seat-1', stepCount = 160 } = {}) {
   }
   const view = surface.describeSeatView?.(seatId);
   if (view?.mode !== 'local-rts') return Object.freeze({ accepted: false, reason: 'host-journal-gather-requires-local-rts' });
+  const party = surface.describeSeatParty?.(seatId) || null;
+  if (!Array.isArray(party?.selectedCrewIds)) return Object.freeze({ accepted: false, reason: 'selected-party-unavailable' });
+  const crewIds = [...party.selectedCrewIds];
+  if (!crewIds.length) return Object.freeze({ accepted: false, reason: 'selected-party-empty' });
   const steps = Number(stepCount);
   if (!Number.isInteger(steps) || steps < 0) return Object.freeze({ accepted: false, reason: 'stepCount-must-be-non-negative-integer' });
   return Object.freeze({
     accepted: true,
     binding,
+    selectedPartyLabel: party.selectedPartyLabel || 'selected party',
     expectedRevision: retainedEvidence.journal.revision,
     intent: Object.freeze({
       actionId: 'gather-scrap',
       cursorXM: view.local.cursorXM,
       cursorZM: view.local.cursorZM,
-      stepCount: steps
+      stepCount: steps,
+      crewIds: Object.freeze(crewIds)
     })
   });
 }
@@ -149,7 +155,7 @@ function refreshControls() {
   const gatherPreview = previewGatherAtCursor();
   gatherButton.disabled = busy || !gatherPreview.accepted;
   gatherButton.title = gatherPreview.accepted
-    ? 'Ask the host to reproduce and journal one gather command from this cursor against the displayed checkpoint.'
+    ? `Ask the host to reproduce and journal gather for ${gatherPreview.intent.crewIds.length} selected Crew from this cursor against the displayed checkpoint.`
     : gatherPreview.reason;
 
   const adoptionPreview = previewAdoption();
@@ -235,7 +241,7 @@ async function submitGatherAtCursor({ seatId = 'seat-1', stepCount = 160 } = {})
     return preview;
   }
 
-  commandStatus.textContent = `${seatId} · asking host to reproduce gather against journal r${preview.expectedRevision}…`;
+  commandStatus.textContent = `${seatId} · asking host to reproduce ${preview.intent.crewIds.length}-Crew selected-party gather against journal r${preview.expectedRevision}…`;
   commandInFlight = (async () => {
     try {
       const result = await client.submitLocalSeatCommand({
@@ -258,7 +264,7 @@ async function submitGatherAtCursor({ seatId = 'seat-1', stepCount = 160 } = {})
       });
       const hostScrap = Number(result?.outcome?.storage?.scrap);
       const scrapLabel = Number.isFinite(hostScrap) ? ` · host scrap ${Math.floor(hostScrap)}` : '';
-      commandStatus.textContent = `${seatId} · host journal gather accepted · r${result.revision}${scrapLabel} · browser-local state remains separate until adoption.`;
+      commandStatus.textContent = `${seatId} · host selected-party gather accepted · ${preview.intent.crewIds.length} Crew · r${result.revision}${scrapLabel} · browser-local state remains separate until adoption.`;
       render();
       return lastCommandEvidence;
     } catch (error) {
@@ -282,7 +288,7 @@ async function submitGatherAtCursor({ seatId = 'seat-1', stepCount = 160 } = {})
         intent: preview.intent,
         expectedRevision: preview.expectedRevision
       });
-      commandStatus.textContent = `${seatId} · host journal gather rejected · ${reason} · no automatic retry.`;
+      commandStatus.textContent = `${seatId} · host selected-party gather rejected · ${reason} · no automatic retry.`;
       return lastCommandEvidence;
     } finally {
       commandInFlight = null;

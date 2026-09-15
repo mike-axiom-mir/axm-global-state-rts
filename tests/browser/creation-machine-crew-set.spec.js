@@ -5,7 +5,8 @@ const CANDIDATES = Object.freeze([
   ['crew-worker-kit-a', 'crew-worker', 2],
   ['crew-worker-kit-a', 'mechanic-repair-crew', 2],
   ['crew-worker-kit-a', 'citizen-harvester', 2],
-  ['crew-rifle-kit-a', 'rifle-guard', 1]
+  ['crew-rifle-kit-a', 'rifle-guard', 1],
+  ['crew-rifle-kit-a', 'shotgun-raider', 1]
 ]);
 
 function captureRuntimeFailures(page) {
@@ -106,6 +107,35 @@ test('worker Crew omission keeps the existing primary source instead of silently
   });
 
   expect(result.sourceAsset).toBe('crew-worker');
+  expect(result.candidateRole).toBe('primary');
+  expect(failures, failures.join('\n')).toEqual([]);
+});
+
+test('rifle Crew omission keeps rifle-guard primary instead of silently promoting Shotgun Raider', async ({ page }) => {
+  test.setTimeout(75_000);
+
+  const failures = captureRuntimeFailures(page);
+  const response = await page.goto('http://127.0.0.1:4174/game/?players=4&seat1=machine&seat2=machine&seat3=machine&seat4=machine', { waitUntil: 'networkidle' });
+  expect(response?.ok()).toBe(true);
+
+  const result = await page.evaluate(async () => {
+    const helper = await import('./creation-machine-crew-adoption.mjs');
+    const bridge = window.__AXM_GLOBAL_STATE_RTS__;
+    const seats = ['seat-1', 'seat-2', 'seat-3', 'seat-4'];
+    let timestampMs = 1000;
+    for (const seatId of seats) {
+      const toggle = bridge.submitMachineAction({ seatId, actionId: 'map-toggle', timestampMs });
+      timestampMs += 1000;
+      if (!toggle?.accepted) throw new Error(`${seatId} could not enter LOCAL RTS`);
+    }
+    return helper.adoptCreationMachineCrewRepresentative({
+      seatId: 'seat-1',
+      fixtureAssetId: 'crew-rifle-kit-a',
+      focus: false
+    });
+  });
+
+  expect(result.sourceAsset).toBe('rifle-guard');
   expect(result.candidateRole).toBe('primary');
   expect(failures, failures.join('\n')).toEqual([]);
 });

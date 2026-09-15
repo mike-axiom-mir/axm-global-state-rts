@@ -59,6 +59,23 @@ async function gatherThenIdle(page) {
   expect(idled.emptyHands).toBe(true);
 }
 
+async function primaryStrategicSnapshot(page) {
+  return page.evaluate(() => {
+    const party = window.__AXM_GLOBAL_STATE_RTS__.describeSeatParty('seat-1');
+    return window.__AXM_PRIMARY_STRATEGIC__.snapshot('seat-1', party.selectedCrewIds);
+  });
+}
+
+async function advanceStrategicUntilArrived(page, maxSteps = 24) {
+  for (let index = 0; index < maxSteps; index += 1) {
+    const state = await primaryStrategicSnapshot(page);
+    if (state.journey?.status === 'arrived') return state;
+    expect(state.journey?.status).toBe('transit');
+    await page.locator('[data-gameplay-action="confirm"]').click();
+  }
+  return primaryStrategicSnapshot(page);
+}
+
 test('primary command dock surfaces deterministic world objectives and can route a prepared selected-party convoy toward the nearest landmark', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/?players=1', { waitUntil: 'networkidle' });
@@ -106,6 +123,28 @@ test('primary command dock surfaces deterministic world objectives and can route
   await page.locator('[data-gameplay-action="context"]').click();
   await expect(page.locator('#inputStatus')).toContainText('selected-party driver');
 
+  // The deterministic active event may project to the convoy's current home landmark.
+  // That is not a travel command: fail closed rather than routing away or pretending
+  // the off-network event marker was reached. Move through the existing strategic
+  // controls to another real landmark, then prove the objective action routes back
+  // toward the tracked nearest landmark.
+  if (await routeAction.isDisabled()) {
+    await expect(routeStatus).toContainText('already at nearest landmark');
+    const objectiveLandmarkId = await routeAction.getAttribute('data-destination-node-id');
+    const before = await primaryStrategicSnapshot(page);
+    expect(before.homeNodeId).toBe(objectiveLandmarkId);
+
+    await page.locator('[data-gameplay-action="explore"]').click();
+    await expect(page.locator('#inputStatus')).toContainText('strategic-menu-open');
+    await page.locator('[data-gameplay-action="confirm"]').click();
+    let moved = await primaryStrategicSnapshot(page);
+    expect(moved.journey?.status).toBe('transit');
+    expect(moved.journey?.destinationNodeId).not.toBe(objectiveLandmarkId);
+    moved = await advanceStrategicUntilArrived(page);
+    expect(moved.journey?.status).toBe('arrived');
+    expect(moved.journey?.currentNodeId).not.toBe(objectiveLandmarkId);
+  }
+
   await expect(routeAction).toBeEnabled();
   await expect(routeStatus).toContainText('objective convoy action · ready');
   await expect(routeStatus).toContainText('exact event marker, join, claim, and reward remain unpromoted');
@@ -113,10 +152,7 @@ test('primary command dock surfaces deterministic world objectives and can route
   expect(destinationNodeId).toBeTruthy();
 
   await routeAction.click();
-  const strategic = await page.evaluate(() => {
-    const party = window.__AXM_GLOBAL_STATE_RTS__.describeSeatParty('seat-1');
-    return window.__AXM_PRIMARY_STRATEGIC__.snapshot('seat-1', party.selectedCrewIds);
-  });
+  const strategic = await primaryStrategicSnapshot(page);
   expect(strategic.journey?.status).toBe('transit');
   expect(strategic.journey?.destinationNodeId).toBe(destinationNodeId);
   expect(strategic.deployedLocalCrewIds).toHaveLength(2);

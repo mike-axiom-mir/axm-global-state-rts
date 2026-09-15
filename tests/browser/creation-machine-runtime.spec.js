@@ -22,7 +22,10 @@ async function clickAndWaitForAdoption(page) {
   const button = page.locator('#creationMachineWorkshopAdopt');
   await button.click();
   await expect(button).toBeDisabled();
-  await expect(button).toBeEnabled({ timeout: 15_000 });
+  // Real checked-in GLB import can exceed 15s on shared CI runners. Keep the
+  // evidence signal bounded, but wait on actual completion rather than a
+  // runner-speed assumption.
+  await expect(button).toBeEnabled({ timeout: 60_000 });
 }
 
 function assertRuntimeTruthBoundary(installed, sourceReceipt) {

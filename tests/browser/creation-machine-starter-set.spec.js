@@ -6,6 +6,7 @@ const CANDIDATES = Object.freeze([
   ['building-workshop-a', 'improvised-workshop', 'primary'],
   ['building-storage-depot-a', 'storage-hall', 'primary'],
   ['resource-scrap-collector-a', 'scrap-sorting-yard', 'primary'],
+  ['resource-node-scrap-a', 'salvage-scrap-node', 'primary'],
   ['defense-light-tower-a', 'light-tower', 'primary']
 ]);
 
@@ -13,7 +14,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;

@@ -25,6 +25,7 @@ const BASE_ACTIONS = Object.freeze([
   Object.freeze({ id: 'explore', label: 'Explore cursor', localOnly: true, gameplayOrder: true }),
   Object.freeze({ id: 'ui-right', label: 'Build menu', localOnly: true, civilizationMenu: true }),
   Object.freeze({ id: 'ui-left', label: 'Production menu', localOnly: true, civilizationMenu: true }),
+  Object.freeze({ id: 'ui-up', label: 'Vehicles menu', localOnly: true, civilizationMenu: true }),
   Object.freeze({ id: 'party-menu', label: 'Party menu', localOnly: true }),
   Object.freeze({ id: 'party-prev', label: 'Previous party', localOnly: true }),
   Object.freeze({ id: 'party-next', label: 'Next party', localOnly: true }),
@@ -188,12 +189,27 @@ function productionMenuActions(civilization) {
   ]);
 }
 
+function vehicleMenuActions(civilization) {
+  const selected = civilization?.vehicles?.selectedPlan;
+  return Object.freeze([
+    Object.freeze({ id: 'ui-up', label: 'Previous vehicle plan', localOnly: true }),
+    Object.freeze({ id: 'ui-down', label: 'Next vehicle plan', localOnly: true }),
+    Object.freeze({ id: 'confirm', label: selected ? `Construct ${selected.label}` : 'Construct selected vehicle', localOnly: true }),
+    Object.freeze({ id: 'party-menu', label: 'Prepare selected-party light drivers', localOnly: true }),
+    Object.freeze({ id: 'context', label: 'Assign / release selected-party drivers', localOnly: true }),
+    Object.freeze({ id: 'cancel', label: 'Close vehicle menu', localOnly: true })
+  ]);
+}
+
 function renderActions(seat, mode, party, civilization) {
   const partyMenuOpen = Boolean(party?.menuOpen);
   const civilizationMenu = civilization?.menuKind || null;
   const selectedBuild = civilization?.selectedBuild?.id || 'none';
   const selectedProduction = civilization?.production?.selectedBuildingId || 'none';
-  const signature = `${seat?.id || 'none'}:${seat?.kind || 'none'}:${mode}:${canClickSeat(seat) ? 'clickable' : 'view-only'}:${partyMenuOpen ? 'party-open' : 'party-closed'}:${civilizationMenu || 'civ-closed'}:${selectedBuild}:${selectedProduction}`;
+  const selectedVehicle = civilization?.vehicles?.selectedPlan?.id || 'none';
+  const vehicleCount = civilization?.vehicles?.vehicleCount || 0;
+  const driverCount = civilization?.vehicles?.driverCount || 0;
+  const signature = `${seat?.id || 'none'}:${seat?.kind || 'none'}:${mode}:${canClickSeat(seat) ? 'clickable' : 'view-only'}:${partyMenuOpen ? 'party-open' : 'party-closed'}:${civilizationMenu || 'civ-closed'}:${selectedBuild}:${selectedProduction}:${selectedVehicle}:${vehicleCount}:${driverCount}`;
   if (signature === lastActionSignature) return;
   lastActionSignature = signature;
 
@@ -201,6 +217,7 @@ function renderActions(seat, mode, party, civilization) {
   if (partyMenuOpen) definitions = [...BASE_ACTIONS, ...PARTY_MENU_ACTIONS];
   if (civilizationMenu === 'build') definitions = buildMenuActions(civilization);
   if (civilizationMenu === 'production') definitions = productionMenuActions(civilization);
+  if (civilizationMenu === 'vehicle') definitions = vehicleMenuActions(civilization);
 
   actions.replaceChildren(...definitions.map(definition => {
     const button = document.createElement('button');
@@ -243,7 +260,7 @@ function submitAction(actionId) {
         const civilization = bridge.describeSeatCivilization(seat.id);
         if (LOCAL_MACRO_ORDER_ACTIONS.has(actionId)) {
           feedback.textContent = macroAdmissionFeedback(seat, actionId, beforeSimulation?.order?.id || null);
-        } else if (beforeCivilization?.menuOpen || actionId === 'ui-left' || actionId === 'ui-right') {
+        } else if (beforeCivilization?.menuOpen || actionId === 'ui-left' || actionId === 'ui-right' || actionId === 'ui-up') {
           feedback.textContent = `${seat.id} · ${civilization.lastOutcome?.message || actionId}`;
         }
       } catch {}
@@ -280,6 +297,13 @@ function productionSummary(civilization) {
   return `${active.length} active sites · ${workers} Crew · ${produced.toFixed ? produced.toFixed(1) : produced} scrap produced`;
 }
 
+function vehicleSummary(civilization) {
+  const vehicles = civilization?.vehicles;
+  if (!vehicles) return 'vehicle state unavailable';
+  const capacity = (vehicles.vehicles || []).reduce((sum, vehicle) => sum + (Number(vehicle.seatCapacity) || 0), 0);
+  return `${vehicles.vehicleCount || 0} vehicles · ${vehicles.driverCount || 0} drivers · ${vehicles.uncrewedCount || 0} uncrewed · ${capacity} seats`;
+}
+
 function render() {
   const seats = syncSeatOptions();
   if (!seats.length) return;
@@ -302,6 +326,7 @@ function render() {
   const scrap = finiteFloor(simulation?.storage?.scrap);
   const capacity = finiteFloor(simulation?.storage?.capacity);
   const timber = finiteFloor(civilization?.resources?.timber);
+  const industrialMetal = finiteFloor(civilization?.resources?.['industrial-metal']);
   const cursorX = Math.round(Number(view?.local?.cursorXM) || 0);
   const cursorZ = Math.round(Number(view?.local?.cursorZM) || 0);
   const worldTime = seat.worldTimeSync ? `H${seat.worldTimeSync.worldHourIndex} ${seat.worldTimeSync.lightingPhase}` : 'local clock';
@@ -310,25 +335,30 @@ function render() {
     : 'controller-owned; view only here';
   const menu = civilization?.menuKind ? `${civilization.menuKind} menu open` : party?.menuOpen ? 'party menu open' : 'none';
   const selectedPlan = civilization?.selectedBuild ? `${civilization.selectedBuild.label} · ${civilization.selectedBuild.costText}` : 'none';
+  const selectedVehiclePlan = civilization?.vehicles?.selectedPlan
+    ? `${civilization.vehicles.selectedPlan.label} · ${civilization.vehicles.selectedPlan.costText}${civilization.vehicles.selectedPlan.constructible ? '' : ` · ${civilization.vehicles.selectedPlan.reason}`}`
+    : 'none';
 
   summary.innerHTML = `
     <span><b>${seat.id}</b> · ${seat.kind} · ${mode}</span>
     <span>party <b>${partySummary(party)}</b></span>
     <span>selected consequence <b>${selectedConsequenceSummary(simulation, party)}</b></span>
     <span>core <b>${core}%</b></span>
-    <span>materials <b>${scrap}/${capacity} scrap · ${timber} timber</b></span>
+    <span>materials <b>${scrap}/${capacity} scrap · ${timber} timber · ${industrialMetal} industrial-metal</b></span>
     <span>order <b>${order} · ${orderId}</b></span>
     <span>cursor <b>${cursorX}, ${cursorZ} m</b></span>
     <span>resources <b>${knownResourceSummary(simulation?.resources)}</b></span>
     <span>structures <b>${structureSummary(civilization)}</b></span>
     <span>production <b>${productionSummary(civilization)}</b></span>
+    <span>vehicles <b>${vehicleSummary(civilization)}</b></span>
     <span>build plan <b>${selectedPlan}</b></span>
+    <span>vehicle plan <b>${selectedVehiclePlan}</b></span>
     <span>menu <b>${menu}</b></span>
     <span>result <b>${civilization?.lastOutcome?.message || 'local civilization state unavailable'}</b></span>
     <span>crew <b>${phaseSummary(simulation?.crew) || 'none'}</b></span>
     <span>time <b>${worldTime}</b></span>
     <span>input <b>${controlNote}</b></span>
-    <span>state <b>${civilization?.stateScope || 'unknown'} · placeholder structures; no bespoke animation</b></span>
+    <span>state <b>${civilization?.stateScope || 'unknown'} · placeholder structures/vehicles; no bespoke animation</b></span>
   `;
   renderActions(seat, mode, party, civilization);
 }

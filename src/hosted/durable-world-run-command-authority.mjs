@@ -18,6 +18,7 @@ export {
 export const WORLD_RUN_TRAIN_UNIT_ACTION = 'train-unit-specialization';
 export const WORLD_RUN_LICENSE_UNIT_ACTION = 'license-unit-vehicle';
 export const WORLD_RUN_CRAFT_WEAPON_ACTION = 'craft-weapon';
+export const WORLD_RUN_EQUIP_WEAPON_ACTION = 'equip-unit-weapon';
 
 function nonEmpty(value, label) {
   const text = String(value ?? '').trim();
@@ -85,6 +86,11 @@ function vehicleLicenseReceipt(run, mutationId) {
 
 function weaponCraftReceipt(run, mutationId) {
   const eventId = `host-run-craft:${mutationId}`;
+  return run?.equipment?.snapshot?.().receipts?.find(receipt => receipt.eventId === eventId) || null;
+}
+
+function weaponEquipReceipt(run, mutationId) {
+  const eventId = `host-run-equip:${mutationId}`;
   return run?.equipment?.snapshot?.().receipts?.find(receipt => receipt.eventId === eventId) || null;
 }
 
@@ -167,6 +173,12 @@ export class DurableWorldRunCommandAuthority {
       const crafted = run.craftWeapon(weaponId, count, { eventId: `host-run-craft:${mutation.mutationId}` });
       if (!crafted.accepted) throw new Error(`durable weapon crafting replay rejected: ${progression.playerId}:${mutation.mutationId}:${crafted.reason}`);
       result = Object.freeze({ crafting: cloneJson(crafted), runRevision: run.revision });
+    } else if (mutation.action === WORLD_RUN_EQUIP_WEAPON_ACTION) {
+      const unitId = nonEmpty(mutation.payload?.unitId, 'unitId');
+      const weaponId = nonEmpty(mutation.payload?.weaponId, 'weaponId');
+      const equipped = run.equipUnit(unitId, weaponId, { eventId: `host-run-equip:${mutation.mutationId}` });
+      if (!equipped.accepted) throw new Error(`durable weapon equip replay rejected: ${progression.playerId}:${mutation.mutationId}:${equipped.reason}`);
+      result = Object.freeze({ equipping: cloneJson(equipped), runRevision: run.revision });
     } else if (mutation.action === WORLD_RUN_CLOSE_ACTION) {
       if (!sameJson(mutation.payload, {})) throw new Error(`durable run close payload must be empty: ${progression.playerId}:${mutation.mutationId}`);
       const closed = progression.closeActiveRun();
@@ -359,15 +371,31 @@ export class DurableWorldRunCommandAuthority {
     return null;
   }
 
+  #weaponEquipPreflight(context, unitId, weaponId) {
+    const run = context.progression.activeRun;
+    const unit = run.manpower.unit(unitId);
+    if (!unit) throw new RangeError(`unknown unit: ${unitId}`);
+    const definition = run.equipment.weaponDefinition(weaponId);
+    if (!definition) throw new RangeError(`unknown weapon: ${weaponId}`);
+    if (!definition.allowedRoles.includes(unit.role)) {
+      return Object.freeze({ accepted: false, reason: unit.role === 'crew' ? 'specialize-before-equipping' : 'role-cannot-use-weapon', role: unit.role });
+    }
+    const equipment = run.equipment.snapshot();
+    const existingLoadout = equipment.loadouts.find(loadout => loadout.unitId === unit.id) || null;
+    if (existingLoadout?.weaponId === definition.id) return Object.freeze({ accepted: false, reason: 'weapon-already-equipped' });
+    if (Number(equipment.inventory[definition.id] || 0) < 1) return Object.freeze({ accepted: false, reason: 'weapon-not-in-inventory' });
+    return null;
+  }
+
   progressionPersistenceMeta() {
     const base = this.base.progressionPersistenceMeta();
     return Object.freeze({
       ...base,
-      durableMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION, WORLD_RUN_FOOD_POLICY_ACTION, WORLD_RUN_TRAIN_UNIT_ACTION, WORLD_RUN_LICENSE_UNIT_ACTION, WORLD_RUN_CRAFT_WEAPON_ACTION, WORLD_RUN_CLOSE_ACTION]),
+      durableMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION, WORLD_RUN_FOOD_POLICY_ACTION, WORLD_RUN_TRAIN_UNIT_ACTION, WORLD_RUN_LICENSE_UNIT_ACTION, WORLD_RUN_CRAFT_WEAPON_ACTION, WORLD_RUN_EQUIP_WEAPON_ACTION, WORLD_RUN_CLOSE_ACTION]),
       restoredMutationsThisProcess: this.mutationRestoreReport.restored,
       mutationParticipantsRestoredThisProcess: this.mutationRestoreReport.participantIds,
       truthBoundary: this.runStartStore
-        ? 'initial-run-start-plus-host-admitted-global-control-food-policy-unit-training-vehicle-licensing-weapon-crafting-and-terminal-run-close-mutations-are-durable-and-replayed-in-command-order;other-local-rts-mutations-remain-separate-gaps'
+        ? 'initial-run-start-plus-host-admitted-global-control-food-policy-unit-training-vehicle-licensing-weapon-crafting-weapon-equipping-and-terminal-run-close-mutations-are-durable-and-replayed-in-command-order;other-local-rts-mutations-remain-separate-gaps'
         : 'active-player-progression-and-run-mutations-remain-process-memory-only-without-a-durable-run-start-store'
     });
   }
@@ -399,7 +427,7 @@ export class DurableWorldRunCommandAuthority {
         : terminalCloseApplied
           ? 'host-run-status-replays-the-terminal-close-and-durable-score-history-for-this-run;the-separate-archive-bound-rollover-layer-governs-next-generation handoff'
           : mutations.length
-            ? 'host-run-status-includes-durable-replay-for-the-bounded-global-control-food-policy-unit-training-vehicle-licensing-weapon-crafting-and-run-close-actions-only;other-run-mutations-remain-outside-this-contract'
+            ? 'host-run-status-includes-durable-replay-for-the-bounded-global-control-food-policy-unit-training-vehicle-licensing-weapon-crafting-weapon-equipping-and-run-close-actions-only;other-run-mutations-remain-outside-this-contract'
             : base.truthBoundary
     });
   }
@@ -518,6 +546,38 @@ export class DurableWorldRunCommandAuthority {
     return this.#admitPersistApply({ ...context, actionId: 'world-run-craft-weapon', action: WORLD_RUN_CRAFT_WEAPON_ACTION, payload: { weaponId: weapon, count: amount }, timestampMs, successTruthBoundary: 'host-admitted-weapon-crafting-command-was-durably-recorded-before-stockpile-and-equipment-application-and-replays-in-command-order-after-restart' });
   }
 
+  equipUnitWeapon({ participantId, runId, mutationId, unitId, weaponId, timestampMs } = {}) {
+    const unit = nonEmpty(unitId, 'unitId');
+    const weapon = nonEmpty(weaponId, 'weaponId');
+    const context = this.#activeRunCommandContext({ participantId, runId, mutationId, action: WORLD_RUN_EQUIP_WEAPON_ACTION, payload: { unitId: unit, weaponId: weapon } });
+    if (context.rejection) return context.rejection;
+    if (context.existing) {
+      return this.#reconcileExisting({
+        ...context,
+        resultFactory: progression => ({
+          equipping: Object.freeze({ accepted: true, receipt: weaponEquipReceipt(progression.activeRun, context.commandId), loadout: progression.activeRun.equipment.unitLoadout(unit) }),
+          runRevision: progression.activeRun.revision
+        })
+      });
+    }
+    const preflight = this.#weaponEquipPreflight(context, unit, weapon);
+    if (preflight) {
+      return Object.freeze({
+        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+        accepted: false,
+        reason: preflight.reason,
+        participantId: context.record.participantId,
+        runId: context.expectedRunId,
+        mutationId: context.commandId,
+        equipping: preflight,
+        progressionPersistence: this.progressionPersistenceMeta(),
+        progression: context.progression.snapshot(),
+        truthBoundary: 'weapon-equipping-was-not-admitted-or-persisted-because-the-authoritative-active-run-preconditions-were-not-met'
+      });
+    }
+    return this.#admitPersistApply({ ...context, actionId: 'world-run-equip-unit-weapon', action: WORLD_RUN_EQUIP_WEAPON_ACTION, payload: { unitId: unit, weaponId: weapon }, timestampMs, successTruthBoundary: 'host-admitted-weapon-equipping-command-was-durably-recorded-before-equipment-loadout-application-and-replays-in-command-order-after-restart' });
+  }
+
   closeActiveRun({ participantId, runId, mutationId, timestampMs } = {}) {
     const record = this.#record(participantId);
     const expectedRunId = nonEmpty(runId, 'runId');
@@ -566,7 +626,7 @@ export class DurableWorldRunCommandAuthority {
       mutationRestoreReport: this.mutationRestoreReport,
       unpersistedMutations: Object.freeze([...this.unpersistedMutations.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([participantId, error]) => Object.freeze({ participantId, error }))),
       truthBoundary: this.runStartStore
-        ? 'bounded-host-global-control-food-policy-unit-training-vehicle-licensing-weapon-crafting-and-terminal-run-close-mutations-replay-in-order-after-the-durable-run-start;other-local-rts-mutations-remain-separate-gaps'
+        ? 'bounded-host-global-control-food-policy-unit-training-vehicle-licensing-weapon-crafting-weapon-equipping-and-terminal-run-close-mutations-replay-in-order-after-the-durable-run-start;other-local-rts-mutations-remain-separate-gaps'
         : 'run mutations remain process-memory-only without durable-run-start storage'
     });
   }

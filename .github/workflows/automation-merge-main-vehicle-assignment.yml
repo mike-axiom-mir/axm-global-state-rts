@@ -1,3 +1,4 @@
+# Reconcile current main before merge; remove this helper before landing.
 name: Automation merge latest main for vehicle assignment authority
 
 on:

@@ -13,42 +13,35 @@ function readinessBlocksAction(actionId, text) {
   return false;
 }
 
-let pendingRetry = null;
+function scheduleRetryGuidance(actionId, feedbackAtAttempt) {
+  let checks = 0;
+  const timer = setInterval(() => {
+    checks += 1;
+    const feedback = document.querySelector('#gameplayFeedback');
+    const outcome = feedback?.textContent?.trim() || '';
+    const readinessAfter = readText('#gameplayReadiness');
 
-function appendSettledRetryGuidance() {
-  const pending = pendingRetry;
-  if (!pending) return;
+    if (!feedback || !readinessBlocksAction(actionId, readinessAfter)) {
+      clearInterval(timer);
+      return;
+    }
+    if (outcome.includes('Retry path ·')) {
+      clearInterval(timer);
+      return;
+    }
 
-  const feedback = document.querySelector('#gameplayFeedback');
-  const outcome = feedback?.textContent?.trim() || '';
-  if (!feedback || !outcome) return;
+    const stillAdmissionText = /submitted through its existing admitted input path$/i.test(outcome);
+    const settledOutcome = outcome && outcome !== feedbackAtAttempt && !stillAdmissionText;
+    if (settledOutcome) {
+      clearInterval(timer);
+      feedback.textContent = `${outcome} · Retry path · ${readinessAfter}`;
+      return;
+    }
 
-  // submitAction first reports transport/admission. Wait until the existing gameplay
-  // authority has replaced that temporary text with its settled command outcome.
-  if (/submitted through its existing admitted input path$/i.test(outcome)) return;
-  if (outcome.includes('Retry path ·')) {
-    pendingRetry = null;
-    return;
-  }
-
-  const readinessAfter = readText('#gameplayReadiness');
-  if (!readinessBlocksAction(pending.actionId, readinessAfter)) {
-    pendingRetry = null;
-    return;
-  }
-
-  pendingRetry = null;
-  feedback.textContent = `${outcome} · Retry path · ${readinessAfter}`;
+    // Presentation-only observation window. The command itself is never repeated.
+    if (checks >= 60) clearInterval(timer);
+  }, 16);
 }
-
-const outcomeObserver = new MutationObserver(() => {
-  queueMicrotask(appendSettledRetryGuidance);
-});
-outcomeObserver.observe(document.documentElement, {
-  subtree: true,
-  childList: true,
-  characterData: true
-});
 
 document.addEventListener('click', event => {
   const button = event.target.closest?.('#gameplaySurface [data-gameplay-action]');
@@ -60,8 +53,7 @@ document.addEventListener('click', event => {
   const readinessBefore = readText('#gameplayReadiness');
   if (!readinessBlocksAction(actionId, readinessBefore)) return;
 
-  // Keep only one explicit attempted command pending. No command is repeated here;
-  // this module observes the already-admitted path and explains how the player can retry.
-  pendingRetry = { actionId, readinessBefore };
-  queueMicrotask(appendSettledRetryGuidance);
+  // Observe the already-admitted action only. No automatic retry, alternate command
+  // path, or gameplay mutation is introduced by this presentation layer.
+  scheduleRetryGuidance(actionId, readText('#gameplayFeedback'));
 }, true);

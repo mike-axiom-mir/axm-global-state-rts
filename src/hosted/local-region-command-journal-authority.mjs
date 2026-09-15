@@ -22,6 +22,7 @@ export const LOCAL_REGION_COMMAND_JOURNAL_MAX_COMMANDS = 128;
 const ACTIONS = Object.freeze(['gather-scrap', 'explore', 'repair-core']);
 const CONTROLLER_KINDS = Object.freeze(['human', 'machine']);
 const INTENT_KEYS = Object.freeze(['actionId', 'cursorXM', 'cursorZM', 'stepCount']);
+const OPTIONAL_INTENT_KEYS = Object.freeze(['crewIds']);
 const SCRAP_MILLI_PER_UNIT = 1000;
 const SCRAP_EPSILON = 1e-9;
 
@@ -79,12 +80,26 @@ function normalizeParticipant(raw) {
   return Object.freeze({ participantId, controllerKind });
 }
 
+function normalizeCrewIds(value) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new TypeError('intent.crewIds must be an array when supplied');
+  const crewIds = value.map((raw, index) => {
+    const id = String(raw ?? '').trim();
+    if (!id) throw new TypeError(`intent.crewIds[${index}] must be a non-empty Crew id`);
+    return id;
+  });
+  if (new Set(crewIds).size !== crewIds.length) throw new TypeError('intent.crewIds must not contain duplicates');
+  return Object.freeze([...crewIds].sort());
+}
+
 function normalizeIntent(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new TypeError('intent must be an object');
   const keys = Object.keys(raw).sort();
-  const expectedKeys = [...INTENT_KEYS].sort();
-  if (keys.length !== expectedKeys.length || keys.some((key, index) => key !== expectedKeys[index])) {
-    throw new TypeError(`intent must contain exactly: ${INTENT_KEYS.join(', ')}`);
+  const allowed = new Set([...INTENT_KEYS, ...OPTIONAL_INTENT_KEYS]);
+  const missing = INTENT_KEYS.filter(key => !keys.includes(key));
+  const unknown = keys.filter(key => !allowed.has(key));
+  if (missing.length || unknown.length) {
+    throw new TypeError(`intent must contain exactly: ${INTENT_KEYS.join(', ')}, with optional crewIds`);
   }
   const actionId = nonEmpty(raw.actionId, 'intent.actionId');
   if (!ACTIONS.includes(actionId)) throw new RangeError(`unsupported local replay action: ${actionId}`);
@@ -94,7 +109,14 @@ function normalizeIntent(raw) {
   if (stepCount > LOCAL_OUTCOME_REPLAY_MAX_STEPS) {
     throw new RangeError(`intent.stepCount must be <= ${LOCAL_OUTCOME_REPLAY_MAX_STEPS}`);
   }
-  return Object.freeze({ actionId, cursorXM, cursorZM, stepCount });
+  const crewIds = normalizeCrewIds(raw.crewIds);
+  return Object.freeze({
+    actionId,
+    cursorXM,
+    cursorZM,
+    stepCount,
+    ...(crewIds === undefined ? {} : { crewIds })
+  });
 }
 
 function stateHash(simulation) {
@@ -214,7 +236,8 @@ function applyPhysicalCommand(simulation, intent, worldHourIndex) {
   simulation.setLightingPhase(lightingPhase);
   const action = simulation.issueLocalAction(intent.actionId, {
     cursorXM: intent.cursorXM,
-    cursorZM: intent.cursorZM
+    cursorZM: intent.cursorZM,
+    crewIds: intent.crewIds ?? null
   });
   if (!action.accepted) return Object.freeze({ accepted: false, reason: action.reason, lightingPhase });
   simulation.advance(intent.stepCount * LOCAL_REGION_DEFAULT_STEP_MS);

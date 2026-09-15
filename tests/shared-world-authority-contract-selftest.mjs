@@ -65,9 +65,9 @@ assert.equal(contract.commandAdmission.requiredSharedWorldMaxActions, 100);
 assert.equal(contract.commandAdmission.rollingWindowMs, 60_000);
 assert.equal(contract.commandAdmission.requiredPolicySatisfied, true);
 assert.deepEqual(contract.durableRunAuthority.actionIds, CURRENT_DURABLE_RUN_ACTION_IDS);
-assert.equal(contract.durableRunAuthority.actionIds.length, 7);
-assert.equal(contract.durableRunAuthority.actionIds.includes('assign-vehicle'), false,
-  'contract must not claim vehicle assignment before that command is durable');
+assert.equal(contract.durableRunAuthority.actionIds.length, 8);
+assert.equal(contract.durableRunAuthority.actionIds.includes('assign-vehicle'), true,
+  'contract should claim vehicle assignment only after that command is durable');
 assert.equal(contract.persistence.worldAccounts.enabled, true);
 assert.equal(contract.persistence.worldAccounts.kind, 'memory-test-store');
 assert.equal(contract.observedHost.participantCount, 2);

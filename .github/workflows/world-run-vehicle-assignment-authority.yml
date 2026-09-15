@@ -1,0 +1,41 @@
+name: World run host vehicle assignment authority
+
+on:
+  pull_request:
+    paths:
+      - 'src/hosted/durable-world-run-command-authority.mjs'
+      - 'src/hosted/world-run-http-api.mjs'
+      - 'src/hosted/shared-world-authority-contract.mjs'
+      - 'tests/shared-world-authority-contract-selftest.mjs'
+      - 'tests/world-run-vehicle-assignment-authority-selftest.mjs'
+      - '.github/workflows/world-run-vehicle-assignment-authority.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  durable-vehicle-assignment-authority:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check authority sources
+        run: |
+          node --check src/hosted/durable-world-run-command-authority.mjs
+          node --check src/hosted/world-run-http-api.mjs
+          node --check src/hosted/shared-world-authority-contract.mjs
+          node --check tests/shared-world-authority-contract-selftest.mjs
+          node --check tests/world-run-vehicle-assignment-authority-selftest.mjs
+      - name: Run full deterministic source suite
+        run: npm test
+      - name: Exercise truthful shared-world authority contract
+        run: node tests/shared-world-authority-contract-selftest.mjs
+      - name: Exercise durable vehicle assignment authority and restart replay
+        run: node tests/world-run-vehicle-assignment-authority-selftest.mjs

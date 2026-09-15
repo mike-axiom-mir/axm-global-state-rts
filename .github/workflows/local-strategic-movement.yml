@@ -12,6 +12,7 @@ on:
       - 'game/primary-world-objective-surface.mjs'
       - 'game/index.html'
       - 'tests/local-strategic-gameplay-selftest.mjs'
+      - 'tests/primary-city-pressure-convergence-selftest.mjs'
       - 'tests/browser/local-strategic-movement.spec.js'
       - 'tests/browser/primary-strategic-surface.spec.js'
       - 'tests/browser/primary-world-objective-surface.spec.js'
@@ -40,12 +41,14 @@ jobs:
         run: |
           npm test
           node tests/local-strategic-gameplay-selftest.mjs
+          node tests/primary-city-pressure-convergence-selftest.mjs
           node --check src/sim/local-strategic-gameplay.mjs
           node --check src/sim/local-vehicle-gameplay.mjs
           node --check game/strategic-movement.mjs
           node --check game/primary-strategic-gameplay.mjs
           node --check game/primary-strategic-surface.mjs
           node --check game/primary-world-objective-surface.mjs
+          node --check tests/primary-city-pressure-convergence-selftest.mjs
           node --check tests/browser/local-strategic-movement.spec.js
           node --check tests/browser/primary-strategic-surface.spec.js
           node --check tests/browser/primary-world-objective-surface.spec.js

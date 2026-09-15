@@ -1,3 +1,5 @@
+import './host-strategic-city-provocation.mjs';
+
 const RETRYABLE_ACTIONS = new Set(['confirm', 'gather-scrap', 'repair-core', 'explore']);
 
 function readText(selector) {

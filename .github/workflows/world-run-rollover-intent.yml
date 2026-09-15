@@ -1,9 +1,10 @@
-name: World run durable rollover intent
+name: World run durable rollover continuity
 
 on:
   pull_request:
     paths:
       - 'src/hosted/world-run-start-store.mjs'
+      - 'src/hosted/world-run-session-authority.mjs'
       - 'src/hosted/prepared-world-run-rollover-authority.mjs'
       - 'src/hosted/world-run-http-api.mjs'
       - 'tests/world-run-rollover-intent-selftest.mjs'
@@ -14,7 +15,7 @@ permissions:
   contents: read
 
 jobs:
-  durable-rollover-intent:
+  durable-rollover-continuity:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,10 +29,11 @@ jobs:
       - name: Check rollover authority sources
         run: |
           node --check src/hosted/world-run-start-store.mjs
+          node --check src/hosted/world-run-session-authority.mjs
           node --check src/hosted/prepared-world-run-rollover-authority.mjs
           node --check src/hosted/world-run-http-api.mjs
           node --check tests/world-run-rollover-intent-selftest.mjs
       - name: Run full deterministic source suite
         run: npm test
-      - name: Exercise archive-bound rollover preparation and restart validation
+      - name: Exercise archive-bound rollover prepare execute and restart reconciliation
         run: node tests/world-run-rollover-intent-selftest.mjs

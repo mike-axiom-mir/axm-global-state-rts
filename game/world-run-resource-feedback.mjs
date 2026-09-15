@@ -111,5 +111,8 @@ Object.defineProperty(window, '__AXM_WORLD_RUN_RESOURCE_FEEDBACK__', {
   })
 });
 
+const lifecycleObserver = new MutationObserver(() => { render(); });
+lifecycleObserver.observe(lifecycleSummary, { childList: true, characterData: true, subtree: true });
+
 render();
 setInterval(render, 1500);

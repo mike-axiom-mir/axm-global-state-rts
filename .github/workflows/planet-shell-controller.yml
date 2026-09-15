@@ -23,6 +23,7 @@ on:
       - tests/browser/gameplay-surface.spec.js
       - tests/browser/local-civilization-gameplay.spec.js
       - tests/browser/local-convoy-supply.spec.js
+      - tests/browser/split-screen-seat-hud.spec.js
       - .github/workflows/planet-shell-controller.yml
       - package.json
   push:
@@ -59,6 +60,7 @@ jobs:
           node --check tests/browser/gameplay-surface.spec.js
           node --check tests/browser/local-civilization-gameplay.spec.js
           node --check tests/browser/local-convoy-supply.spec.js
+          node --check tests/browser/split-screen-seat-hud.spec.js
       - name: Install pinned Playwright test runner
         run: npm install --no-save @playwright/test@1.55.0
       - name: Install Chromium runtime
@@ -75,8 +77,8 @@ jobs:
           done
           cat /tmp/axm-global-state-rts-server.log
           exit 1
-      - name: Exercise controllers, machine seat, construction, production, convoy supply, and gameplay surface in Chromium
-        run: npx playwright test tests/browser/planet-shell-controller.spec.js tests/browser/gameplay-surface.spec.js tests/browser/local-civilization-gameplay.spec.js tests/browser/local-convoy-supply.spec.js --reporter=line
+      - name: Exercise controllers, machine seat, construction, production, convoy supply, split-screen HUD, and gameplay surface in Chromium
+        run: npx playwright test tests/browser/planet-shell-controller.spec.js tests/browser/gameplay-surface.spec.js tests/browser/local-civilization-gameplay.spec.js tests/browser/local-convoy-supply.spec.js tests/browser/split-screen-seat-hud.spec.js --reporter=line
       - name: Preserve browser evidence
         if: always()
         uses: actions/upload-artifact@v4

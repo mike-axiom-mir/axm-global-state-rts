@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 const CANDIDATES = Object.freeze([
   ['building-settlement-core-a', 'settlement-hub', 'primary'],
   ['building-settlement-core-a', 'civic-shelter', 'alternate'],
+  ['building-settlement-core-a', 'command-signal-hall', 'alternate'],
   ['building-workshop-a', 'improvised-workshop', 'primary'],
   ['building-workshop-a', 'repair-garage', 'alternate'],
   ['building-storage-depot-a', 'storage-hall', 'primary'],

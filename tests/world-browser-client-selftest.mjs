@@ -12,6 +12,8 @@ const responses = [
   { status: 200, body: { accepted: true, participantId: 'world:chatgpt', regionSeatId: 'seat-1', source: { revision: 1 }, summary: { scrapMilli: 24000 } } },
   { status: 200, body: { accepted: true, participantId: 'world:chatgpt', actorId: 'world:chatgpt', eventType: 'territory.claim' } },
   { status: 200, body: { participantId: 'world:chatgpt', progression: { activeRun: { runId: 'run:world:chatgpt:drop-1' } } } },
+  { status: 200, body: { schema: 'events', encounterNowMs: 12345, events: [{ event: { id: 'world-event:7' }, authoritativeEncounter: true }] } },
+  { status: 200, body: { event: { id: 'world-event:7', kind: 'king-of-hill' }, authoritativeEncounter: true } },
   { status: 400, body: { error: 'not enough stored crates' } }
 ];
 
@@ -99,6 +101,14 @@ assert.equal(runStatus.progression.activeRun.runId, 'run:world:chatgpt:drop-1');
 assert.equal(new URL(calls[8].url).pathname, '/api/world/run');
 assert.equal(new URL(calls[8].url).searchParams.get('participantId'), 'world:chatgpt');
 
+const eventIndex = await client.worldEvents();
+assert.equal(eventIndex.events[0].event.id, 'world-event:7');
+assert.equal(new URL(calls[9].url).pathname, '/api/world/events');
+
+const eventStatus = await client.worldEvent('world-event:7');
+assert.equal(eventStatus.event.kind, 'king-of-hill');
+assert.equal(new URL(calls[10].url).pathname, '/api/world/events/world-event%3A7');
+
 await assert.rejects(
   () => client.openChests('world:chatgpt', 1),
   error => error instanceof WorldBrowserApiError && error.status === 400 && error.message === 'not enough stored crates'
@@ -109,6 +119,7 @@ assert.throws(() => client.submitCommand({ participantId: 'world:chatgpt', comma
 assert.throws(() => client.submitLocalSeatCommand({ participantId: 'world:chatgpt', intent: {}, expectedRevision: -1 }), /expectedRevision/);
 assert.throws(() => client.submitLocalSeatCommand({ participantId: 'world:chatgpt', intent: null, expectedRevision: 0 }), /intent object required/);
 assert.throws(() => client.recordVerifiedLocalSalvage({ participantId: 'world:chatgpt', expectedRevision: -1 }), /expectedRevision/);
+assert.throws(() => client.worldEvent(''), /eventId required/);
 
 const originalFetch = globalThis.fetch;
 try {

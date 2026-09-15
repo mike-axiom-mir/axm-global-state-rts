@@ -4,7 +4,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -46,9 +46,6 @@ async function pulse(page, gamepadIndex, buttonIndex, holdMs = 70) {
 }
 
 test('command deck makes construction and aggregate production immediately playable without animation dependency', async ({ page }) => {
-  // This integration gate intentionally captures full-page visual evidence after exercising live production.
-  // Shared CI runners have twice completed all gameplay assertions but exhausted the default 30s budget while
-  // beginning that evidence screenshot. Give the evidence step bounded headroom without changing product timing claims.
   test.setTimeout(60_000);
 
   const failures = captureRuntimeFailures(page);
@@ -57,7 +54,7 @@ test('command deck makes construction and aggregate production immediately playa
 
   await page.locator('[data-gameplay-action="map-toggle"]').click();
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
-  await expect(page.locator('#gameplaySummary')).toContainText('100/5000 scrap · 260 timber');
+  await expect(page.locator('#gameplaySummary')).toContainText('100/5000 scrap · 260 timber · 25 industrial-metal');
   await expect(page.locator('#gameplaySummary')).toContainText('browser-local-not-host-persistent');
 
   await page.locator('[data-gameplay-action="ui-right"]').click();
@@ -66,7 +63,7 @@ test('command deck makes construction and aggregate production immediately playa
   await page.locator('[data-gameplay-action="confirm"]').click();
   await expect(page.locator('#inputStatus')).toContainText('seat-1 · construct · Shallow Mine constructed');
   await expect(page.locator('#gameplaySummary')).toContainText('1 placed · Shallow Mine');
-  await expect(page.locator('#gameplaySummary')).toContainText('10/5000 scrap · 190 timber');
+  await expect(page.locator('#gameplaySummary')).toContainText('10/5000 scrap · 190 timber · 25 industrial-metal');
 
   let civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1'));
   expect(civilization.structures).toHaveLength(1);
@@ -127,5 +124,71 @@ test('human controller seat uses D-pad build/production menus through the same a
   await pulse(page, 1, 2); // X: release workers.
   civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-2'));
   expect(civilization.production.jobs[0].workerCount).toBe(0);
+  expect(failures, failures.join('\n')).toEqual([]);
+});
+
+test('vehicle menu reuses real vehicle/manpower authority with aggregate driver assignment and ground-order exclusion', async ({ page }) => {
+  test.setTimeout(90_000);
+  const failures = captureRuntimeFailures(page);
+  const response = await page.goto('http://127.0.0.1:4174/game/?players=1', { waitUntil: 'networkidle' });
+  expect(response?.ok()).toBe(true);
+
+  await page.locator('[data-gameplay-action="map-toggle"]').click();
+  await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
+
+  // Earn the missing scrap through the real LOCAL gather loop instead of injecting test currency.
+  await page.locator('[data-gameplay-action="gather-scrap"]').click();
+  await expect.poll(async () => page.evaluate(() => {
+    const bridge = window.__AXM_GLOBAL_STATE_RTS__;
+    const simulation = bridge.describeSeatSimulation('seat-1');
+    const allEmpty = simulation.crew.every(crew => Number(crew.carrying || 0) <= 1e-9);
+    return allEmpty ? simulation.storage.scrap : 0;
+  }), { timeout: 35_000, intervals: [250, 500, 1000] }).toBeGreaterThanOrEqual(240);
+
+  // Move to an ordinary idle end-state so a vehicle driver cannot also be a ground worker.
+  await page.locator('[data-gameplay-action="explore"]').click();
+  await expect.poll(async () => page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1').order), {
+    timeout: 30_000,
+    intervals: [250, 500, 1000]
+  }).toBeNull();
+
+  await page.locator('[data-gameplay-action="ui-up"]').click();
+  await expect(page.locator('#gameplaySummary')).toContainText('vehicle menu open');
+  await expect(page.locator('#gameplaySummary')).toContainText('Utility Hauler');
+
+  await page.locator('[data-gameplay-action="party-menu"]').click();
+  await expect(page.locator('#inputStatus')).toContainText('light driver');
+  await page.locator('[data-gameplay-action="confirm"]').click();
+  await expect(page.locator('#inputStatus')).toContainText('Utility Hauler constructed');
+
+  let civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1'));
+  expect(civilization.vehicles.vehicleCount).toBe(1);
+  expect(civilization.vehicles.driverCount).toBe(0);
+  expect(civilization.vehicles.vehicles[0].definitionId).toBe('vehicle:utility-hauler');
+
+  await page.locator('[data-gameplay-action="context"]').click();
+  civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1'));
+  expect(civilization.vehicles.driverCount).toBe(1);
+  expect(civilization.vehicles.vehicles[0].driverUnitId).toBeTruthy();
+  await expect(page.locator('#gameplaySummary')).toContainText('1 vehicles · 1 drivers · 0 uncrewed');
+
+  await page.locator('[data-gameplay-action="cancel"]').click();
+  await page.locator('[data-gameplay-action="gather-scrap"]').click();
+  await expect(page.locator('#inputStatus')).toContainText('selected-party-has-vehicle-drivers');
+  const blockedSimulation = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'));
+  expect(blockedSimulation.order).toBeNull();
+
+  await page.locator('[data-gameplay-action="ui-up"]').click();
+  await page.locator('[data-gameplay-action="context"]').click();
+  civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1'));
+  expect(civilization.vehicles.driverCount).toBe(0);
+  await page.locator('[data-gameplay-action="cancel"]').click();
+
+  await page.locator('[data-gameplay-action="gather-scrap"]').click();
+  await expect.poll(async () => page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1').order?.type || null), {
+    timeout: 5_000
+  }).toBe('gather-scrap');
+
+  await page.screenshot({ path: 'test-results/global-state-rts-vehicle-driver-control.png', fullPage: true });
   expect(failures, failures.join('\n')).toEqual([]);
 });

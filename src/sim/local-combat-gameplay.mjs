@@ -1,15 +1,19 @@
 import { createCivilizationManpower } from './civilization-manpower.mjs';
 import { createCombatEncounter, createCombatFormation } from './formation-combat.mjs';
 import { reconcileLocalCasualties } from './local-casualty-reconciliation.mjs';
+import { createLocalContinuityCombatBridge } from './local-continuity-combat-bridge.mjs';
 import { LOCAL_CIVILIZATION_GAMEPLAY_SCHEMA } from './local-civilization-gameplay.mjs';
 import { LOCAL_PARTY_GAMEPLAY_SCHEMA } from './local-party-gameplay.mjs';
 import { LOCAL_REGION_SIM_SCHEMA } from './local-region-sim.mjs';
+import { createStructureSiegeEncounter } from './structure-combat.mjs';
 
-export const LOCAL_COMBAT_GAMEPLAY_SCHEMA = 'axm.global-state-rts.local-combat-gameplay/v0.1';
+export const LOCAL_COMBAT_GAMEPLAY_SCHEMA = 'axm.global-state-rts.local-combat-gameplay/v0.2';
 
 const NO_EQUIPMENT = Object.freeze({
   unitLoadout() { return null; }
 });
+
+const MAX_UNOPPOSED_SIEGE_EXCHANGES = 128;
 
 function freezeResult(fields = {}) {
   return Object.freeze({ handled: true, ...fields });
@@ -75,12 +79,16 @@ export class LocalCombatGameplay {
     this.simulation = simulation;
     this.partyGameplay = partyGameplay;
     this.civilizationGameplay = civilizationGameplay;
+    this.continuityBridge = createLocalContinuityCombatBridge({ simulation, civilizationGameplay });
     this.exchangeSeconds = exchangeSeconds;
     this.distanceM = distanceM;
     this.menuOpen = false;
     this.revision = 0;
     this.encounterSequence = 0;
     this.encounter = null;
+    this.siegeSequence = 0;
+    this.siegeEncounter = null;
+    this.lastSiegeResolution = null;
     this.engagedLocalCrewIds = [];
     this.engagedLocalByManpower = new Map();
     this.hostileManpower = createCivilizationManpower({
@@ -90,12 +98,28 @@ export class LocalCombatGameplay {
     this.initialHostileCount = hostileCrewCount;
     this.lastOutcome = Object.freeze({
       kind: 'ready',
-      message: `${hostileCrewCount}-Crew LOCAL hostile contact detected. Combat is browser-local and not host/world-event authority.`
+      message: `${hostileCrewCount}-Crew LOCAL hostile contact detected. Combat and continuity consequences are browser-local and not host/world-event authority.`
     });
   }
 
   #contactRemaining() {
     return this.hostileManpower.snapshot().population;
+  }
+
+  #continuitySnapshot() {
+    const bridge = this.continuityBridge.snapshot();
+    const status = bridge.continuity.continuity;
+    const core = bridge.buildings.find(building => building.instanceId === bridge.physicalCoreId) || null;
+    return Object.freeze({
+      alive: status.alive,
+      dead: status.dead,
+      totalEligibleBuildings: status.totalEligible,
+      activeEligibleBuildings: status.activeEligible,
+      destroyedEligibleBuildings: status.destroyedEligible,
+      physicalCoreId: bridge.physicalCoreId,
+      coreIntegrity: core?.integrity ?? 0,
+      coreMaxIntegrity: core?.maxIntegrity ?? 0
+    });
   }
 
   #releaseCombatCrewToIdle() {
@@ -162,6 +186,7 @@ export class LocalCombatGameplay {
       : Object.freeze({ released: 0, affectedBuildingIds: Object.freeze([]) });
     const orderDisposition = this.#preemptGroundOrder(liveCrew);
 
+    this.continuityBridge.syncCoreFromSimulation({ eventId: `local-combat-core-sync:${this.seatId}:${this.encounterSequence + 1}` });
     this.engagedLocalCrewIds = [...liveCrew];
     this.engagedLocalByManpower = reverseLocalMap(this.civilizationGameplay);
     for (const crew of this.simulation.crew) {
@@ -202,6 +227,102 @@ export class LocalCombatGameplay {
       productionReleased: productionRelease.released || 0,
       orderDisposition
     });
+  }
+
+  #activeContinuityTargets() {
+    const bridge = this.continuityBridge.snapshot();
+    return bridge.buildings
+      .filter(building => building.continuityEligible && !building.destroyed)
+      .sort((a, b) => {
+        if (a.instanceId === bridge.physicalCoreId) return -1;
+        if (b.instanceId === bridge.physicalCoreId) return 1;
+        return a.instanceId.localeCompare(b.instanceId);
+      });
+  }
+
+  #resolveUnopposedSiege() {
+    const startedContinuity = this.#continuitySnapshot();
+    if (this.simulation.snapshot().crew.length > 0 || this.#contactRemaining() <= 0 || startedContinuity.dead) return null;
+
+    this.continuityBridge.syncCoreFromSimulation({ eventId: `local-unopposed-siege-core-sync:${this.seatId}:${this.siegeSequence + 1}` });
+    let exchanges = 0;
+    let structuresDestroyed = 0;
+    let stalled = false;
+
+    while (this.#contactRemaining() > 0 && this.continuityBridge.snapshot().alive && exchanges < MAX_UNOPPOSED_SIEGE_EXCHANGES) {
+      const targets = this.#activeContinuityTargets();
+      if (!targets.length) break;
+      const target = targets[0];
+      const hostileIds = this.hostileManpower.snapshot().units.map(unit => unit.id);
+      if (!hostileIds.length) break;
+      const attacker = createCombatFormation({
+        id: `${this.seatId}:unopposed-siege-attackers:${this.siegeSequence + 1}`,
+        memberIds: hostileIds,
+        manpower: this.hostileManpower,
+        equipment: NO_EQUIPMENT
+      });
+      const defendingBuildingIds = this.continuityBridge.snapshot().buildings
+        .filter(building => !building.destroyed)
+        .map(building => building.instanceId);
+      this.siegeSequence += 1;
+      this.siegeEncounter = createStructureSiegeEncounter({
+        id: `${this.seatId}:browser-local-siege-${this.siegeSequence}`,
+        attacker,
+        defenderConstruction: this.continuityBridge,
+        targetBuildingId: target.instanceId,
+        defendingBuildingIds
+      });
+
+      let targetProgressed = false;
+      while (!this.siegeEncounter.snapshot().closed && exchanges < MAX_UNOPPOSED_SIEGE_EXCHANGES) {
+        const result = this.siegeEncounter.advance(this.exchangeSeconds, { distanceM: this.distanceM });
+        if (!result.accepted) break;
+        exchanges += 1;
+        if (result.receipt.targetDamage > 0 || result.receipt.attackerCasualties > 0) targetProgressed = true;
+        if (result.attackerCasualtyIds?.length) {
+          this.hostileManpower.removeUnits(result.attackerCasualtyIds, {
+            reason: 'browser-local-static-defense-casualty',
+            eventId: `${this.siegeEncounter.id}:tick-${result.receipt.tick}`
+          });
+        }
+        if (result.receipt.targetDestroyed) structuresDestroyed += 1;
+      }
+      if (!targetProgressed) {
+        stalled = true;
+        break;
+      }
+    }
+
+    const continuity = this.#continuitySnapshot();
+    const resolution = Object.freeze({
+      startedFromAliveContinuity: startedContinuity.alive,
+      exchanges,
+      structuresDestroyed,
+      hostileCrewRemaining: this.#contactRemaining(),
+      civilizationDead: continuity.dead,
+      budgetExhausted: exchanges >= MAX_UNOPPOSED_SIEGE_EXCHANGES,
+      stalled
+    });
+    this.lastSiegeResolution = resolution;
+    this.revision += 1;
+
+    if (continuity.dead) {
+      this.lastOutcome = Object.freeze({
+        kind: 'civilization-death',
+        message: `Civilization continuity exhausted · all qualifying LOCAL buildings were destroyed after Crew defense collapsed · ${this.#contactRemaining()} hostile Crew remain. Host run closure is not automatic from this browser-local evidence yet.`
+      });
+    } else if (this.#contactRemaining() === 0) {
+      this.lastOutcome = Object.freeze({
+        kind: 'siege-repelled',
+        message: `All LOCAL Crew were lost, but static defenses eliminated the hostile contact before civilization continuity was exhausted · ${continuity.activeEligibleBuildings}/${continuity.totalEligibleBuildings} qualifying buildings remain.`
+      });
+    } else {
+      this.lastOutcome = Object.freeze({
+        kind: 'siege-stalled',
+        message: `Unopposed LOCAL siege stopped without a terminal result · ${continuity.activeEligibleBuildings}/${continuity.totalEligibleBuildings} qualifying buildings remain · ${this.#contactRemaining()} hostile Crew remain.`
+      });
+    }
+    return resolution;
   }
 
   #advanceExchange() {
@@ -259,14 +380,21 @@ export class LocalCombatGameplay {
       kind,
       message: `Combat exchange ${result.receipt.tick} · ${result.receipt.attackerCasualties} Crew lost · ${result.receipt.defenderCasualties} hostile lost · ${suffix}`
     });
+
+    const siegeResolution = kind === 'defeat' && this.simulation.snapshot().crew.length === 0
+      ? this.#resolveUnopposedSiege()
+      : null;
+
     return freezeResult({
       accepted: true,
       action: 'combat-exchange',
       receipt: result.receipt,
       reconciliation,
-      contactRemaining,
+      siegeResolution,
+      contactRemaining: this.#contactRemaining(),
       engagedCrewRemaining: selectedSurvivors,
-      encounterClosed: Boolean(result.receipt.closed)
+      encounterClosed: Boolean(result.receipt.closed),
+      civilizationDead: this.#continuitySnapshot().dead
     });
   }
 
@@ -274,6 +402,7 @@ export class LocalCombatGameplay {
     const action = String(actionId || '');
     if (!this.menuOpen) {
       if (action !== 'ui-down') return null;
+      this.continuityBridge.syncCoreFromSimulation({ eventId: `local-combat-menu-core-sync:${this.seatId}:${this.revision + 1}` });
       this.menuOpen = true;
       this.revision += 1;
       this.lastOutcome = Object.freeze({
@@ -292,6 +421,7 @@ export class LocalCombatGameplay {
     }
 
     if (action !== 'confirm') return freezeResult({ accepted: false, reason: 'combat-menu-open' });
+    if (this.#continuitySnapshot().dead) return freezeResult({ accepted: false, reason: 'civilization-already-dead' });
     if (!this.encounter) {
       const started = this.#beginEncounter(selectedCrewIds);
       if (!started.accepted) return started;
@@ -303,7 +433,7 @@ export class LocalCombatGameplay {
     return Object.freeze({
       schema: LOCAL_COMBAT_GAMEPLAY_SCHEMA,
       seatId: this.seatId,
-      stateScope: 'browser-local-combat-contact-not-host-persistent',
+      stateScope: 'browser-local-combat-and-continuity-not-host-persistent',
       menuOpen: this.menuOpen,
       revision: this.revision,
       contact: Object.freeze({
@@ -312,9 +442,12 @@ export class LocalCombatGameplay {
         cleared: this.#contactRemaining() === 0
       }),
       encounter: this.encounter ? this.encounter.snapshot() : null,
+      siege: this.siegeEncounter ? this.siegeEncounter.snapshot() : null,
+      lastSiegeResolution: this.lastSiegeResolution,
+      continuity: this.#continuitySnapshot(),
       engagedLocalCrewIds: Object.freeze([...this.engagedLocalCrewIds]),
       lastOutcome: this.lastOutcome,
-      truthBoundary: 'reuses deterministic CombatFormation/CombatEncounter and LOCAL casualty reconciliation; contact is a finite browser-local proving target, uses existing unarmed fallback until equipment bridging, is not host-persistent, not a world event, not AI authority, and claims no bespoke animation'
+      truthBoundary: 'reuses deterministic CombatFormation/CombatEncounter, LOCAL casualty reconciliation, CivilizationContinuity, and StructureSiegeEncounter; total Crew loss alone is not civilization death, but surviving hostiles can deterministically overrun qualifying LOCAL buildings; all consequences remain browser-local, are not host-persistent/world-event/AI authority, do not automatically close the durable host run, use the existing unarmed fallback until equipment bridging, and claim no bespoke animation'
     });
   }
 }

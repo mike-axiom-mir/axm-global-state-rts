@@ -6,8 +6,10 @@ on:
       - game/combat-proving-ground.html
       - game/combat-proving-ground.mjs
       - src/sim/local-combat-gameplay.mjs
+      - src/sim/local-continuity-combat-bridge.mjs
       - src/sim/local-casualty-reconciliation.mjs
       - src/sim/formation-combat.mjs
+      - src/sim/structure-combat.mjs
       - src/sim/local-civilization-gameplay.mjs
       - src/sim/local-party-gameplay.mjs
       - src/sim/local-region-sim.mjs
@@ -44,6 +46,7 @@ jobs:
           node tests/combat-authority-selftest.mjs
           node tests/local-casualty-reconciliation-selftest.mjs
           node tests/local-combat-gameplay-selftest.mjs
+          node --check src/sim/local-continuity-combat-bridge.mjs
           node --check src/sim/local-combat-gameplay.mjs
           node --check game/combat-proving-ground.mjs
           node --check tests/browser/local-combat-proving-ground.spec.js

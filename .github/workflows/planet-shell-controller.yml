@@ -8,11 +8,16 @@ on:
       - src/session/**
       - src/presentation/**
       - src/sim/local-civilization-gameplay.mjs
+      - src/sim/local-combat-gameplay.mjs
+      - src/sim/local-continuity-combat-bridge.mjs
+      - src/sim/local-casualty-reconciliation.mjs
+      - src/sim/structure-combat.mjs
       - src/hosted/local-seat-binding-store.mjs
       - src/hosted/local-seat-journal-authority.mjs
       - src/hosted/world-session-authority.mjs
       - scripts/serve.mjs
       - tests/local-civilization-gameplay-selftest.mjs
+      - tests/local-combat-gameplay-selftest.mjs
       - tests/browser/planet-shell-controller.spec.js
       - tests/browser/gameplay-surface.spec.js
       - tests/browser/local-civilization-gameplay.spec.js
@@ -42,7 +47,10 @@ jobs:
         run: |
           npm test
           node tests/local-civilization-gameplay-selftest.mjs
+          node tests/local-combat-gameplay-selftest.mjs
           node --check src/sim/local-civilization-gameplay.mjs
+          node --check src/sim/local-continuity-combat-bridge.mjs
+          node --check src/sim/local-combat-gameplay.mjs
           node --check game/app.mjs
           node --check game/gameplay-surface.mjs
           node --check tests/browser/gameplay-surface.spec.js

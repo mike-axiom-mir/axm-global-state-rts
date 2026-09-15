@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 
 const CANDIDATES = Object.freeze([
   'clustered-storage-bins',
-  'storage-hall'
+  'storage-hall',
+  'battery-fuel-station'
 ]);
 
 function captureRuntimeFailures(page) {

@@ -17,11 +17,7 @@ const strategicBySeat = new Map();
 const combatBySeat = new Map();
 const lastCityInteractionBySeat = new Map();
 const raidTransitBySeat = new Map();
-const strategicWorldRuntime = createGlobalWorldRuntime({
-  worldSeed: 'primary-local-strategic-gameplay',
-  majorCityCount: 2,
-  regionalCityCount: 5
-});
+const strategicWorldRuntime = createGlobalWorldRuntime();
 const strategicPressureDirector = createWorldPressureDirector({
   cityFabric: strategicWorldRuntime.cityFabric,
   worldScale: strategicWorldRuntime.scale,

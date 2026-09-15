@@ -12,11 +12,15 @@ function requireRuntimeBridge() {
   return bridge;
 }
 
-function requirePlanEntry(stableAssetId) {
+function requirePlanEntry(stableAssetId, sourceAsset = null) {
   const key = String(stableAssetId || '');
-  const entry = creationMachineDefenseTrialPlan().find(candidate => candidate.stableAssetId === key);
-  if (!entry) throw new Error(`no Creation Machine defense candidate registered for ${key || 'empty stable asset id'}`);
-  return entry;
+  const candidates = creationMachineDefenseTrialPlan().filter(candidate => candidate.stableAssetId === key);
+  if (!candidates.length) throw new Error(`no Creation Machine defense candidate registered for ${key || 'empty stable asset id'}`);
+  if (!sourceAsset) return candidates[0];
+  const sourceKey = String(sourceAsset || '');
+  const exact = candidates.find(candidate => candidate.sourceAsset === sourceKey);
+  if (!exact) throw new Error(`no Creation Machine defense source ${sourceKey || 'empty source id'} registered for ${key}`);
+  return exact;
 }
 
 async function fetchCandidate(plan, { includeBytes = true } = {}) {
@@ -48,6 +52,7 @@ export async function inspectCreationMachineDefenseSet() {
     schema: CREATION_MACHINE_DEFENSE_SET_SCHEMA,
     status: 'PREPARED_DEFENSE_SET_AVAILABLE_NOT_ACCEPTED',
     candidates: Object.freeze(candidates.map(candidate => Object.freeze({
+      candidateId: candidate.plan.candidateId,
       stableAssetId: candidate.plan.stableAssetId,
       sourceAsset: candidate.plan.sourceAsset,
       gameplayTarget: candidate.plan.gameplayTarget,
@@ -67,10 +72,11 @@ export async function inspectCreationMachineDefenseSet() {
 export async function adoptCreationMachineDefenseAsset({
   seatId = 'seat-1',
   stableAssetId = 'defense-light-tower-a',
+  sourceAsset = null,
   focus = false
 } = {}) {
   const bridge = requireRuntimeBridge();
-  const plan = requirePlanEntry(stableAssetId);
+  const plan = requirePlanEntry(stableAssetId, sourceAsset);
   const candidate = await fetchCandidate(plan);
   const receipt = await bridge.installExternalStaticAsset({
     seatId,
@@ -86,17 +92,19 @@ export async function adoptCreationMachineDefenseAsset({
     schema: CREATION_MACHINE_DEFENSE_SET_SCHEMA,
     status: 'RUNTIME_IMPORTED_SINGLE_DEFENSE_ALTERNATE_NOT_VISUALLY_ACCEPTED',
     seatId,
+    candidateId: plan.candidateId,
     stableAssetId: plan.stableAssetId,
     sourceAsset: plan.sourceAsset,
+    candidateRole: plan.candidateRole,
     gameplayTarget: plan.gameplayTarget,
     constructionDefinitionId: plan.constructionDefinitionId,
     receipt,
     nonclaims: Object.freeze([
       'Explicit runtime import does not make this alternate asset the default presentation.',
-      'The prior light-tower candidate and procedural fallback remain available; this trial does not silently rewrite accepted art state.',
+      'The procedural fixture and other unaccepted light-tower candidates remain available; selecting one source here is not acceptance of any candidate.',
       'Static import does not establish visual acceptance, source-to-world scale acceptance, collision, navigation, gameplay footprint, split-screen readability or target-device FPS.',
       'The supplied near/far variants do not yet have an evidence-backed automatic LOD handoff distance.',
-      'No lamp sweep, tracking, damage, destruction or other bespoke animation is added by this static trial.'
+      'No lamp sweep, tower movement, tracking, damage, destruction or other bespoke animation is added by this static trial.'
     ])
   });
 }

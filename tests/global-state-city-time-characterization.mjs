@@ -65,17 +65,12 @@ const minutePhysical = physical(minute);
 assert.notDeepEqual(
   directPhysical,
   hourlyPhysical,
-  'current aggregate-city semantics are expected to be sensitive to how elapsed time is chunked'
+  'one large elapsed-time advance currently differs from repeated aggregate-city updates'
 );
 assert.notEqual(
   directPhysical.starvationPressure,
   hourlyPhysical.starvationPressure,
-  'starvation smoothing should expose the current chunk-size dependency'
-);
-assert.notEqual(
-  hourlyPhysical.starvationPressure,
-  minutePhysical.starvationPressure,
-  'different repeated chunk sizes currently produce different nonlinear history'
+  'starvation smoothing exposes the current one-shot versus repeated-update dependency'
 );
 
 console.log('Global State RTS aggregate-city time characterization: GAP CONFIRMED');
@@ -86,6 +81,11 @@ console.log(JSON.stringify({
     direct: { calls: 1, stepSeconds: twelveHours, state: directPhysical },
     hourly: { calls: 12, stepSeconds: 3600, state: hourlyPhysical },
     minute: { calls: 720, stepSeconds: 60, state: minutePhysical }
+  },
+  observations: {
+    directVsHourlyEqual: JSON.stringify(directPhysical) === JSON.stringify(hourlyPhysical),
+    hourlyVsMinuteEqual: JSON.stringify(hourlyPhysical) === JSON.stringify(minutePhysical),
+    hourlyAndMinuteStarvationBothSaturated: hourlyPhysical.starvationPressure === 1 && minutePhysical.starvationPressure === 1
   },
   interpretation: 'advance(totalElapsed) is not currently chunk-invariant; canonical offline catch-up needs an explicit product time-step/boundary contract before adoption.'
 }, null, 2));

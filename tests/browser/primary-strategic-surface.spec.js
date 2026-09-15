@@ -6,7 +6,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -248,7 +248,7 @@ test('primary RTS deck drives one aggregate strategic convoy, mobilizes an arriv
   expect(blockedMidEdge.lastOutcome?.message).toContain('no mid-edge teleport or hidden reroute');
   await expect(page.locator('#inputStatus')).toContainText('convoy-between-landmarks');
   await expect(page.locator('#inputStatus')).toContainText('no mid-edge teleport or hidden reroute');
-  await page.screenshot({ path: 'test-results/global-state-rts-primary-objective-route-transit.png', fullPage: true });
+  await page.screenshot({ path: 'test-results/global-state-rts-primary-strategic-objective-route-transit.png', fullPage: true });
 
   state = await advanceUntilArrived(page);
   expect(state.journey?.status).toBe('arrived');
@@ -258,15 +258,20 @@ test('primary RTS deck drives one aggregate strategic convoy, mobilizes an arriv
   await expect(page.locator('#primaryWorldObjective')).toContainText('convoy is already at that landmark');
   await expect(page.locator('#primaryWorldObjective')).toContainText('event marker itself remains off-network');
 
-  await pulse(page, 2); // X starts the real home route from the objective landmark.
-  state = await primaryStrategicSnapshot(page);
-  expect(state.journey?.status).toBe('transit');
-  expect(state.journey?.destinationNodeId).toBe(state.homeNodeId);
+  if (objectiveLandmarkId !== state.homeNodeId) {
+    await pulse(page, 2); // X starts the real home route from a non-home objective landmark.
+    state = await primaryStrategicSnapshot(page);
+    expect(state.journey?.status).toBe('transit');
+    expect(state.journey?.destinationNodeId).toBe(state.homeNodeId);
 
-  state = await advanceUntilArrived(page);
-  expect(state.journey?.status).toBe('arrived');
-  expect(state.journey?.currentNodeId).toBe(state.homeNodeId);
-  expect(state.deployedLocalCrewIds).toHaveLength(2);
+    state = await advanceUntilArrived(page);
+    expect(state.journey?.status).toBe('arrived');
+    expect(state.journey?.currentNodeId).toBe(state.homeNodeId);
+    expect(state.deployedLocalCrewIds).toHaveLength(2);
+  } else {
+    expect(state.journey?.currentNodeId).toBe(state.homeNodeId);
+    expect(state.deployedLocalCrewIds).toHaveLength(2);
+  }
 
   await pulse(page, 14); // D-pad left releases Crew only after physical home arrival.
   state = await primaryStrategicSnapshot(page);

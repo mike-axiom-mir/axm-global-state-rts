@@ -218,7 +218,43 @@ test('primary RTS deck drives one aggregate strategic convoy, mobilizes an arriv
   state = await primaryStrategicSnapshot(page);
   expect(state.currentCity?.revision).toBe(state.lastCityInteraction?.cityRevision);
 
-  await pulse(page, 2); // X starts the real home route from a landmark.
+  const objectiveText = await page.locator('#primaryWorldObjective').textContent();
+  const objectiveLandmarkMatch = objectiveText?.match(/tracked nearest landmark ([a-z0-9-]+)/i);
+  expect(objectiveLandmarkMatch).not.toBeNull();
+  const objectiveLandmarkId = objectiveLandmarkMatch[1];
+  expect(objectiveLandmarkId).not.toBe(state.journey.currentNodeId);
+  await expect(page.locator('[data-primary-strategic-action="ui-right"]')).toContainText('tracked objective landmark');
+
+  await page.waitForTimeout(700);
+  await pulse(page, 15); // D-pad right routes the aggregate convoy through the existing movement authority.
+  state = await primaryStrategicSnapshot(page);
+  expect(state.journey?.status).toBe('transit');
+  expect(state.journey?.destinationNodeId).toBe(objectiveLandmarkId);
+  expect(state.deployedLocalCrewIds).toHaveLength(2);
+  expect(state.workUnits.aggregateConvoyUnits).toBe(1);
+  expect(state.workUnits.perCrewMovementTicks).toBe(0);
+  expect(state.cargo.cargo.scrap).toBeCloseTo(100, 6);
+  await expect(page.locator('#gameplayFeedback')).toContainText(`Objective route targets nearest transport landmark ${objectiveLandmarkId}`);
+  await expect(page.locator('#gameplayFeedback')).toContainText('does not join, claim, or settle a reward');
+
+  await page.waitForTimeout(700);
+  await pulse(page, 15); // A second route request cannot reroute or teleport while physically between landmarks.
+  const blockedMidEdge = await primaryStrategicSnapshot(page);
+  expect(blockedMidEdge.journey?.status).toBe('transit');
+  expect(blockedMidEdge.journey?.destinationNodeId).toBe(objectiveLandmarkId);
+  await expect(page.locator('#gameplayFeedback')).toContainText('convoy is between landmarks');
+  await expect(page.locator('#gameplayFeedback')).toContainText('no mid-edge teleport or hidden reroute');
+  await page.screenshot({ path: 'test-results/global-state-rts-primary-objective-route-transit.png', fullPage: true });
+
+  state = await advanceUntilArrived(page);
+  expect(state.journey?.status).toBe('arrived');
+  expect(state.journey?.currentNodeId).toBe(objectiveLandmarkId);
+  expect(state.deployedLocalCrewIds).toHaveLength(2);
+  expect(state.cargo.cargo.scrap).toBeCloseTo(100, 6);
+  await expect(page.locator('#primaryWorldObjective')).toContainText('convoy is already at that landmark');
+  await expect(page.locator('#primaryWorldObjective')).toContainText('event marker itself remains off-network');
+
+  await pulse(page, 2); // X starts the real home route from the objective landmark.
   state = await primaryStrategicSnapshot(page);
   expect(state.journey?.status).toBe('transit');
   expect(state.journey?.destinationNodeId).toBe(state.homeNodeId);

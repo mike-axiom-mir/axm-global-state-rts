@@ -180,12 +180,14 @@ try {
     'record-global-control-percent',
     'set-food-policy',
     'train-unit-specialization',
+    'license-unit-vehicle',
     'close-active-run'
   ]);
   assert.deepEqual(meta.body.runLifecycle.progressionPersistence.durableMutationActions, [
     'record-global-control-percent',
     'set-food-policy',
     'train-unit-specialization',
+    'license-unit-vehicle',
     'close-active-run'
   ]);
 

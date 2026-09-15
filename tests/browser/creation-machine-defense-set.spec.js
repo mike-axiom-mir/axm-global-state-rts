@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 
 const CANDIDATES = Object.freeze([
   'spotlight-tower',
-  'crane-section-watchtower'
+  'crane-section-watchtower',
+  'light-tower'
 ]);
 
 function captureRuntimeFailures(page) {

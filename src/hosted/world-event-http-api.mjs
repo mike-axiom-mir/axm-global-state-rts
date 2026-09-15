@@ -45,15 +45,12 @@ export class WorldEventHttpApiService {
     writeMode = 'off',
     clock = () => Date.now(),
     storeFactory = () => createMemoryWorldJournalStore(),
-    outcomeStore = createMemoryWorldJournalStore()
+    outcomeStore = null
   } = {}) {
     if (!authority?.participants || !authority?.sharedState) throw new TypeError('world session authority required');
     if (typeof baseApi?.handle !== 'function') throw new TypeError('baseApi with handle required');
     if (typeof clock !== 'function') throw new TypeError('clock must be a function');
     if (typeof storeFactory !== 'function') throw new TypeError('storeFactory must be a function');
-    if (!outcomeStore || typeof outcomeStore.readAll !== 'function' || typeof outcomeStore.append !== 'function') {
-      throw new TypeError('outcomeStore with readAll and append required');
-    }
     this.schema = WORLD_EVENT_HTTP_API_SCHEMA;
     this.authority = authority;
     this.baseApi = baseApi;
@@ -61,9 +58,16 @@ export class WorldEventHttpApiService {
     this.clock = clock;
     this.storeFactory = storeFactory;
     this.encounters = new Map();
+    const resolvedOutcomeStore = outcomeStore || this.storeFactory(Object.freeze({
+      id: '__world-event-outcomes__',
+      kind: 'host-outcome-ledger'
+    }));
+    if (!resolvedOutcomeStore || typeof resolvedOutcomeStore.readAll !== 'function' || typeof resolvedOutcomeStore.append !== 'function') {
+      throw new TypeError('outcomeStore with readAll and append required');
+    }
     this.outcomes = createWorldEventOutcomeAuthority({
       participantRegistry: this.authority.participants,
-      store: outcomeStore
+      store: resolvedOutcomeStore
     });
   }
 

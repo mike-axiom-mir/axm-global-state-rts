@@ -1,0 +1,236 @@
+name: Automation owned vehicle assignment patch
+
+on:
+  push:
+    branches:
+      - rts-host-owned-vehicle-assignment-20260915
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Apply bounded host-authority patch
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{path}: expected exactly one replacement target, found {count}')
+              p.write_text(text.replace(old, new, 1))
+
+          host = 'src/hosted/durable-world-run-command-authority.mjs'
+          replace_once(host, """    } else if (mutation.action === WORLD_RUN_ASSIGN_VEHICLE_ACTION) {
+              const unitId = nonEmpty(mutation.payload?.unitId, 'unitId');
+              const vehicleId = nonEmpty(mutation.payload?.vehicleId, 'vehicleId');
+              const vehicleClass = nonEmpty(mutation.payload?.vehicleClass, 'vehicleClass');
+              const assigned = run.assignVehicle(unitId, { vehicleId, vehicleClass });
+              if (!assigned.accepted) throw new Error(`durable vehicle assignment replay rejected: ${progression.playerId}:${mutation.mutationId}:${assigned.reason}`);
+              result = Object.freeze({ assignment: cloneJson(assigned), runRevision: run.revision });
+          """, """    } else if (mutation.action === WORLD_RUN_ASSIGN_VEHICLE_ACTION) {
+              const unitId = nonEmpty(mutation.payload?.unitId, 'unitId');
+              const vehicleId = nonEmpty(mutation.payload?.vehicleId, 'vehicleId');
+              const vehicleClass = nonEmpty(mutation.payload?.vehicleClass, 'vehicleClass');
+              const ownedVehicle = run.vehicles?.vehicle?.(vehicleId) || null;
+              if (!ownedVehicle) {
+                throw new Error(`durable vehicle assignment replay target is not owned by active civilization: ${progression.playerId}:${mutation.mutationId}:${vehicleId}`);
+              }
+              if (ownedVehicle.vehicleClass !== vehicleClass) {
+                throw new Error(`durable vehicle assignment replay class mismatch: ${progression.playerId}:${mutation.mutationId}:${vehicleClass}:${ownedVehicle.vehicleClass}`);
+              }
+              const assigned = run.assignVehicle(unitId, { vehicleId, vehicleClass });
+              if (!assigned.accepted) throw new Error(`durable vehicle assignment replay rejected: ${progression.playerId}:${mutation.mutationId}:${assigned.reason}`);
+              result = Object.freeze({ assignment: cloneJson(assigned), runRevision: run.revision });
+          """)
+
+          replace_once(host, """  #vehicleAssignmentPreflight(context, unitId, vehicleId, vehicleClass) {
+              const run = context.progression.activeRun;
+              const unit = run.manpower.unit(unitId);
+              if (!unit) throw new RangeError(`unknown unit: ${unitId}`);
+              if (!VEHICLE_LICENSES[vehicleClass]) throw new RangeError(`unknown vehicleClass: ${vehicleClass}`);
+              if (!unit.licenses.includes(vehicleClass)) return Object.freeze({ accepted: false, reason: 'required-license-missing', requiredLicense: vehicleClass, unit });
+              if (unit.assignedVehicleId === vehicleId) return Object.freeze({ accepted: false, reason: 'vehicle-already-assigned', unit });
+              if (unit.assignedVehicleId) return Object.freeze({ accepted: false, reason: 'unit-already-assigned-vehicle', assignedVehicleId: unit.assignedVehicleId, unit });
+              return null;
+            }
+          """, """  #vehicleAssignmentPreflight(context, unitId, vehicleId, vehicleClass) {
+              const run = context.progression.activeRun;
+              const unit = run.manpower.unit(unitId);
+              if (!unit) throw new RangeError(`unknown unit: ${unitId}`);
+              if (!VEHICLE_LICENSES[vehicleClass]) throw new RangeError(`unknown vehicleClass: ${vehicleClass}`);
+              if (!run.vehicles?.vehicle) throw new Error('active run vehicle registry unavailable');
+              const ownedVehicle = run.vehicles.vehicle(vehicleId);
+              if (!ownedVehicle) {
+                return Object.freeze({ accepted: false, reason: 'vehicle-not-owned-by-active-civilization', vehicleId });
+              }
+              if (ownedVehicle.vehicleClass !== vehicleClass) {
+                return Object.freeze({
+                  accepted: false,
+                  reason: 'vehicle-class-mismatch',
+                  vehicleId,
+                  requestedVehicleClass: vehicleClass,
+                  authoritativeVehicleClass: ownedVehicle.vehicleClass
+                });
+              }
+              if (!unit.licenses.includes(vehicleClass)) return Object.freeze({ accepted: false, reason: 'required-license-missing', requiredLicense: vehicleClass, unit });
+              if (unit.assignedVehicleId === vehicleId) return Object.freeze({ accepted: false, reason: 'vehicle-already-assigned', unit, vehicle: ownedVehicle });
+              if (unit.assignedVehicleId) return Object.freeze({ accepted: false, reason: 'unit-already-assigned-vehicle', assignedVehicleId: unit.assignedVehicleId, unit, vehicle: ownedVehicle });
+              return null;
+            }
+          """)
+
+          replace_once(host, """        truthBoundary: 'vehicle-assignment-was-not-admitted-or-persisted-because-the-authoritative-active-run-license-and-assignment-preconditions-were-not-met;vehicle-existence-ownership-and-production-are-not-claimed-by-this-reference-command'
+          """, """        truthBoundary: 'vehicle-assignment-was-not-admitted-or-persisted-because-the-authoritative-active-run-owned-vehicle-class-license-or-assignment-preconditions-were-not-met'
+          """)
+          replace_once(host, """    return this.#admitPersistApply({ ...context, actionId: 'world-run-assign-vehicle', action: WORLD_RUN_ASSIGN_VEHICLE_ACTION, payload: { unitId: unit, vehicleId: vehicle, vehicleClass: vehicleType }, timestampMs, successTruthBoundary: 'host-admitted-vehicle-assignment-reference-was-durably-recorded-before-manpower-application-and-replays-in-command-order-after-restart;this-reference-command-does-not-itself-prove-vehicle-existence-ownership-or-production' });
+          """, """    return this.#admitPersistApply({ ...context, actionId: 'world-run-assign-vehicle', action: WORLD_RUN_ASSIGN_VEHICLE_ACTION, payload: { unitId: unit, vehicleId: vehicle, vehicleClass: vehicleType }, timestampMs, successTruthBoundary: 'host-admitted-vehicle-assignment-reference-was-durably-recorded-before-manpower-application-and-replays-in-command-order-after-restart;the-referenced-vehicle-was-resolved-from-this-active-civilization-run-owned-durable-vehicle-registry-and-its-authoritative-class-was-validated-before-admission' });
+          """)
+
+          p = Path(host)
+          text = p.read_text()
+          if text.count('vehicle-assignment-reference') != 2:
+              raise SystemExit(f'{host}: expected two remaining vehicle-assignment-reference truth labels, found {text.count("vehicle-assignment-reference")}')
+          p.write_text(text.replace('vehicle-assignment-reference', 'vehicle-assignment-to-owned-constructed-vehicle'))
+
+          http = Path('src/hosted/world-run-http-api.mjs')
+          http_text = http.read_text()
+          occurrences = http_text.count('vehicle-assignment-reference')
+          if occurrences != 4:
+              raise SystemExit(f'{http}: expected four vehicle-assignment-reference truth labels, found {occurrences}')
+          http.write_text(http_text.replace('vehicle-assignment-reference', 'vehicle-assignment-to-owned-constructed-vehicle'))
+
+          test = Path('tests/world-run-vehicle-assignment-authority-selftest.mjs')
+          text = test.read_text()
+          old = "runOptions: { crewCount: 9, foodPolicy: 'normal', extraStartingResources: { scrap: 200, 'industrial-metal': 20 } }"
+          new = "runOptions: { crewCount: 9, foodPolicy: 'normal', extraStartingResources: { scrap: 600, timber: 100, 'industrial-metal': 100 } }"
+          if text.count(old) != 1: raise SystemExit('assignment test starting resources anchor drifted')
+          text = text.replace(old, new, 1)
+
+          old = """function assign(api, clockState, run, mutationId, vehicleId) {
+            clockState.nowMs += 1;
+            return post(api, '/api/world/run/assign-vehicle', { participantId: run.participantId, runId: run.runId, mutationId, unitId: run.unitId, vehicleId, vehicleClass: 'light-vehicle' });
+          }
+          """
+          new = """function construct(api, clockState, run, mutationId, vehicleId) {
+            clockState.nowMs += 1;
+            return post(api, '/api/world/run/construct-vehicle', {
+              participantId: run.participantId,
+              runId: run.runId,
+              mutationId,
+              definitionId: 'vehicle:utility-hauler',
+              instanceId: vehicleId,
+              xM: 4,
+              zM: -3,
+              yawDeg: 45
+            });
+          }
+
+          function assign(api, clockState, run, mutationId, vehicleId, vehicleClass = 'light-vehicle') {
+            clockState.nowMs += 1;
+            return post(api, '/api/world/run/assign-vehicle', { participantId: run.participantId, runId: run.runId, mutationId, unitId: run.unitId, vehicleId, vehicleClass });
+          }
+          """
+          if text.count(old) != 1: raise SystemExit('assignment helper anchor drifted')
+          text = text.replace(old, new, 1)
+
+          old = """  const human = startRun(first.api, clockState, { accountId: 'assign-human', controllerKind: 'human', runId: 'run:assign:human:001' });
+            const machine = startRun(first.api, clockState, { accountId: 'assign-machine', controllerKind: 'machine', runId: 'run:assign:machine:001' });
+
+            const unlicensed = assign(first.api, clockState, human, 'assign:human:before-license', 'vehicle:human:probe');
+          """
+          new = """  const human = startRun(first.api, clockState, { accountId: 'assign-human', controllerKind: 'human', runId: 'run:assign:human:001' });
+            const machine = startRun(first.api, clockState, { accountId: 'assign-machine', controllerKind: 'machine', runId: 'run:assign:machine:001' });
+            const humanVehicleId = 'vehicle:human:scout-01';
+            const machineVehicleId = 'vehicle:machine:scout-01';
+
+            const humanConstruction = construct(first.api, clockState, human, 'construct:assign:human', humanVehicleId);
+            const machineConstruction = construct(first.api, clockState, machine, 'construct:assign:machine', machineVehicleId);
+            assert.equal(humanConstruction.status, 200);
+            assert.equal(machineConstruction.status, 200);
+            assert.equal(humanConstruction.body.result.construction.vehicle.instanceId, humanVehicleId);
+            assert.equal(machineConstruction.body.result.construction.vehicle.instanceId, machineVehicleId);
+
+            const unlicensed = assign(first.api, clockState, human, 'assign:human:before-license', humanVehicleId);
+          """
+          if text.count(old) != 1: raise SystemExit('assignment test run-start anchor drifted')
+          text = text.replace(old, new, 1)
+
+          old = """  const humanVehicleId = 'vehicle:human:scout-01';
+            const machineVehicleId = 'vehicle:machine:scout-01';
+            const humanMutationId = 'assign:human:light';
+          """
+          new = """  const foreignVehicle = assign(first.api, clockState, human, 'assign:human:foreign-vehicle', machineVehicleId);
+            assert.equal(foreignVehicle.status, 400);
+            assert.equal(foreignVehicle.body.accepted, false);
+            assert.equal(foreignVehicle.body.reason, 'vehicle-not-owned-by-active-civilization');
+            assert.equal(foreignVehicle.body.admission, undefined);
+
+            const missingVehicle = assign(first.api, clockState, human, 'assign:human:missing-vehicle', 'vehicle:human:not-constructed');
+            assert.equal(missingVehicle.status, 400);
+            assert.equal(missingVehicle.body.accepted, false);
+            assert.equal(missingVehicle.body.reason, 'vehicle-not-owned-by-active-civilization');
+            assert.equal(missingVehicle.body.admission, undefined);
+
+            const classMismatch = assign(first.api, clockState, human, 'assign:human:class-mismatch', humanVehicleId, 'heavy-vehicle');
+            assert.equal(classMismatch.status, 400);
+            assert.equal(classMismatch.body.accepted, false);
+            assert.equal(classMismatch.body.reason, 'vehicle-class-mismatch');
+            assert.equal(classMismatch.body.assignment.authoritativeVehicleClass, 'light-vehicle');
+            assert.equal(classMismatch.body.admission, undefined);
+
+            const humanMutationId = 'assign:human:light';
+          """
+          if text.count(old) != 1: raise SystemExit('assignment test vehicle-id anchor drifted')
+          text = text.replace(old, new, 1)
+
+          old = "assert.match(result.body.truthBoundary, /does-not-itself-prove-vehicle-existence-ownership-or-production/);"
+          new = "assert.match(result.body.truthBoundary, /resolved-from-this-active-civilization-run-owned-durable-vehicle-registry/);"
+          if text.count(old) != 1: raise SystemExit('assignment truth assertion anchor drifted')
+          text = text.replace(old, new, 1)
+
+          text = text.replace("const secondAssignment = assign(first.api, clockState, human, 'assign:human:second', 'vehicle:human:second');", "const secondAssignment = assign(first.api, clockState, human, 'assign:human:second', humanVehicleId);")
+          text = text.replace("assert.equal(secondAssignment.body.reason, 'unit-already-assigned-vehicle');", "assert.equal(secondAssignment.body.reason, 'vehicle-already-assigned');")
+          text = text.replace("['train-unit-specialization', 'license-unit-vehicle', 'assign-vehicle']", "['construct-vehicle', 'train-unit-specialization', 'license-unit-vehicle', 'assign-vehicle']")
+          text = text.replace("assert.equal(humanAfterRestart.body.mutationContinuity.appliedMutationCountThisProcess, 4);", "assert.equal(humanAfterRestart.body.mutationContinuity.appliedMutationCountThisProcess, 5);")
+          text = text.replace("assert.equal(machineAfterRestart.body.mutationContinuity.appliedMutationCountThisProcess, 4);", "assert.equal(machineAfterRestart.body.mutationContinuity.appliedMutationCountThisProcess, 5);")
+          text = text.replace("['train-unit-specialization', 'license-unit-vehicle', 'assign-vehicle', 'set-food-policy', 'close-active-run']", "['construct-vehicle', 'train-unit-specialization', 'license-unit-vehicle', 'assign-vehicle', 'set-food-policy', 'close-active-run']")
+          text = text.replace("assert.equal(terminal.body.mutationContinuity.appliedMutationCountThisProcess, 5);", "assert.equal(terminal.body.mutationContinuity.appliedMutationCountThisProcess, 6);")
+          text = text.replace("assert.match(meta.body.runLifecycle.truthBoundary, /vehicle-assignment-reference/);", "assert.match(meta.body.runLifecycle.truthBoundary, /vehicle-assignment-to-owned-constructed-vehicle/);")
+          test.write_text(text)
+
+          stale = []
+          for p in [Path(host), http, test]:
+              if 'does-not-itself-prove-vehicle-existence-ownership-or-production' in p.read_text(): stale.append(str(p))
+          if stale: raise SystemExit(f'stale assignment truth boundary remains in: {stale}')
+          PY
+      - name: Exact focused syntax and authority evidence
+        run: |
+          node --check src/hosted/durable-world-run-command-authority.mjs
+          node --check src/hosted/world-run-http-api.mjs
+          node --check tests/world-run-vehicle-assignment-authority-selftest.mjs
+          node tests/world-run-vehicle-assignment-authority-selftest.mjs
+          node tests/world-run-vehicle-construction-authority-selftest.mjs
+      - name: Full deterministic suite
+        run: npm test
+      - name: Commit tested patch
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/hosted/durable-world-run-command-authority.mjs src/hosted/world-run-http-api.mjs tests/world-run-vehicle-assignment-authority-selftest.mjs
+          git commit -m 'Validate vehicle assignment against owned durable registry'
+          git push origin HEAD:rts-host-owned-vehicle-assignment-20260915

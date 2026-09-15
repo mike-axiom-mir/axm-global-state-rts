@@ -19,6 +19,7 @@ export const WORLD_RUN_TRAIN_UNIT_ACTION = 'train-unit-specialization';
 export const WORLD_RUN_LICENSE_UNIT_ACTION = 'license-unit-vehicle';
 export const WORLD_RUN_CONSTRUCT_VEHICLE_ACTION = 'construct-vehicle';
 export const WORLD_RUN_ASSIGN_VEHICLE_ACTION = 'assign-vehicle';
+export const WORLD_RUN_UNASSIGN_VEHICLE_ACTION = 'unassign-vehicle';
 export const WORLD_RUN_CRAFT_WEAPON_ACTION = 'craft-weapon';
 export const WORLD_RUN_EQUIP_WEAPON_ACTION = 'equip-unit-weapon';
 
@@ -99,6 +100,11 @@ function vehicleConstructReceipt(run, mutationId) {
 
 function vehicleAssignmentReceipt(run, mutationId) {
   const eventId = `host-run-vehicle-assign:${mutationId}`;
+  return run?.vehicles?.snapshot?.().receipts?.find(receipt => receipt.eventId === eventId) || null;
+}
+
+function vehicleUnassignmentReceipt(run, mutationId) {
+  const eventId = `host-run-vehicle-unassign:${mutationId}`;
   return run?.vehicles?.snapshot?.().receipts?.find(receipt => receipt.eventId === eventId) || null;
 }
 
@@ -205,6 +211,18 @@ export class DurableWorldRunCommandAuthority {
       if (!assigned.accepted) throw new Error(`durable vehicle assignment replay rejected: ${progression.playerId}:${mutation.mutationId}:${assigned.reason}`);
       run.revision += 1;
       result = Object.freeze({ assignment: Object.freeze({ ...cloneJson(assigned), unit: run.manpower.unit(unitId) }), runRevision: run.revision });
+    } else if (mutation.action === WORLD_RUN_UNASSIGN_VEHICLE_ACTION) {
+      const unitId = nonEmpty(mutation.payload?.unitId, 'unitId');
+      const vehicleId = nonEmpty(mutation.payload?.vehicleId, 'vehicleId');
+      const vehicle = run.vehicles?.vehicle?.(vehicleId);
+      if (!vehicle) throw new Error(`durable vehicle unassignment replay missing active-run vehicle: ${progression.playerId}:${mutation.mutationId}:${vehicleId}`);
+      if (vehicle.driverUnitId !== unitId) throw new Error(`durable vehicle unassignment replay driver mismatch: ${progression.playerId}:${mutation.mutationId}:${vehicle.driverUnitId || 'none'}:${unitId}`);
+      const unit = run.manpower?.unit?.(unitId);
+      if (!unit || unit.assignedVehicleId !== vehicleId) throw new Error(`durable vehicle unassignment replay manpower binding mismatch: ${progression.playerId}:${mutation.mutationId}:${unitId}:${vehicleId}`);
+      const unassigned = run.vehicles.unassignDriver(vehicleId, { eventId: `host-run-vehicle-unassign:${mutation.mutationId}` });
+      if (!unassigned.accepted) throw new Error(`durable vehicle unassignment replay rejected: ${progression.playerId}:${mutation.mutationId}:${unassigned.reason}`);
+      run.revision += 1;
+      result = Object.freeze({ unassignment: Object.freeze({ ...cloneJson(unassigned), unit: run.manpower.unit(unitId) }), runRevision: run.revision });
     } else if (mutation.action === WORLD_RUN_CRAFT_WEAPON_ACTION) {
       const weaponId = nonEmpty(mutation.payload?.weaponId, 'weaponId');
       const count = positiveSafeInteger(mutation.payload?.count, 'count');
@@ -430,6 +448,19 @@ export class DurableWorldRunCommandAuthority {
     return null;
   }
 
+  #vehicleUnassignmentPreflight(context, unitId, vehicleId) {
+    const run = context.progression.activeRun;
+    if (!run.vehicles?.vehicle || !run.vehicles?.unassignDriver) throw new Error('active run vehicle fabric unavailable');
+    const vehicle = run.vehicles.vehicle(vehicleId);
+    if (!vehicle) return Object.freeze({ accepted: false, reason: 'vehicle-not-owned-by-active-run', vehicleId });
+    const unit = run.manpower.unit(unitId);
+    if (!unit) throw new RangeError(`unknown unit: ${unitId}`);
+    if (!vehicle.driverUnitId) return Object.freeze({ accepted: false, reason: 'vehicle-has-no-driver', vehicle, unit });
+    if (vehicle.driverUnitId !== unitId) return Object.freeze({ accepted: false, reason: 'vehicle-driver-mismatch', driverUnitId: vehicle.driverUnitId, unit, vehicle });
+    if (unit.assignedVehicleId !== vehicleId) return Object.freeze({ accepted: false, reason: 'unit-vehicle-binding-mismatch', assignedVehicleId: unit.assignedVehicleId, unit, vehicle });
+    return null;
+  }
+
   #weaponCraftPreflight(context, weaponId, count) {
     const gate = context.progression.activeRun.equipment.canCraft(weaponId, count);
     if (!gate.accepted) return gate;
@@ -456,11 +487,11 @@ export class DurableWorldRunCommandAuthority {
     const base = this.base.progressionPersistenceMeta();
     return Object.freeze({
       ...base,
-      durableMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION, WORLD_RUN_FOOD_POLICY_ACTION, WORLD_RUN_TRAIN_UNIT_ACTION, WORLD_RUN_LICENSE_UNIT_ACTION, WORLD_RUN_CONSTRUCT_VEHICLE_ACTION, WORLD_RUN_ASSIGN_VEHICLE_ACTION, WORLD_RUN_CRAFT_WEAPON_ACTION, WORLD_RUN_EQUIP_WEAPON_ACTION, WORLD_RUN_CLOSE_ACTION]),
+      durableMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION, WORLD_RUN_FOOD_POLICY_ACTION, WORLD_RUN_TRAIN_UNIT_ACTION, WORLD_RUN_LICENSE_UNIT_ACTION, WORLD_RUN_CONSTRUCT_VEHICLE_ACTION, WORLD_RUN_ASSIGN_VEHICLE_ACTION, WORLD_RUN_UNASSIGN_VEHICLE_ACTION, WORLD_RUN_CRAFT_WEAPON_ACTION, WORLD_RUN_EQUIP_WEAPON_ACTION, WORLD_RUN_CLOSE_ACTION]),
       restoredMutationsThisProcess: this.mutationRestoreReport.restored,
       mutationParticipantsRestoredThisProcess: this.mutationRestoreReport.participantIds,
       truthBoundary: this.runStartStore
-        ? 'initial-run-start-plus-host-admitted-global-control-food-policy-unit-training-vehicle-licensing-vehicle-construction-vehicle-registry-validated-assignment-weapon-crafting-weapon-equipping-and-terminal-run-close-mutations-are-durable-and-replayed-in-command-order;other-local-rts-mutations-remain-separate-gaps'
+        ? 'initial-run-start-plus-host-admitted-global-control-food-policy-unit-training-vehicle-licensing-vehicle-construction-vehicle-registry-validated-assignment-vehicle-driver-release-weapon-crafting-weapon-equipping-and-terminal-run-close-mutations-are-durable-and-replayed-in-command-order;other-local-rts-mutations-remain-separate-gaps'
         : 'active-player-progression-and-run-mutations-remain-process-memory-only-without-a-durable-run-start-store'
     });
   }
@@ -492,7 +523,7 @@ export class DurableWorldRunCommandAuthority {
         : terminalCloseApplied
           ? 'host-run-status-replays-the-terminal-close-and-durable-score-history-for-this-run;the-separate-archive-bound-rollover-layer-governs-next-generation handoff'
           : mutations.length
-            ? 'host-run-status-includes-durable-replay-for-the-bounded-global-control-food-policy-unit-training-vehicle-licensing-vehicle-construction-vehicle-registry-validated-assignment-weapon-crafting-weapon-equipping-and-run-close-actions-only;other-run-mutations-remain-outside-this-contract'
+            ? 'host-run-status-includes-durable-replay-for-the-bounded-global-control-food-policy-unit-training-vehicle-licensing-vehicle-construction-vehicle-registry-validated-assignment-vehicle-driver-release-weapon-crafting-weapon-equipping-and-run-close-actions-only;other-run-mutations-remain-outside-this-contract'
             : base.truthBoundary
     });
   }
@@ -653,6 +684,44 @@ export class DurableWorldRunCommandAuthority {
     return this.#admitPersistApply({ ...context, actionId: 'world-run-assign-vehicle', action: WORLD_RUN_ASSIGN_VEHICLE_ACTION, payload: { unitId: unit, vehicleId: vehicle, vehicleClass: vehicleType }, timestampMs, successTruthBoundary: 'host-admitted-vehicle-assignment-was-resolved-against-the-active-civilization-owned-vehicle-registry-and-durably-recorded-before-vehicle-driver-and-manpower-application;replay-restores-the-same-vehicle-and-driver-binding-after-restart' });
   }
 
+  unassignUnitVehicle({ participantId, runId, mutationId, unitId, vehicleId, timestampMs } = {}) {
+    const unit = nonEmpty(unitId, 'unitId');
+    const vehicle = nonEmpty(vehicleId, 'vehicleId');
+    const payload = { unitId: unit, vehicleId: vehicle };
+    const context = this.#activeRunCommandContext({ participantId, runId, mutationId, action: WORLD_RUN_UNASSIGN_VEHICLE_ACTION, payload });
+    if (context.rejection) return context.rejection;
+    if (context.existing) {
+      return this.#reconcileExisting({
+        ...context,
+        resultFactory: progression => ({
+          unassignment: Object.freeze({
+            accepted: true,
+            unit: progression.activeRun.manpower.unit(unit),
+            vehicle: progression.activeRun.vehicles.vehicle(vehicle),
+            receipt: vehicleUnassignmentReceipt(progression.activeRun, context.commandId)
+          }),
+          runRevision: progression.activeRun.revision
+        })
+      });
+    }
+    const preflight = this.#vehicleUnassignmentPreflight(context, unit, vehicle);
+    if (preflight) {
+      return Object.freeze({
+        schema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+        accepted: false,
+        reason: preflight.reason,
+        participantId: context.record.participantId,
+        runId: context.expectedRunId,
+        mutationId: context.commandId,
+        unassignment: preflight,
+        progressionPersistence: this.progressionPersistenceMeta(),
+        progression: context.progression.snapshot(),
+        truthBoundary: 'vehicle-driver-release-was-not-admitted-or-persisted-because-the-authoritative-active-run-vehicle-and-manpower-binding-preconditions-were-not-met'
+      });
+    }
+    return this.#admitPersistApply({ ...context, actionId: 'world-run-unassign-vehicle', action: WORLD_RUN_UNASSIGN_VEHICLE_ACTION, payload, timestampMs, successTruthBoundary: 'host-admitted-vehicle-driver-release-was-durably-recorded-before-clearing-both-the-vehicle-driver-and-manpower-assignment;replay-restores-the-same-released-binding-after-restart' });
+  }
+
   craftWeapon({ participantId, runId, mutationId, weaponId, count = 1, timestampMs } = {}) {
     const weapon = nonEmpty(weaponId, 'weaponId');
     const amount = positiveSafeInteger(count, 'count');
@@ -765,7 +834,7 @@ export class DurableWorldRunCommandAuthority {
       mutationRestoreReport: this.mutationRestoreReport,
       unpersistedMutations: Object.freeze([...this.unpersistedMutations.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([participantId, error]) => Object.freeze({ participantId, error }))),
       truthBoundary: this.runStartStore
-        ? 'bounded-host-global-control-food-policy-unit-training-vehicle-licensing-vehicle-construction-vehicle-registry-validated-assignment-weapon-crafting-weapon-equipping-and-terminal-run-close-mutations-replay-in-order-after-the-durable-run-start;other-local-rts-mutations-remain-separate-gaps'
+        ? 'bounded-host-global-control-food-policy-unit-training-vehicle-licensing-vehicle-construction-vehicle-registry-validated-assignment-vehicle-driver-release-weapon-crafting-weapon-equipping-and-terminal-run-close-mutations-replay-in-order-after-the-durable-run-start;other-local-rts-mutations-remain-separate-gaps'
         : 'run mutations remain process-memory-only without durable-run-start storage'
     });
   }

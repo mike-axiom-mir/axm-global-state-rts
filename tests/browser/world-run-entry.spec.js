@@ -168,7 +168,7 @@ test('world account reaches LOCAL RTS and can explicitly close one host civiliza
   expect(checkpointCompatibility.reason).toBe('active-host-run-bootstrap-not-in-host-local-journal-genesis');
   expect(checkpointCompatibility.runId).toBe(shellEvidence.activeRunId);
   expect(checkpointCompatibility.hostStartingScrap).toBe(shellEvidence.hostRunScrap);
-  expect(checkpointCompatibility.truthBoundary).toBe('active-host-run-bootstrap-is-not-represented-in-host-local-journal-genesis-browser-state-left-unchanged');
+  expect(checkpointCompatibility.truthBoundary).toBe('active-host-run-bootstrap-requires-a-host-revalidated-provenance-descriptor-before-delta-checkpoint-translation-browser-state-left-unchanged');
 
   await expect(page.locator('#worldRunLifecycleSurface')).toBeVisible();
   await expect(page.locator('#endWorldRun')).toBeEnabled();

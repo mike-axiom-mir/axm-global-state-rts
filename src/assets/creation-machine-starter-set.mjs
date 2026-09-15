@@ -1,4 +1,4 @@
-export const CREATION_MACHINE_STARTER_SET_SCHEMA = 'axm.global-state-rts.creation-machine-starter-static-set/v0.1';
+export const CREATION_MACHINE_STARTER_SET_SCHEMA = 'axm.global-state-rts.creation-machine-starter-static-set/v0.2';
 
 const DELIVERY_ROOT = '../assets/creation-machine/runtime-prepared';
 const STATUS = 'CREATED_CANDIDATE_RUNTIME_TRIAL_ONLY';
@@ -12,10 +12,12 @@ function freezeVariant(sourceAsset, role, filenameSuffix) {
   });
 }
 
-function freezeEntry({ fixtureAssetId, sourceAsset, sourceFamily, gameplayTarget, note }) {
+function freezeEntry({ candidateId, candidateRole, fixtureAssetId, sourceAsset, sourceFamily, gameplayTarget, note }) {
   return Object.freeze({
     schema: CREATION_MACHINE_STARTER_SET_SCHEMA,
     status: STATUS,
+    candidateId,
+    candidateRole,
     fixtureAssetId,
     sourceAsset,
     sourceFamily,
@@ -51,13 +53,26 @@ function freezeEntry({ fixtureAssetId, sourceAsset, sourceFamily, gameplayTarget
 
 export const CREATION_MACHINE_STARTER_SET = Object.freeze([
   freezeEntry({
+    candidateId: 'settlement-core-settlement-hub-primary',
+    candidateRole: 'primary',
     fixtureAssetId: 'building-settlement-core-a',
     sourceAsset: 'settlement-hub',
     sourceFamily: 'buildings',
     gameplayTarget: 'building:settlement-core',
-    note: 'Visual candidate for the existing starter settlement core fixture and construction-economy settlement core.'
+    note: 'Primary static trial candidate for the existing starter settlement core fixture and construction-economy settlement core.'
   }),
   freezeEntry({
+    candidateId: 'settlement-core-civic-shelter-alternate',
+    candidateRole: 'alternate',
+    fixtureAssetId: 'building-settlement-core-a',
+    sourceAsset: 'civic-shelter',
+    sourceFamily: 'buildings',
+    gameplayTarget: 'building:settlement-core',
+    note: 'Explicit alternate static presentation candidate for the same real settlement-core fixture. It does not create a civic-shelter gameplay entity or displace the primary candidate by default.'
+  }),
+  freezeEntry({
+    candidateId: 'workshop-improvised-workshop-primary',
+    candidateRole: 'primary',
     fixtureAssetId: 'building-workshop-a',
     sourceAsset: 'improvised-workshop',
     sourceFamily: 'buildings',
@@ -65,6 +80,8 @@ export const CREATION_MACHINE_STARTER_SET = Object.freeze([
     note: 'Visual candidate for the existing starter workshop fixture and construction-economy improvised workshop.'
   }),
   freezeEntry({
+    candidateId: 'storage-depot-storage-hall-primary',
+    candidateRole: 'primary',
     fixtureAssetId: 'building-storage-depot-a',
     sourceAsset: 'storage-hall',
     sourceFamily: 'buildings',
@@ -72,6 +89,8 @@ export const CREATION_MACHINE_STARTER_SET = Object.freeze([
     note: 'Visual candidate for the existing starter storage fixture and construction-economy storage depot.'
   }),
   freezeEntry({
+    candidateId: 'scrap-collector-sorting-yard-primary',
+    candidateRole: 'primary',
     fixtureAssetId: 'resource-scrap-collector-a',
     sourceAsset: 'scrap-sorting-yard',
     sourceFamily: 'industry',
@@ -79,6 +98,8 @@ export const CREATION_MACHINE_STARTER_SET = Object.freeze([
     note: 'Visual candidate for the already-present starter scrap collector fixture; it does not invent a new construction rule.'
   }),
   freezeEntry({
+    candidateId: 'light-tower-light-tower-primary',
+    candidateRole: 'primary',
     fixtureAssetId: 'defense-light-tower-a',
     sourceAsset: 'light-tower',
     sourceFamily: 'utilities',
@@ -87,14 +108,27 @@ export const CREATION_MACHINE_STARTER_SET = Object.freeze([
   })
 ]);
 
-const BY_FIXTURE = new Map(CREATION_MACHINE_STARTER_SET.map(entry => [entry.fixtureAssetId, entry]));
+const BY_FIXTURE = new Map();
+for (const entry of CREATION_MACHINE_STARTER_SET) {
+  const candidates = BY_FIXTURE.get(entry.fixtureAssetId) || [];
+  candidates.push(entry);
+  BY_FIXTURE.set(entry.fixtureAssetId, candidates);
+}
 
-export function creationMachineStarterSetEntry(fixtureAssetId) {
-  return BY_FIXTURE.get(String(fixtureAssetId || '')) || null;
+export function creationMachineStarterSetCandidates(fixtureAssetId) {
+  return Object.freeze([...(BY_FIXTURE.get(String(fixtureAssetId || '')) || [])]);
+}
+
+export function creationMachineStarterSetEntry(fixtureAssetId, { sourceAsset = null } = {}) {
+  const candidates = BY_FIXTURE.get(String(fixtureAssetId || '')) || [];
+  if (sourceAsset) return candidates.find(entry => entry.sourceAsset === String(sourceAsset)) || null;
+  return candidates.find(entry => entry.candidateRole === 'primary') || candidates[0] || null;
 }
 
 export function creationMachineStarterSetTrialPlan() {
   return Object.freeze(CREATION_MACHINE_STARTER_SET.map(entry => Object.freeze({
+    candidateId: entry.candidateId,
+    candidateRole: entry.candidateRole,
     fixtureAssetId: entry.fixtureAssetId,
     sourceAsset: entry.sourceAsset,
     variant: entry.runtimeTrial.variant,

@@ -5,7 +5,7 @@ import {
 } from './archived-world-run-mutation-authority.mjs';
 import { WORLD_RUN_ROLLOVER_INTENT_SCHEMA } from './world-run-start-store.mjs';
 
-export const PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA = 'axm.global-state-rts.prepared-world-run-rollover-authority/v0.1';
+export const PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA = 'axm.global-state-rts.prepared-world-run-rollover-authority/v0.2';
 
 function nonEmpty(value, label) {
   const text = String(value ?? '').trim();
@@ -72,21 +72,50 @@ function evidenceIsValid(evidence) {
     && evidence.terminalRunHistoryCount >= 1;
 }
 
+function isExecutedIntent(intent) {
+  return intent?.executedAtMs !== undefined && intent?.executedAtMs !== null;
+}
+
 function intentMatchesArchive(intent, record, archive) {
+  if (!intent || !record || !archive) return false;
   const evidence = archiveEvidence(archive);
   if (!evidenceIsValid(evidence)) return false;
-  const terminal = terminalMutation(record);
-  return intent?.schema === WORLD_RUN_ROLLOVER_INTENT_SCHEMA
-    && intent.previousRunId === record.runId
+  const common = intent.schema === WORLD_RUN_ROLLOVER_INTENT_SCHEMA
     && archive.participantId === record.participantId
-    && archive.runId === record.runId
-    && terminal
+    && archive.runId === intent.previousRunId
     && intent.archiveSha256 === evidence.archiveSha256
     && intent.archiveClosedAtMs === evidence.archiveClosedAtMs
-    && intent.archiveClosedAtMs === terminal.timestampMs
     && intent.archiveClaimSerial === evidence.archiveClaimSerial
     && intent.terminalBankedGold === evidence.terminalBankedGold
     && intent.terminalRunHistoryCount === evidence.terminalRunHistoryCount;
+  if (!common) return false;
+
+  if (!isExecutedIntent(intent)) {
+    const terminal = terminalMutation(record);
+    return record.runId === intent.previousRunId
+      && terminal
+      && intent.archiveClosedAtMs === terminal.timestampMs;
+  }
+
+  const initial = record.initialProgressionSnapshot || {};
+  return record.runId === intent.nextRunId
+    && record.appliedClaim?.claimSerial === intent.archiveClaimSerial + 1
+    && Number(initial.bankedGold) === intent.terminalBankedGold
+    && Array.isArray(initial.runHistory)
+    && initial.runHistory.length === intent.terminalRunHistoryCount
+    && sameJson(initial.runHistory, archive.terminalProgressionSnapshot?.runHistory || [])
+    && sameJson(record.runOptions || {}, intent.runOptions || {});
+}
+
+function authorityWithMethod(authority, methodName) {
+  const seen = new Set();
+  let current = authority;
+  while (current && typeof current === 'object' && !seen.has(current)) {
+    if (typeof current[methodName] === 'function') return current;
+    seen.add(current);
+    current = current.base || null;
+  }
+  return null;
 }
 
 export class PreparedWorldRunRolloverAuthority {
@@ -115,7 +144,7 @@ export class PreparedWorldRunRolloverAuthority {
     this.base = runAuthority?.archivedRuns
       ? runAuthority
       : createArchivedWorldRunMutationAuthority({ worldAuthority, runAuthority, runStartStore, runArchiveStore, clock });
-    this.restoreReport = this.#validatePreparedIntents();
+    this.restoreReport = this.#validateRolloverEvidence();
   }
 
   #durableRecords() {
@@ -143,33 +172,48 @@ export class PreparedWorldRunRolloverAuthority {
     return this.#archiveRecords().find(entry => entry.participantId === participantId && entry.runId === runId) || null;
   }
 
-  #validatePreparedIntents() {
+  #validateRolloverEvidence() {
     let prepared = 0;
-    const participantIds = [];
+    let executed = 0;
+    const preparedParticipantIds = [];
+    const executedParticipantIds = [];
     for (const durable of this.#durableRecords()) {
-      if (!durable.rolloverIntent) continue;
-      prepared += 1;
-      const archive = this.#archive(durable.participantId, durable.runId);
-      if (!archive) throw new Error(`durable world run rollover intent missing terminal archive: ${durable.participantId}:${durable.runId}`);
-      if (!intentMatchesArchive(durable.rolloverIntent, durable, archive)) {
-        throw new Error(`durable world run rollover intent archive mismatch: ${durable.participantId}:${durable.runId}`);
+      const intent = durable.rolloverIntent || null;
+      if (!intent) continue;
+      const archive = this.#archive(durable.participantId, intent.previousRunId);
+      if (!archive) throw new Error(`durable world run rollover intent missing terminal archive: ${durable.participantId}:${intent.previousRunId}`);
+      if (!intentMatchesArchive(intent, durable, archive)) {
+        throw new Error(`durable world run rollover intent archive mismatch: ${durable.participantId}:${intent.previousRunId}`);
       }
-      participantIds.push(durable.participantId);
+      if (isExecutedIntent(intent)) {
+        executed += 1;
+        executedParticipantIds.push(durable.participantId);
+      } else {
+        prepared += 1;
+        preparedParticipantIds.push(durable.participantId);
+      }
     }
-    return Object.freeze({ prepared, participantIds: Object.freeze(participantIds.sort()) });
+    return Object.freeze({
+      prepared,
+      executed,
+      preparedParticipantIds: Object.freeze(preparedParticipantIds.sort()),
+      executedParticipantIds: Object.freeze(executedParticipantIds.sort())
+    });
   }
 
   progressionPersistenceMeta() {
     const base = this.base.progressionPersistenceMeta();
+    const durable = this.#durableRecords();
     return Object.freeze({
       ...base,
       durableRolloverPreparation: Object.freeze({
         enabled: Boolean(this.runStartStore && this.runArchiveStore),
-        preparedIntentCount: this.#durableRecords().filter(record => Boolean(record.rolloverIntent)).length,
+        preparedIntentCount: durable.filter(record => record.rolloverIntent && !isExecutedIntent(record.rolloverIntent)).length,
+        executedIntentCount: durable.filter(record => isExecutedIntent(record.rolloverIntent)).length,
         validatedOnStartup: this.restoreReport
       }),
       truthBoundary: this.runStartStore && this.runArchiveStore
-        ? 'terminal-run-rollover-can-be-prepared-as-an-archive-bound-durable-intent-before-any-current-run-record-is-replaced;preparation-does-not-yet-claim-next-drop-rewards-or-start-the-next-run-generation'
+        ? 'terminal-run rollover can be prepared against an exact archive and then executed as one durable current-run generation replacement; only banked score and run history are carried as career baseline, and this remains a single-host two-store reconciliation seam rather than an atomic database transaction'
         : base.truthBoundary
     });
   }
@@ -178,18 +222,22 @@ export class PreparedWorldRunRolloverAuthority {
     const base = this.base.status(participantId);
     const durable = this.#durableRecords().find(entry => entry.participantId === base.participantId) || null;
     const intent = durable?.rolloverIntent || null;
-    const archive = intent ? this.#archive(base.participantId, durable.runId) : null;
+    const archive = intent ? this.#archive(base.participantId, intent.previousRunId) : null;
     const archiveMatched = Boolean(intent && archive && intentMatchesArchive(intent, durable, archive));
+    const executed = Boolean(intent && isExecutedIntent(intent));
     return Object.freeze({
       ...base,
       progressionPersistence: this.progressionPersistenceMeta(),
       rolloverContinuity: Object.freeze({
-        prepared: Boolean(intent),
+        prepared: Boolean(intent && !executed),
+        executed,
         archiveMatched,
         intent: intent ? cloneJson(intent) : null
       }),
       truthBoundary: intent && archiveMatched
-        ? 'the-next-run-rollover-request-is-durably-bound-to-the-exact-terminal-archive-while-the-current-closed-run-record-and-applied-claim-remain-unchanged;next-drop-claim-and-new-run-start-are-not-yet-executed'
+        ? executed
+          ? 'the prior terminal archive is retained while its validated prepared intent has become the durable receipt for the current next-drop run generation; banked score and run history continuity are replayable across restart'
+          : 'the-next-run-rollover-request-is-durably-bound-to-the-exact-terminal-archive-while-the-current-closed-run-record-and-applied-claim-remain-unchanged;next-drop-claim-and-new-run-start-are-not-yet-executed'
         : base.truthBoundary
     });
   }
@@ -247,58 +295,22 @@ export class PreparedWorldRunRolloverAuthority {
     const records = this.#durableRecords();
     const index = records.findIndex(entry => entry.participantId === participant.participantId);
     if (index < 0) {
-      return Object.freeze({
-        schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA,
-        accepted: false,
-        reason: 'no-durable-run-record',
-        participantId: participant.participantId,
-        previousRunId: previous,
-        nextRunId: next
-      });
+      return Object.freeze({ schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA, accepted: false, reason: 'no-durable-run-record', participantId: participant.participantId, previousRunId: previous, nextRunId: next });
     }
     const durable = records[index];
     if (durable.runId !== previous) {
-      return Object.freeze({
-        schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA,
-        accepted: false,
-        reason: 'previous-run-id-mismatch',
-        participantId: participant.participantId,
-        previousRunId: previous,
-        durableRunId: durable.runId,
-        nextRunId: next
-      });
+      return Object.freeze({ schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA, accepted: false, reason: 'previous-run-id-mismatch', participantId: participant.participantId, previousRunId: previous, durableRunId: durable.runId, nextRunId: next });
     }
     const terminal = terminalMutation(durable);
     if (!terminal) {
-      return Object.freeze({
-        schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA,
-        accepted: false,
-        reason: 'previous-run-not-terminal',
-        participantId: participant.participantId,
-        previousRunId: previous,
-        nextRunId: next
-      });
+      return Object.freeze({ schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA, accepted: false, reason: 'previous-run-not-terminal', participantId: participant.participantId, previousRunId: previous, nextRunId: next });
     }
     const archive = this.#archive(participant.participantId, previous);
     if (!archive) {
-      return Object.freeze({
-        schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA,
-        accepted: false,
-        reason: 'terminal-archive-not-durable',
-        participantId: participant.participantId,
-        previousRunId: previous,
-        nextRunId: next
-      });
+      return Object.freeze({ schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA, accepted: false, reason: 'terminal-archive-not-durable', participantId: participant.participantId, previousRunId: previous, nextRunId: next });
     }
     if (this.#archive(participant.participantId, next)) {
-      return Object.freeze({
-        schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA,
-        accepted: false,
-        reason: 'next-run-id-already-archived',
-        participantId: participant.participantId,
-        previousRunId: previous,
-        nextRunId: next
-      });
+      return Object.freeze({ schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA, accepted: false, reason: 'next-run-id-already-archived', participantId: participant.participantId, previousRunId: previous, nextRunId: next });
     }
 
     const evidence = archiveEvidence(archive);
@@ -350,16 +362,7 @@ export class PreparedWorldRunRolloverAuthority {
       timestampMs: effectiveTimestamp
     });
     if (!admission.accepted) {
-      return Object.freeze({
-        schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA,
-        accepted: false,
-        reason: 'participant-action-rate-limited',
-        participantId: participant.participantId,
-        previousRunId: previous,
-        nextRunId: next,
-        admission,
-        progressionPersistence: this.progressionPersistenceMeta()
-      });
+      return Object.freeze({ schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA, accepted: false, reason: 'participant-action-rate-limited', participantId: participant.participantId, previousRunId: previous, nextRunId: next, admission, progressionPersistence: this.progressionPersistenceMeta() });
     }
 
     const rolloverIntent = {
@@ -372,7 +375,7 @@ export class PreparedWorldRunRolloverAuthority {
     };
     records[index] = { ...durable, rolloverIntent };
     const persistenceResult = this.runStartStore.replaceAll(records);
-    this.restoreReport = this.#validatePreparedIntents();
+    this.restoreReport = this.#validateRolloverEvidence();
     return Object.freeze({
       schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA,
       accepted: true,
@@ -383,27 +386,103 @@ export class PreparedWorldRunRolloverAuthority {
       nextRunId: next,
       admission,
       rolloverIntent: cloneJson(rolloverIntent),
-      rolloverPersistence: Object.freeze({
-        enabled: true,
-        persisted: true,
-        reused: false,
-        kind: this.runStartStore.kind || 'external',
-        result: persistenceResult
-      }),
+      rolloverPersistence: Object.freeze({ enabled: true, persisted: true, reused: false, kind: this.runStartStore.kind || 'external', result: persistenceResult }),
       progressionPersistence: this.progressionPersistenceMeta(),
       humanMachineParity: 'same-world-account-rollover-preparation-path-and-action-budget-regardless-of-controller-kind',
-      truthBoundary: 'archive-confirmed-next-run-rollover-intent-is-durable-before-any-current-run-record-replacement;the-terminal-run-and-applied-next-drop-claim-remain-the-authoritative-current-state'
+      truthBoundary: 'archive-confirmed-next-run-rollover-intent-is-durable-before-any-current-run-record-replacement;the-terminal-run-and-applied-claim-remain-the-source-of-truth-until-explicit-execution'
+    });
+  }
+
+  executePreparedNextDropRollover({ participantId, previousRunId, nextRunId, timestampMs } = {}) {
+    const participant = this.#record(participantId);
+    const previous = nonEmpty(previousRunId, 'previousRunId');
+    const next = nonEmpty(nextRunId, 'nextRunId');
+    if (participant.profileKind !== 'world-account') {
+      return Object.freeze({ schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA, accepted: false, reason: 'run-rollover-requires-world-account', participantId: participant.participantId, previousRunId: previous, nextRunId: next });
+    }
+    if (!this.runStartStore || !this.runArchiveStore) {
+      return Object.freeze({ schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA, accepted: false, reason: 'durable-run-and-archive-storage-required', participantId: participant.participantId, previousRunId: previous, nextRunId: next });
+    }
+
+    const records = this.#durableRecords();
+    const durable = records.find(entry => entry.participantId === participant.participantId) || null;
+    if (!durable) return Object.freeze({ schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA, accepted: false, reason: 'no-durable-run-record', participantId: participant.participantId, previousRunId: previous, nextRunId: next });
+    const existing = durable.rolloverIntent || null;
+    if (existing && isExecutedIntent(existing)) {
+      if (existing.previousRunId !== previous || existing.nextRunId !== next || durable.runId !== next) {
+        throw new Error(`durable world run rollover execution conflict: ${participant.participantId}:${previous}->${next}`);
+      }
+      const archive = this.#archive(participant.participantId, previous);
+      if (!archive || !intentMatchesArchive(existing, durable, archive)) {
+        throw new Error(`durable world run rollover intent archive mismatch: ${participant.participantId}:${previous}`);
+      }
+      return Object.freeze({
+        schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA,
+        accepted: true,
+        reused: true,
+        participantId: participant.participantId,
+        controllerKind: participant.controllerKind,
+        previousRunId: previous,
+        nextRunId: next,
+        admission: null,
+        rolloverIntent: cloneJson(existing),
+        progression: this.base.status(participant.participantId).progression,
+        progressionPersistence: this.progressionPersistenceMeta(),
+        humanMachineParity: 'same-world-account-rollover-execution-path-and-action-budget-regardless-of-controller-kind',
+        truthBoundary: 'exact already-executed rollover receipt reused without consuming a second action admission'
+      });
+    }
+    if (durable.runId !== previous || !existing || existing.nextRunId !== next || isExecutedIntent(existing)) {
+      return Object.freeze({ schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA, accepted: false, reason: 'prepared-rollover-record-mismatch', participantId: participant.participantId, previousRunId: previous, nextRunId: next, durableRunId: durable.runId });
+    }
+    const archive = this.#archive(participant.participantId, previous);
+    if (!archive || !intentMatchesArchive(existing, durable, archive)) {
+      throw new Error(`durable world run rollover intent archive mismatch: ${participant.participantId}:${previous}`);
+    }
+
+    const executor = authorityWithMethod(this.base, 'executeArchiveBoundNextDropRollover');
+    if (!executor) {
+      return Object.freeze({ schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA, accepted: false, reason: 'rollover-execution-authority-unavailable', participantId: participant.participantId, previousRunId: previous, nextRunId: next });
+    }
+    const effectiveTimestamp = finiteTimestamp(timestampMs === undefined ? this.clock() : timestampMs);
+    const admission = this.worldAuthority.participants.submitAction({
+      participantId: participant.participantId,
+      actionId: 'world-execute-next-drop-rollover',
+      timestampMs: effectiveTimestamp
+    });
+    if (!admission.accepted) {
+      return Object.freeze({ schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA, accepted: false, reason: 'participant-action-rate-limited', participantId: participant.participantId, previousRunId: previous, nextRunId: next, admission });
+    }
+
+    const execution = executor.executeArchiveBoundNextDropRollover({
+      participantId: participant.participantId,
+      previousRunId: previous,
+      nextRunId: next,
+      runOptions: cloneJson(existing.runOptions || {}),
+      rolloverIntent: cloneJson(existing),
+      timestampMs: effectiveTimestamp
+    });
+    if (execution.accepted) this.restoreReport = this.#validateRolloverEvidence();
+    return Object.freeze({
+      ...execution,
+      schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA,
+      admission,
+      controllerKind: participant.controllerKind,
+      progressionPersistence: this.progressionPersistenceMeta(),
+      humanMachineParity: 'same-world-account-rollover-execution-path-and-action-budget-regardless-of-controller-kind',
+      truthBoundary: execution.accepted
+        ? 'validated archive-bound rollover executed once into the next durable run generation;the prior archive remains immutable evidence and only banked score/run history are carried as career baseline'
+        : execution.truthBoundary || 'prepared rollover remains durable when execution is rejected'
     });
   }
 
   authoritativeSnapshot() {
     return Object.freeze({
       schema: PREPARED_WORLD_RUN_ROLLOVER_AUTHORITY_SCHEMA,
-      baseSchema: ARCHIVED_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
-      base: this.base.authoritativeSnapshot(),
+      baseSchema: this.base.schema || ARCHIVED_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
       progressionPersistence: this.progressionPersistenceMeta(),
-      preparedRolloverRestoreReport: this.restoreReport,
-      truthBoundary: 'prepared-rollover-intents-are-durable-archive-bound-handoff-evidence-only;they-do-not-delete-terminal-run-evidence-claim-next-drop-rewards-or-start-a-new-civilization-generation'
+      rolloverRestoreReport: this.restoreReport,
+      base: this.base.authoritativeSnapshot()
     });
   }
 }

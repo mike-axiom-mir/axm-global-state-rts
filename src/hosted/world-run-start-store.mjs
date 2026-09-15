@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-export const WORLD_RUN_START_STORE_SCHEMA = 'axm.global-state-rts.world-run-start-store/v0.2';
+export const WORLD_RUN_START_STORE_SCHEMA = 'axm.global-state-rts.world-run-start-store/v0.3';
 export const WORLD_RUN_START_FILE_SCHEMA = 'axm.global-state-rts.world-run-start-file/v0.1';
 export const WORLD_RUN_ROLLOVER_INTENT_SCHEMA = 'axm.global-state-rts.world-run-rollover-intent/v0.1';
 
@@ -50,6 +50,18 @@ function sha256(value, label) {
   return text;
 }
 
+function canonicalJson(value) {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort().map(key => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function sameJson(left, right) {
+  return canonicalJson(left) === canonicalJson(right);
+}
+
 function normalizeMutation(mutation, index, label) {
   plainObject(mutation, `${label} mutation ${index}`);
   const sequence = positiveSafeInteger(mutation.sequence, `${label} mutation ${index} sequence`);
@@ -82,25 +94,52 @@ function normalizeMutations(mutations, label) {
   });
 }
 
-function normalizeRolloverIntent(value, label, runId, mutations) {
+function normalizeRolloverIntent(value, label, runId, mutations, claim, initialProgressionSnapshot) {
   if (value === undefined || value === null) return null;
   const intent = plainObject(value, `${label} rolloverIntent`);
   if (intent.schema !== WORLD_RUN_ROLLOVER_INTENT_SCHEMA) {
     throw new Error(`${label} rolloverIntent schema mismatch: ${intent.schema || 'missing'}`);
   }
   const previousRunId = nonEmpty(intent.previousRunId, `${label} rolloverIntent.previousRunId`);
-  if (previousRunId !== runId) throw new Error(`${label} rolloverIntent previousRunId mismatch`);
   const nextRunId = nonEmpty(intent.nextRunId, `${label} rolloverIntent.nextRunId`);
   if (nextRunId === previousRunId) throw new Error(`${label} rolloverIntent nextRunId must differ from previousRunId`);
-  if (!mutations.length || mutations.at(-1)?.action !== 'close-active-run') {
-    throw new Error(`${label} rolloverIntent requires a terminal close-active-run mutation`);
-  }
   const runOptions = intent.runOptions === undefined ? {} : plainObject(intent.runOptions, `${label} rolloverIntent.runOptions`);
   const archiveClosedAtMs = finiteTimestamp(intent.archiveClosedAtMs, `${label} rolloverIntent.archiveClosedAtMs`);
-  if (archiveClosedAtMs !== mutations.at(-1).timestampMs) {
-    throw new Error(`${label} rolloverIntent archiveClosedAtMs must match terminal close timestamp`);
+  const archiveClaimSerial = positiveSafeInteger(intent.archiveClaimSerial, `${label} rolloverIntent.archiveClaimSerial`);
+  const terminalBankedGold = nonNegativeFinite(intent.terminalBankedGold, `${label} rolloverIntent.terminalBankedGold`);
+  const terminalRunHistoryCount = nonNegativeSafeInteger(intent.terminalRunHistoryCount, `${label} rolloverIntent.terminalRunHistoryCount`);
+  const executedAtMs = intent.executedAtMs === undefined || intent.executedAtMs === null
+    ? null
+    : finiteTimestamp(intent.executedAtMs, `${label} rolloverIntent.executedAtMs`);
+
+  if (executedAtMs === null) {
+    if (previousRunId !== runId) throw new Error(`${label} rolloverIntent previousRunId mismatch`);
+    if (!mutations.length || mutations.at(-1)?.action !== 'close-active-run') {
+      throw new Error(`${label} rolloverIntent requires a terminal close-active-run mutation`);
+    }
+    if (archiveClosedAtMs !== mutations.at(-1).timestampMs) {
+      throw new Error(`${label} rolloverIntent archiveClosedAtMs must match terminal close timestamp`);
+    }
+  } else {
+    if (nextRunId !== runId) throw new Error(`${label} executed rolloverIntent nextRunId mismatch`);
+    if (previousRunId === runId) throw new Error(`${label} executed rolloverIntent previousRunId must differ from current runId`);
+    if (Number(claim.claimSerial) !== archiveClaimSerial + 1) {
+      throw new Error(`${label} executed rolloverIntent claim serial must advance exactly once`);
+    }
+    if (Number(initialProgressionSnapshot.bankedGold) !== terminalBankedGold) {
+      throw new Error(`${label} executed rolloverIntent bankedGold continuity mismatch`);
+    }
+    if (!Array.isArray(initialProgressionSnapshot.runHistory)
+      || initialProgressionSnapshot.runHistory.length !== terminalRunHistoryCount
+      || !initialProgressionSnapshot.runHistory.some(entry => entry?.runId === previousRunId)) {
+      throw new Error(`${label} executed rolloverIntent run history continuity mismatch`);
+    }
+    if (!sameJson(runOptions, intent.runOptions || {})) {
+      throw new Error(`${label} executed rolloverIntent runOptions mismatch`);
+    }
   }
-  return {
+
+  const normalized = {
     schema: WORLD_RUN_ROLLOVER_INTENT_SCHEMA,
     previousRunId,
     nextRunId,
@@ -108,10 +147,12 @@ function normalizeRolloverIntent(value, label, runId, mutations) {
     runOptions: cloneJson(runOptions),
     archiveSha256: sha256(intent.archiveSha256, `${label} rolloverIntent.archiveSha256`),
     archiveClosedAtMs,
-    archiveClaimSerial: positiveSafeInteger(intent.archiveClaimSerial, `${label} rolloverIntent.archiveClaimSerial`),
-    terminalBankedGold: nonNegativeFinite(intent.terminalBankedGold, `${label} rolloverIntent.terminalBankedGold`),
-    terminalRunHistoryCount: nonNegativeSafeInteger(intent.terminalRunHistoryCount, `${label} rolloverIntent.terminalRunHistoryCount`)
+    archiveClaimSerial,
+    terminalBankedGold,
+    terminalRunHistoryCount
   };
+  if (executedAtMs !== null) normalized.executedAtMs = executedAtMs;
+  return normalized;
 }
 
 function normalizeRecord(record, index = null) {
@@ -135,7 +176,7 @@ function normalizeRecord(record, index = null) {
     throw new Error(`${label} progression run mismatch`);
   }
   const mutations = normalizeMutations(record.mutations, label);
-  const rolloverIntent = normalizeRolloverIntent(record.rolloverIntent, label, runId, mutations);
+  const rolloverIntent = normalizeRolloverIntent(record.rolloverIntent, label, runId, mutations, claim, initialProgressionSnapshot);
   const normalized = {
     participantId,
     runId,

@@ -81,6 +81,17 @@ function prepareTerminalRun(api, clockState, { accountId, controllerKind, runId 
   return { participantId, closed };
 }
 
+function addNextDropRewards(api, clockState, participantId) {
+  clockState.nowMs += WORLD_HOUR_MS;
+  const accrued = post(api, '/api/world/chests/accrue', { participantId });
+  assert.equal(accrued.status, 200);
+  const opened = post(api, '/api/world/chests/open', { participantId, count: 1 });
+  assert.equal(opened.status, 200);
+  assert.equal(opened.body.accepted, true);
+  assert.ok(opened.body.pendingNextDropRewards.food > 0);
+  return opened.body.pendingNextDropRewards;
+}
+
 function prepareRollover(api, clockState, participantId, previousRunId, nextRunId, runOptions) {
   clockState.nowMs += 1;
   return post(api, '/api/world/run/prepare-rollover', {
@@ -88,6 +99,15 @@ function prepareRollover(api, clockState, participantId, previousRunId, nextRunI
     previousRunId,
     nextRunId,
     runOptions
+  });
+}
+
+function executeRollover(api, clockState, participantId, previousRunId, nextRunId) {
+  clockState.nowMs += 1;
+  return post(api, '/api/world/run/execute-rollover', {
+    participantId,
+    previousRunId,
+    nextRunId
   });
 }
 
@@ -116,6 +136,8 @@ try {
     runId: machineRunId
   });
 
+  const humanPending = addNextDropRewards(first.api, clockState, human.participantId);
+  const machinePending = addNextDropRewards(first.api, clockState, machine.participantId);
   const humanRunOptions = { crewCount: 10, foodPolicy: 'normal', extraStartingResources: { scrap: 5 } };
   const machineRunOptions = { crewCount: 10, foodPolicy: 'normal', extraStartingResources: { scrap: 5 } };
   const humanPrepared = prepareRollover(first.api, clockState, human.participantId, humanRunId, humanNextRunId, humanRunOptions);
@@ -129,72 +151,102 @@ try {
   assert.equal(machinePrepared.body.reused, false);
   assert.equal(humanPrepared.body.controllerKind, 'human');
   assert.equal(machinePrepared.body.controllerKind, 'machine');
-  assert.equal(humanPrepared.body.rolloverPersistence.persisted, true);
-  assert.equal(machinePrepared.body.rolloverPersistence.persisted, true);
   assert.equal(humanPrepared.body.humanMachineParity, machinePrepared.body.humanMachineParity);
   assert.match(humanPrepared.body.rolloverIntent.archiveSha256, /^[0-9a-f]{64}$/);
-  assert.match(machinePrepared.body.rolloverIntent.archiveSha256, /^[0-9a-f]{64}$/);
-  assert.equal(humanPrepared.body.rolloverIntent.archiveClosedAtMs, human.closed.body.archivePersistence.archive.closedAtMs);
-  assert.equal(machinePrepared.body.rolloverIntent.archiveClosedAtMs, machine.closed.body.archivePersistence.archive.closedAtMs);
   assert.equal(humanPrepared.body.rolloverIntent.terminalBankedGold, human.closed.body.progression.bankedGold);
   assert.equal(machinePrepared.body.rolloverIntent.terminalBankedGold, machine.closed.body.progression.bankedGold);
 
-  const humanStatusBeforeRestart = get(first.api, '/api/world/run', { participantId: human.participantId });
-  const machineStatusBeforeRestart = get(first.api, '/api/world/run', { participantId: machine.participantId });
-  assert.equal(humanStatusBeforeRestart.status, 200);
-  assert.equal(machineStatusBeforeRestart.status, 200);
-  assert.equal(humanStatusBeforeRestart.body.rolloverContinuity.prepared, true);
-  assert.equal(machineStatusBeforeRestart.body.rolloverContinuity.prepared, true);
-  assert.equal(humanStatusBeforeRestart.body.rolloverContinuity.archiveMatched, true);
-  assert.equal(machineStatusBeforeRestart.body.rolloverContinuity.archiveMatched, true);
-  assert.equal(humanStatusBeforeRestart.body.progression.activeRun, null);
-  assert.equal(machineStatusBeforeRestart.body.progression.activeRun, null);
-  assert.equal(humanStatusBeforeRestart.body.nextDropClaim.runId, humanRunId);
-  assert.equal(machineStatusBeforeRestart.body.nextDropClaim.runId, machineRunId);
-  assert.equal(humanStatusBeforeRestart.body.nextDropClaim.status, 'applied');
-  assert.equal(machineStatusBeforeRestart.body.nextDropClaim.status, 'applied');
-
-  const duplicate = prepareRollover(first.api, clockState, human.participantId, humanRunId, humanNextRunId, humanRunOptions);
-  assert.equal(duplicate.status, 200);
-  assert.equal(duplicate.body.accepted, true);
-  assert.equal(duplicate.body.reused, true);
-  assert.equal(duplicate.body.admission, null);
-  assert.deepEqual(duplicate.body.rolloverIntent, humanPrepared.body.rolloverIntent);
+  const duplicatePreparation = prepareRollover(first.api, clockState, human.participantId, humanRunId, humanNextRunId, humanRunOptions);
+  assert.equal(duplicatePreparation.status, 200);
+  assert.equal(duplicatePreparation.body.reused, true);
+  assert.equal(duplicatePreparation.body.admission, null);
 
   const conflict = prepareRollover(first.api, clockState, human.participantId, humanRunId, 'run:rollover:human:conflict', humanRunOptions);
   assert.equal(conflict.status, 409);
   assert.match(conflict.body.error, /rollover intent conflict/);
 
+  const preparedAccountFile = fs.readFileSync(accountPath, 'utf8');
+  const preparedRestart = createApi({ accountPath, runStartPath, archivePath, clock });
+  const preparedHumanStatus = get(preparedRestart.api, '/api/world/run', { participantId: human.participantId });
+  assert.equal(preparedHumanStatus.status, 200);
+  assert.equal(preparedHumanStatus.body.rolloverContinuity.prepared, true);
+  assert.equal(preparedHumanStatus.body.rolloverContinuity.executed, false);
+  assert.equal(preparedHumanStatus.body.rolloverContinuity.archiveMatched, true);
+  assert.equal(preparedHumanStatus.body.progression.activeRun, null);
+
+  const humanExecuted = executeRollover(preparedRestart.api, clockState, human.participantId, humanRunId, humanNextRunId);
+  const machineExecuted = executeRollover(preparedRestart.api, clockState, machine.participantId, machineRunId, machineNextRunId);
+  assert.equal(humanExecuted.status, 200);
+  assert.equal(machineExecuted.status, 200);
+  assert.equal(humanExecuted.body.accepted, true);
+  assert.equal(machineExecuted.body.accepted, true);
+  assert.equal(humanExecuted.body.reused, false);
+  assert.equal(machineExecuted.body.reused, false);
+  assert.equal(humanExecuted.body.controllerKind, 'human');
+  assert.equal(machineExecuted.body.controllerKind, 'machine');
+  assert.equal(humanExecuted.body.humanMachineParity, machineExecuted.body.humanMachineParity);
+  assert.equal(humanExecuted.body.runStartPersistence.persisted, true);
+  assert.equal(machineExecuted.body.runStartPersistence.persisted, true);
+  assert.equal(humanExecuted.body.progression.activeRun.runId, humanNextRunId);
+  assert.equal(machineExecuted.body.progression.activeRun.runId, machineNextRunId);
+  assert.deepEqual(humanExecuted.body.progression.runHistory, human.closed.body.progression.runHistory);
+  assert.deepEqual(machineExecuted.body.progression.runHistory, machine.closed.body.progression.runHistory);
+  assert.equal(humanExecuted.body.progression.bankedGold, human.closed.body.progression.bankedGold);
+  assert.equal(machineExecuted.body.progression.bankedGold, machine.closed.body.progression.bankedGold);
+  assert.equal(humanExecuted.body.claim.claimSerial, humanPrepared.body.rolloverIntent.archiveClaimSerial + 1);
+  assert.equal(machineExecuted.body.claim.claimSerial, machinePrepared.body.rolloverIntent.archiveClaimSerial + 1);
+  assert.deepEqual(humanExecuted.body.claim.rewards, humanPending);
+  assert.deepEqual(machineExecuted.body.claim.rewards, machinePending);
+  assert.ok(Number.isFinite(humanExecuted.body.rolloverIntent.executedAtMs));
+
+  const duplicateExecution = executeRollover(preparedRestart.api, clockState, human.participantId, humanRunId, humanNextRunId);
+  assert.equal(duplicateExecution.status, 200);
+  assert.equal(duplicateExecution.body.accepted, true);
+  assert.equal(duplicateExecution.body.reused, true);
+  assert.equal(duplicateExecution.body.admission, null);
+
   const runStartFile = JSON.parse(fs.readFileSync(runStartPath, 'utf8'));
   assert.equal(runStartFile.records.length, 2);
   const humanDurable = runStartFile.records.find(entry => entry.participantId === human.participantId);
   const machineDurable = runStartFile.records.find(entry => entry.participantId === machine.participantId);
-  assert.equal(humanDurable.runId, humanRunId);
-  assert.equal(machineDurable.runId, machineRunId);
-  assert.equal(humanDurable.rolloverIntent.nextRunId, humanNextRunId);
-  assert.equal(machineDurable.rolloverIntent.nextRunId, machineNextRunId);
-  assert.equal(humanDurable.mutations.at(-1).action, 'close-active-run');
-  assert.equal(machineDurable.mutations.at(-1).action, 'close-active-run');
+  assert.equal(humanDurable.runId, humanNextRunId);
+  assert.equal(machineDurable.runId, machineNextRunId);
+  assert.equal(humanDurable.rolloverIntent.previousRunId, humanRunId);
+  assert.equal(machineDurable.rolloverIntent.previousRunId, machineRunId);
+  assert.ok(Number.isFinite(humanDurable.rolloverIntent.executedAtMs));
+  assert.equal(humanDurable.mutations.length, 0);
+  assert.equal(machineDurable.mutations.length, 0);
 
+  // Simulate a crash after the run-start generation replacement but before the account store commit.
+  fs.writeFileSync(accountPath, preparedAccountFile, 'utf8');
   const restarted = createApi({ accountPath, runStartPath, archivePath, clock });
   const humanStatusAfterRestart = get(restarted.api, '/api/world/run', { participantId: human.participantId });
   const machineStatusAfterRestart = get(restarted.api, '/api/world/run', { participantId: machine.participantId });
   assert.equal(humanStatusAfterRestart.status, 200);
   assert.equal(machineStatusAfterRestart.status, 200);
-  assert.deepEqual(humanStatusAfterRestart.body.rolloverContinuity.intent, humanPrepared.body.rolloverIntent);
-  assert.deepEqual(machineStatusAfterRestart.body.rolloverContinuity.intent, machinePrepared.body.rolloverIntent);
+  assert.equal(humanStatusAfterRestart.body.rolloverContinuity.prepared, false);
+  assert.equal(machineStatusAfterRestart.body.rolloverContinuity.prepared, false);
+  assert.equal(humanStatusAfterRestart.body.rolloverContinuity.executed, true);
+  assert.equal(machineStatusAfterRestart.body.rolloverContinuity.executed, true);
   assert.equal(humanStatusAfterRestart.body.rolloverContinuity.archiveMatched, true);
   assert.equal(machineStatusAfterRestart.body.rolloverContinuity.archiveMatched, true);
-  assert.equal(humanStatusAfterRestart.body.progression.activeRun, null);
-  assert.equal(machineStatusAfterRestart.body.progression.activeRun, null);
+  assert.equal(humanStatusAfterRestart.body.progression.activeRun.runId, humanNextRunId);
+  assert.equal(machineStatusAfterRestart.body.progression.activeRun.runId, machineNextRunId);
   assert.deepEqual(humanStatusAfterRestart.body.progression.runHistory, human.closed.body.progression.runHistory);
   assert.deepEqual(machineStatusAfterRestart.body.progression.runHistory, machine.closed.body.progression.runHistory);
-  assert.equal(humanStatusAfterRestart.body.progressionPersistence.durableRolloverPreparation.preparedIntentCount, 2);
-  assert.equal(humanStatusAfterRestart.body.progressionPersistence.durableRolloverPreparation.validatedOnStartup.prepared, 2);
+  assert.equal(humanStatusAfterRestart.body.nextDropClaim.runId, humanNextRunId);
+  assert.equal(machineStatusAfterRestart.body.nextDropClaim.runId, machineNextRunId);
+  assert.equal(humanStatusAfterRestart.body.nextDropClaim.status, 'applied');
+  assert.equal(machineStatusAfterRestart.body.nextDropClaim.status, 'applied');
+  assert.equal(humanStatusAfterRestart.body.progressionPersistence.reconciledRolloverAccountClaimsThisProcess, 2);
+  assert.equal(humanStatusAfterRestart.body.progressionPersistence.durableRolloverPreparation.preparedIntentCount, 0);
+  assert.equal(humanStatusAfterRestart.body.progressionPersistence.durableRolloverPreparation.executedIntentCount, 2);
+  assert.equal(humanStatusAfterRestart.body.progressionPersistence.durableRolloverPreparation.validatedOnStartup.executed, 2);
 
   const meta = get(restarted.api, '/api/world/meta');
   assert.equal(meta.status, 200);
   assert.equal(meta.body.runLifecycle.durableRolloverPreparationEndpoint, '/api/world/run/prepare-rollover');
+  assert.equal(meta.body.runLifecycle.durableRolloverExecutionEndpoint, '/api/world/run/execute-rollover');
   assert.equal(meta.body.runLifecycle.progressionPersistence.durableRolloverPreparation.enabled, true);
 
   const tampered = JSON.parse(fs.readFileSync(runStartPath, 'utf8'));
@@ -206,7 +258,7 @@ try {
     /rollover intent archive mismatch/
   );
 
-  console.log('world run durable archive-bound rollover intent human/machine parity/restart/conflict selftest: PASS');
+  console.log('world run archive-bound rollover prepare/execute human-machine parity/restart reconciliation selftest: PASS');
 } finally {
   fs.rmSync(tempDir, { recursive: true, force: true });
 }

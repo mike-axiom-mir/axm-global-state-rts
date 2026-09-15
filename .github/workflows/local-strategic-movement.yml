@@ -8,6 +8,7 @@ on:
       - 'game/strategic-movement.mjs'
       - 'game/primary-strategic-gameplay.mjs'
       - 'game/primary-strategic-surface.mjs'
+      - 'game/primary-world-objective-surface.mjs'
       - 'game/index.html'
       - 'tests/local-strategic-gameplay-selftest.mjs'
       - 'tests/browser/local-strategic-movement.spec.js'
@@ -41,6 +42,7 @@ jobs:
           node --check game/strategic-movement.mjs
           node --check game/primary-strategic-gameplay.mjs
           node --check game/primary-strategic-surface.mjs
+          node --check game/primary-world-objective-surface.mjs
           node --check tests/browser/local-strategic-movement.spec.js
           node --check tests/browser/primary-strategic-surface.spec.js
       - name: Install pinned Playwright test runner

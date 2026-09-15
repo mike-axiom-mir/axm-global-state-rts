@@ -37,7 +37,11 @@ function startRun(api, clockState, { accountId, controllerKind, runId }) {
   const started = post(api, '/api/world/run/begin-next-drop', {
     participantId,
     runId,
-    runOptions: { crewCount: 9, foodPolicy: 'normal', extraStartingResources: { scrap: 200, 'industrial-metal': 20 } }
+    runOptions: {
+      crewCount: 9,
+      foodPolicy: 'normal',
+      extraStartingResources: { scrap: 500, timber: 100, 'industrial-metal': 100 }
+    }
   });
   assert.equal(started.status, 200);
   assert.equal(started.body.accepted, true);
@@ -49,17 +53,50 @@ function startRun(api, clockState, { accountId, controllerKind, runId }) {
 
 function train(api, clockState, run, mutationId) {
   clockState.nowMs += 1;
-  return post(api, '/api/world/run/train-unit', { participantId: run.participantId, runId: run.runId, mutationId, unitId: run.unitId, roleId: 'citizen' });
+  return post(api, '/api/world/run/train-unit', {
+    participantId: run.participantId,
+    runId: run.runId,
+    mutationId,
+    unitId: run.unitId,
+    roleId: 'citizen'
+  });
+}
+
+function construct(api, clockState, run, mutationId, vehicleId) {
+  clockState.nowMs += 1;
+  return post(api, '/api/world/run/construct-vehicle', {
+    participantId: run.participantId,
+    runId: run.runId,
+    mutationId,
+    definitionId: 'vehicle:utility-hauler',
+    instanceId: vehicleId,
+    xM: 12,
+    zM: -8,
+    yawDeg: 45
+  });
 }
 
 function license(api, clockState, run, mutationId) {
   clockState.nowMs += 1;
-  return post(api, '/api/world/run/license-unit', { participantId: run.participantId, runId: run.runId, mutationId, unitId: run.unitId, licenseId: 'light-vehicle' });
+  return post(api, '/api/world/run/license-unit', {
+    participantId: run.participantId,
+    runId: run.runId,
+    mutationId,
+    unitId: run.unitId,
+    licenseId: 'light-vehicle'
+  });
 }
 
-function assign(api, clockState, run, mutationId, vehicleId) {
+function assign(api, clockState, run, mutationId, vehicleId, vehicleClass = 'light-vehicle') {
   clockState.nowMs += 1;
-  return post(api, '/api/world/run/assign-vehicle', { participantId: run.participantId, runId: run.runId, mutationId, unitId: run.unitId, vehicleId, vehicleClass: 'light-vehicle' });
+  return post(api, '/api/world/run/assign-vehicle', {
+    participantId: run.participantId,
+    runId: run.runId,
+    mutationId,
+    unitId: run.unitId,
+    vehicleId,
+    vehicleClass
+  });
 }
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'axm-world-run-vehicle-assignment-'));
@@ -73,25 +110,52 @@ try {
   const first = createApi({ accountPath, runStartPath, archivePath, clock });
   const human = startRun(first.api, clockState, { accountId: 'assign-human', controllerKind: 'human', runId: 'run:assign:human:001' });
   const machine = startRun(first.api, clockState, { accountId: 'assign-machine', controllerKind: 'machine', runId: 'run:assign:machine:001' });
+  const humanVehicleId = 'vehicle:human:scout-01';
+  const machineVehicleId = 'vehicle:machine:scout-01';
 
-  const unlicensed = assign(first.api, clockState, human, 'assign:human:before-license', 'vehicle:human:probe');
+  for (const [run, suffix, vehicleId] of [[human, 'human', humanVehicleId], [machine, 'machine', machineVehicleId]]) {
+    const trained = train(first.api, clockState, run, `train:assign:${suffix}`);
+    assert.equal(trained.status, 200);
+    assert.equal(trained.body.accepted, true);
+    const constructed = construct(first.api, clockState, run, `construct:assign:${suffix}`, vehicleId);
+    assert.equal(constructed.status, 200);
+    assert.equal(constructed.body.accepted, true);
+    assert.equal(constructed.body.result.construction.vehicle.instanceId, vehicleId);
+    assert.equal(constructed.body.result.construction.vehicle.vehicleClass, 'light-vehicle');
+    assert.equal(constructed.body.result.construction.vehicle.driverUnitId, null);
+  }
+
+  const unlicensed = assign(first.api, clockState, human, 'assign:human:before-license', humanVehicleId);
   assert.equal(unlicensed.status, 400);
   assert.equal(unlicensed.body.accepted, false);
   assert.equal(unlicensed.body.reason, 'required-license-missing');
   assert.equal(unlicensed.body.admission, undefined);
-  assert.equal(unlicensed.body.progression.activeRun.manpower.units.find(unit => unit.id === human.unitId).assignedVehicleId, null);
+
+  const foreignBeforeLicense = assign(first.api, clockState, human, 'assign:human:foreign-before-license', machineVehicleId);
+  assert.equal(foreignBeforeLicense.status, 400);
+  assert.equal(foreignBeforeLicense.body.accepted, false);
+  assert.equal(foreignBeforeLicense.body.reason, 'vehicle-not-owned-by-active-run');
+  assert.equal(foreignBeforeLicense.body.admission, undefined);
 
   for (const [run, suffix] of [[human, 'human'], [machine, 'machine']]) {
-    const trained = train(first.api, clockState, run, `train:assign:${suffix}`);
-    assert.equal(trained.status, 200);
-    assert.equal(trained.body.accepted, true);
     const licensed = license(first.api, clockState, run, `license:assign:${suffix}`);
     assert.equal(licensed.status, 200);
     assert.equal(licensed.body.accepted, true);
   }
 
-  const humanVehicleId = 'vehicle:human:scout-01';
-  const machineVehicleId = 'vehicle:machine:scout-01';
+  const classMismatch = assign(first.api, clockState, human, 'assign:human:wrong-class', humanVehicleId, 'heavy-vehicle');
+  assert.equal(classMismatch.status, 400);
+  assert.equal(classMismatch.body.accepted, false);
+  assert.equal(classMismatch.body.reason, 'vehicle-class-mismatch');
+  assert.equal(classMismatch.body.assignment.authoritativeVehicleClass, 'light-vehicle');
+  assert.equal(classMismatch.body.admission, undefined);
+
+  const foreign = assign(first.api, clockState, human, 'assign:human:foreign', machineVehicleId);
+  assert.equal(foreign.status, 400);
+  assert.equal(foreign.body.accepted, false);
+  assert.equal(foreign.body.reason, 'vehicle-not-owned-by-active-run');
+  assert.equal(foreign.body.admission, undefined);
+
   const humanMutationId = 'assign:human:light';
   const machineMutationId = 'assign:machine:light';
   const humanAssignment = assign(first.api, clockState, human, humanMutationId, humanVehicleId);
@@ -105,10 +169,15 @@ try {
     assert.equal(result.body.result.assignment.unit.id, run.unitId);
     assert.equal(result.body.result.assignment.unit.assignedVehicleId, vehicleId);
     assert.equal(result.body.result.assignment.unit.assignedVehicleClass, 'light-vehicle');
+    assert.equal(result.body.result.assignment.vehicle.instanceId, vehicleId);
+    assert.equal(result.body.result.assignment.vehicle.vehicleClass, 'light-vehicle');
+    assert.equal(result.body.result.assignment.vehicle.driverUnitId, run.unitId);
+    assert.equal(result.body.result.assignment.receipt.type, 'driver-assigned');
+    assert.equal(result.body.result.assignment.receipt.eventId, `host-run-vehicle-assign:${result.body.mutationId}`);
     assert.equal(result.body.mutationPersistence.persisted, true);
     assert.equal(result.body.mutationPersistence.mutation.action, 'assign-vehicle');
     assert.deepEqual(result.body.mutationPersistence.mutation.payload, { unitId: run.unitId, vehicleId, vehicleClass: 'light-vehicle' });
-    assert.match(result.body.truthBoundary, /does-not-itself-prove-vehicle-existence-ownership-or-production/);
+    assert.match(result.body.truthBoundary, /active-civilization-owned-vehicle-registry/);
     assert.equal(result.body.humanMachineParity, 'same-world-account-command-path-action-budget-and-durable-mutation-order-regardless-of-controller-kind');
   }
 
@@ -124,6 +193,9 @@ try {
   assert.equal(duplicate.body.accepted, true);
   assert.equal(duplicate.body.reconciled, true);
   assert.equal(duplicate.body.result.assignment.unit.assignedVehicleId, humanVehicleId);
+  assert.equal(duplicate.body.result.assignment.vehicle.instanceId, humanVehicleId);
+  assert.equal(duplicate.body.result.assignment.vehicle.driverUnitId, human.unitId);
+  assert.equal(duplicate.body.result.assignment.receipt.eventId, `host-run-vehicle-assign:${humanMutationId}`);
   assert.equal(duplicate.body.mutationPersistence.reused, true);
   assert.equal(duplicate.body.admission, undefined);
 
@@ -131,16 +203,16 @@ try {
   assert.equal(conflict.status, 409);
   assert.match(conflict.body.error, /durable run mutation id conflict/);
 
-  const secondAssignment = assign(first.api, clockState, human, 'assign:human:second', 'vehicle:human:second');
-  assert.equal(secondAssignment.status, 400);
-  assert.equal(secondAssignment.body.accepted, false);
-  assert.equal(secondAssignment.body.reason, 'unit-already-assigned-vehicle');
-  assert.equal(secondAssignment.body.admission, undefined);
+  const alreadyDriven = assign(first.api, clockState, human, 'assign:human:already-driven', humanVehicleId);
+  assert.equal(alreadyDriven.status, 400);
+  assert.equal(alreadyDriven.body.accepted, false);
+  assert.equal(alreadyDriven.body.reason, 'vehicle-already-has-driver');
+  assert.equal(alreadyDriven.body.admission, undefined);
 
   const durableBeforeRestart = JSON.parse(fs.readFileSync(runStartPath, 'utf8'));
   for (const run of [human, machine]) {
     const durable = durableBeforeRestart.records.find(entry => entry.participantId === run.participantId);
-    assert.deepEqual(durable.mutations.map(entry => entry.action), ['train-unit-specialization', 'license-unit-vehicle', 'assign-vehicle']);
+    assert.deepEqual(durable.mutations.map(entry => entry.action), ['train-unit-specialization', 'construct-vehicle', 'license-unit-vehicle', 'assign-vehicle']);
   }
 
   clockState.nowMs += 1;
@@ -155,41 +227,43 @@ try {
   const machineAfterRestart = get(restarted.api, '/api/world/run', { participantId: machine.participantId });
   assert.equal(humanAfterRestart.status, 200);
   assert.equal(machineAfterRestart.status, 200);
-  const humanUnit = humanAfterRestart.body.progression.activeRun.manpower.units.find(unit => unit.id === human.unitId);
-  const machineUnit = machineAfterRestart.body.progression.activeRun.manpower.units.find(unit => unit.id === machine.unitId);
-  assert.equal(humanUnit.assignedVehicleId, humanVehicleId);
-  assert.equal(humanUnit.assignedVehicleClass, 'light-vehicle');
-  assert.equal(machineUnit.assignedVehicleId, machineVehicleId);
-  assert.equal(machineUnit.assignedVehicleClass, 'light-vehicle');
+
+  for (const [run, status, vehicleId] of [[human, humanAfterRestart, humanVehicleId], [machine, machineAfterRestart, machineVehicleId]]) {
+    const unit = status.body.progression.activeRun.manpower.units.find(entry => entry.id === run.unitId);
+    const vehicle = status.body.progression.activeRun.vehicles.vehicles.find(entry => entry.instanceId === vehicleId);
+    assert.equal(unit.assignedVehicleId, vehicleId);
+    assert.equal(unit.assignedVehicleClass, 'light-vehicle');
+    assert.equal(vehicle.instanceId, vehicleId);
+    assert.equal(vehicle.vehicleClass, 'light-vehicle');
+    assert.equal(vehicle.driverUnitId, run.unitId);
+    assert.equal(status.body.mutationContinuity.appliedMutationCountThisProcess, 5);
+    assert.equal(status.body.continuity.state, 'run-start-and-mutations-restored-from-durable-record');
+  }
   assert.equal(humanAfterRestart.body.progression.activeRun.food.policy, 'rations');
   assert.equal(machineAfterRestart.body.progression.activeRun.economy.peakGlobalControlPercent, 33);
-  assert.equal(humanAfterRestart.body.mutationContinuity.appliedMutationCountThisProcess, 4);
-  assert.equal(machineAfterRestart.body.mutationContinuity.appliedMutationCountThisProcess, 4);
-  assert.equal(humanAfterRestart.body.continuity.state, 'run-start-and-mutations-restored-from-durable-record');
-  assert.equal(machineAfterRestart.body.continuity.state, 'run-start-and-mutations-restored-from-durable-record');
 
   clockState.nowMs += 1;
   const humanClose = post(restarted.api, '/api/world/run/close', { participantId: human.participantId, runId: human.runId, mutationId: 'close:assign:human' });
   assert.equal(humanClose.status, 200);
   assert.equal(humanClose.body.accepted, true);
   assert.equal(humanClose.body.archivePersistence.persisted, true);
-  assert.deepEqual(humanClose.body.archivePersistence.archive.mutations.map(entry => entry.action), ['train-unit-specialization', 'license-unit-vehicle', 'assign-vehicle', 'set-food-policy', 'close-active-run']);
+  assert.deepEqual(humanClose.body.archivePersistence.archive.mutations.map(entry => entry.action), ['train-unit-specialization', 'construct-vehicle', 'license-unit-vehicle', 'assign-vehicle', 'set-food-policy', 'close-active-run']);
 
   const restartedAfterClose = createApi({ accountPath, runStartPath, archivePath, clock });
   const terminal = get(restartedAfterClose.api, '/api/world/run', { participantId: human.participantId });
   assert.equal(terminal.status, 200);
   assert.equal(terminal.body.progression.activeRun, null);
   assert.equal(terminal.body.mutationContinuity.terminalCloseApplied, true);
-  assert.equal(terminal.body.mutationContinuity.appliedMutationCountThisProcess, 5);
+  assert.equal(terminal.body.mutationContinuity.appliedMutationCountThisProcess, 6);
 
   const meta = get(restartedAfterClose.api, '/api/world/meta');
   assert.equal(meta.status, 200);
   assert.ok(meta.body.runLifecycle.hostAuthoritativeMutationActions.includes('assign-vehicle'));
   assert.equal(meta.body.runLifecycle.durableVehicleAssignmentEndpoint, '/api/world/run/assign-vehicle');
   assert.ok(meta.body.runLifecycle.progressionPersistence.durableMutationActions.includes('assign-vehicle'));
-  assert.match(meta.body.runLifecycle.truthBoundary, /vehicle-assignment-reference/);
+  assert.match(meta.body.runLifecycle.truthBoundary, /vehicle-registry-validated-assignment/);
 
-  console.log('world run durable host vehicle-assignment human/machine parity/order/idempotence/restart/archive selftest: PASS');
+  console.log('world run durable host vehicle-assignment registry ownership/class/driver human-machine parity/order/idempotence/restart/archive selftest: PASS');
 } finally {
   fs.rmSync(tempDir, { recursive: true, force: true });
 }

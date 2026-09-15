@@ -18,7 +18,7 @@ import {
 } from './world-run-durable-checkpoint-authority.mjs';
 import { WORLD_RUN_SESSION_AUTHORITY_SCHEMA } from './world-run-session-authority.mjs';
 
-export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.7';
+export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.8';
 
 function queryValue(searchParams, key) {
   if (!searchParams) return null;
@@ -41,7 +41,9 @@ function runMutationStatus(result) {
   if (result?.accepted) return 200;
   if (result?.reason === 'participant-action-rate-limited') return 429;
   if (result?.reason === 'mutation-persistence-failed-before-apply') return 503;
+  if (result?.reason === 'rollover-run-start-persistence-failed-before-account-commit') return 503;
   if (result?.reason === 'durable-run-and-archive-storage-required') return 503;
+  if (result?.reason === 'durable-run-storage-required') return 503;
   if ([
     'run-start-rejected',
     'no-active-run',
@@ -50,7 +52,8 @@ function runMutationStatus(result) {
     'previous-run-id-mismatch',
     'previous-run-not-terminal',
     'terminal-archive-not-durable',
-    'next-run-id-already-archived'
+    'next-run-id-already-archived',
+    'prepared-rollover-record-mismatch'
   ].includes(result?.reason)) return 409;
   if (String(result?.reason || '').includes('claim')) return 409;
   return 400;
@@ -139,6 +142,17 @@ export class WorldRunHttpApiService {
         return response(runMutationStatus(result), result);
       }
 
+      if (verb === 'POST' && route === '/api/world/run/execute-rollover') {
+        if (this.writeMode !== 'dev') return response(403, { error: 'world writes disabled', writeMode: this.writeMode });
+        const result = this.runAuthority.executePreparedNextDropRollover({
+          participantId: body.participantId,
+          previousRunId: body.previousRunId,
+          nextRunId: body.nextRunId,
+          timestampMs: finiteHostTime(this.clock)
+        });
+        return response(runMutationStatus(result), result);
+      }
+
       if (verb === 'POST' && route === '/api/world/run/global-control') {
         if (this.writeMode !== 'dev') return response(403, { error: 'world writes disabled', writeMode: this.writeMode });
         const result = this.runAuthority.recordGlobalControlPercent({
@@ -197,14 +211,15 @@ export class WorldRunHttpApiService {
             durableArchiveEndpoint: '/api/world/run/archive?participantId=<world-account-participant-id>',
             durableCheckpointEndpoint: '/api/world/run/checkpoint?participantId=<world-account-participant-id>',
             durableRolloverPreparationEndpoint: '/api/world/run/prepare-rollover',
+            durableRolloverExecutionEndpoint: '/api/world/run/execute-rollover',
             durableFoodPolicyEndpoint: '/api/world/run/food-policy',
             truthBoundary: persistence.durableRolloverPreparation?.enabled
-              ? 'next-drop-run-start-plus-bounded-global-control-food-policy-and-terminal-run-close-mutations-are-host-authoritative-and-replayable;terminal-runs-are-idempotently-archived;the-host-can-durably-bind-a-next-run-rollover-intent-to-the-exact-terminal-archive-before-any-record-replacement-but-does-not-yet-execute-that-rollover'
+              ? 'next-drop-run-start plus bounded global-control food-policy and terminal-close mutations are host-authoritative and replayable;terminal runs are archived;archive-bound rollover can be prepared and then executed into one new durable generation carrying only banked score/run history,with run-store-first account reconciliation across restart but no multi-host or atomic-database claim'
               : persistence.terminalRunArchive?.enabled
-                ? 'next-drop-run-start-plus-bounded-global-control-food-policy-and-terminal-run-close-mutations-are-host-authoritative-and-replayable;terminal-runs-are-idempotently-copied-into-a-separate-durable-archive;the-current-closed-record-is-retained-so-safe-next-run-rollover-and-general-rollback-remain-separate-gaps'
+                ? 'next-drop-run-start plus bounded global-control food-policy and terminal-close mutations are host-authoritative and replayable;terminal runs are idempotently archived while safe generation rollover still requires durable run-start storage'
                 : persistence.enabled
-                  ? 'next-drop-run-start-plus-bounded-global-control-food-policy-and-terminal-run-close-mutations-are-host-authoritative-and-replayable-from-durable-evidence;read-only-deterministic-checkpoint-fingerprints-can-compare-that-evidence-across-restart;terminal-archive-storage-closed-record-rollover-and-general-rollback-remain-separate-gaps'
-                  : 'next-drop-run-start-global-control-food-policy-and-run-close-commands-are-host-authoritative-in-process-but-active-progression-and-durable-checkpoint-evidence-remain-unavailable-without-durable-run-start-storage'
+                  ? 'next-drop-run-start plus bounded global-control food-policy and terminal-close mutations are host-authoritative and replayable from durable evidence;read-only deterministic checkpoints compare that evidence across restart'
+                  : 'next-drop-run-start global-control food-policy and run-close commands are host-authoritative in-process but active progression and durable checkpoint evidence remain unavailable without durable run-start storage'
           })
         });
       }
@@ -212,7 +227,7 @@ export class WorldRunHttpApiService {
       return this.baseApi.handle({ method, pathname, searchParams, body });
     } catch (error) {
       const message = String(error?.message || error);
-      const status = /already exists|id conflict|application state ambiguous|archive conflict|rollover intent conflict|rollover intent archive mismatch/.test(message)
+      const status = /already exists|id conflict|application state ambiguous|archive conflict|rollover intent conflict|rollover execution conflict|rollover intent archive mismatch/.test(message)
         ? 409
         : /unknown participant/.test(message)
           ? 404

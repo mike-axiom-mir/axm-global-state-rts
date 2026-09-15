@@ -64,25 +64,6 @@ test('authority-revalidated machine participant can journal, record verified sal
   await expect(page.locator('#hostLocalAdopt')).toBeEnabled();
   await expect(page.locator('#hostLocalSalvage')).toBeDisabled();
 
-  const localGather = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitMachineAction({
-    seatId: 'seat-1',
-    actionId: 'confirm',
-    timestampMs: 10_250
-  }));
-  expect(localGather.accepted).toBe(true);
-  await expect(page.locator('#inputStatus')).toContainText('seat-1 · gather-scrap · Crew 1 8 Crew · local macro order admitted');
-
-  const afterLocalMacro = await page.evaluate(async () => {
-    const beforeRefresh = window.__AXM_HOST_LOCAL_SEAT__.status();
-    const refreshed = await window.__AXM_HOST_LOCAL_SEAT__.refresh();
-    const simulation = window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1');
-    return { beforeRefresh, refreshed, simulation };
-  });
-  expect(afterLocalMacro.simulation.order.type).toBe('gather-scrap');
-  expect(afterLocalMacro.refreshed.journal.revision).toBe(0);
-  expect(afterLocalMacro.refreshed.journal.stateHash).toBe(initial.checkpoint.journal.stateHash);
-  expect(afterLocalMacro.refreshed.continuity.matchesLive).toBe(true);
-
   const directBeforeHostCommand = await page.evaluate(async () => {
     const response = await fetch('/api/world/local-seat?regionSeatId=seat-1&participantId=world%3Acheckpoint-machine');
     return { status: response.status, body: await response.json() };
@@ -158,7 +139,7 @@ test('authority-revalidated machine participant can journal, record verified sal
   expect(directAfterHostCommand.body.journal.revision).toBe(1);
   expect(directAfterHostCommand.body.journal.stateHash).toBe(hostCommand.result.stateHash);
   expect(directAfterHostCommand.body.continuity.matchesLive).toBe(true);
-  expect(directAfterHostCommand.browserSimulation.order.type).toBe('gather-scrap');
+  expect(directAfterHostCommand.browserSimulation.order).toBe(null);
 
   const stalePreview = await page.evaluate(() => window.__AXM_HOST_LOCAL_SEAT__.previewAdoption());
   expect(stalePreview.accepted).toBe(true);

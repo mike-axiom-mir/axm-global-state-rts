@@ -10,8 +10,10 @@ on:
       - 'game/strategic-movement.html'
       - 'game/strategic-movement.mjs'
       - 'game/primary-strategic-gameplay.mjs'
+      - 'game/host-strategic-city-provocation.mjs'
       - 'game/primary-strategic-surface.mjs'
       - 'game/primary-world-objective-surface.mjs'
+      - 'game/blocked-command-retry-feedback.mjs'
       - 'game/index.html'
       - 'docs/PRIMARY_CITY_PRESSURE_CONVERGENCE_V0.md'
       - 'tests/local-strategic-gameplay-selftest.mjs'
@@ -20,6 +22,7 @@ on:
       - 'tests/world-browser-client-selftest.mjs'
       - 'tests/browser/local-strategic-movement.spec.js'
       - 'tests/browser/primary-strategic-surface.spec.js'
+      - 'tests/browser/host-strategic-city-provocation.spec.js'
       - 'tests/browser/primary-world-objective-surface.spec.js'
       - '.github/workflows/local-strategic-movement.yml'
   push:
@@ -55,13 +58,16 @@ jobs:
           node --check src/session/world-browser-client.mjs
           node --check game/strategic-movement.mjs
           node --check game/primary-strategic-gameplay.mjs
+          node --check game/host-strategic-city-provocation.mjs
           node --check game/primary-strategic-surface.mjs
           node --check game/primary-world-objective-surface.mjs
+          node --check game/blocked-command-retry-feedback.mjs
           node --check tests/primary-city-pressure-convergence-selftest.mjs
           node --check tests/aggregate-raid-local-combat-selftest.mjs
           node --check tests/world-browser-client-selftest.mjs
           node --check tests/browser/local-strategic-movement.spec.js
           node --check tests/browser/primary-strategic-surface.spec.js
+          node --check tests/browser/host-strategic-city-provocation.spec.js
           node --check tests/browser/primary-world-objective-surface.spec.js
       - name: Install pinned Playwright test runner
         run: npm install --no-save @playwright/test@1.55.0
@@ -80,7 +86,7 @@ jobs:
           cat /tmp/axm-global-state-rts-strategic-server.log
           exit 1
       - name: Exercise proving and primary strategic movement in Chromium
-        run: npx playwright test tests/browser/local-strategic-movement.spec.js tests/browser/primary-strategic-surface.spec.js tests/browser/primary-world-objective-surface.spec.js --reporter=line
+        run: npx playwright test tests/browser/local-strategic-movement.spec.js tests/browser/primary-strategic-surface.spec.js tests/browser/host-strategic-city-provocation.spec.js tests/browser/primary-world-objective-surface.spec.js --reporter=line
       - name: Preserve strategic browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -89,6 +95,7 @@ jobs:
           path: |
             test-results/global-state-rts-strategic-convoy-*.png
             test-results/global-state-rts-primary-strategic-*.png
+            test-results/global-state-rts-host-strategic-city-provocation.png
             test-results/global-state-rts-host-announced-world-objective.png
             /tmp/axm-global-state-rts-strategic-server.log
           if-no-files-found: warn

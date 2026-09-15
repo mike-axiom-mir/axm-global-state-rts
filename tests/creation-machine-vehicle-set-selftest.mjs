@@ -10,8 +10,8 @@ import {
 import { LOCAL_VEHICLE_PLAN_IDS } from '../src/sim/local-vehicle-gameplay.mjs';
 import { VEHICLE_CATALOG } from '../src/sim/vehicle-fabric.mjs';
 
-assert.equal(CREATION_MACHINE_VEHICLE_SET_SCHEMA, 'axm.global-state-rts.creation-machine-vehicle-static-set/v0.2');
-assert.equal(CREATION_MACHINE_VEHICLE_SET.length, 2);
+assert.equal(CREATION_MACHINE_VEHICLE_SET_SCHEMA, 'axm.global-state-rts.creation-machine-vehicle-static-set/v0.3');
+assert.equal(CREATION_MACHINE_VEHICLE_SET.length, 3);
 
 const entry = creationMachineVehicleSetEntry('vehicle-scrap-truck-a');
 assert.ok(entry);
@@ -26,23 +26,37 @@ assert.equal(entry.fallback.replacementRequiresExplicitRuntimeCall, true);
 assert.equal(entry.collision.footprint, null);
 assert.equal(entry.animation.status, 'HANDOFF_LATER');
 
-const alternate = creationMachineVehicleSetEntry('vehicle-scrap-truck-a', 'flatbed-convoy-truck');
-assert.ok(alternate);
-assert.equal(alternate.candidateId, 'vehicle-scrap-truck-a:flatbed-convoy-truck');
-assert.equal(alternate.stableAssetId, 'vehicle-scrap-truck-a');
-assert.equal(alternate.sourceAsset, 'flatbed-convoy-truck');
-assert.equal(alternate.sourceFamily, 'vehicles');
-assert.equal(alternate.gameplayDefinitionId, 'vehicle:utility-hauler');
-assert.equal(alternate.candidateRole, 'explicit-alternate-static-candidate');
-assert.equal(alternate.runtimeTrial.variant, 'far');
-assert.equal(alternate.runtimeTrial.automaticLodSelection, false);
-assert.equal(alternate.collision.footprint, null);
-assert.equal(alternate.animation.status, 'HANDOFF_LATER');
-assert.equal(creationMachineVehicleCandidate(alternate.candidateId), alternate);
+const flatbed = creationMachineVehicleSetEntry('vehicle-scrap-truck-a', 'flatbed-convoy-truck');
+assert.ok(flatbed);
+assert.equal(flatbed.candidateId, 'vehicle-scrap-truck-a:flatbed-convoy-truck');
+assert.equal(flatbed.stableAssetId, 'vehicle-scrap-truck-a');
+assert.equal(flatbed.sourceAsset, 'flatbed-convoy-truck');
+assert.equal(flatbed.sourceFamily, 'vehicles');
+assert.equal(flatbed.gameplayDefinitionId, 'vehicle:utility-hauler');
+assert.equal(flatbed.candidateRole, 'explicit-alternate-static-candidate');
+assert.equal(flatbed.runtimeTrial.variant, 'far');
+assert.equal(flatbed.runtimeTrial.automaticLodSelection, false);
+assert.equal(flatbed.collision.footprint, null);
+assert.equal(flatbed.animation.status, 'HANDOFF_LATER');
+assert.equal(creationMachineVehicleCandidate(flatbed.candidateId), flatbed);
+
+const crane = creationMachineVehicleSetEntry('vehicle-scrap-truck-a', 'crane-truck');
+assert.ok(crane);
+assert.equal(crane.candidateId, 'vehicle-scrap-truck-a:crane-truck');
+assert.equal(crane.stableAssetId, 'vehicle-scrap-truck-a');
+assert.equal(crane.sourceAsset, 'crane-truck');
+assert.equal(crane.sourceFamily, 'vehicles');
+assert.equal(crane.gameplayDefinitionId, 'vehicle:utility-hauler');
+assert.equal(crane.candidateRole, 'explicit-alternate-static-candidate');
+assert.equal(crane.runtimeTrial.variant, 'far');
+assert.equal(crane.runtimeTrial.automaticLodSelection, false);
+assert.equal(crane.collision.footprint, null);
+assert.equal(crane.animation.status, 'HANDOFF_LATER');
+assert.equal(creationMachineVehicleCandidate(crane.candidateId), crane);
 
 const plan = creationMachineVehicleTrialPlan();
-assert.equal(plan.length, 2);
-assert.deepEqual(plan.map(candidate => candidate.sourceAsset), ['utility-hauler', 'flatbed-convoy-truck']);
+assert.equal(plan.length, 3);
+assert.deepEqual(plan.map(candidate => candidate.sourceAsset), ['utility-hauler', 'flatbed-convoy-truck', 'crane-truck']);
 for (const candidate of plan) {
   assert.equal(candidate.stableAssetId, 'vehicle-scrap-truck-a');
   assert.equal(candidate.gameplayDefinitionId, 'vehicle:utility-hauler');
@@ -68,6 +82,10 @@ assert.match(
 assert.match(
   sourceIndex,
   /^flatbed-convoy-truck,vehicles,assets\/flatbed-convoy-truck\/flatbed-convoy-truck\.gltf,assets\/flatbed-convoy-truck\/flatbed-convoy-truck-lod1\.gltf,False,False$/m
+);
+assert.match(
+  sourceIndex,
+  /^crane-truck,vehicles,assets\/crane-truck\/crane-truck\.gltf,assets\/crane-truck\/crane-truck-lod1\.gltf,False,False$/m
 );
 
 const sourceReadme = fs.readFileSync(new URL('../assets/creation-machine/README.md', import.meta.url), 'utf8');

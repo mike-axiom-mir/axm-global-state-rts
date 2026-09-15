@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test';
 
 const CANDIDATES = Object.freeze([
   ['utility-hauler', 'primary-static-candidate'],
-  ['flatbed-convoy-truck', 'explicit-alternate-static-candidate']
+  ['flatbed-convoy-truck', 'explicit-alternate-static-candidate'],
+  ['crane-truck', 'explicit-alternate-static-candidate']
 ]);
 
 function captureRuntimeFailures(page) {

@@ -6,6 +6,7 @@ const HUMAN_KEY_BY_ACTION = Object.freeze({
   explore: 'f',
   'ui-up': '[',
   'ui-down': ']',
+  'ui-right': 'b',
   'ui-left': 'p',
   confirm: 'Enter',
   context: 'x',
@@ -158,6 +159,7 @@ function routeDefinitions(state) {
   return [
     { id: 'ui-up', label: 'Previous strategic destination · D-pad up / [' },
     { id: 'ui-down', label: 'Next strategic destination · D-pad down / ]' },
+    { id: 'ui-right', label: 'Route toward tracked objective landmark · D-pad right / B' },
     { id: 'confirm', label: confirmLabel },
     { id: 'context', label: `Return toward ${strategicState.homeNodeId} · X` },
     {

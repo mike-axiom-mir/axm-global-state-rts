@@ -10,6 +10,74 @@ function captureRuntimeFailures(page) {
   return failures;
 }
 
+async function localState(page) {
+  return page.evaluate(() => ({
+    simulation: window.__AXM_GLOBAL_STATE_RTS__.describeSeatSimulation('seat-1'),
+    party: window.__AXM_GLOBAL_STATE_RTS__.describeSeatParty('seat-1'),
+    combat: window.__AXM_GLOBAL_STATE_RTS__.describeSeatCombat('seat-1')
+  }));
+}
+
+async function pressGameplayKey(page, key) {
+  await page.keyboard.press(key);
+  await page.waitForTimeout(20);
+}
+
+async function driveBrowserLocalCivilizationToDefeat(page) {
+  await page.locator('#viewport').click({ position: { x: 48, y: 48 } });
+  await pressGameplayKey(page, 'm');
+  await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
+
+  let actionCount = 1;
+  for (let outer = 0; outer < 24; outer += 1) {
+    let state = await localState(page);
+    if (state.combat.continuity.dead) return { ...state, actionCount };
+    if (!state.simulation.crew.length) throw new Error('all LOCAL Crew were lost without resolving civilization continuity');
+    if (state.combat.contact.cleared) throw new Error('fallback hostile contact cleared before deterministic defeat exercise completed');
+
+    if (state.party.selectedCrewIds.length > 1) {
+      if (!state.party.menuOpen) {
+        await pressGameplayKey(page, 'Tab');
+        actionCount += 1;
+      }
+      state = await localState(page);
+      for (let split = 0; state.party.selectedCrewIds.length > 1 && split < 8; split += 1) {
+        await pressGameplayKey(page, 'Enter');
+        actionCount += 1;
+        state = await localState(page);
+      }
+      if (state.party.menuOpen) {
+        await pressGameplayKey(page, 'Escape');
+        actionCount += 1;
+      }
+    }
+
+    state = await localState(page);
+    expect(state.party.selectedCrewIds).toHaveLength(1);
+    if (!state.combat.menuOpen) {
+      await pressGameplayKey(page, ']');
+      actionCount += 1;
+    }
+
+    const beforeCrew = state.simulation.crew.length;
+    for (let exchange = 0; exchange < 16; exchange += 1) {
+      await pressGameplayKey(page, 'Enter');
+      actionCount += 1;
+      state = await localState(page);
+      if (state.combat.continuity.dead || state.simulation.crew.length < beforeCrew) break;
+    }
+
+    state = await localState(page);
+    if (state.combat.continuity.dead) return { ...state, actionCount };
+    expect(state.simulation.crew.length).toBeLessThan(beforeCrew);
+    if (state.combat.menuOpen) {
+      await pressGameplayKey(page, 'Escape');
+      actionCount += 1;
+    }
+  }
+  throw new Error('LOCAL civilization did not reach terminal continuity within bounded admitted actions');
+}
+
 test('world account reaches LOCAL RTS and can explicitly close one host civilization run', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/world-entry.html', { waitUntil: 'networkidle' });
@@ -106,6 +174,26 @@ test('world account reaches LOCAL RTS and can explicitly close one host civiliza
   await expect(page.locator('#endWorldRun')).toBeEnabled();
   await expect(page.locator('#worldRunLifecycleSummary')).toContainText('active run:world:browser-run-lifecycle:drop-1');
   await expect(page.locator('#worldRunLifecycleFeedback')).toContainText('not claiming combat death');
+
+  const defeated = await driveBrowserLocalCivilizationToDefeat(page);
+  expect(defeated.actionCount).toBeLessThan(100);
+  expect(defeated.simulation.crew).toHaveLength(0);
+  expect(defeated.combat.continuity.dead).toBe(true);
+  expect(defeated.combat.continuity.activeEligibleBuildings).toBe(0);
+  expect(defeated.combat.lastOutcome.kind).toBe('civilization-death');
+
+  await expect(page.locator('#gameplayObjective')).toBeHidden();
+  await expect(page.locator('#gameplayTerminalObjective')).toBeVisible();
+  await expect(page.locator('#gameplayTerminalObjective')).toContainText('Civilization defeated');
+  await expect(page.locator('#gameplayTerminalObjective')).toContainText('No automatic retry or next-run rollover');
+  await expect(page.locator('#worldRunLifecycleSummary')).toContainText('LOCAL defeated');
+  await expect(page.locator('#worldRunLifecycleFeedback')).toContainText('browser-local evidence');
+  await expect(page.locator('#endWorldRun')).toHaveText('Score defeated civilization run');
+  const defeatReadiness = await page.evaluate(() => window.__AXM_WORLD_RUN_LIFECYCLE__.terminalLocalDefeat());
+  expect(defeatReadiness.accepted).toBe(true);
+  expect(defeatReadiness.runId).toBe('run:world:browser-run-lifecycle:drop-1');
+  expect(defeatReadiness.evidence.activeEligibleBuildings).toBe(0);
+  await page.screenshot({ path: 'test-results/global-state-rts-local-defeat-run-close.png', fullPage: true });
 
   await page.locator('#endWorldRun').click();
   await expect(page.locator('#endWorldRun')).toBeDisabled();

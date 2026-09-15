@@ -79,18 +79,52 @@ function closeMutationId(runId) {
   return `browser-terminal-close:${String(runId)}`;
 }
 
-function terminalLocalDefeat() {
-  const bound = binding();
-  let combat = null;
+function localCombat() {
   try {
-    combat = bridge.describeSeatCombat?.('seat-1') || null;
+    return bridge.describeSeatCombat?.('seat-1') || null;
   } catch {
-    combat = null;
+    return null;
   }
+}
+
+function continuityLabel(combat = localCombat()) {
+  const continuity = combat?.continuity || null;
+  if (!continuity) return 'LOCAL continuity unavailable';
+  const active = Number.isFinite(continuity.activeEligibleBuildings) ? continuity.activeEligibleBuildings : '?';
+  const total = Number.isFinite(continuity.totalEligibleBuildings) ? continuity.totalEligibleBuildings : '?';
+  const core = Number.isFinite(continuity.coreIntegrity) && Number.isFinite(continuity.coreMaxIntegrity)
+    ? ` · core ${Math.round(continuity.coreIntegrity)}/${Math.round(continuity.coreMaxIntegrity)}`
+    : '';
+  return `${active}/${total} qualifying continuity buildings active${core}`;
+}
+
+function renderTerminalObjective(combat = localCombat()) {
+  const continuity = combat?.continuity || null;
+  const terminal = Boolean(continuity?.dead);
+  const ordinaryObjective = gameplaySurface.querySelector('#gameplayObjective');
+  let terminalObjective = gameplaySurface.querySelector('#gameplayTerminalObjective');
+  if (!terminalObjective && ordinaryObjective) {
+    terminalObjective = document.createElement('div');
+    terminalObjective.id = 'gameplayTerminalObjective';
+    terminalObjective.className = 'status';
+    terminalObjective.setAttribute('aria-live', 'assertive');
+    terminalObjective.hidden = true;
+    ordinaryObjective.insertAdjacentElement('afterend', terminalObjective);
+  }
+  if (ordinaryObjective) ordinaryObjective.hidden = terminal;
+  if (!terminalObjective) return terminal;
+  terminalObjective.hidden = !terminal;
+  if (terminal) {
+    terminalObjective.textContent = `Immediate objective · Civilization defeated · ${continuityLabel(combat)}. This browser-local civilization is terminal. A bound world-account run can be scored/closed in Bound civilization run below; host close is explicit and never automatic. No automatic retry or next-run rollover is claimed.`;
+  }
+  return terminal;
+}
+
+function terminalLocalDefeat() {
   return localDefeatRunCloseReadiness({
-    binding: bound,
+    binding: binding(),
     hostStatus: retainedStatus,
-    combat
+    combat: localCombat()
   });
 }
 
@@ -98,30 +132,47 @@ function render() {
   const bound = binding();
   const run = activeRun();
   const isWorldAccount = bound?.profileKind === 'world-account';
+  const combat = localCombat();
+  const localTerminal = renderTerminalObjective(combat);
   const localDefeat = terminalLocalDefeat();
   endButton.disabled = Boolean(closeInFlight) || !isWorldAccount || !run;
   endButton.textContent = localDefeat.accepted ? 'Score defeated civilization run' : 'End civilization run';
   returnLink.hidden = Boolean(run);
 
   if (!bound) {
-    summary.textContent = 'seat-1 · local-only · no host civilization run bound';
-    feedback.textContent = 'Bind a world participant from Shared World Entry first.';
+    summary.textContent = localTerminal
+      ? `seat-1 · LOCAL civilization defeated · ${continuityLabel(combat)} · local-only`
+      : 'seat-1 · local-only · no host civilization run bound';
+    feedback.textContent = localTerminal
+      ? 'Failure state · LOCAL continuity is terminal, but no durable host run is bound, so no score/close authority is available here. Reloading would create a fresh browser-local simulation, not a durable retry; no automatic rollover is claimed.'
+      : 'Bind a world participant from Shared World Entry first.';
     return;
   }
   if (!isWorldAccount) {
-    summary.textContent = `${bound.participantId} · ${bound.profileKind} · no durable run-close authority`;
-    feedback.textContent = 'Terminal host run close currently requires a world account.';
+    summary.textContent = localTerminal
+      ? `${bound.participantId} · ${bound.profileKind} · LOCAL civilization defeated · ${continuityLabel(combat)} · no durable run-close authority`
+      : `${bound.participantId} · ${bound.profileKind} · no durable run-close authority`;
+    feedback.textContent = localTerminal
+      ? 'Failure state · LOCAL continuity is terminal. This participant is not a world account, so this surface cannot score or close a durable host run and will not invent a retry or rollover.'
+      : 'Terminal host run close currently requires a world account.';
     return;
   }
   if (!retainedStatus) {
-    summary.textContent = `${bound.participantId} · reading host run authority…`;
+    summary.textContent = localTerminal
+      ? `${bound.participantId} · LOCAL civilization defeated · ${continuityLabel(combat)} · reading host run authority…`
+      : `${bound.participantId} · reading host run authority…`;
+    if (localTerminal) {
+      feedback.textContent = 'Failure state · LOCAL continuity is terminal, but host run authority is not currently readable. No close, score, retry, or rollover is inferred while host authority is unavailable.';
+    }
     return;
   }
   if (run) {
     const persistence = retainedStatus.progressionPersistence?.kind || 'unknown persistence';
-    summary.textContent = `${bound.participantId} · active ${run.runId} · ${persistence}`;
+    summary.textContent = `${bound.participantId} · active ${run.runId} · ${persistence}${localTerminal ? ` · LOCAL defeated · ${continuityLabel(combat)}` : ''}`;
     if (localDefeat.accepted) {
-      feedback.textContent = `LOCAL civilization continuity is terminal for the browser simulation bootstrapped from ${run.runId}. The close control can now carry that client-observed defeat into the existing durable host close/score path. The host close is authoritative once accepted; the defeat cause is still browser-local evidence, not host-replayed combat proof.`;
+      feedback.textContent = `LOCAL civilization continuity is terminal for the browser simulation bootstrapped from ${run.runId}. The close control can now carry that client-observed defeat into the existing durable host close/score path. The host close is authoritative once accepted; the defeat cause is still browser-local evidence, not host-replayed combat proof. Starting another run remains an explicit later action from Shared World Entry.`;
+    } else if (localTerminal) {
+      feedback.textContent = 'Failure state · LOCAL continuity is terminal, but it cannot yet be correlated safely with this active host run. Host close/score remains available only as the existing explicit terminal action; no automatic defeat projection or retry is attempted.';
     } else {
       feedback.textContent = 'End civilization run is an explicit terminal host action. It scores/closes the active host run; this control is not claiming combat death, LOCAL-state persistence, or automatic next-run rollover. When the correlated browser-local civilization reaches terminal continuity, this surface will label that client-observed defeat before close.';
     }
@@ -131,11 +182,13 @@ function render() {
   const history = retainedStatus.progression?.runHistory || [];
   const last = history[history.length - 1] || null;
   summary.textContent = last
-    ? `${bound.participantId} · host run closed ${last.runId} · score ${last.finalGold} · banked ${retainedStatus.progression?.bankedGold ?? 0}`
-    : `${bound.participantId} · no active host civilization run`;
+    ? `${bound.participantId} · host run closed ${last.runId} · score ${last.finalGold} · banked ${retainedStatus.progression?.bankedGold ?? 0}${localTerminal ? ` · LOCAL defeated · ${continuityLabel(combat)}` : ''}`
+    : `${bound.participantId} · no active host civilization run${localTerminal ? ` · LOCAL defeated · ${continuityLabel(combat)}` : ''}`;
   feedback.textContent = last
-    ? 'Terminal close is host-authoritative and durable when the configured run-start journal reports persistence. Any LOCAL defeat used to motivate that close remains client-observed until a host replay/verifier owns combat consequences.'
-    : 'No active host run is available to close.';
+    ? `Terminal close is host-authoritative and durable when the configured run-start journal reports persistence. Any LOCAL defeat used to motivate that close remains client-observed until a host replay/verifier owns combat consequences.${localTerminal ? ' Return to Shared World Entry for an explicit next-drop decision; no automatic retry or rollover occurs here.' : ''}`
+    : localTerminal
+      ? 'Failure state · LOCAL continuity is terminal, but there is no active host run to close. Start/claim any later durable run explicitly through Shared World Entry; this surface will not infer a retry.'
+      : 'No active host run is available to close.';
 }
 
 async function refresh({ force = false } = {}) {
@@ -161,6 +214,7 @@ async function refresh({ force = false } = {}) {
     } catch (error) {
       retainedStatus = null;
       endButton.disabled = true;
+      renderTerminalObjective(localCombat());
       summary.textContent = `${participantId} · host run authority unavailable`;
       feedback.textContent = String(error?.body?.reason || error?.body?.error || error?.message || error);
       return null;
@@ -228,6 +282,7 @@ Object.defineProperty(window, '__AXM_WORLD_RUN_LIFECYCLE__', {
   value: Object.freeze({
     refresh: options => refresh(options),
     status: () => retainedStatus,
+    localContinuity: () => localCombat()?.continuity || null,
     terminalLocalDefeat,
     closeActiveRun
   })

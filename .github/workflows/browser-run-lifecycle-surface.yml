@@ -10,6 +10,7 @@ on:
       - 'game/world-entry.mjs'
       - 'game/world-run-entry.mjs'
       - 'game/world-run-lifecycle.mjs'
+      - 'game/world-run-resource-feedback.mjs'
       - 'game/local-defeat-run-close-bridge.mjs'
       - 'src/hosted/world-run-session-authority.mjs'
       - 'src/hosted/world-run-http-api.mjs'
@@ -49,6 +50,7 @@ jobs:
           npm test
           node --check game/world-run-entry.mjs
           node --check game/world-run-lifecycle.mjs
+          node --check game/world-run-resource-feedback.mjs
           node --check game/local-defeat-run-close-bridge.mjs
           node --input-type=module --check < tests/browser/world-run-entry.spec.js
           node --check src/hosted/world-run-session-authority.mjs

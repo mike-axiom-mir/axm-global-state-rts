@@ -3,11 +3,26 @@ import {
   describeWorldEventSlot,
   WORLD_EVENT_SLOT_MS
 } from '../src/world/world-events.mjs';
+import { buildWorldLandmarks } from '../src/world/world-landmarks.mjs';
+import { buildWorldTransportNetwork } from '../src/world/world-transport-network.mjs';
+import { planLandmarkRoute } from '../src/world/world-route-planner.mjs';
+import { createWorldScale, greatCircleAngleRad } from '../src/world/world-scale.mjs';
 
 const WORLD_SEED = 'primary-local-strategic-gameplay';
+const ROUTE_MAJOR_CITY_COUNT = 2;
+const ROUTE_REGIONAL_CITY_COUNT = 5;
+const ROUTE_MODES = new Set(['wheeled', 'tracked', 'rail']);
 const root = document.getElementById('gameplaySurface');
 
 if (!root) throw new Error('missing #gameplaySurface mount for world objective surface');
+
+const objectiveRouteLandmarks = buildWorldLandmarks({
+  worldSeed: WORLD_SEED,
+  majorCityCount: ROUTE_MAJOR_CITY_COUNT,
+  regionalCityCount: ROUTE_REGIONAL_CITY_COUNT
+});
+const objectiveRouteNetwork = buildWorldTransportNetwork(objectiveRouteLandmarks);
+const objectiveRouteScale = createWorldScale();
 
 function waitForRuntime(timeoutMs = 5000) {
   return new Promise((resolve, reject) => {
@@ -38,7 +53,7 @@ const worldObjective = document.createElement('div');
 worldObjective.id = 'primaryWorldObjective';
 worldObjective.className = 'status';
 worldObjective.dataset.primaryWorldObjective = 'true';
-worldObjective.dataset.stateScope = 'deterministic-browser-visible-not-route-integrated';
+worldObjective.dataset.stateScope = 'deterministic-browser-route-projection-not-event-participation';
 worldObjective.setAttribute('aria-live', 'polite');
 
 const worldThreat = document.createElement('div');
@@ -73,7 +88,66 @@ function cityIntelText(state) {
   return `city intel · ${city.id} · ${city.responseState} · population ${finiteRound(city.population)} · defense ${finiteRound(city.defenseUnits)}/${finiteRound(city.authorizedDefenseCap)} · food ${finiteRound(city.food)} · materials ${finiteRound(city.materials)} · infrastructure ${finiteRound(city.infrastructureIntegrity)}% · readiness ${percent(city.readiness)} · starvation ${percent(city.starvationPressure)}`;
 }
 
-function objectiveText(event, nowMs, prefix = 'active') {
+function strategicTopologyMatchesProjection(state) {
+  const liveNodeIds = [...new Set([
+    state?.homeNodeId,
+    ...(Array.isArray(state?.destinationNodeIds) ? state.destinationNodeIds : [])
+  ].filter(Boolean))].sort();
+  if (liveNodeIds.length !== objectiveRouteNetwork.nodeIds.length) return false;
+  return objectiveRouteNetwork.nodeIds.every((nodeId, index) => nodeId === liveNodeIds[index]);
+}
+
+function nearestObjectiveLandmark(event) {
+  const candidates = objectiveRouteLandmarks.all
+    .filter(landmark => objectiveRouteNetwork.nodeIds.includes(landmark.id))
+    .map(landmark => Object.freeze({
+      landmark,
+      angularDistanceRad: greatCircleAngleRad(event.coordinate, landmark.coordinate)
+    }))
+    .sort((a, b) => a.angularDistanceRad - b.angularDistanceRad || a.landmark.id.localeCompare(b.landmark.id));
+  return candidates[0] || null;
+}
+
+function objectiveRouteText(event, state) {
+  const nearest = nearestObjectiveLandmark(event);
+  if (!nearest) {
+    return 'objective route · unavailable · no transport landmark projection exists · event marker remains off-network; no teleport, join, claim, or reward fallback';
+  }
+  const landmarkId = nearest.landmark.id;
+  const tracked = `objective route · tracked nearest landmark ${landmarkId}`;
+  if (!strategicTopologyMatchesProjection(state)) {
+    return `${tracked} · route unavailable because live strategic topology no longer matches the deterministic HUD projection · fail closed; event marker remains off-network`;
+  }
+
+  const journey = state?.journey || null;
+  if (journey && !journey.currentNodeId && (journey.status === 'transit' || journey.status === 'halted-crossing')) {
+    return `${tracked} · route recalculation deferred while convoy is between landmarks · no mid-edge teleport or hidden reroute · event marker remains off-network`;
+  }
+
+  const originNodeId = journey?.currentNodeId || state?.homeNodeId || null;
+  if (!originNodeId || !objectiveRouteNetwork.nodeIds.includes(originNodeId)) {
+    return `${tracked} · route unavailable because no current transport landmark is authoritative for this convoy · event marker remains off-network`;
+  }
+
+  const mode = journey?.mode || state?.transportProfile?.movementMode || null;
+  if (!ROUTE_MODES.has(mode)) {
+    return `${tracked} · convoy route unavailable until the selected party has one supported driven-vehicle mode · no hidden foot/teleport fallback · event marker remains off-network`;
+  }
+
+  const route = planLandmarkRoute(objectiveRouteNetwork, objectiveRouteScale, originNodeId, landmarkId, { mode });
+  if (!route.reachable) {
+    return `${tracked} · no ${mode} route from ${originNodeId} on the current deterministic transport network · no hidden fallback · event marker remains off-network`;
+  }
+
+  if (route.edgeIds.length === 0) {
+    return `${tracked} · convoy is already at that landmark · event marker itself remains off-network; exact join/claim/reward control is not promoted`;
+  }
+
+  const minutes = Math.max(1, Math.ceil(route.travelSeconds / 60));
+  return `${tracked} · ${mode} route from ${originNodeId} reachable via ${route.edgeIds.length} aggregate edge${route.edgeIds.length === 1 ? '' : 's'} (~${minutes}m to landmark) · event marker itself remains off-network; exact join/claim/reward control is not promoted`;
+}
+
+function objectiveText(event, nowMs, state, prefix = 'active') {
   const objective = event.objective?.type || 'unknown-objective';
   const hold = Number.isFinite(event.objective?.holdSeconds) ? ` · hold ${finiteRound(event.objective.holdSeconds)}s` : '';
   const reward = event.reward ? `${event.reward.kind} ${finiteRound(event.reward.amount)}` : 'none';
@@ -81,7 +155,7 @@ function objectiveText(event, nowMs, prefix = 'active') {
     ? Math.max(0, Math.ceil((event.endsAtMs - nowMs) / 60000))
     : Math.max(0, Math.ceil((event.startsAtMs - nowMs) / 60000));
   const timing = prefix === 'active' ? `${minutes}m remaining` : `starts in ${minutes}m`;
-  return `world objective · ${prefix} ${event.kind} · ${objective}${hold} · reward ${reward} · ${timing} · routing/claim control not yet promoted to the landmark convoy surface`;
+  return `world objective · ${prefix} ${event.kind} · ${objective}${hold} · reward ${reward} · ${timing} · ${objectiveRouteText(event, state)}`;
 }
 
 function nextDeterministicEvent(nowMs) {
@@ -96,10 +170,10 @@ function nextDeterministicEvent(nowMs) {
 function worldObjectiveText(state) {
   const nowMs = Math.max(0, Number(state?.strategicNowMs) || 0);
   const active = activeWorldEvents(nowMs, { worldSeed: WORLD_SEED });
-  if (active.length) return objectiveText(active[0], nowMs, 'active');
+  if (active.length) return objectiveText(active[0], nowMs, state, 'active');
   const next = nextDeterministicEvent(nowMs);
-  if (next) return objectiveText(next, nowMs, 'next');
-  return 'world objective · no deterministic event in the next eight slots · objective routing/claim control remains unpromoted';
+  if (next) return objectiveText(next, nowMs, state, 'next');
+  return 'world objective · no deterministic event in the next eight slots · no route projection to invent';
 }
 
 function worldThreatText(state) {

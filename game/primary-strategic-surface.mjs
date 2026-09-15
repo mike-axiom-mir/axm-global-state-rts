@@ -105,7 +105,7 @@ function submitStrategicAction(actionId) {
     } else dispatchHumanAction(actionId);
     setTimeout(() => {
       const after = selectedState();
-      const outcome = after?.strategic?.lastOutcome?.message;
+      const outcome = after?.strategic?.lastOutcome?.message || after?.civilization?.lastOutcome?.message;
       if (outcome) feedback.textContent = `${state.seat.id} · ${outcome}`;
       render();
     }, 0);
@@ -125,7 +125,8 @@ function strategicSummaryText(state) {
   const cargo = Math.round(Number(state.cargo?.cargoAmount) || 0);
   const capacity = Math.round(Number(state.cargo?.cargoCapacity) || 0);
   const work = state.workUnits || {};
-  return `${deployed ? `${deployed} Crew strategic` : 'LOCAL'} · ${journey?.status || 'ready'} · ${location} · target ${state.destinationNodeId} · route ${progress}% · cargo ${cargo}/${capacity} · ${work.aggregateConvoyUnits || 0} aggregate convoy · ${work.perCrewMovementTicks || 0} per-Crew ticks`;
+  const city = state.currentCity ? ` · city ${state.currentCity.responseState}` : '';
+  return `${deployed ? `${deployed} Crew strategic` : 'LOCAL'} · ${journey?.status || 'ready'} · ${location} · target ${state.destinationNodeId} · route ${progress}% · cargo ${cargo}/${capacity} · ${work.aggregateConvoyUnits || 0} aggregate convoy · ${work.perCrewMovementTicks || 0} per-Crew ticks${city}`;
 }
 
 function ensureStrategicSummary(state) {
@@ -149,6 +150,11 @@ function routeDefinitions(state) {
   const confirmLabel = journey?.status === 'transit'
     ? 'Advance convoy · 5 min · A / Enter'
     : `Depart → ${strategicState.destinationNodeId} · A / Enter`;
+  const arrivedRemoteCity = Boolean(
+    journey?.status === 'arrived' &&
+    journey.currentNodeId !== strategicState.homeNodeId &&
+    strategicState.currentCity
+  );
   return [
     { id: 'ui-up', label: 'Previous strategic destination · D-pad up / [' },
     { id: 'ui-down', label: 'Next strategic destination · D-pad down / ]' },
@@ -156,8 +162,12 @@ function routeDefinitions(state) {
     { id: 'context', label: `Return toward ${strategicState.homeNodeId} · X` },
     {
       id: 'ui-left',
-      label: 'Release party back to LOCAL · D-pad left / P',
-      disabled: !(journey?.status === 'arrived' && journey.currentNodeId === strategicState.homeNodeId && strategicState.deployedLocalCrewIds.length)
+      label: arrivedRemoteCity
+        ? `Provoke ${strategicState.currentCity.id} defense · D-pad left / P`
+        : 'Release party back to LOCAL · D-pad left / P',
+      disabled: arrivedRemoteCity
+        ? false
+        : !(journey?.status === 'arrived' && journey.currentNodeId === strategicState.homeNodeId && strategicState.deployedLocalCrewIds.length)
     },
     { id: 'cancel', label: 'Close strategic route · B / Esc' }
   ];

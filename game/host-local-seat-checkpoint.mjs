@@ -264,7 +264,7 @@ async function submitGatherAtCursor({ seatId = 'seat-1', stepCount = 160 } = {})
       });
       const hostScrap = Number(result?.outcome?.storage?.scrap);
       const scrapLabel = Number.isFinite(hostScrap) ? ` · host scrap ${Math.floor(hostScrap)}` : '';
-      commandStatus.textContent = `${seatId} · host selected-party gather accepted · ${preview.intent.crewIds.length} Crew · r${result.revision}${scrapLabel} · browser-local state remains separate until adoption.`;
+      commandStatus.textContent = `${seatId} · host journal gather accepted · selected party ${preview.intent.crewIds.length} Crew · r${result.revision}${scrapLabel} · browser-local state remains separate until adoption.`;
       render();
       return lastCommandEvidence;
     } catch (error) {
@@ -288,7 +288,7 @@ async function submitGatherAtCursor({ seatId = 'seat-1', stepCount = 160 } = {})
         intent: preview.intent,
         expectedRevision: preview.expectedRevision
       });
-      commandStatus.textContent = `${seatId} · host selected-party gather rejected · ${reason} · no automatic retry.`;
+      commandStatus.textContent = `${seatId} · host journal gather rejected · selected party ${preview.intent.crewIds.length} Crew · ${reason} · no automatic retry.`;
       return lastCommandEvidence;
     } finally {
       commandInFlight = null;

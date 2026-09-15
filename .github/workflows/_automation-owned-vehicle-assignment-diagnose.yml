@@ -1,0 +1,44 @@
+name: Automation owned vehicle assignment diagnostics
+
+on:
+  push:
+    branches:
+      - rts-host-owned-vehicle-assignment-20260915
+
+jobs:
+  diagnose:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Reuse v2 patch script
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          lines = Path('.github/workflows/_automation-owned-vehicle-assignment-patch-v2.yml').read_text().splitlines()
+          start = next(i for i,l in enumerate(lines) if "python - <<'PY'" in l) + 1
+          end = next(i for i in range(start, len(lines)) if lines[i].strip() == 'PY')
+          script = '\n'.join(line[10:] if line.startswith('          ') else line for line in lines[start:end]) + '\n'
+          Path('/tmp/apply_patch.py').write_text(script)
+          PY
+          python /tmp/apply_patch.py
+      - name: Capture syntax and focused tests
+        shell: bash
+        run: |
+          set +e
+          {
+            echo '=== syntax host ==='; node --check src/hosted/durable-world-run-command-authority.mjs; echo "exit=$?"
+            echo '=== syntax http ==='; node --check src/hosted/world-run-http-api.mjs; echo "exit=$?"
+            echo '=== syntax test ==='; node --check tests/world-run-vehicle-assignment-authority-selftest.mjs; echo "exit=$?"
+            echo '=== assignment selftest ==='; node tests/world-run-vehicle-assignment-authority-selftest.mjs; echo "exit=$?"
+            echo '=== construction selftest ==='; node tests/world-run-vehicle-construction-authority-selftest.mjs; echo "exit=$?"
+          } 2>&1 | tee diagnostics.txt
+          exit 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: owned-vehicle-assignment-diagnostics
+          path: diagnostics.txt

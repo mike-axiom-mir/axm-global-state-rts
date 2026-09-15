@@ -1,0 +1,146 @@
+name: Global State RTS durable world run checkpoint
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/hosted/world-run-durable-checkpoint-authority.mjs'
+      - 'src/hosted/world-run-start-store.mjs'
+      - 'src/hosted/world-run-session-authority.mjs'
+      - 'src/hosted/durable-world-run-mutation-authority.mjs'
+      - 'src/hosted/world-run-http-api.mjs'
+      - 'scripts/serve.mjs'
+      - 'tests/world-run-durable-checkpoint-selftest.mjs'
+      - '.github/workflows/world-run-durable-checkpoint.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  durable-run-checkpoint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Run deterministic and checkpoint gates
+        run: |
+          npm test
+          node --check src/hosted/world-run-durable-checkpoint-authority.mjs
+          node --check src/hosted/world-run-http-api.mjs
+          node --check tests/world-run-durable-checkpoint-selftest.mjs
+          node tests/world-run-durable-checkpoint-selftest.mjs
+
+      - name: Seed durable world account with next-drop value
+        run: |
+          rm -f /tmp/axm-checkpoint-accounts.json /tmp/axm-checkpoint-starts.json /tmp/axm-checkpoint-world.json /tmp/axm-checkpoint-before.json /tmp/axm-checkpoint-after.json /tmp/axm-checkpoint-host.log
+          node --input-type=module <<'NODE'
+          import { WORLD_HOUR_MS } from './src/hosted/world-clock.mjs';
+          import { createFileWorldAccountStore } from './src/hosted/world-account-store.mjs';
+          import { createWorldSessionAuthority } from './src/hosted/world-session-authority.mjs';
+          const nowMs = Date.now();
+          const authority = createWorldSessionAuthority({
+            worldEpochMs: 0,
+            accountStore: createFileWorldAccountStore('/tmp/axm-checkpoint-accounts.json')
+          });
+          const participant = authority.createWorldAccount({
+            accountId: 'workflow-checkpoint-account',
+            displayName: 'Workflow Checkpoint Account',
+            controllerKind: 'machine',
+            nowMs: nowMs - 2 * WORLD_HOUR_MS
+          });
+          authority.accrueChests(participant.participantId, nowMs);
+          const opened = authority.openChests(participant.participantId, 1);
+          if (!opened.accepted || opened.pendingNextDropRewards.openedCratesContributed !== 1) {
+            throw new Error('failed to seed exactly one next-drop reward');
+          }
+          NODE
+
+      - name: Compare checkpoint across a real host restart
+        run: |
+          set -euo pipefail
+          export AXM_SHARED_WRITE_MODE=dev
+          export AXM_WORLD_JOURNAL_PATH=/tmp/axm-checkpoint-world.json
+          export AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-checkpoint-accounts.json
+          export AXM_WORLD_RUN_STARTS_PATH=/tmp/axm-checkpoint-starts.json
+          PORT=4194 node scripts/serve.mjs > /tmp/axm-checkpoint-host.log 2>&1 &
+          HOST_PID=$!
+          trap 'kill "$HOST_PID" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4194/api/world/meta >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent --show-error \
+            -H 'content-type: application/json' \
+            -d '{"participantId":"world:workflow-checkpoint-account","runId":"run:workflow-checkpoint:001","runOptions":{"crewCount":9,"extraStartingResources":{"scrap":17}}}' \
+            http://127.0.0.1:4194/api/world/run/begin-next-drop >/dev/null
+          curl --fail --silent --show-error \
+            -H 'content-type: application/json' \
+            -d '{"participantId":"world:workflow-checkpoint-account","runId":"run:workflow-checkpoint:001","mutationId":"checkpoint-control-001","percent":42.25}' \
+            http://127.0.0.1:4194/api/world/run/global-control >/dev/null
+          curl --fail --silent --show-error \
+            -H 'content-type: application/json' \
+            -d '{"participantId":"world:workflow-checkpoint-account","runId":"run:workflow-checkpoint:001","mutationId":"checkpoint-close-001"}' \
+            http://127.0.0.1:4194/api/world/run/close >/dev/null
+          curl --fail --silent --show-error \
+            'http://127.0.0.1:4194/api/world/run/checkpoint?participantId=world%3Aworkflow-checkpoint-account' \
+            > /tmp/axm-checkpoint-before.json
+
+          kill "$HOST_PID"
+          wait "$HOST_PID" || true
+          trap - EXIT
+
+          PORT=4194 node scripts/serve.mjs >> /tmp/axm-checkpoint-host.log 2>&1 &
+          HOST_PID=$!
+          trap 'kill "$HOST_PID" 2>/dev/null || true' EXIT
+          for i in {1..30}; do
+            if curl --fail --silent \
+              'http://127.0.0.1:4194/api/world/run/checkpoint?participantId=world%3Aworkflow-checkpoint-account' \
+              > /tmp/axm-checkpoint-after.json; then
+              break
+            fi
+            sleep 1
+          done
+
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import assert from 'node:assert/strict';
+          const before = JSON.parse(fs.readFileSync('/tmp/axm-checkpoint-before.json', 'utf8'));
+          const after = JSON.parse(fs.readFileSync('/tmp/axm-checkpoint-after.json', 'utf8'));
+          assert.equal(before.available, true);
+          assert.equal(before.runState, 'closed');
+          assert.equal(before.mutationCount, 2);
+          assert.equal(after.available, true);
+          assert.equal(after.runState, 'closed');
+          assert.equal(after.mutationCount, 2);
+          assert.equal(after.durableRecordHash, before.durableRecordHash);
+          assert.equal(after.progressionHash, before.progressionHash);
+          assert.equal(after.checkpointHash, before.checkpointHash);
+          NODE
+
+      - name: Preserve checkpoint evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-world-run-durable-checkpoint
+          path: |
+            /tmp/axm-checkpoint-accounts.json
+            /tmp/axm-checkpoint-starts.json
+            /tmp/axm-checkpoint-world.json
+            /tmp/axm-checkpoint-before.json
+            /tmp/axm-checkpoint-after.json
+            /tmp/axm-checkpoint-host.log
+          if-no-files-found: warn
+          retention-days: 14

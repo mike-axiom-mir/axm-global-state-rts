@@ -8,6 +8,7 @@ on:
       - 'src/hosted/local-seat-binding-store.mjs'
       - 'src/hosted/local-seat-journal-authority.mjs'
       - 'src/hosted/local-region-command-journal-authority.mjs'
+      - 'src/hosted/local-outcome-replay-authority.mjs'
       - 'src/hosted/verified-local-salvage-ledger.mjs'
       - 'src/hosted/verified-local-salvage-reservation-ledger.mjs'
       - 'src/hosted/world-session-authority.mjs'
@@ -20,6 +21,7 @@ on:
       - 'game/index.html'
       - 'scripts/serve.mjs'
       - 'tests/local-outcome-replay-authority-selftest.mjs'
+      - 'tests/local-selected-party-journal-selftest.mjs'
       - 'tests/local-seat-journal-authority-selftest.mjs'
       - 'tests/local-seat-restart-continuity-selftest.mjs'
       - 'tests/local-seat-http-authority-selftest.mjs'
@@ -27,6 +29,7 @@ on:
       - 'tests/verified-local-salvage-selftest.mjs'
       - 'tests/verified-local-salvage-reservation-http-selftest.mjs'
       - 'tests/browser/local-seat-journal-binding.spec.js'
+      - 'tests/browser/local-seat-selected-party-journal.spec.js'
       - 'tests/browser/local-salvage-reservation.spec.js'
       - 'tests/browser/world-entry.spec.js'
       - 'docs/LOCAL_SEAT_JOURNAL_BINDING_V0.md'
@@ -59,6 +62,8 @@ jobs:
         run: |
           node --check src/hosted/local-seat-binding-store.mjs
           node --check src/hosted/local-seat-journal-authority.mjs
+          node --check src/hosted/local-region-command-journal-authority.mjs
+          node --check src/hosted/local-outcome-replay-authority.mjs
           node --check src/hosted/verified-local-salvage-ledger.mjs
           node --check src/hosted/verified-local-salvage-reservation-ledger.mjs
           node --check src/hosted/world-session-authority.mjs
@@ -70,6 +75,7 @@ jobs:
           node --check game/host-local-salvage-reservation.mjs
           node --check scripts/serve.mjs
           node --check tests/local-outcome-replay-authority-selftest.mjs
+          node --check tests/local-selected-party-journal-selftest.mjs
           node --check tests/local-seat-journal-authority-selftest.mjs
           node --check tests/local-seat-restart-continuity-selftest.mjs
           node --check tests/local-seat-http-authority-selftest.mjs
@@ -77,12 +83,14 @@ jobs:
           node --check tests/verified-local-salvage-selftest.mjs
           node --check tests/verified-local-salvage-reservation-http-selftest.mjs
           node --check tests/browser/local-seat-journal-binding.spec.js
+          node --check tests/browser/local-seat-selected-party-journal.spec.js
           node --check tests/browser/local-salvage-reservation.spec.js
           node --check tests/browser/world-entry.spec.js
-      - name: Exercise replay, chained journal, restart continuity, adoption, verified salvage, reservation HTTP, and bound host command authority
+      - name: Exercise replay, selected-party journal, restart continuity, adoption, verified salvage, reservation HTTP, and bound host command authority
         run: |
           node tests/local-outcome-replay-authority-selftest.mjs
           node tests/local-region-command-journal-selftest.mjs
+          node tests/local-selected-party-journal-selftest.mjs
           node tests/local-seat-journal-authority-selftest.mjs
           node tests/local-seat-restart-continuity-selftest.mjs
           node tests/local-seat-http-authority-selftest.mjs
@@ -109,7 +117,7 @@ jobs:
         run: npm install --no-save @playwright/test@1.55.0
       - name: Install Chromium runtime
         run: npx playwright install --with-deps chromium
-      - name: Start clean development world host for existing checkpoint regression
+      - name: Start clean development world host for checkpoint regressions
         run: |
           rm -rf /tmp/axm-local-seat-journals
           rm -f /tmp/axm-local-seat-bindings.json /tmp/axm-local-seat-world-journal.json /tmp/axm-local-seat-world-accounts.json
@@ -128,8 +136,8 @@ jobs:
           done
           cat /tmp/axm-local-seat-host.log
           exit 1
-      - name: Exercise existing bound browser checkpoint regression
-        run: npx playwright test tests/browser/local-seat-journal-binding.spec.js --workers=1 --reporter=line
+      - name: Exercise bound browser checkpoint and selected-party host journal regressions
+        run: npx playwright test tests/browser/local-seat-journal-binding.spec.js tests/browser/local-seat-selected-party-journal.spec.js --workers=1 --reporter=line
       - name: Restart clean host for reservation evidence
         run: |
           kill "$(cat /tmp/axm-local-seat-host.pid)" || true
@@ -165,6 +173,7 @@ jobs:
           name: host-local-seat-journal-binding
           path: |
             test-results/global-state-rts-host-local-checkpoint.png
+            test-results/global-state-rts-selected-party-host-journal.png
             test-results/global-state-rts-salvage-reservation.png
             /tmp/axm-local-seat-host.log
             /tmp/axm-local-seat-reservation-host.log

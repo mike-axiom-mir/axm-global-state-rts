@@ -1,4 +1,4 @@
-export const CREATION_MACHINE_DEFENSE_SET_SCHEMA = 'axm.global-state-rts.creation-machine-defense-static-set/v0.1';
+export const CREATION_MACHINE_DEFENSE_SET_SCHEMA = 'axm.global-state-rts.creation-machine-defense-static-set/v0.2';
 
 const DELIVERY_ROOT = '../assets/creation-machine/runtime-prepared';
 const STATUS = 'CREATED_ALTERNATE_CANDIDATE_RUNTIME_TRIAL_ONLY';
@@ -16,6 +16,7 @@ function freezeEntry({ stableAssetId, sourceAsset, sourceFamily, gameplayTarget,
   return Object.freeze({
     schema: CREATION_MACHINE_DEFENSE_SET_SCHEMA,
     status: STATUS,
+    candidateId: `${stableAssetId}:${sourceAsset}`,
     stableAssetId,
     sourceAsset,
     sourceFamily,
@@ -39,7 +40,7 @@ function freezeEntry({ stableAssetId, sourceAsset, sourceFamily, gameplayTarget,
       reason: 'The supplied near/far pair is real, but no evidence-backed distance handoff or target-device budget exists for this alternate defense source.'
     }),
     fallback: Object.freeze({
-      policy: 'EXISTING_PROCEDURAL_FIXTURE_AND_PRIOR_UNACCEPTED_CANDIDATE_REMAIN_DEFAULT',
+      policy: 'EXISTING_PROCEDURAL_FIXTURE_AND_PRIOR_UNACCEPTED_CANDIDATES_REMAIN_DEFAULT',
       replacementRequiresExplicitRuntimeCall: true
     }),
     collision: Object.freeze({
@@ -49,7 +50,7 @@ function freezeEntry({ stableAssetId, sourceAsset, sourceFamily, gameplayTarget,
     }),
     animation: Object.freeze({
       status: 'HANDOFF_LATER',
-      reason: 'Lamp swivel, sweep, tracking, damage and destruction motion remain bespoke animation work and are not implied by this static trial.'
+      reason: 'Lamp swivel, sweep, tracking, moving tower elements, damage and destruction motion remain bespoke animation work and are not implied by this static trial.'
     }),
     note
   });
@@ -62,18 +63,40 @@ export const CREATION_MACHINE_DEFENSE_SET = Object.freeze([
     sourceFamily: 'defenses',
     gameplayTarget: 'starter-region:defense-light-tower-a',
     constructionDefinitionId: 'building:light-tower',
-    note: 'Alternate static visual candidate for the existing starter-region light-tower fixture and its already-defined construction target. It does not replace the procedural fixture or prior light-tower candidate by default.'
+    note: 'Existing explicit static alternate for the starter-region light-tower fixture and its already-defined construction target. It remains the first trial candidate when no source is named, without becoming accepted/default art.'
+  }),
+  freezeEntry({
+    stableAssetId: 'defense-light-tower-a',
+    sourceAsset: 'crane-section-watchtower',
+    sourceFamily: 'defenses',
+    gameplayTarget: 'starter-region:defense-light-tower-a',
+    constructionDefinitionId: 'building:light-tower',
+    note: 'Second explicit static alternate for the same real light-tower state target. Source selection is required to trial this candidate; it cannot silently displace the procedural fixture, prior light-tower candidate, or Spotlight Tower candidate.'
   })
 ]);
 
-const BY_STABLE_ID = new Map(CREATION_MACHINE_DEFENSE_SET.map(entry => [entry.stableAssetId, entry]));
+const BY_CANDIDATE_ID = new Map(CREATION_MACHINE_DEFENSE_SET.map(entry => [entry.candidateId, entry]));
+const BY_STABLE_ID = new Map();
+for (const entry of CREATION_MACHINE_DEFENSE_SET) {
+  const candidates = BY_STABLE_ID.get(entry.stableAssetId) || [];
+  candidates.push(entry);
+  BY_STABLE_ID.set(entry.stableAssetId, candidates);
+}
 
-export function creationMachineDefenseSetEntry(stableAssetId) {
-  return BY_STABLE_ID.get(String(stableAssetId || '')) || null;
+export function creationMachineDefenseSetEntry(stableAssetId, sourceAsset = null) {
+  const candidates = BY_STABLE_ID.get(String(stableAssetId || '')) || [];
+  if (!sourceAsset) return candidates[0] || null;
+  const sourceKey = String(sourceAsset || '');
+  return candidates.find(entry => entry.sourceAsset === sourceKey) || null;
+}
+
+export function creationMachineDefenseCandidate(candidateId) {
+  return BY_CANDIDATE_ID.get(String(candidateId || '')) || null;
 }
 
 export function creationMachineDefenseTrialPlan() {
   return Object.freeze(CREATION_MACHINE_DEFENSE_SET.map(entry => Object.freeze({
+    candidateId: entry.candidateId,
     stableAssetId: entry.stableAssetId,
     sourceAsset: entry.sourceAsset,
     sourceFamily: entry.sourceFamily,

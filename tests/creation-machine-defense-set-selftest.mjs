@@ -3,35 +3,57 @@ import fs from 'node:fs';
 import {
   CREATION_MACHINE_DEFENSE_SET,
   CREATION_MACHINE_DEFENSE_SET_SCHEMA,
+  creationMachineDefenseCandidate,
   creationMachineDefenseSetEntry,
   creationMachineDefenseTrialPlan
 } from '../src/assets/creation-machine-defense-set.mjs';
 import { DEFAULT_BUILDING_CATALOG } from '../src/sim/construction-economy.mjs';
 import { createStarterRegion } from '../src/world/starter-region.mjs';
 
-assert.equal(CREATION_MACHINE_DEFENSE_SET_SCHEMA, 'axm.global-state-rts.creation-machine-defense-static-set/v0.1');
-assert.equal(CREATION_MACHINE_DEFENSE_SET.length, 1);
+assert.equal(CREATION_MACHINE_DEFENSE_SET_SCHEMA, 'axm.global-state-rts.creation-machine-defense-static-set/v0.2');
+assert.equal(CREATION_MACHINE_DEFENSE_SET.length, 2);
 
-const entry = creationMachineDefenseSetEntry('defense-light-tower-a');
-assert.ok(entry);
-assert.equal(entry.sourceAsset, 'spotlight-tower');
-assert.equal(entry.sourceFamily, 'defenses');
-assert.equal(entry.gameplayTarget, 'starter-region:defense-light-tower-a');
-assert.equal(entry.constructionDefinitionId, 'building:light-tower');
-assert.equal(entry.targetKind, 'preview-fixture');
-assert.equal(entry.candidateRole, 'explicit-alternate-static-visual-candidate');
-assert.equal(entry.runtimeTrial.variant, 'far');
-assert.equal(entry.runtimeTrial.automaticLodSelection, false);
-assert.equal(entry.fallback.replacementRequiresExplicitRuntimeCall, true);
-assert.equal(entry.collision.footprint, null);
-assert.equal(entry.animation.status, 'HANDOFF_LATER');
+const spotlight = creationMachineDefenseSetEntry('defense-light-tower-a');
+assert.ok(spotlight);
+assert.equal(spotlight.sourceAsset, 'spotlight-tower', 'omitting a source must preserve the pre-existing first trial candidate');
+assert.equal(spotlight.sourceFamily, 'defenses');
+assert.equal(spotlight.gameplayTarget, 'starter-region:defense-light-tower-a');
+assert.equal(spotlight.constructionDefinitionId, 'building:light-tower');
+assert.equal(spotlight.targetKind, 'preview-fixture');
+assert.equal(spotlight.candidateRole, 'explicit-alternate-static-visual-candidate');
+assert.equal(spotlight.candidateId, 'defense-light-tower-a:spotlight-tower');
+assert.equal(spotlight.runtimeTrial.variant, 'far');
+assert.equal(spotlight.runtimeTrial.automaticLodSelection, false);
+assert.equal(spotlight.fallback.replacementRequiresExplicitRuntimeCall, true);
+assert.equal(spotlight.collision.footprint, null);
+assert.equal(spotlight.animation.status, 'HANDOFF_LATER');
+
+const watchtower = creationMachineDefenseSetEntry('defense-light-tower-a', 'crane-section-watchtower');
+assert.ok(watchtower);
+assert.equal(watchtower.sourceAsset, 'crane-section-watchtower');
+assert.equal(watchtower.sourceFamily, 'defenses');
+assert.equal(watchtower.gameplayTarget, spotlight.gameplayTarget);
+assert.equal(watchtower.constructionDefinitionId, spotlight.constructionDefinitionId);
+assert.equal(watchtower.targetKind, 'preview-fixture');
+assert.equal(watchtower.candidateRole, 'explicit-alternate-static-visual-candidate');
+assert.equal(watchtower.candidateId, 'defense-light-tower-a:crane-section-watchtower');
+assert.equal(watchtower.runtimeTrial.variant, 'far');
+assert.equal(watchtower.runtimeTrial.automaticLodSelection, false);
+assert.equal(watchtower.fallback.replacementRequiresExplicitRuntimeCall, true);
+assert.equal(watchtower.collision.footprint, null);
+assert.equal(watchtower.animation.status, 'HANDOFF_LATER');
+assert.equal(creationMachineDefenseCandidate(watchtower.candidateId), watchtower);
+assert.equal(creationMachineDefenseSetEntry('defense-light-tower-a', 'not-a-real-source'), null);
 
 const plan = creationMachineDefenseTrialPlan();
-assert.equal(plan.length, 1);
-assert.equal(plan[0].stableAssetId, 'defense-light-tower-a');
-assert.equal(plan[0].sourceAsset, 'spotlight-tower');
-assert.equal(plan[0].constructionDefinitionId, 'building:light-tower');
-assert.equal(plan[0].automaticLodSelection, false);
+assert.equal(plan.length, 2);
+assert.deepEqual(plan.map(candidate => candidate.sourceAsset), ['spotlight-tower', 'crane-section-watchtower']);
+for (const candidate of plan) {
+  assert.equal(candidate.stableAssetId, 'defense-light-tower-a');
+  assert.equal(candidate.constructionDefinitionId, 'building:light-tower');
+  assert.equal(candidate.automaticLodSelection, false);
+  assert.equal(candidate.footprint, null);
+}
 
 const region = createStarterRegion('seat-1');
 const target = region.previewFixtures.find(fixture => fixture.assetId === 'defense-light-tower-a');
@@ -51,6 +73,10 @@ assert.match(
   sourceIndex,
   /^spotlight-tower,defenses,assets\/spotlight-tower\/spotlight-tower\.gltf,assets\/spotlight-tower\/spotlight-tower-lod1\.gltf,False,False$/m
 );
+assert.match(
+  sourceIndex,
+  /^crane-section-watchtower,defenses,assets\/crane-section-watchtower\/crane-section-watchtower\.gltf,assets\/crane-section-watchtower\/crane-section-watchtower-lod1\.gltf,False,False$/m
+);
 
 const sourceReadme = fs.readFileSync(new URL('../assets/creation-machine/README.md', import.meta.url), 'utf8');
 assert.match(sourceReadme, /83 assets/);
@@ -59,11 +85,11 @@ assert.match(sourceReadme, /no new rigs,\s*animations, certified colliders or so
 console.log(JSON.stringify({
   schema: CREATION_MACHINE_DEFENSE_SET_SCHEMA,
   status: 'PASS',
-  stableAssetId: entry.stableAssetId,
-  sourceAsset: entry.sourceAsset,
-  gameplayTarget: entry.gameplayTarget,
-  constructionDefinitionId: entry.constructionDefinitionId,
-  runtimeVariant: entry.runtimeTrial.variant,
-  automaticLodSelection: entry.runtimeTrial.automaticLodSelection,
-  animationStatus: entry.animation.status
+  stableAssetId: spotlight.stableAssetId,
+  candidates: plan.map(candidate => ({ candidateId: candidate.candidateId, sourceAsset: candidate.sourceAsset })),
+  gameplayTarget: spotlight.gameplayTarget,
+  constructionDefinitionId: spotlight.constructionDefinitionId,
+  runtimeVariant: spotlight.runtimeTrial.variant,
+  automaticLodSelection: spotlight.runtimeTrial.automaticLodSelection,
+  animationStatus: spotlight.animation.status
 }, null, 2));

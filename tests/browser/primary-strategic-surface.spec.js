@@ -6,7 +6,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -113,7 +113,7 @@ async function advanceUntilArrived(page, maxSteps = 24) {
   return primaryStrategicSnapshot(page);
 }
 
-test('primary RTS deck drives one aggregate strategic convoy and blocks deployed Crew from LOCAL work', async ({ page }) => {
+test('primary RTS deck drives one aggregate strategic convoy, mobilizes an arrived city, and blocks deployed Crew from LOCAL work', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   await installVirtualGamepad(page);
 
@@ -190,9 +190,28 @@ test('primary RTS deck drives one aggregate strategic convoy and blocks deployed
   state = await advanceUntilArrived(page);
   expect(state.journey?.status).toBe('arrived');
   expect(state.journey?.currentNodeId).not.toBe(state.homeNodeId);
+  expect(state.currentCity?.id).toBe(state.journey.currentNodeId);
+  expect(state.currentCity?.responseState).toBe('dormant-defense');
+  await expect(page.locator('[data-primary-strategic-action="ui-left"]')).toContainText('Provoke');
   civilization = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1'));
   expect(civilization.vehicles.cargoAmount).toBeCloseTo(100, 6);
   expect(civilization.resources.scrap).toBeCloseTo(scrapAfterLoad, 6);
+
+  await pulse(page, 14); // D-pad left now connects physical arrival to the existing aggregate city fabric.
+  state = await primaryStrategicSnapshot(page);
+  expect(state.journey?.status).toBe('arrived');
+  expect(state.deployedLocalCrewIds).toHaveLength(2);
+  expect(state.currentCity?.responseState).toBe('mobilized-defense');
+  expect(state.currentCity?.provokedBy).toBe('seat-1:strategic-convoy');
+  expect(state.lastCityInteraction?.kind).toBe('provoked-city-defense');
+  expect(state.lastCityInteraction?.cityId).toBe(state.journey.currentNodeId);
+  expect(state.lastCityInteraction?.stateScope).toBe('browser-local-world-runtime-not-host-persistent');
+  await expect(page.locator('#primaryStrategicSummary')).toContainText('city mobilized-defense');
+  await page.screenshot({ path: 'test-results/global-state-rts-primary-strategic-city-response.png', fullPage: true });
+
+  await pulse(page, 14); // Repeating the same visit does not manufacture a second city consequence.
+  state = await primaryStrategicSnapshot(page);
+  expect(state.currentCity?.revision).toBe(state.lastCityInteraction?.cityRevision);
 
   await pulse(page, 2); // X starts the real home route from a landmark.
   state = await primaryStrategicSnapshot(page);

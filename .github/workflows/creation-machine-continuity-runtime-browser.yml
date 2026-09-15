@@ -1,0 +1,110 @@
+name: Creation Machine continuity static runtime
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'assets/creation-machine/**'
+      - 'src/assets/creation-machine-continuity-set.mjs'
+      - 'src/assets/cached-static-glb-runtime.mjs'
+      - 'src/sim/local-civilization-gameplay.mjs'
+      - 'src/sim/construction-economy.mjs'
+      - 'game/app.mjs'
+      - 'game/creation-machine-continuity-adoption.mjs'
+      - 'tests/creation-machine-continuity-set-selftest.mjs'
+      - 'tests/browser/creation-machine-continuity-set.spec.js'
+      - 'docs/CREATION_MACHINE_CONTINUITY_STATIC_TRIAL_V0.md'
+      - '.github/workflows/creation-machine-continuity-runtime-browser.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checked-in-creation-machine-continuity-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out exact RTS candidate and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Prepare deterministic checked-in Training Yard far derivative
+        run: |
+          set -euo pipefail
+          python3 assets/creation-machine/prepare_runtime_glb.py \
+            --asset training-yard \
+            --variant far
+
+      - name: Verify source identity, stable ID and live continuity target
+        run: node tests/creation-machine-continuity-set-selftest.mjs
+
+      - name: Syntax-check focused runtime seam
+        run: |
+          node --check src/assets/creation-machine-continuity-set.mjs
+          node --check game/creation-machine-continuity-adoption.mjs
+          node --check tests/creation-machine-continuity-set-selftest.mjs
+          node --check tests/browser/creation-machine-continuity-set.spec.js
+
+      - name: Regress construction, prior asset lanes and shell contracts
+        run: |
+          node tests/local-civilization-gameplay-selftest.mjs
+          node tests/creation-machine-starter-set-selftest.mjs
+          node tests/creation-machine-crew-set-selftest.mjs
+          node tests/creation-machine-resource-set-selftest.mjs
+          node tests/creation-machine-defense-set-selftest.mjs
+          npm run test:shell
+
+      - name: Install pinned Playwright browser test route
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start actual Global State RTS shell with prepared Training Yard derivative
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-creation-machine-continuity.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/training-yard-lod1.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/runtime-prepared/training-yard-lod1.receipt.json > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-creation-machine-continuity.log
+          exit 1
+
+      - name: Exercise live Training Yard construction then explicit static adoption
+        run: |
+          npx playwright test tests/browser/creation-machine-continuity-set.spec.js --workers=1 --reporter=line
+          mkdir -p evidence/creation-machine-continuity-runtime
+          cp test-results/global-state-rts-creation-machine-training-yard-4seat.png evidence/creation-machine-continuity-runtime/
+
+      - name: Regress player-facing LOCAL construction browser path
+        run: npx playwright test tests/browser/local-civilization-gameplay.spec.js --workers=1 --reporter=line
+
+      - name: Preserve continuity runtime evidence without committing generated derivatives
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-creation-machine-continuity-runtime-evidence
+          path: |
+            assets/creation-machine/runtime-prepared/training-yard-lod1.receipt.json
+            evidence/creation-machine-continuity-runtime/*.png
+            test-results/global-state-rts-*.png
+            /tmp/axm-global-state-rts-creation-machine-continuity.log
+          if-no-files-found: warn
+          retention-days: 14

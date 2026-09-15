@@ -6,7 +6,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -216,7 +216,7 @@ test('primary RTS deck drives one aggregate strategic convoy and blocks deployed
 
   await pulse(page, 1); // Close Strategic Route.
   await pulse(page, 2); // Release the selected-party vehicle driver now that Crew are LOCAL again.
-  await expect(page.locator('#inputStatus')).toContainText('selected-party driver');
+  await expect(page.locator('#inputStatus')).toContainText('selected-party vehicle driver');
   await pulse(page, 1); // Close Vehicles.
   await pulse(page, 0); // A / gather works again once the convoy and driver duties are released.
   await expect(page.locator('#inputStatus')).toContainText('local macro order admitted');

@@ -6,12 +6,16 @@ on:
       - main
     paths:
       - 'src/hosted/world-run-start-store.mjs'
+      - 'src/hosted/world-run-archive-store.mjs'
       - 'src/hosted/world-run-session-authority.mjs'
       - 'src/hosted/durable-world-run-mutation-authority.mjs'
+      - 'src/hosted/archived-world-run-mutation-authority.mjs'
       - 'src/hosted/world-run-http-api.mjs'
       - 'scripts/serve.mjs'
+      - 'tests/world-run-restart-persistence-selftest.mjs'
       - 'tests/world-run-global-control-replay-selftest.mjs'
       - 'tests/world-run-close-replay-selftest.mjs'
+      - 'tests/world-run-terminal-archive-selftest.mjs'
       - '.github/workflows/world-run-mutation-replay.yml'
   workflow_dispatch:
 
@@ -37,20 +41,24 @@ jobs:
         run: |
           npm test
           node --check src/hosted/world-run-start-store.mjs
+          node --check src/hosted/world-run-archive-store.mjs
           node --check src/hosted/world-run-session-authority.mjs
           node --check src/hosted/durable-world-run-mutation-authority.mjs
+          node --check src/hosted/archived-world-run-mutation-authority.mjs
           node --check src/hosted/world-run-http-api.mjs
           node --check scripts/serve.mjs
           node --check tests/world-run-restart-persistence-selftest.mjs
           node --check tests/world-run-global-control-replay-selftest.mjs
           node --check tests/world-run-close-replay-selftest.mjs
+          node --check tests/world-run-terminal-archive-selftest.mjs
           node tests/world-run-restart-persistence-selftest.mjs
           node tests/world-run-global-control-replay-selftest.mjs
           node tests/world-run-close-replay-selftest.mjs
+          node tests/world-run-terminal-archive-selftest.mjs
 
       - name: Seed durable machine world account with next-drop value
         run: |
-          rm -f /tmp/axm-run-mutation-accounts.json /tmp/axm-run-mutation-starts.json /tmp/axm-run-mutation-world.json /tmp/axm-run-mutation-start.json /tmp/axm-run-mutation-command.json /tmp/axm-run-mutation-close.json /tmp/axm-run-mutation-after.json /tmp/axm-run-mutation-host.log
+          rm -f /tmp/axm-run-mutation-accounts.json /tmp/axm-run-mutation-starts.json /tmp/axm-run-mutation-archive.json /tmp/axm-run-mutation-world.json /tmp/axm-run-mutation-start.json /tmp/axm-run-mutation-command.json /tmp/axm-run-mutation-close.json /tmp/axm-run-mutation-after.json /tmp/axm-run-mutation-archive-after.json /tmp/axm-run-mutation-host.log
           node --input-type=module <<'NODE'
           import { WORLD_HOUR_MS } from './src/hosted/world-clock.mjs';
           import { createFileWorldAccountStore } from './src/hosted/world-account-store.mjs';
@@ -73,13 +81,14 @@ jobs:
           }
           NODE
 
-      - name: Mutate and close run, restart real host, and verify replayed score/history
+      - name: Mutate and close run, restart real host, and verify replayed score/history/archive
         run: |
           set -euo pipefail
           export AXM_SHARED_WRITE_MODE=dev
           export AXM_WORLD_JOURNAL_PATH=/tmp/axm-run-mutation-world.json
           export AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-run-mutation-accounts.json
           export AXM_WORLD_RUN_STARTS_PATH=/tmp/axm-run-mutation-starts.json
+          export AXM_WORLD_RUN_ARCHIVE_PATH=/tmp/axm-run-mutation-archive.json
           PORT=4188 node scripts/serve.mjs > /tmp/axm-run-mutation-host.log 2>&1 &
           HOST_PID=$!
           trap 'kill "$HOST_PID" 2>/dev/null || true' EXIT
@@ -114,6 +123,9 @@ jobs:
             fi
             sleep 1
           done
+          curl --fail --silent --show-error \
+            'http://127.0.0.1:4188/api/world/run/archive?participantId=world%3Aworkflow-mutation-account' \
+            > /tmp/axm-run-mutation-archive-after.json
 
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -122,6 +134,8 @@ jobs:
           const command = JSON.parse(fs.readFileSync('/tmp/axm-run-mutation-command.json', 'utf8'));
           const closed = JSON.parse(fs.readFileSync('/tmp/axm-run-mutation-close.json', 'utf8'));
           const after = JSON.parse(fs.readFileSync('/tmp/axm-run-mutation-after.json', 'utf8'));
+          const archiveAfter = JSON.parse(fs.readFileSync('/tmp/axm-run-mutation-archive-after.json', 'utf8'));
+          const archiveFile = JSON.parse(fs.readFileSync('/tmp/axm-run-mutation-archive.json', 'utf8'));
           assert.equal(started.accepted, true);
           assert.equal(started.runStartPersistence.persisted, true);
           assert.equal(command.accepted, true);
@@ -131,6 +145,7 @@ jobs:
           assert.equal(closed.accepted, true);
           assert.equal(closed.mutationPersistence.persisted, true);
           assert.equal(closed.mutationPersistence.sequence, 2);
+          assert.equal(closed.archivePersistence.persisted, true);
           assert.equal(closed.progression.activeRun, null);
           assert.equal(closed.progression.runHistory.length, 1);
           assert.deepEqual(after.progression, closed.progression);
@@ -140,6 +155,15 @@ jobs:
           assert.equal(after.mutationContinuity.durableMutationCount, 2);
           assert.equal(after.mutationContinuity.terminalCloseApplied, true);
           assert.equal(after.progressionPersistence.restoredMutationsThisProcess, 2);
+          assert.equal(after.archiveContinuity.currentTerminalRunArchived, true);
+          assert.equal(after.archiveContinuity.archivedRunCount, 1);
+          assert.equal(after.progressionPersistence.terminalRunArchive.reconciledOnStartup.attempted, 1);
+          assert.equal(after.progressionPersistence.terminalRunArchive.reconciledOnStartup.reused, 1);
+          assert.equal(archiveAfter.runs.length, 1);
+          assert.equal(archiveAfter.runs[0].runId, 'run:workflow-mutation:001');
+          assert.deepEqual(archiveAfter.runs[0].terminalProgressionSnapshot, closed.progression);
+          assert.equal(archiveFile.records.length, 1);
+          assert.equal(archiveFile.records[0].runId, 'run:workflow-mutation:001');
           NODE
 
       - name: Preserve mutation replay evidence
@@ -150,11 +174,13 @@ jobs:
           path: |
             /tmp/axm-run-mutation-accounts.json
             /tmp/axm-run-mutation-starts.json
+            /tmp/axm-run-mutation-archive.json
             /tmp/axm-run-mutation-world.json
             /tmp/axm-run-mutation-start.json
             /tmp/axm-run-mutation-command.json
             /tmp/axm-run-mutation-close.json
             /tmp/axm-run-mutation-after.json
+            /tmp/axm-run-mutation-archive-after.json
             /tmp/axm-run-mutation-meta.json
             /tmp/axm-run-mutation-host.log
           if-no-files-found: warn

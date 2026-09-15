@@ -1,0 +1,50 @@
+name: Global State RTS shared-world authority contract
+
+on:
+  pull_request:
+    paths:
+      - src/hosted/shared-world-authority-contract.mjs
+      - src/hosted/world-session-authority.mjs
+      - src/hosted/world-participant-registry.mjs
+      - src/hosted/durable-world-run-command-authority.mjs
+      - src/hosted/durable-world-run-mutation-authority.mjs
+      - src/input/action-rate-gate.mjs
+      - src/session/seat-contract.mjs
+      - tests/shared-world-authority-contract-selftest.mjs
+      - .github/workflows/shared-world-authority-contract.yml
+  push:
+    branches:
+      - main
+    paths:
+      - src/hosted/shared-world-authority-contract.mjs
+      - src/hosted/world-session-authority.mjs
+      - src/hosted/world-participant-registry.mjs
+      - src/hosted/durable-world-run-command-authority.mjs
+      - src/hosted/durable-world-run-mutation-authority.mjs
+      - src/input/action-rate-gate.mjs
+      - src/session/seat-contract.mjs
+      - tests/shared-world-authority-contract-selftest.mjs
+      - .github/workflows/shared-world-authority-contract.yml
+
+permissions:
+  contents: read
+
+jobs:
+  shared-world-authority-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Check out game and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run existing deterministic/source gates
+        run: npm test
+      - name: Verify authority contract syntax
+        run: node --check src/hosted/shared-world-authority-contract.mjs && node --check tests/shared-world-authority-contract-selftest.mjs
+      - name: Exercise truthful many-user authority contract
+        run: node tests/shared-world-authority-contract-selftest.mjs

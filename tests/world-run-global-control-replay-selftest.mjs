@@ -166,6 +166,7 @@ try {
     'train-unit-specialization',
     'license-unit-vehicle',
     'craft-weapon',
+    'equip-unit-weapon',
     'close-active-run'
   ]);
   assert.deepEqual(meta.body.runLifecycle.progressionPersistence.durableMutationActions, [
@@ -174,6 +175,7 @@ try {
     'train-unit-specialization',
     'license-unit-vehicle',
     'craft-weapon',
+    'equip-unit-weapon',
     'close-active-run'
   ]);
 

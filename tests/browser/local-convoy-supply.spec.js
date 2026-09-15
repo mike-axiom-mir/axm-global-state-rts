@@ -4,7 +4,7 @@ function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') failures.push(`console: ${message.text()}`);
+    if (message.type() === 'error') failures.push(`console: ${message.text()}`));
   });
   page.on('requestfailed', request => failures.push(`request: ${request.url()} (${request.failure()?.errorText || 'failed'})`));
   return failures;
@@ -62,14 +62,14 @@ async function gatherThenIdle(page) {
       steps += 1;
       snapshot = simulation.debugCanonicalSnapshot();
       const emptyHands = snapshot.crew.every(crew => Number(crew.carrying || 0) <= 1e-9);
-      if (snapshot.storage.scrap >= 240 && emptyHands) break;
+      if (snapshot.storage.scrap >= 300 && emptyHands) break;
     }
     return {
       scrap: snapshot.storage.scrap,
       emptyHands: snapshot.crew.every(crew => Number(crew.carrying || 0) <= 1e-9)
     };
   });
-  expect(gathered.scrap).toBeGreaterThanOrEqual(240);
+  expect(gathered.scrap).toBeGreaterThanOrEqual(300);
   expect(gathered.emptyHands).toBe(true);
 
   await page.locator('[data-gameplay-action="explore"]').click();
@@ -120,6 +120,7 @@ test('selected-party convoy loads and unloads physical scrap through command-dec
 
   const beforeLoad = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatCivilization('seat-1'));
   const beforeScrap = beforeLoad.resources.scrap;
+  expect(beforeScrap).toBeGreaterThanOrEqual(100);
   expect(beforeLoad.vehicles.driverCount).toBe(1);
   expect(beforeLoad.vehicles.cargoAmount).toBe(0);
   expect(beforeLoad.vehicles.strategicDepartureState).toBe('blocked-until-local-strategic-handoff-authoritative');

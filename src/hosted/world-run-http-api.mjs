@@ -5,9 +5,13 @@ import {
   WORLD_RUN_GLOBAL_CONTROL_ACTION,
   createDurableWorldRunMutationAuthority
 } from './durable-world-run-mutation-authority.mjs';
+import {
+  WORLD_RUN_DURABLE_CHECKPOINT_SCHEMA,
+  createWorldRunDurableCheckpointAuthority
+} from './world-run-durable-checkpoint-authority.mjs';
 import { WORLD_RUN_SESSION_AUTHORITY_SCHEMA } from './world-run-session-authority.mjs';
 
-export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.4';
+export const WORLD_RUN_HTTP_API_SCHEMA = 'axm.global-state-rts.world-run-http-api/v0.5';
 
 function queryValue(searchParams, key) {
   if (!searchParams) return null;
@@ -54,6 +58,10 @@ export class WorldRunHttpApiService {
     this.runAuthority = runAuthority?.recordGlobalControlPercent
       ? runAuthority
       : createDurableWorldRunMutationAuthority({ worldAuthority: authority, runAuthority, runStartStore, clock });
+    this.checkpointAuthority = createWorldRunDurableCheckpointAuthority({
+      runAuthority: this.runAuthority,
+      runStartStore
+    });
     this.baseApi = baseApi || createWorldHttpApiService({ authority, writeMode: this.writeMode, clock });
   }
 
@@ -65,6 +73,12 @@ export class WorldRunHttpApiService {
         const participantId = queryValue(searchParams, 'participantId');
         if (!participantId) return response(400, { error: 'participantId query parameter required' });
         return response(200, this.runAuthority.status(participantId));
+      }
+
+      if (verb === 'GET' && route === '/api/world/run/checkpoint') {
+        const participantId = queryValue(searchParams, 'participantId');
+        if (!participantId) return response(400, { error: 'participantId query parameter required' });
+        return response(200, this.checkpointAuthority.checkpoint(participantId));
       }
 
       if (verb === 'POST' && route === '/api/world/run/begin-next-drop') {
@@ -110,11 +124,13 @@ export class WorldRunHttpApiService {
           runLifecycle: Object.freeze({
             schema: WORLD_RUN_SESSION_AUTHORITY_SCHEMA,
             mutationAuthoritySchema: DURABLE_WORLD_RUN_MUTATION_AUTHORITY_SCHEMA,
+            durableCheckpointSchema: WORLD_RUN_DURABLE_CHECKPOINT_SCHEMA,
             progressionPersistence: persistence,
             hostAuthoritativeMutationActions: Object.freeze([WORLD_RUN_GLOBAL_CONTROL_ACTION, WORLD_RUN_CLOSE_ACTION]),
+            durableCheckpointEndpoint: '/api/world/run/checkpoint?participantId=<world-account-participant-id>',
             truthBoundary: persistence.enabled
-              ? 'next-drop-run-start-plus-bounded-global-control-and-terminal-run-close-mutations-are-host-authoritative-and-replayable-from-durable-evidence;closed-record-rollover-into-the-next-durable-run-and-other-later-in-run-mutations-remain-separate-gaps'
-              : 'next-drop-run-start-global-control-and-run-close-commands-are-host-authoritative-in-process-but-active-progression-remains-process-memory-only-without-durable-run-start-storage'
+              ? 'next-drop-run-start-plus-bounded-global-control-and-terminal-run-close-mutations-are-host-authoritative-and-replayable-from-durable-evidence;read-only-deterministic-checkpoint-fingerprints-can-compare-that-evidence-across-restart;closed-record-rollover-into-the-next-durable-run-and-general-rollback-remain-separate-gaps'
+              : 'next-drop-run-start-global-control-and-run-close-commands-are-host-authoritative-in-process-but-active-progression-and-durable-checkpoint-evidence-remain-unavailable-without-durable-run-start-storage'
           })
         });
       }

@@ -160,8 +160,16 @@ try {
 
   const meta = get(restarted.api, '/api/world/meta');
   assert.equal(meta.status, 200);
-  assert.deepEqual(meta.body.runLifecycle.hostAuthoritativeMutationActions, ['record-global-control-percent', 'close-active-run']);
-  assert.deepEqual(meta.body.runLifecycle.progressionPersistence.durableMutationActions, ['record-global-control-percent', 'close-active-run']);
+  assert.deepEqual(meta.body.runLifecycle.hostAuthoritativeMutationActions, [
+    'record-global-control-percent',
+    'set-food-policy',
+    'close-active-run'
+  ]);
+  assert.deepEqual(meta.body.runLifecycle.progressionPersistence.durableMutationActions, [
+    'record-global-control-percent',
+    'set-food-policy',
+    'close-active-run'
+  ]);
 
   const tampered = JSON.parse(fs.readFileSync(runStartPath, 'utf8'));
   const tamperedHuman = tampered.records.find(record => record.participantId === humanId);

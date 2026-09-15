@@ -1,4 +1,4 @@
-export const CREATION_MACHINE_DEFENSE_SET_SCHEMA = 'axm.global-state-rts.creation-machine-defense-static-set/v0.2';
+export const CREATION_MACHINE_DEFENSE_SET_SCHEMA = 'axm.global-state-rts.creation-machine-defense-static-set/v0.3';
 
 const DELIVERY_ROOT = '../assets/creation-machine/runtime-prepared';
 const STATUS = 'CREATED_ALTERNATE_CANDIDATE_RUNTIME_TRIAL_ONLY';
@@ -72,6 +72,14 @@ export const CREATION_MACHINE_DEFENSE_SET = Object.freeze([
     gameplayTarget: 'starter-region:defense-light-tower-a',
     constructionDefinitionId: 'building:light-tower',
     note: 'Second explicit static alternate for the same real light-tower state target. Source selection is required to trial this candidate; it cannot silently displace the procedural fixture, prior light-tower candidate, or Spotlight Tower candidate.'
+  }),
+  freezeEntry({
+    stableAssetId: 'defense-light-tower-a',
+    sourceAsset: 'light-tower',
+    sourceFamily: 'utilities',
+    gameplayTarget: 'starter-region:defense-light-tower-a',
+    constructionDefinitionId: 'building:light-tower',
+    note: 'Third explicit static alternate grounded to the same existing light-tower state target. The Creation Machine classified this source under utilities, which is preserved as provenance rather than silently rewritten into the defenses family.'
   })
 ]);
 

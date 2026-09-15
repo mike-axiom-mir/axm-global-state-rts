@@ -13,20 +13,42 @@ function readinessBlocksAction(actionId, text) {
   return false;
 }
 
-function appendRetryGuidance(actionId, readinessBefore) {
-  const readinessAfter = readText('#gameplayReadiness');
-  if (!readinessBlocksAction(actionId, readinessAfter)) return;
+let pendingRetry = null;
+
+function appendSettledRetryGuidance() {
+  const pending = pendingRetry;
+  if (!pending) return;
 
   const feedback = document.querySelector('#gameplayFeedback');
   const outcome = feedback?.textContent?.trim() || '';
-  if (!feedback || !outcome || outcome.includes('Retry path ·')) return;
+  if (!feedback || !outcome) return;
 
-  // The action authority remains in gameplay-surface/local simulation. This layer only
-  // turns the already-visible readiness state into an actionable retry explanation
-  // after a player actually attempts a command that was known to be blocked.
-  if (readinessAfter !== readinessBefore && !/\bblocked\b/i.test(readinessAfter)) return;
+  // submitAction first reports transport/admission. Wait until the existing gameplay
+  // authority has replaced that temporary text with its settled command outcome.
+  if (/submitted through its existing admitted input path$/i.test(outcome)) return;
+  if (outcome.includes('Retry path ·')) {
+    pendingRetry = null;
+    return;
+  }
+
+  const readinessAfter = readText('#gameplayReadiness');
+  if (!readinessBlocksAction(pending.actionId, readinessAfter)) {
+    pendingRetry = null;
+    return;
+  }
+
+  pendingRetry = null;
   feedback.textContent = `${outcome} · Retry path · ${readinessAfter}`;
 }
+
+const outcomeObserver = new MutationObserver(() => {
+  queueMicrotask(appendSettledRetryGuidance);
+});
+outcomeObserver.observe(document.documentElement, {
+  subtree: true,
+  childList: true,
+  characterData: true
+});
 
 document.addEventListener('click', event => {
   const button = event.target.closest?.('#gameplaySurface [data-gameplay-action]');
@@ -38,9 +60,8 @@ document.addEventListener('click', event => {
   const readinessBefore = readText('#gameplayReadiness');
   if (!readinessBlocksAction(actionId, readinessBefore)) return;
 
-  // gameplay-surface resolves the admitted action on a zero-delay timer. Queue this
-  // timer from the post-click microtask so the authoritative outcome lands first.
-  queueMicrotask(() => {
-    setTimeout(() => appendRetryGuidance(actionId, readinessBefore), 0);
-  });
+  // Keep only one explicit attempted command pending. No command is repeated here;
+  // this module observes the already-admitted path and explains how the player can retry.
+  pendingRetry = { actionId, readinessBefore };
+  queueMicrotask(appendSettledRetryGuidance);
 }, true);

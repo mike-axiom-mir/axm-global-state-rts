@@ -99,7 +99,9 @@ export function describeLocalBattleRelief(frame, xM, zM, foundationElevationM) {
   const local = rotate(x, z, angle);
   const r = Math.hypot(local.x, local.z);
   const centerProtection = smoothstep(340, 650, r);
-  const landStrength = smoothstep(18, 180, baseElevationM);
+  // Suppress relief only in the coast transition. Ordinary low inland plains (including the
+  // ~84 m starter grassland) get full mountain/ridge height instead of being nearly flattened.
+  const landStrength = smoothstep(18, 65, baseElevationM);
 
   // Rolling terrain keeps open ground from reading like a board without turning it into noise.
   const rolling = (fbm2(local.x / 920, local.z / 920, seed ^ 0x19a4, 4) - 0.5) * 150;

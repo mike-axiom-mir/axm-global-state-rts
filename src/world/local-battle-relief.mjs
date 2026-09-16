@@ -113,17 +113,16 @@ export function describeLocalBattleRelief(frame, xM, zM, foundationElevationM) {
     * (155 + fbm2(local.x / 700, local.z / 700, seed ^ 0x731b, 3) * 205);
   const ridge = (ridgeA + ridgeB) * smoothstep(300, 680, r);
 
-  // Put one real shoulder inside the ordinary opening camera composition rather than hiding every
-  // mountain behind unexplored fog. It is localized on the far side of the start field, so the
-  // settlement/crew footprint remains flat while players immediately see meaningful high ground.
-  const openingMountainDistance = Math.hypot(x - 270, z + 355);
-  const openingMountainProtection = smoothstep(235, 330, Math.hypot(x, z));
-  const openingMountainNoise = fbm2((x + 170) / 470, (z - 90) / 470, seed ^ 0x2ad7, 4);
-  const openingPass = gaussian(x - 40, 125) * gaussian(z + 350, 235);
-  const openingMountain = gaussian(openingMountainDistance, 245)
-    * (245 + openingMountainNoise * 310)
+  // One localized mountain shoulder sits directly on the far side of the ordinary opening camera
+  // footprint. This keeps the base flat while making high ground immediately visible and useful.
+  const openingMountainDistance = Math.hypot(x - 190, z + 270);
+  const openingMountainProtection = smoothstep(210, 280, Math.hypot(x, z));
+  const openingMountainNoise = fbm2((x + 170) / 390, (z - 90) / 390, seed ^ 0x2ad7, 4);
+  const openingPass = gaussian(x + 5, 105) * gaussian(z + 270, 185);
+  const openingMountain = gaussian(openingMountainDistance, 165)
+    * (220 + openingMountainNoise * 285)
     * openingMountainProtection
-    * (1 - openingPass * 0.76);
+    * (1 - openingPass * 0.72);
 
   // Broad mountain shoulders sit farther into the map. Their slopes are deliberately broad, while
   // pass notches prevent them from becoming one impassable wall.

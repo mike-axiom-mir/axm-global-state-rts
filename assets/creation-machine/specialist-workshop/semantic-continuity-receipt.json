@@ -1,0 +1,44 @@
+{
+  "schema": "axm.global-state-rts.specialist-workshop-semantic-continuity-receipt/v0.2",
+  "status": "SEMANTIC_CONTINUITY_TESTED_BINARY_IDENTITY_FRESH",
+  "reference_source_commit": "d761090dd6477db9b8dd33edac905ff924c4c6ee",
+  "producer_source_commit": "8089d47937aeac63db367f2193c48fb92bed2071",
+  "producer_runtime": "4.3.0",
+  "source_evidence": {
+    "reviewed_source_files": [
+      "axm_rts_workshop.py",
+      "axm_salvage_construction.py",
+      "axm_salvage_personality.py",
+      "axm_salvage_surfaces.py"
+    ],
+    "producer_extra_tracked_files": [
+      "axm_rts_workshop_lods.py",
+      "verify_rts_workshop.py"
+    ]
+  },
+  "fresh_binary_identity": {
+    "improvised-workshop.glb": "defa76e42047eb6e89826faa89f22a5ee8d2933f46212b7db859e762ea26e897",
+    "improvised-workshop-lod1.glb": "436fed13865d48ec99ca90dc4aef6156116f2197672d2415050449b6e2297a2f"
+  },
+  "detailed": {
+    "triangles": 190431,
+    "vertices": 278292,
+    "material_batches": 19,
+    "embedded_images": 47,
+    "embedded_image_descriptor_sha256": "9fa0f6eb11560614933a9b26d7c5a9da0099c54b148af454e99cb4a27a4d7e8d"
+  },
+  "lod1": {
+    "triangles": 68534,
+    "vertices": 107564,
+    "material_batches": 19,
+    "embedded_images": 47,
+    "embedded_image_descriptor_sha256": "9fa0f6eb11560614933a9b26d7c5a9da0099c54b148af454e99cb4a27a4d7e8d"
+  },
+  "historical_raw_identity_reused": false,
+  "nonclaims": [
+    "Fresh semantic continuity does not imply historical whole-GLB byte identity.",
+    "Reviewed source subset continuity allows additional explicitly tracked producer files but never hash drift in reviewed source files.",
+    "This receipt does not establish target browser rendering by itself.",
+    "Collision, navigation, LOD perceptual equivalence and FPS remain separate evidence."
+  ]
+}

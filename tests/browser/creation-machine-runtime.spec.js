@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+test.setTimeout(120_000);
+
 function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
@@ -10,9 +12,9 @@ function captureRuntimeFailures(page) {
   return failures;
 }
 
-async function readPreparedReceipt(page) {
+async function readPromotedReceipt(page) {
   return page.evaluate(async () => {
-    const response = await fetch('../assets/creation-machine/runtime-prepared/improvised-workshop-lod1.receipt.json', { cache: 'no-store' });
+    const response = await fetch('../assets/creation-machine/specialist-workshop/promotion-receipt.json', { cache: 'no-store' });
     if (!response.ok) throw new Error(`receipt fetch failed (${response.status})`);
     return response.json();
   });
@@ -22,33 +24,36 @@ async function clickAndWaitForAdoption(page) {
   const button = page.locator('#creationMachineWorkshopAdopt');
   await button.click();
   await expect(button).toBeDisabled();
-  // Real checked-in GLB import can exceed 15s on shared CI runners. Keep the
-  // evidence signal bounded, but wait on actual completion rather than a
-  // runner-speed assumption.
-  await expect(button).toBeEnabled({ timeout: 60_000 });
+  await expect(button).toBeEnabled({ timeout: 90_000 });
 }
 
 function assertRuntimeTruthBoundary(installed, sourceReceipt) {
   expect(installed.status).toBe('RUNTIME_IMPORTED_NOT_VISUALLY_ACCEPTED');
   expect(installed.assetId).toBe('building-workshop-a');
-  expect(installed.sha256).toBe(sourceReceipt.outputGlbSha256);
+  expect(installed.sha256).toBe(sourceReceipt.sha256);
   expect(installed.triangles).toBe(sourceReceipt.triangles);
+  expect(installed.triangles).toBe(9268);
+  expect(installed.materials).toBe(19);
+  expect(installed.embeddedImages).toBe(47);
   expect(installed.collision).toBe('NOT_TESTED');
   expect(installed.navigation).toBe('NOT_TESTED');
   expect(installed.splitScreenReadability).toBe('NOT_TESTED');
   expect(installed.targetDeviceFps).toBe('NOT_TESTED');
 }
 
-test('player explicitly adopts checked-in Creation Machine workshop while fallback stays truthful', async ({ page }) => {
+test('player explicitly adopts promoted UC specialist workshop while fallback stays truthful', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/?players=1', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);
 
-  const sourceReceipt = await readPreparedReceipt(page);
-  expect(sourceReceipt.status).toBe('PREPARED_RUNTIME_DERIVATIVE_NOT_VISUALLY_ACCEPTED');
-  expect(sourceReceipt.asset).toBe('improvised-workshop');
-  expect(sourceReceipt.variant).toBe('far');
-  expect(sourceReceipt.triangles).toBeGreaterThan(0);
+  const sourceReceipt = await readPromotedReceipt(page);
+  expect(sourceReceipt.status).toBe('PROMOTED_PRESENTATION_CANDIDATE_NOT_CANON');
+  expect(sourceReceipt.asset_id).toBe('building-workshop-a');
+  expect(sourceReceipt.filename).toBe('improvised-workshop-rts.glb');
+  expect(sourceReceipt.triangles).toBe(9268);
+  expect(sourceReceipt.material_batches).toBe(19);
+  expect(sourceReceipt.embedded_images).toBe(47);
+  expect(sourceReceipt.sha256).toMatch(/^[a-f0-9]{64}$/);
 
   await expect(page.locator('#creationMachineWorkshopStatus')).toContainText('Procedural workshop fallback active');
   await clickAndWaitForAdoption(page);
@@ -61,8 +66,8 @@ test('player explicitly adopts checked-in Creation Machine workshop while fallba
   await page.keyboard.press('m');
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
   await clickAndWaitForAdoption(page);
-  await expect(page.locator('#creationMachineWorkshopStatus')).toContainText('runtime imported');
-  await expect(page.locator('#creationMachineWorkshopStatus')).toContainText('acceptance NOT TESTED');
+  await expect(page.locator('#creationMachineWorkshopStatus')).toContainText('UC specialist workshop loaded');
+  await expect(page.locator('#creationMachineWorkshopStatus')).toContainText('9268 triangles');
 
   const installed = await page.evaluate(() => window.__AXM_CREATION_MACHINE_WORKSHOP__.status());
   assertRuntimeTruthBoundary(installed, sourceReceipt);
@@ -71,7 +76,7 @@ test('player explicitly adopts checked-in Creation Machine workshop while fallba
     seatId: 'seat-1',
     assetId: 'building-workshop-a'
   }));
-  expect(retained.sha256).toBe(sourceReceipt.outputGlbSha256);
+  expect(retained.sha256).toBe(sourceReceipt.sha256);
   expect(retained.fixtureId).toContain(':workshop');
 
   await page.waitForTimeout(500);
@@ -79,12 +84,12 @@ test('player explicitly adopts checked-in Creation Machine workshop while fallba
   expect(failures, failures.join('\n')).toEqual([]);
 });
 
-test('machine seat can make the same explicit presentation adoption through the shared helper', async ({ page }) => {
+test('machine seat can make the same explicit specialist presentation adoption through the shared helper', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   const response = await page.goto('http://127.0.0.1:4174/game/?players=1&seat1=machine', { waitUntil: 'networkidle' });
   expect(response?.ok()).toBe(true);
 
-  const sourceReceipt = await readPreparedReceipt(page);
+  const sourceReceipt = await readPromotedReceipt(page);
   const modeResult = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.submitMachineAction({
     seatId: 'seat-1',
     actionId: 'map-toggle',
@@ -103,7 +108,7 @@ test('machine seat can make the same explicit presentation adoption through the 
     seatId: 'seat-1',
     assetId: 'building-workshop-a'
   }));
-  expect(retained.sha256).toBe(sourceReceipt.outputGlbSha256);
+  expect(retained.sha256).toBe(sourceReceipt.sha256);
   expect(retained.fixtureId).toContain(':workshop');
   expect(failures, failures.join('\n')).toEqual([]);
 });

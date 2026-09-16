@@ -1,0 +1,84 @@
+name: Promoted UC specialist workshop adoption
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'assets/creation-machine/specialist-workshop/**'
+      - 'game/creation-machine-workshop-adoption.mjs'
+      - 'tests/browser/creation-machine-runtime.spec.js'
+      - '.github/workflows/specialist-workshop-adoption.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  specialist-workshop-adoption:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact candidate and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Verify focused source and persistent asset identity
+        run: |
+          node --check game/creation-machine-workshop-adoption.mjs
+          node --check tests/browser/creation-machine-runtime.spec.js
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          root=Path('assets/creation-machine/specialist-workshop')
+          receipt=json.loads((root/'promotion-receipt.json').read_text())
+          data=(root/'improvised-workshop-rts.glb').read_bytes()
+          sha=hashlib.sha256(data).hexdigest()
+          assert receipt['status']=='PROMOTED_PRESENTATION_CANDIDATE_NOT_CANON'
+          assert receipt['sha256']==sha
+          assert receipt['triangles']==9268
+          assert receipt['material_batches']==19
+          assert receipt['embedded_images']==47
+          print(json.dumps({'sha256': sha, 'bytes': len(data), 'triangles': receipt['triangles']}, indent=2))
+          PY
+
+      - name: Install pinned Playwright browser route
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start actual Global State RTS shell
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-specialist-workshop.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/specialist-workshop/promotion-receipt.json > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/assets/creation-machine/specialist-workshop/improvised-workshop-rts.glb > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-specialist-workshop.log
+          exit 1
+
+      - name: Exercise human and machine specialist adoption
+        run: npx playwright test tests/browser/creation-machine-runtime.spec.js --workers=1 --reporter=line
+
+      - name: Preserve focused target evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-promoted-specialist-workshop-adoption
+          path: |
+            test-results/global-state-rts-creation-machine-workshop-runtime.png
+            assets/creation-machine/specialist-workshop/promotion-receipt.json
+            /tmp/axm-global-state-rts-specialist-workshop.log
+          if-no-files-found: warn
+          retention-days: 14

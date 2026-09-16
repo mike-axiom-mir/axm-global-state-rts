@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 50
     env:
-      UC_SOURCE_COMMIT: d761090dd6477db9b8dd33edac905ff924c4c6ee
+      UC_SOURCE_COMMIT: 8089d47937aeac63db367f2193c48fb92bed2071
     steps:
       - name: Check out exact Global State RTS candidate and pinned Planet
         uses: actions/checkout@v4
@@ -61,8 +61,8 @@ jobs:
           PYTHONPATH=src python -m axm_uc rts-workshop-polish "$GITHUB_WORKSPACE/runtime-assets/workshop-specialist" \
             --python "$(command -v python)" \
             --font /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf \
-            --resolution 768 \
-            --samples 16
+            --resolution 1100 \
+            --samples 48
 
       - name: Verify semantic continuity and bind this fresh binary identity
         run: |
@@ -72,6 +72,7 @@ jobs:
             --reference assets/specialist-workshop-semantic-reference.v0.1.json \
             --verification runtime-assets/workshop-specialist/verification.json \
             --inspection runtime-assets/workshop-specialist/glb-inspection.json \
+            --producer-commit "$UC_SOURCE_COMMIT" \
             --write runtime-assets/workshop-specialist/semantic-continuity-receipt.json
           python - <<'PY'
           import json
@@ -79,12 +80,22 @@ jobs:
           root=Path('runtime-assets/workshop-specialist')
           gates=json.loads((root/'game-readiness-gates.json').read_text())
           continuity=json.loads((root/'semantic-continuity-receipt.json').read_text())
+          verification=json.loads((root/'verification.json').read_text())
+          inspection=json.loads((root/'glb-inspection.json').read_text())
+          rts_artifact=verification['artifacts']['improvised-workshop-rts.glb']
+          rts=inspection['improvised-workshop-rts.glb']
           assert gates['gates']['geometry_structure']=='TESTED'
+          assert gates['gates']['runtime_lod_target_bands']=='TESTED'
           assert gates['gates']['target_rts_integration']=='NOT_TESTED'
           assert continuity['status']=='SEMANTIC_CONTINUITY_TESTED_BINARY_IDENTITY_FRESH'
+          assert continuity['producer_source_commit']=='8089d47937aeac63db367f2193c48fb92bed2071'
           assert continuity['historical_raw_identity_reused'] is False
+          assert rts_artifact['sha256']==rts['sha256']
+          assert 4_000 <= rts['triangles'] <= 12_000
+          assert rts['material_batches']==19
+          assert rts['embedded_images']==47
+          print(json.dumps(rts, indent=2))
           print(json.dumps(continuity, indent=2))
-          print(json.dumps(gates, indent=2))
           PY
 
       - name: Use Node.js 24
@@ -98,12 +109,13 @@ jobs:
       - name: Install Chromium runtime
         run: npx playwright install --with-deps chromium
 
-      - name: Start actual Global State RTS shell with rebuilt UC artifact in its static root
+      - name: Start actual Global State RTS shell with rebuilt UC runtime asset in its static root
         run: |
           node scripts/serve.mjs > /tmp/axm-global-state-rts-real-workshop.log 2>&1 &
           for i in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/improvised-workshop.glb > /dev/null \
-              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/verification.json > /dev/null; then
+            if curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/improvised-workshop-rts.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/verification.json > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/glb-inspection.json > /dev/null; then
               exit 0
             fi
             sleep 1
@@ -111,10 +123,10 @@ jobs:
           cat /tmp/axm-global-state-rts-real-workshop.log
           exit 1
 
-      - name: Render fresh real workshop through the target browser/runtime seam
+      - name: Render fresh UC RTS-tier workshop through the target browser/runtime seam
         run: npx playwright test tests/browser/workshop-real-glb.spec.js --reporter=line
 
-      - name: Preserve cross-machine evidence without publishing the large binaries
+      - name: Preserve cross-machine evidence without publishing the large source scene
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -126,6 +138,8 @@ jobs:
             runtime-assets/workshop-specialist/glb-inspection.json
             runtime-assets/workshop-specialist/game-readiness-gates.json
             runtime-assets/workshop-specialist/semantic-continuity-receipt.json
+            runtime-assets/workshop-specialist/improvised-workshop-rts.glb
+            runtime-assets/workshop-specialist/improvised-workshop-tactical.glb
             /tmp/axm-global-state-rts-real-workshop.log
           if-no-files-found: warn
           retention-days: 14

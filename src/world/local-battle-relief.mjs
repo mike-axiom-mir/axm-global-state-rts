@@ -113,8 +113,20 @@ export function describeLocalBattleRelief(frame, xM, zM, foundationElevationM) {
     * (155 + fbm2(local.x / 700, local.z / 700, seed ^ 0x731b, 3) * 205);
   const ridge = (ridgeA + ridgeB) * smoothstep(300, 680, r);
 
-  // Broad mountain shoulders sit close enough to be visible from ordinary RTS play. Their slopes
-  // are deliberately broad, while a pass notch prevents them from becoming one impassable wall.
+  // Put one real shoulder inside the ordinary opening camera composition rather than hiding every
+  // mountain behind unexplored fog. It is localized on the far side of the start field, so the
+  // settlement/crew footprint remains flat while players immediately see meaningful high ground.
+  const openingMountainDistance = Math.hypot(x - 270, z + 355);
+  const openingMountainProtection = smoothstep(235, 330, Math.hypot(x, z));
+  const openingMountainNoise = fbm2((x + 170) / 470, (z - 90) / 470, seed ^ 0x2ad7, 4);
+  const openingPass = gaussian(x - 40, 125) * gaussian(z + 350, 235);
+  const openingMountain = gaussian(openingMountainDistance, 245)
+    * (245 + openingMountainNoise * 310)
+    * openingMountainProtection
+    * (1 - openingPass * 0.76);
+
+  // Broad mountain shoulders sit farther into the map. Their slopes are deliberately broad, while
+  // pass notches prevent them from becoming one impassable wall.
   const shoulderNoiseA = fbm2(local.x / 980, local.z / 980, seed ^ 0x53c1, 4);
   const shoulderNoiseB = fbm2(local.x / 1120, local.z / 1120, seed ^ 0x72f9, 4);
   const shoulderCurveA = 930 + Math.sin(local.x / 780 - 0.2) * 210;
@@ -131,7 +143,7 @@ export function describeLocalBattleRelief(frame, xM, zM, foundationElevationM) {
   const mountainShoulders = shoulderA * (1 - shoulderPassA * 0.82)
     + shoulderB * (1 - shoulderPassB * 0.76);
 
-  // The larger surrounding mountain mass still gives the whole battlefield a valley/basin feel.
+  // The larger surrounding mountain mass gives the whole battlefield a valley/basin feel.
   const mountainNoise = fbm2(local.x / 1550, local.z / 1550, seed ^ 0x5c27, 4);
   let mountainRing = smoothstep(980, 3000, r) * (330 + mountainNoise * 610);
 
@@ -139,7 +151,7 @@ export function describeLocalBattleRelief(frame, xM, zM, foundationElevationM) {
   const passA = gaussian(local.z, 340);
   const passB = gaussian(local.x * 0.72 + local.z * 0.69 - 520, 390);
   const passC = gaussian(local.x * 0.64 - local.z * 0.77 + 690, 430);
-  const pass = clamp01(Math.max(passA, passB * 0.88, passC * 0.80));
+  const pass = clamp01(Math.max(passA, passB * 0.88, passC * 0.80, openingPass * 0.9));
   mountainRing *= 1 - pass * 0.82;
 
   // A shallow basin/valley keeps useful open fighting ground between the ridges and mountains.
@@ -148,12 +160,13 @@ export function describeLocalBattleRelief(frame, xM, zM, foundationElevationM) {
     * (1 - smoothstep(1850, 3000, r));
   const basin = basinShape * 95;
 
-  // Keep bases and immediate spawn fixtures stable; relief ramps in outside the core footprint.
-  const mountain = mountainShoulders + mountainRing;
-  const rawOffset = rolling + ridge + mountain - basin;
-  const offsetM = rawOffset * centerProtection * landStrength;
+  // Keep the base safe, but let the localized opening shoulder use its own tighter exclusion zone.
+  const outerMountain = mountainShoulders + mountainRing;
+  const rawOffset = (rolling + ridge + outerMountain - basin) * centerProtection + openingMountain;
+  const offsetM = rawOffset * landStrength;
   const elevationM = Math.max(19, baseElevationM + offsetM);
 
+  const mountain = openingMountain + outerMountain;
   const mountainStrength = clamp01(mountain / 900);
   const ridgeStrength = clamp01(ridge / 420);
   const basinStrength = clamp01(basin / 95);

@@ -29,6 +29,19 @@ def require_equal(actual, expected, label: str):
         raise SystemExit(f"{label} mismatch: expected {expected!r}, got {actual!r}")
 
 
+def require_reviewed_source_subset(actual: dict, expected: dict):
+    if not isinstance(actual, dict):
+        raise SystemExit("source_sha256 must be an object")
+    for name, expected_sha in expected.items():
+        if name not in actual:
+            raise SystemExit(f"source_sha256 missing reviewed source {name!r}")
+        require_equal(actual[name], expected_sha, f"source_sha256.{name}")
+    return {
+        "reviewed_source_files": sorted(expected),
+        "producer_extra_tracked_files": sorted(set(actual) - set(expected)),
+    }
+
+
 def verify_model(entry: dict, contract: dict, label: str, *, lod=False):
     require_equal(entry["triangles"], contract["triangles"], f"{label}.triangles")
     if lod:
@@ -57,6 +70,7 @@ def main():
     parser.add_argument("--reference", type=Path, required=True)
     parser.add_argument("--verification", type=Path, required=True)
     parser.add_argument("--inspection", type=Path, required=True)
+    parser.add_argument("--producer-commit")
     parser.add_argument("--write", type=Path)
     args = parser.parse_args()
 
@@ -71,7 +85,9 @@ def main():
     )
     producer = reference["producer"]
     require_equal(verification["source_runtime"], producer["source_runtime"], "source_runtime")
-    require_equal(verification["source_sha256"], producer["source_sha256"], "source_sha256")
+    source_evidence = require_reviewed_source_subset(
+        verification["source_sha256"], producer["source_sha256"]
+    )
     require_equal(verification["units"], "meters", "units")
     require_equal(verification["glb_up"], "Y", "glb_up")
     require_equal(verification["glb_forward"], "+Z", "glb_forward")
@@ -91,10 +107,12 @@ def main():
     require_equal(lod1["sha256"], producer_lod_sha, "lod1 producer/inspection sha256")
 
     receipt = {
-        "schema": "axm.global-state-rts.specialist-workshop-semantic-continuity-receipt/v0.1",
+        "schema": "axm.global-state-rts.specialist-workshop-semantic-continuity-receipt/v0.2",
         "status": "SEMANTIC_CONTINUITY_TESTED_BINARY_IDENTITY_FRESH",
-        "producer_source_commit": producer["source_commit"],
+        "reference_source_commit": producer["source_commit"],
+        "producer_source_commit": args.producer_commit or producer["source_commit"],
         "producer_runtime": verification["source_runtime"],
+        "source_evidence": source_evidence,
         "fresh_binary_identity": {
             "improvised-workshop.glb": producer_detailed_sha,
             "improvised-workshop-lod1.glb": producer_lod_sha,
@@ -116,6 +134,7 @@ def main():
         "historical_raw_identity_reused": False,
         "nonclaims": [
             "Fresh semantic continuity does not imply historical whole-GLB byte identity.",
+            "Reviewed source subset continuity allows additional explicitly tracked producer files but never hash drift in reviewed source files.",
             "This receipt does not establish target browser rendering by itself.",
             "Collision, navigation, LOD perceptual equivalence and FPS remain separate evidence.",
         ],

@@ -7,6 +7,9 @@ on:
     paths:
       - 'src/presentation/local-surface-paint.mjs'
       - 'src/presentation/chunked-local-terrain.mjs'
+      - 'src/world/local-battle-relief.mjs'
+      - 'src/world/surface-sampler.mjs'
+      - 'tests/battle-relief-selftest.mjs'
       - 'tests/presentation-selftest.mjs'
       - '.github/workflows/local-terrain-surface-render.yml'
   workflow_dispatch:
@@ -29,11 +32,14 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Verify terrain presentation contract
+      - name: Verify terrain and relief contracts
         run: |
           node tests/presentation-selftest.mjs
+          node tests/battle-relief-selftest.mjs
           node --check src/presentation/local-surface-paint.mjs
           node --check src/presentation/chunked-local-terrain.mjs
+          node --check src/world/local-battle-relief.mjs
+          node --check src/world/surface-sampler.mjs
 
       - name: Install pinned Playwright browser route
         run: npm install --no-save @playwright/test@1.55.0
@@ -67,7 +73,7 @@ jobs:
           if (!response?.ok()) throw new Error(`game shell failed: ${response?.status()}`);
           await page.keyboard.press('m');
           await page.waitForFunction(() => window.__AXM_GLOBAL_STATE_RTS__?.describeSeatView('seat-1')?.mode === 'local-rts');
-          await page.waitForTimeout(1500);
+          await page.waitForTimeout(1800);
           const view = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatView('seat-1'));
           if (view.local.distanceM !== 360) throw new Error(`unexpected default local distance ${view.local.distanceM}`);
           fs.mkdirSync('test-results', { recursive: true });

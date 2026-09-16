@@ -1,0 +1,189 @@
+name: Salvage transfer reservation consumption
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'src/hosted/finalized-settlement-world-session-authority.mjs'
+      - 'src/hosted/finalized-settlement-world-http-api.mjs'
+      - 'src/hosted/salvage-transfer-reservation-consumption-journal.mjs'
+      - 'game/host-local-salvage-transfer.mjs'
+      - 'tests/salvage-transfer-reservation-consumption-selftest.mjs'
+      - 'tests/browser/local-salvage-finalization.spec.js'
+      - 'docs/SALVAGE_TRANSFER_RESERVATION_CONSUMPTION_V0.md'
+      - '.github/workflows/salvage-transfer-reservation-consumption.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-reservation-consumption:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run repository deterministic/source gates
+        run: npm test
+      - name: Check reservation consumption source syntax
+        run: |
+          node --check src/hosted/salvage-transfer-reservation-consumption-journal.mjs
+          node --check src/hosted/finalized-settlement-world-session-authority.mjs
+          node --check game/host-local-salvage-transfer.mjs
+          node --check tests/salvage-transfer-reservation-consumption-selftest.mjs
+          node --check tests/browser/local-salvage-finalization.spec.js
+      - name: Exercise parity, partial reservation, idempotence, and crash reconciliation
+        run: node tests/salvage-transfer-reservation-consumption-selftest.mjs
+
+  chromium-finalization-player-flow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run deterministic/source gates
+        run: npm test
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start clean durable finalization host
+        run: |
+          rm -rf /tmp/axm-reservation-finalize-seats
+          rm -f /tmp/axm-reservation-finalize-world.jsonl /tmp/axm-reservation-finalize-accounts.json /tmp/axm-reservation-finalize-bindings.json /tmp/axm-reservation-finalize-transfers.jsonl /tmp/axm-reservation-finalize-transfers.jsonl.reservation-consumption.jsonl /tmp/axm-reservation-finalize-global-credits.jsonl
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-reservation-finalize-world.jsonl \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-reservation-finalize-accounts.json \
+          AXM_LOCAL_SEAT_BINDINGS_PATH=/tmp/axm-reservation-finalize-bindings.json \
+          AXM_LOCAL_SEAT_JOURNAL_DIR=/tmp/axm-reservation-finalize-seats \
+          AXM_SALVAGE_TRANSFER_JOURNAL_PATH=/tmp/axm-reservation-finalize-transfers.jsonl \
+          AXM_GLOBAL_SALVAGE_CREDIT_JOURNAL_PATH=/tmp/axm-reservation-finalize-global-credits.jsonl \
+          node scripts/serve.mjs > /tmp/axm-reservation-finalize-browser.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-reservation-finalize-browser.log
+          exit 1
+      - name: Exercise explicit prepare debit finalize and retry in Chromium
+        run: npx playwright test tests/browser/local-salvage-finalization.spec.js --workers=1 --reporter=line
+      - name: Preserve finalization player evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: salvage-transfer-reservation-consumption-finalization-browser
+          path: |
+            test-results/global-state-rts-salvage-global-finalization.png
+            /tmp/axm-reservation-finalize-browser.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  chromium-world-entry-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run deterministic/source gates
+        run: npm test
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start durable reservation-consumption host
+        run: |
+          rm -rf /tmp/axm-reservation-consumption-seats
+          rm -f /tmp/axm-reservation-consumption-world.jsonl /tmp/axm-reservation-consumption-accounts.json /tmp/axm-reservation-consumption-bindings.json /tmp/axm-reservation-consumption-transfers.jsonl /tmp/axm-reservation-consumption-transfers.jsonl.reservation-consumption.jsonl /tmp/axm-reservation-consumption-global-credits.jsonl
+          AXM_SHARED_WRITE_MODE=dev \
+          AXM_WORLD_JOURNAL_PATH=/tmp/axm-reservation-consumption-world.jsonl \
+          AXM_WORLD_ACCOUNTS_PATH=/tmp/axm-reservation-consumption-accounts.json \
+          AXM_LOCAL_SEAT_BINDINGS_PATH=/tmp/axm-reservation-consumption-bindings.json \
+          AXM_LOCAL_SEAT_JOURNAL_DIR=/tmp/axm-reservation-consumption-seats \
+          AXM_SALVAGE_TRANSFER_JOURNAL_PATH=/tmp/axm-reservation-consumption-transfers.jsonl \
+          AXM_GLOBAL_SALVAGE_CREDIT_JOURNAL_PATH=/tmp/axm-reservation-consumption-global-credits.jsonl \
+          node scripts/serve.mjs > /tmp/axm-reservation-consumption-world-entry.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/world-entry.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-reservation-consumption-world-entry.log
+          exit 1
+      - name: Exercise human/machine world entry in Chromium
+        run: npx playwright test tests/browser/world-entry.spec.js --workers=1 --reporter=line
+      - name: Preserve world-entry regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: salvage-transfer-reservation-consumption-world-entry
+          path: |
+            test-results/global-state-rts-world-entry.png
+            test-results/global-state-rts-world-bound-seat.png
+            /tmp/axm-reservation-consumption-world-entry.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  chromium-controller-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run deterministic/source gates
+        run: npm test
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Start local browser shell
+        run: |
+          node scripts/serve.mjs > /tmp/axm-reservation-consumption-controller.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/ > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-reservation-consumption-controller.log
+          exit 1
+      - name: Exercise four controllers and machine seat in Chromium
+        run: npx playwright test tests/browser/planet-shell-controller.spec.js --workers=1 --reporter=line
+      - name: Preserve controller regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: salvage-transfer-reservation-consumption-controller
+          path: |
+            test-results/global-state-rts-*.png
+            /tmp/axm-reservation-consumption-controller.log
+          if-no-files-found: warn
+          retention-days: 14

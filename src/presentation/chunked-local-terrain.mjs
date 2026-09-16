@@ -50,57 +50,56 @@ float axmTerrainNoise(vec2 p) {
 }`
       )
       .replace(
-        'vec4 diffuseColor = vec4( diffuse, opacity );',
-        `vec4 diffuseColor = vec4( diffuse, opacity );
+        '#include <color_fragment>',
+        `#include <color_fragment>
+  // Three.js has now applied the Foundation-derived vertex/biome colour. Paint the
+  // presentation surface after that step so soil/rock colours are not re-tinted green.
   vec2 axmGround = vAxmTerrainPosition.xz;
-  float axmMacro = axmTerrainNoise(axmGround * 0.0045 + vec2(11.3, -7.9));
-  float axmPatch = axmTerrainNoise(axmGround * 0.016 + vec2(-4.2, 13.1));
-  float axmMid = axmTerrainNoise(axmGround * 0.047 + vec2(21.7, 8.4));
-  float axmFine = axmTerrainNoise(axmGround * 0.16 + vec2(-13.7, 3.6));
-  float axmGrain = axmTerrainHash(floor(axmGround * 0.58));
+  float axmMacro = axmTerrainNoise(axmGround * 0.0048 + vec2(11.3, -7.9));
+  float axmPatch = axmTerrainNoise(axmGround * 0.017 + vec2(-4.2, 13.1));
+  float axmMid = axmTerrainNoise(axmGround * 0.051 + vec2(21.7, 8.4));
+  float axmFine = axmTerrainNoise(axmGround * 0.17 + vec2(-13.7, 3.6));
+  float axmGrain = axmTerrainHash(floor(axmGround * 0.62));
   float axmSlope = 1.0 - clamp(abs(normalize(vAxmTerrainNormal).y), 0.0, 1.0);
-  float axmGreenDominance = smoothstep(0.015, 0.115, diffuseColor.g - max(diffuseColor.r, diffuseColor.b));
-  float axmWarmDominance = smoothstep(0.02, 0.18, diffuseColor.r - diffuseColor.b);
+  float axmGreenDominance = smoothstep(0.012, 0.105, diffuseColor.g - max(diffuseColor.r, diffuseColor.b));
+  float axmWarmDominance = smoothstep(0.015, 0.15, diffuseColor.r - diffuseColor.b);
 
-  // Big irregular regions make one biome read like natural ground instead of one paint bucket.
-  float axmVegetationMask = smoothstep(0.40, 0.70, axmMacro * 0.58 + axmPatch * 0.42)
-    * (1.0 - smoothstep(0.13, 0.48, axmSlope)) * axmGreenDominance;
-  float axmEarthMask = smoothstep(0.55, 0.80, (1.0 - axmPatch) * 0.64 + axmMid * 0.36)
-    * (1.0 - smoothstep(0.42, 0.78, axmSlope));
-  float axmDryMask = smoothstep(0.56, 0.82, axmPatch * 0.50 + axmMid * 0.50)
-    * (0.40 + axmWarmDominance * 0.60);
+  float axmVegetationMask = smoothstep(0.43, 0.67, axmMacro * 0.56 + axmPatch * 0.44)
+    * (1.0 - smoothstep(0.12, 0.48, axmSlope)) * axmGreenDominance;
+  float axmEarthMask = smoothstep(0.53, 0.76, (1.0 - axmPatch) * 0.62 + axmMid * 0.38)
+    * (0.25 + axmGreenDominance * 0.75)
+    * (1.0 - smoothstep(0.40, 0.76, axmSlope));
+  float axmDryMask = smoothstep(0.55, 0.78, axmPatch * 0.52 + axmMid * 0.48)
+    * (0.28 + axmWarmDominance * 0.42 + axmGreenDominance * 0.30);
   float axmRockMask = clamp(
-    smoothstep(0.10, 0.52, axmSlope) * (0.65 + axmMid * 0.35)
-    + smoothstep(0.76, 0.96, axmFine) * 0.12,
+    smoothstep(0.10, 0.50, axmSlope) * (0.68 + axmMid * 0.32)
+    + smoothstep(0.82, 0.97, axmFine) * 0.10,
     0.0,
     0.82
   );
 
-  vec3 axmVegetation = vec3(0.105, 0.255, 0.085);
-  vec3 axmEarth = vec3(0.285, 0.185, 0.085);
-  vec3 axmDryGrass = vec3(0.43, 0.36, 0.155);
-  vec3 axmRock = vec3(0.285, 0.295, 0.275);
+  vec3 axmVegetation = vec3(0.070, 0.235, 0.060);
+  vec3 axmEarth = vec3(0.225, 0.125, 0.052);
+  vec3 axmDryGrass = vec3(0.39, 0.32, 0.12);
+  vec3 axmRock = vec3(0.275, 0.285, 0.265);
 
-  float axmValue = (axmMacro - 0.5) * 0.18 + (axmPatch - 0.5) * 0.16 + (axmFine - 0.5) * 0.055;
+  float axmValue = (axmMacro - 0.5) * 0.18 + (axmPatch - 0.5) * 0.13 + (axmFine - 0.5) * 0.045;
   diffuseColor.rgb *= 1.0 + axmValue;
-  diffuseColor.rgb = mix(diffuseColor.rgb, axmVegetation, axmVegetationMask * 0.50);
-  diffuseColor.rgb = mix(diffuseColor.rgb, axmEarth, axmEarthMask * (0.20 + 0.30 * axmGreenDominance));
-  diffuseColor.rgb = mix(diffuseColor.rgb, axmDryGrass, axmDryMask * (0.12 + 0.25 * axmGreenDominance));
+  diffuseColor.rgb = mix(diffuseColor.rgb, axmVegetation, axmVegetationMask * 0.48);
+  diffuseColor.rgb = mix(diffuseColor.rgb, axmEarth, axmEarthMask * 0.46);
+  diffuseColor.rgb = mix(diffuseColor.rgb, axmDryGrass, axmDryMask * 0.34);
   diffuseColor.rgb = mix(diffuseColor.rgb, axmRock, axmRockMask);
-
-  // Small-scale breakup survives the 360 m RTS camera without becoming static-like noise.
-  float axmSpeckle = smoothstep(0.79, 0.95, axmFine) - smoothstep(0.86, 0.98, 1.0 - axmFine);
-  diffuseColor.rgb *= 0.955 + (axmMid - 0.5) * 0.09;
-  diffuseColor.rgb += vec3((axmGrain - 0.5) * 0.032 + axmSpeckle * 0.018);
-  diffuseColor.rgb = clamp(diffuseColor.rgb, vec3(0.015), vec3(0.88));`
+  diffuseColor.rgb *= 0.96 + (axmMid - 0.5) * 0.075;
+  diffuseColor.rgb += vec3((axmGrain - 0.5) * 0.022);
+  diffuseColor.rgb = clamp(diffuseColor.rgb, vec3(0.012), vec3(0.86));`
       )
       .replace(
         '#include <roughnessmap_fragment>',
-        `#include <roughnessmap_fragment>\n  roughnessFactor = clamp(roughnessFactor + (axmFine - 0.5) * 0.16 + axmSlope * 0.10, 0.54, 1.0);`
+        `#include <roughnessmap_fragment>\n  roughnessFactor = clamp(roughnessFactor + (axmFine - 0.5) * 0.15 + axmSlope * 0.10, 0.54, 1.0);`
       );
   };
-  material.customProgramCacheKey = () => 'axm-foundation-terrain-detail-v3';
-  material.userData.surfaceDetailShader = 'foundation-grass-soil-dry-rock-v3';
+  material.customProgramCacheKey = () => 'axm-foundation-terrain-detail-v4';
+  material.userData.surfaceDetailShader = 'foundation-post-biome-organic-paint-v4';
   return material;
 }
 
@@ -131,8 +130,8 @@ float axmWaterNoise(vec2 p) {
 }`
       )
       .replace(
-        'vec4 diffuseColor = vec4( diffuse, opacity );',
-        `vec4 diffuseColor = vec4( diffuse, opacity );
+        '#include <color_fragment>',
+        `#include <color_fragment>
   vec2 axmWaterXZ = vAxmWaterPosition.xz;
   float axmWaveA = axmWaterNoise(axmWaterXZ * 0.045 + vec2(2.7, 8.1));
   float axmWaveB = axmWaterNoise(axmWaterXZ * 0.13 + vec2(-4.9, 1.4));
@@ -146,8 +145,8 @@ float axmWaterNoise(vec2 p) {
         `#include <roughnessmap_fragment>\n  roughnessFactor = clamp(roughnessFactor + (axmWaveB - 0.5) * 0.12, 0.13, 0.43);`
       );
   };
-  material.customProgramCacheKey = () => 'axm-foundation-water-detail-v3';
-  material.userData.surfaceDetailShader = 'foundation-sea-level-water-v3';
+  material.customProgramCacheKey = () => 'axm-foundation-water-detail-v4';
+  material.userData.surfaceDetailShader = 'foundation-post-biome-sea-level-water-v4';
   return material;
 }
 

@@ -114,7 +114,7 @@ function makeSeatCameraState(seatId) {
     localTargetX: 0,
     localTargetZ: 0,
     localYaw: -0.62,
-    localPitch: 0.92,
+    localPitch: 0.76,
     localDistance: 360,
     cursorX: 0,
     cursorZ: 0

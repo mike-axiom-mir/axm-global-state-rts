@@ -1,11 +1,12 @@
 import { sampleLatLon } from '../../planet-upstream/worlds/foundation-planet/core/planet-model.mjs';
+import { describeLocalBattleRelief } from './local-battle-relief.mjs';
 import {
   SURFACE_FRAME_SCHEMA,
   localToLatLon,
   localToWorldVector
 } from './spatial-frame.mjs';
 
-export const RTS_SURFACE_SAMPLE_SCHEMA = 'axm.global-state-rts.surface-sample/v0.1';
+export const RTS_SURFACE_SAMPLE_SCHEMA = 'axm.global-state-rts.surface-sample/v0.2';
 export const DEFAULT_BATCH_LIMIT = 4096;
 
 function finite(value, label) {
@@ -25,7 +26,14 @@ export function sampleLocalSurface(frame, xM, zM, {
   finite(zM, 'zM');
 
   const coordinate = localToLatLon(frame, xM, zM, { enforceOperationalRadius });
-  const planet = sampleLatLon(coordinate.lat, coordinate.lon, planetOptions);
+  const foundationPlanet = sampleLatLon(coordinate.lat, coordinate.lon, planetOptions);
+  const battleRelief = describeLocalBattleRelief(frame, xM, zM, foundationPlanet.elevationM);
+  const planet = Object.freeze({
+    ...foundationPlanet,
+    elevationM: battleRelief.elevationM,
+    foundationElevationM: foundationPlanet.elevationM,
+    battleRelief
+  });
 
   return Object.freeze({
     schema: RTS_SURFACE_SAMPLE_SCHEMA,

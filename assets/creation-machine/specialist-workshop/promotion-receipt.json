@@ -1,0 +1,19 @@
+{
+  "schema": "axm.global-state-rts.promoted-uc-workshop/v0.1",
+  "status": "PROMOTED_PRESENTATION_CANDIDATE_NOT_CANON",
+  "asset_id": "building-workshop-a",
+  "source_repository": "mike-axiom-mir/axm-universal-creation",
+  "source_commit": "8089d47937aeac63db367f2193c48fb92bed2071",
+  "source_workflow_run": 35060240363,
+  "filename": "improvised-workshop-rts.glb",
+  "sha256": "3cbe135aecabb2e3a2764bfb1fed9887c4c5035c97c4e690998cb82a456f299c",
+  "triangles": 9268,
+  "material_batches": 19,
+  "embedded_images": 47,
+  "truth_boundary": [
+    "Exact promoted bytes are producer/inspection hash-bound.",
+    "Promotion does not create CANON world authority.",
+    "Visual acceptance remains based on target-render evidence.",
+    "Collision, navigation and target-device FPS remain separately governed."
+  ]
+}

@@ -1,0 +1,1993 @@
+{
+  "improvised-workshop.glb": {
+    "sha256": "defa76e42047eb6e89826faa89f22a5ee8d2933f46212b7db859e762ea26e897",
+    "triangles": 190431,
+    "vertices": 278292,
+    "degenerate_triangles_under_1e-10": 1,
+    "material_batches": 19,
+    "materials": 19,
+    "double_sided_materials": 19,
+    "embedded_images": 47,
+    "embedded_compressed_bytes": 18547635,
+    "estimated_rgba8_bytes_before_mips": 55574528,
+    "bounds_y_up": {
+      "min": [
+        -2.910788059234619,
+        0.0,
+        -2.3190720622904504
+      ],
+      "max": [
+        2.744092301249278,
+        4.78499972820282,
+        2.2659785747528076
+      ]
+    },
+    "images": [
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 302888,
+        "sha256": "c60c3570e88f932e5c0151137b624e44461ea611bd1c097d2d58237fd9cc2398"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 275936,
+        "sha256": "59210ea2ba40eeda8fd583d5422b9b206381d86ba2bc0ee03fcdd82e3a935e82"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 282212,
+        "sha256": "a1a7c085f39e798f0495435b68ec22d31afe2c6d5cd3ea7a5bd6819447658036"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 302899,
+        "sha256": "459fc57a3652d2b09d847f832007aabe88ef818d03ea3f811ba689d805a802f5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 338587,
+        "sha256": "522df0228e910dc6734436663ab9e80c9beaba3603b3ec731993c0d0684befec"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 282231,
+        "sha256": "fed996cc4e331f7776fe516e9cda3a464e222b294a4d1d58a70424b2bdf3f5d9"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 520551,
+        "sha256": "6002d2213a5d043d2f7606f114a99665adb485365258cb8dd46098eca89290f2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 300545,
+        "sha256": "b55648af8663ffa96cecc604179c3cc78ab65087cdd8e200224e7ffde7ba8bc7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 214995,
+        "sha256": "815d02932ec0859a5e2a7881e3de94e57fb1edc6002ef138a4735055b8ec78ba"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 523653,
+        "sha256": "cbaa8a70c6e226e5bbefc67361ce3447bec6ee46ddcc908c9111420d9d870284"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 355561,
+        "sha256": "02e21e92ec95a4600ff3c5d2077d2f18f172a0f1dedd27acaaea5a5736ad46d6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 228207,
+        "sha256": "55f2c3b656fb0ebc854102ccd8184a74a064832f3749e5ff8e7ef4d297f7988a"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 355000,
+        "sha256": "4331f0cf1badd7991d3283c1e988b999460f7e4fdc02290225eaf653a72ade86"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 328351,
+        "sha256": "61eef2155f3afcbe7a950543ca0bda2dfd502d7de7e494ffe7f39007078eebb2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 168061,
+        "sha256": "ca222ef059bfc6cc9bf5235d254b4b1606ab6e0cc1a8afca45206607d04f2823"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 522102,
+        "sha256": "9e30ab303b738a8460755e46959c500f670ed8e648ad703e9e5bfbc3378a0ec4"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 359470,
+        "sha256": "962f128fe576ef5f170509c55d48fceb6756b3a8c61d70fc5d23e32db9baadbf"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 223329,
+        "sha256": "c20844ab70e95bbc6db946aa283d6cab8928a3599a21feaa269357002c31a93e"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 521722,
+        "sha256": "af56b0f463ddf4c10d0f9be39aa875cdeb5dbcbc5c211f339f3324d5bb9efbe5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 345348,
+        "sha256": "31ec2b54b2216a6063df01cee1c19e2e4475f2c44672922862a823226c67cf45"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 223017,
+        "sha256": "c6b4b22507a67fa5150523895c7191405265733422d25de3fafd74b3ffd4c91c"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 522526,
+        "sha256": "7a9e9df831e3dadabf857ac1e0574f756dcd97b95df197a93e7111beffc37224"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 395772,
+        "sha256": "3847225d59b8220efed1cd73a343cfa958b8ba4a5eaeaeeab98b3016ae082910"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 220853,
+        "sha256": "4e7d818b04bbb11fef692e7b1ff5066ed2fcf73e8ec8c8ecb14356d2cd6b46bc"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 520969,
+        "sha256": "91523ff7462eda9ac52812d6b309b820f610bdcd072622be6887385978b95185"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 385069,
+        "sha256": "5e3fd767cafb33acdb6dde6a4025510872adb70736d22e24b995e7b367886327"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 218214,
+        "sha256": "65869f8eb031600fa0f5c101347665c66e0231a5d912b56fe802bf3d30ea70cb"
+      },
+      {
+        "size": [
+          1024,
+          1024
+        ],
+        "bytes": 2277769,
+        "sha256": "8090c4b78c704444fca611fc61349a81035474924f5a5a0e1b56eed19d24400c"
+      },
+      {
+        "size": [
+          1024,
+          1024
+        ],
+        "bytes": 1272365,
+        "sha256": "d3730e032b31d7def00a6a8ffc9ed5aeffe753004d3783f4af8ab6de0b89bfa2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 447087,
+        "sha256": "eb5567c162c4973ef3324a7a96ee938da6d1613c4424fe543009a78b60835d48"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 339551,
+        "sha256": "5912b7b34619402c2bd9dcbc97451426e92b5bf2943f0f25bba46740266b76e6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 130287,
+        "sha256": "4651cfaad3a3b0d4f433d3a5b6f5569e1e4a54fa170dddbc7192c09671ee6141"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 447390,
+        "sha256": "31bdda515f38ea7176dd4313e168268e62e5dabf0ad091081b245310b740d0e8"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 366184,
+        "sha256": "2401192560dadfe9595336942e19eb3c346b4230dd45ac712850ab97fc82f3c5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 129591,
+        "sha256": "c2dcdd75cc38e137e773dcc26c58d6a3a0ac0707e9366874dd10b52c282dd0a9"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 101498,
+        "sha256": "51d68cd41ea85b93ad08ef6e1439cb90471e83a27d6f94f7cf68d8426716ceed"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 305426,
+        "sha256": "311554a574c3fec7f5d3616ac3a3d5356e7833a5140e2bd44529abdc65fa27d7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 298665,
+        "sha256": "107a02b3b51a67d79ea851f36e56629854453cbca3a6d8f6b4b1ea0188970472"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 521162,
+        "sha256": "836f3d06788051a9b9a2f60be5fff87c0f6f7850ce60996825ec704fb8b33024"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 346215,
+        "sha256": "0fcf7a4bfc891efa72a7e1a14b4c7748bf1375bf6ba3fec2513399f596bcfc08"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 217185,
+        "sha256": "f120c64ed9e56d8f108bc9e6c6c7f29d88f2b1fd435efeb3700efe32fce8a112"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 503900,
+        "sha256": "515302cf6fbbe31c4e6f6d6cf4453718453ff603c3bbc097c17f491486406c8f"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 295252,
+        "sha256": "407738804fd39640a450052f508b25a421237b500377c4f3cc1c4eed4c6237d7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 159055,
+        "sha256": "b5d73ba7c1dcb64f79a1f7dac96a1281931c5979c6e8bd712811fafd5412ffeb"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 524043,
+        "sha256": "b53bd95d9a9b19166cd6db5368ca13d96edef9d47034afa16ec09fe47189b7d6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 398357,
+        "sha256": "f094cdabb93e3a7f7d2ee6278c0881aea6a311ae5743dacb09f15c0087def428"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 228585,
+        "sha256": "467eb0a72d0fb7a66621bee7e79424f346ae38c3f9cb96e53a69177faa9bbe90"
+      }
+    ],
+    "scope": "Decoded geometry, UV, normals, material flags, embedded images and world bounds. Not collision, engine import, FPS, LOD perceptual equivalence or visual-quality proof."
+  },
+  "improvised-workshop-lod1.glb": {
+    "sha256": "436fed13865d48ec99ca90dc4aef6156116f2197672d2415050449b6e2297a2f",
+    "triangles": 68534,
+    "vertices": 107564,
+    "degenerate_triangles_under_1e-10": 0,
+    "material_batches": 19,
+    "materials": 19,
+    "double_sided_materials": 19,
+    "embedded_images": 47,
+    "embedded_compressed_bytes": 18547635,
+    "estimated_rgba8_bytes_before_mips": 55574528,
+    "bounds_y_up": {
+      "min": [
+        -2.9100191593170166,
+        0.00633692741394043,
+        -2.3174914794928148
+      ],
+      "max": [
+        2.742599924778397,
+        4.7850083112716675,
+        2.265200614929199
+      ]
+    },
+    "images": [
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 302888,
+        "sha256": "c60c3570e88f932e5c0151137b624e44461ea611bd1c097d2d58237fd9cc2398"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 275936,
+        "sha256": "59210ea2ba40eeda8fd583d5422b9b206381d86ba2bc0ee03fcdd82e3a935e82"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 282212,
+        "sha256": "a1a7c085f39e798f0495435b68ec22d31afe2c6d5cd3ea7a5bd6819447658036"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 302899,
+        "sha256": "459fc57a3652d2b09d847f832007aabe88ef818d03ea3f811ba689d805a802f5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 338587,
+        "sha256": "522df0228e910dc6734436663ab9e80c9beaba3603b3ec731993c0d0684befec"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 282231,
+        "sha256": "fed996cc4e331f7776fe516e9cda3a464e222b294a4d1d58a70424b2bdf3f5d9"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 520551,
+        "sha256": "6002d2213a5d043d2f7606f114a99665adb485365258cb8dd46098eca89290f2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 300545,
+        "sha256": "b55648af8663ffa96cecc604179c3cc78ab65087cdd8e200224e7ffde7ba8bc7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 214995,
+        "sha256": "815d02932ec0859a5e2a7881e3de94e57fb1edc6002ef138a4735055b8ec78ba"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 523653,
+        "sha256": "cbaa8a70c6e226e5bbefc67361ce3447bec6ee46ddcc908c9111420d9d870284"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 355561,
+        "sha256": "02e21e92ec95a4600ff3c5d2077d2f18f172a0f1dedd27acaaea5a5736ad46d6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 228207,
+        "sha256": "55f2c3b656fb0ebc854102ccd8184a74a064832f3749e5ff8e7ef4d297f7988a"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 355000,
+        "sha256": "4331f0cf1badd7991d3283c1e988b999460f7e4fdc02290225eaf653a72ade86"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 328351,
+        "sha256": "61eef2155f3afcbe7a950543ca0bda2dfd502d7de7e494ffe7f39007078eebb2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 168061,
+        "sha256": "ca222ef059bfc6cc9bf5235d254b4b1606ab6e0cc1a8afca45206607d04f2823"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 522102,
+        "sha256": "9e30ab303b738a8460755e46959c500f670ed8e648ad703e9e5bfbc3378a0ec4"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 359470,
+        "sha256": "962f128fe576ef5f170509c55d48fceb6756b3a8c61d70fc5d23e32db9baadbf"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 223329,
+        "sha256": "c20844ab70e95bbc6db946aa283d6cab8928a3599a21feaa269357002c31a93e"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 521722,
+        "sha256": "af56b0f463ddf4c10d0f9be39aa875cdeb5dbcbc5c211f339f3324d5bb9efbe5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 345348,
+        "sha256": "31ec2b54b2216a6063df01cee1c19e2e4475f2c44672922862a823226c67cf45"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 223017,
+        "sha256": "c6b4b22507a67fa5150523895c7191405265733422d25de3fafd74b3ffd4c91c"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 522526,
+        "sha256": "7a9e9df831e3dadabf857ac1e0574f756dcd97b95df197a93e7111beffc37224"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 395772,
+        "sha256": "3847225d59b8220efed1cd73a343cfa958b8ba4a5eaeaeeab98b3016ae082910"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 220853,
+        "sha256": "4e7d818b04bbb11fef692e7b1ff5066ed2fcf73e8ec8c8ecb14356d2cd6b46bc"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 520969,
+        "sha256": "91523ff7462eda9ac52812d6b309b820f610bdcd072622be6887385978b95185"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 385069,
+        "sha256": "5e3fd767cafb33acdb6dde6a4025510872adb70736d22e24b995e7b367886327"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 218214,
+        "sha256": "65869f8eb031600fa0f5c101347665c66e0231a5d912b56fe802bf3d30ea70cb"
+      },
+      {
+        "size": [
+          1024,
+          1024
+        ],
+        "bytes": 2277769,
+        "sha256": "8090c4b78c704444fca611fc61349a81035474924f5a5a0e1b56eed19d24400c"
+      },
+      {
+        "size": [
+          1024,
+          1024
+        ],
+        "bytes": 1272365,
+        "sha256": "d3730e032b31d7def00a6a8ffc9ed5aeffe753004d3783f4af8ab6de0b89bfa2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 447087,
+        "sha256": "eb5567c162c4973ef3324a7a96ee938da6d1613c4424fe543009a78b60835d48"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 339551,
+        "sha256": "5912b7b34619402c2bd9dcbc97451426e92b5bf2943f0f25bba46740266b76e6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 130287,
+        "sha256": "4651cfaad3a3b0d4f433d3a5b6f5569e1e4a54fa170dddbc7192c09671ee6141"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 447390,
+        "sha256": "31bdda515f38ea7176dd4313e168268e62e5dabf0ad091081b245310b740d0e8"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 366184,
+        "sha256": "2401192560dadfe9595336942e19eb3c346b4230dd45ac712850ab97fc82f3c5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 129591,
+        "sha256": "c2dcdd75cc38e137e773dcc26c58d6a3a0ac0707e9366874dd10b52c282dd0a9"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 101498,
+        "sha256": "51d68cd41ea85b93ad08ef6e1439cb90471e83a27d6f94f7cf68d8426716ceed"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 305426,
+        "sha256": "311554a574c3fec7f5d3616ac3a3d5356e7833a5140e2bd44529abdc65fa27d7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 298665,
+        "sha256": "107a02b3b51a67d79ea851f36e56629854453cbca3a6d8f6b4b1ea0188970472"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 521162,
+        "sha256": "836f3d06788051a9b9a2f60be5fff87c0f6f7850ce60996825ec704fb8b33024"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 346215,
+        "sha256": "0fcf7a4bfc891efa72a7e1a14b4c7748bf1375bf6ba3fec2513399f596bcfc08"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 217185,
+        "sha256": "f120c64ed9e56d8f108bc9e6c6c7f29d88f2b1fd435efeb3700efe32fce8a112"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 503900,
+        "sha256": "515302cf6fbbe31c4e6f6d6cf4453718453ff603c3bbc097c17f491486406c8f"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 295252,
+        "sha256": "407738804fd39640a450052f508b25a421237b500377c4f3cc1c4eed4c6237d7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 159055,
+        "sha256": "b5d73ba7c1dcb64f79a1f7dac96a1281931c5979c6e8bd712811fafd5412ffeb"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 524043,
+        "sha256": "b53bd95d9a9b19166cd6db5368ca13d96edef9d47034afa16ec09fe47189b7d6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 398357,
+        "sha256": "f094cdabb93e3a7f7d2ee6278c0881aea6a311ae5743dacb09f15c0087def428"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 228585,
+        "sha256": "467eb0a72d0fb7a66621bee7e79424f346ae38c3f9cb96e53a69177faa9bbe90"
+      }
+    ],
+    "scope": "Decoded geometry, UV, normals, material flags, embedded images and world bounds. Not collision, engine import, FPS, LOD perceptual equivalence or visual-quality proof."
+  },
+  "improvised-workshop-tactical.glb": {
+    "sha256": "19cad661f3c21d965d6a0697fc5178e974e9c45eb8b283d0f5726f9f88c02cf4",
+    "triangles": 30829,
+    "vertices": 57116,
+    "degenerate_triangles_under_1e-10": 0,
+    "material_batches": 19,
+    "materials": 19,
+    "double_sided_materials": 19,
+    "embedded_images": 47,
+    "embedded_compressed_bytes": 18547635,
+    "estimated_rgba8_bytes_before_mips": 55574528,
+    "bounds_y_up": {
+      "min": [
+        -2.9100191593170166,
+        0.00633692741394043,
+        -2.3174914785079164
+      ],
+      "max": [
+        2.7425999264561574,
+        4.784471392631531,
+        2.265200614929199
+      ]
+    },
+    "images": [
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 302888,
+        "sha256": "c60c3570e88f932e5c0151137b624e44461ea611bd1c097d2d58237fd9cc2398"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 275936,
+        "sha256": "59210ea2ba40eeda8fd583d5422b9b206381d86ba2bc0ee03fcdd82e3a935e82"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 282212,
+        "sha256": "a1a7c085f39e798f0495435b68ec22d31afe2c6d5cd3ea7a5bd6819447658036"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 302899,
+        "sha256": "459fc57a3652d2b09d847f832007aabe88ef818d03ea3f811ba689d805a802f5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 338587,
+        "sha256": "522df0228e910dc6734436663ab9e80c9beaba3603b3ec731993c0d0684befec"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 282231,
+        "sha256": "fed996cc4e331f7776fe516e9cda3a464e222b294a4d1d58a70424b2bdf3f5d9"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 520551,
+        "sha256": "6002d2213a5d043d2f7606f114a99665adb485365258cb8dd46098eca89290f2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 300545,
+        "sha256": "b55648af8663ffa96cecc604179c3cc78ab65087cdd8e200224e7ffde7ba8bc7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 214995,
+        "sha256": "815d02932ec0859a5e2a7881e3de94e57fb1edc6002ef138a4735055b8ec78ba"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 523653,
+        "sha256": "cbaa8a70c6e226e5bbefc67361ce3447bec6ee46ddcc908c9111420d9d870284"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 355561,
+        "sha256": "02e21e92ec95a4600ff3c5d2077d2f18f172a0f1dedd27acaaea5a5736ad46d6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 228207,
+        "sha256": "55f2c3b656fb0ebc854102ccd8184a74a064832f3749e5ff8e7ef4d297f7988a"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 355000,
+        "sha256": "4331f0cf1badd7991d3283c1e988b999460f7e4fdc02290225eaf653a72ade86"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 328351,
+        "sha256": "61eef2155f3afcbe7a950543ca0bda2dfd502d7de7e494ffe7f39007078eebb2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 168061,
+        "sha256": "ca222ef059bfc6cc9bf5235d254b4b1606ab6e0cc1a8afca45206607d04f2823"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 522102,
+        "sha256": "9e30ab303b738a8460755e46959c500f670ed8e648ad703e9e5bfbc3378a0ec4"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 359470,
+        "sha256": "962f128fe576ef5f170509c55d48fceb6756b3a8c61d70fc5d23e32db9baadbf"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 223329,
+        "sha256": "c20844ab70e95bbc6db946aa283d6cab8928a3599a21feaa269357002c31a93e"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 521722,
+        "sha256": "af56b0f463ddf4c10d0f9be39aa875cdeb5dbcbc5c211f339f3324d5bb9efbe5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 345348,
+        "sha256": "31ec2b54b2216a6063df01cee1c19e2e4475f2c44672922862a823226c67cf45"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 223017,
+        "sha256": "c6b4b22507a67fa5150523895c7191405265733422d25de3fafd74b3ffd4c91c"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 522526,
+        "sha256": "7a9e9df831e3dadabf857ac1e0574f756dcd97b95df197a93e7111beffc37224"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 395772,
+        "sha256": "3847225d59b8220efed1cd73a343cfa958b8ba4a5eaeaeeab98b3016ae082910"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 220853,
+        "sha256": "4e7d818b04bbb11fef692e7b1ff5066ed2fcf73e8ec8c8ecb14356d2cd6b46bc"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 520969,
+        "sha256": "91523ff7462eda9ac52812d6b309b820f610bdcd072622be6887385978b95185"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 385069,
+        "sha256": "5e3fd767cafb33acdb6dde6a4025510872adb70736d22e24b995e7b367886327"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 218214,
+        "sha256": "65869f8eb031600fa0f5c101347665c66e0231a5d912b56fe802bf3d30ea70cb"
+      },
+      {
+        "size": [
+          1024,
+          1024
+        ],
+        "bytes": 2277769,
+        "sha256": "8090c4b78c704444fca611fc61349a81035474924f5a5a0e1b56eed19d24400c"
+      },
+      {
+        "size": [
+          1024,
+          1024
+        ],
+        "bytes": 1272365,
+        "sha256": "d3730e032b31d7def00a6a8ffc9ed5aeffe753004d3783f4af8ab6de0b89bfa2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 447087,
+        "sha256": "eb5567c162c4973ef3324a7a96ee938da6d1613c4424fe543009a78b60835d48"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 339551,
+        "sha256": "5912b7b34619402c2bd9dcbc97451426e92b5bf2943f0f25bba46740266b76e6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 130287,
+        "sha256": "4651cfaad3a3b0d4f433d3a5b6f5569e1e4a54fa170dddbc7192c09671ee6141"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 447390,
+        "sha256": "31bdda515f38ea7176dd4313e168268e62e5dabf0ad091081b245310b740d0e8"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 366184,
+        "sha256": "2401192560dadfe9595336942e19eb3c346b4230dd45ac712850ab97fc82f3c5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 129591,
+        "sha256": "c2dcdd75cc38e137e773dcc26c58d6a3a0ac0707e9366874dd10b52c282dd0a9"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 101498,
+        "sha256": "51d68cd41ea85b93ad08ef6e1439cb90471e83a27d6f94f7cf68d8426716ceed"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 305426,
+        "sha256": "311554a574c3fec7f5d3616ac3a3d5356e7833a5140e2bd44529abdc65fa27d7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 298665,
+        "sha256": "107a02b3b51a67d79ea851f36e56629854453cbca3a6d8f6b4b1ea0188970472"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 521162,
+        "sha256": "836f3d06788051a9b9a2f60be5fff87c0f6f7850ce60996825ec704fb8b33024"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 346215,
+        "sha256": "0fcf7a4bfc891efa72a7e1a14b4c7748bf1375bf6ba3fec2513399f596bcfc08"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 217185,
+        "sha256": "f120c64ed9e56d8f108bc9e6c6c7f29d88f2b1fd435efeb3700efe32fce8a112"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 503900,
+        "sha256": "515302cf6fbbe31c4e6f6d6cf4453718453ff603c3bbc097c17f491486406c8f"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 295252,
+        "sha256": "407738804fd39640a450052f508b25a421237b500377c4f3cc1c4eed4c6237d7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 159055,
+        "sha256": "b5d73ba7c1dcb64f79a1f7dac96a1281931c5979c6e8bd712811fafd5412ffeb"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 524043,
+        "sha256": "b53bd95d9a9b19166cd6db5368ca13d96edef9d47034afa16ec09fe47189b7d6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 398357,
+        "sha256": "f094cdabb93e3a7f7d2ee6278c0881aea6a311ae5743dacb09f15c0087def428"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 228585,
+        "sha256": "467eb0a72d0fb7a66621bee7e79424f346ae38c3f9cb96e53a69177faa9bbe90"
+      }
+    ],
+    "scope": "Decoded geometry, UV, normals, material flags, embedded images and world bounds. Not collision, engine import, FPS, LOD perceptual equivalence or visual-quality proof."
+  },
+  "improvised-workshop-rts.glb": {
+    "sha256": "3cbe135aecabb2e3a2764bfb1fed9887c4c5035c97c4e690998cb82a456f299c",
+    "triangles": 9268,
+    "vertices": 18183,
+    "degenerate_triangles_under_1e-10": 0,
+    "material_batches": 19,
+    "materials": 19,
+    "double_sided_materials": 19,
+    "embedded_images": 47,
+    "embedded_compressed_bytes": 18547635,
+    "estimated_rgba8_bytes_before_mips": 55574528,
+    "bounds_y_up": {
+      "min": [
+        -2.9100191593170166,
+        0.00633692741394043,
+        -2.3174914785079164
+      ],
+      "max": [
+        2.7425999264561574,
+        4.784471392631531,
+        2.265200614929199
+      ]
+    },
+    "images": [
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 302888,
+        "sha256": "c60c3570e88f932e5c0151137b624e44461ea611bd1c097d2d58237fd9cc2398"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 275936,
+        "sha256": "59210ea2ba40eeda8fd583d5422b9b206381d86ba2bc0ee03fcdd82e3a935e82"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 282212,
+        "sha256": "a1a7c085f39e798f0495435b68ec22d31afe2c6d5cd3ea7a5bd6819447658036"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 302899,
+        "sha256": "459fc57a3652d2b09d847f832007aabe88ef818d03ea3f811ba689d805a802f5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 338587,
+        "sha256": "522df0228e910dc6734436663ab9e80c9beaba3603b3ec731993c0d0684befec"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 282231,
+        "sha256": "fed996cc4e331f7776fe516e9cda3a464e222b294a4d1d58a70424b2bdf3f5d9"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 520551,
+        "sha256": "6002d2213a5d043d2f7606f114a99665adb485365258cb8dd46098eca89290f2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 300545,
+        "sha256": "b55648af8663ffa96cecc604179c3cc78ab65087cdd8e200224e7ffde7ba8bc7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 214995,
+        "sha256": "815d02932ec0859a5e2a7881e3de94e57fb1edc6002ef138a4735055b8ec78ba"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 523653,
+        "sha256": "cbaa8a70c6e226e5bbefc67361ce3447bec6ee46ddcc908c9111420d9d870284"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 355561,
+        "sha256": "02e21e92ec95a4600ff3c5d2077d2f18f172a0f1dedd27acaaea5a5736ad46d6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 228207,
+        "sha256": "55f2c3b656fb0ebc854102ccd8184a74a064832f3749e5ff8e7ef4d297f7988a"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 355000,
+        "sha256": "4331f0cf1badd7991d3283c1e988b999460f7e4fdc02290225eaf653a72ade86"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 328351,
+        "sha256": "61eef2155f3afcbe7a950543ca0bda2dfd502d7de7e494ffe7f39007078eebb2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 168061,
+        "sha256": "ca222ef059bfc6cc9bf5235d254b4b1606ab6e0cc1a8afca45206607d04f2823"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 522102,
+        "sha256": "9e30ab303b738a8460755e46959c500f670ed8e648ad703e9e5bfbc3378a0ec4"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 359470,
+        "sha256": "962f128fe576ef5f170509c55d48fceb6756b3a8c61d70fc5d23e32db9baadbf"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 223329,
+        "sha256": "c20844ab70e95bbc6db946aa283d6cab8928a3599a21feaa269357002c31a93e"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 521722,
+        "sha256": "af56b0f463ddf4c10d0f9be39aa875cdeb5dbcbc5c211f339f3324d5bb9efbe5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 345348,
+        "sha256": "31ec2b54b2216a6063df01cee1c19e2e4475f2c44672922862a823226c67cf45"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 223017,
+        "sha256": "c6b4b22507a67fa5150523895c7191405265733422d25de3fafd74b3ffd4c91c"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 522526,
+        "sha256": "7a9e9df831e3dadabf857ac1e0574f756dcd97b95df197a93e7111beffc37224"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 395772,
+        "sha256": "3847225d59b8220efed1cd73a343cfa958b8ba4a5eaeaeeab98b3016ae082910"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 220853,
+        "sha256": "4e7d818b04bbb11fef692e7b1ff5066ed2fcf73e8ec8c8ecb14356d2cd6b46bc"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 520969,
+        "sha256": "91523ff7462eda9ac52812d6b309b820f610bdcd072622be6887385978b95185"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 385069,
+        "sha256": "5e3fd767cafb33acdb6dde6a4025510872adb70736d22e24b995e7b367886327"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 218214,
+        "sha256": "65869f8eb031600fa0f5c101347665c66e0231a5d912b56fe802bf3d30ea70cb"
+      },
+      {
+        "size": [
+          1024,
+          1024
+        ],
+        "bytes": 2277769,
+        "sha256": "8090c4b78c704444fca611fc61349a81035474924f5a5a0e1b56eed19d24400c"
+      },
+      {
+        "size": [
+          1024,
+          1024
+        ],
+        "bytes": 1272365,
+        "sha256": "d3730e032b31d7def00a6a8ffc9ed5aeffe753004d3783f4af8ab6de0b89bfa2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 447087,
+        "sha256": "eb5567c162c4973ef3324a7a96ee938da6d1613c4424fe543009a78b60835d48"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 339551,
+        "sha256": "5912b7b34619402c2bd9dcbc97451426e92b5bf2943f0f25bba46740266b76e6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 130287,
+        "sha256": "4651cfaad3a3b0d4f433d3a5b6f5569e1e4a54fa170dddbc7192c09671ee6141"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 447390,
+        "sha256": "31bdda515f38ea7176dd4313e168268e62e5dabf0ad091081b245310b740d0e8"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 366184,
+        "sha256": "2401192560dadfe9595336942e19eb3c346b4230dd45ac712850ab97fc82f3c5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 129591,
+        "sha256": "c2dcdd75cc38e137e773dcc26c58d6a3a0ac0707e9366874dd10b52c282dd0a9"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 101498,
+        "sha256": "51d68cd41ea85b93ad08ef6e1439cb90471e83a27d6f94f7cf68d8426716ceed"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 305426,
+        "sha256": "311554a574c3fec7f5d3616ac3a3d5356e7833a5140e2bd44529abdc65fa27d7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 298665,
+        "sha256": "107a02b3b51a67d79ea851f36e56629854453cbca3a6d8f6b4b1ea0188970472"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 521162,
+        "sha256": "836f3d06788051a9b9a2f60be5fff87c0f6f7850ce60996825ec704fb8b33024"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 346215,
+        "sha256": "0fcf7a4bfc891efa72a7e1a14b4c7748bf1375bf6ba3fec2513399f596bcfc08"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 217185,
+        "sha256": "f120c64ed9e56d8f108bc9e6c6c7f29d88f2b1fd435efeb3700efe32fce8a112"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 503900,
+        "sha256": "515302cf6fbbe31c4e6f6d6cf4453718453ff603c3bbc097c17f491486406c8f"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 295252,
+        "sha256": "407738804fd39640a450052f508b25a421237b500377c4f3cc1c4eed4c6237d7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 159055,
+        "sha256": "b5d73ba7c1dcb64f79a1f7dac96a1281931c5979c6e8bd712811fafd5412ffeb"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 524043,
+        "sha256": "b53bd95d9a9b19166cd6db5368ca13d96edef9d47034afa16ec09fe47189b7d6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 398357,
+        "sha256": "f094cdabb93e3a7f7d2ee6278c0881aea6a311ae5743dacb09f15c0087def428"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 228585,
+        "sha256": "467eb0a72d0fb7a66621bee7e79424f346ae38c3f9cb96e53a69177faa9bbe90"
+      }
+    ],
+    "scope": "Decoded geometry, UV, normals, material flags, embedded images and world bounds. Not collision, engine import, FPS, LOD perceptual equivalence or visual-quality proof."
+  },
+  "improvised-workshop-far.glb": {
+    "sha256": "01765f279a301af0df1fabde790674f860a8e54bb8dcce2098479f082d4942ab",
+    "triangles": 1868,
+    "vertices": 3347,
+    "degenerate_triangles_under_1e-10": 0,
+    "material_batches": 18,
+    "materials": 18,
+    "double_sided_materials": 18,
+    "embedded_images": 44,
+    "embedded_compressed_bytes": 17686599,
+    "estimated_rgba8_bytes_before_mips": 52428800,
+    "bounds_y_up": {
+      "min": [
+        -3.3987607955932617,
+        0.07380304485559464,
+        -2.310459698225941
+      ],
+      "max": [
+        2.7347008881950687,
+        4.922758460044861,
+        2.801689624786377
+      ]
+    },
+    "images": [
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 302899,
+        "sha256": "459fc57a3652d2b09d847f832007aabe88ef818d03ea3f811ba689d805a802f5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 338587,
+        "sha256": "522df0228e910dc6734436663ab9e80c9beaba3603b3ec731993c0d0684befec"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 282231,
+        "sha256": "fed996cc4e331f7776fe516e9cda3a464e222b294a4d1d58a70424b2bdf3f5d9"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 520551,
+        "sha256": "6002d2213a5d043d2f7606f114a99665adb485365258cb8dd46098eca89290f2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 300545,
+        "sha256": "b55648af8663ffa96cecc604179c3cc78ab65087cdd8e200224e7ffde7ba8bc7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 214995,
+        "sha256": "815d02932ec0859a5e2a7881e3de94e57fb1edc6002ef138a4735055b8ec78ba"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 523653,
+        "sha256": "cbaa8a70c6e226e5bbefc67361ce3447bec6ee46ddcc908c9111420d9d870284"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 355561,
+        "sha256": "02e21e92ec95a4600ff3c5d2077d2f18f172a0f1dedd27acaaea5a5736ad46d6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 228207,
+        "sha256": "55f2c3b656fb0ebc854102ccd8184a74a064832f3749e5ff8e7ef4d297f7988a"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 355000,
+        "sha256": "4331f0cf1badd7991d3283c1e988b999460f7e4fdc02290225eaf653a72ade86"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 328351,
+        "sha256": "61eef2155f3afcbe7a950543ca0bda2dfd502d7de7e494ffe7f39007078eebb2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 168061,
+        "sha256": "ca222ef059bfc6cc9bf5235d254b4b1606ab6e0cc1a8afca45206607d04f2823"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 522102,
+        "sha256": "9e30ab303b738a8460755e46959c500f670ed8e648ad703e9e5bfbc3378a0ec4"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 359470,
+        "sha256": "962f128fe576ef5f170509c55d48fceb6756b3a8c61d70fc5d23e32db9baadbf"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 223329,
+        "sha256": "c20844ab70e95bbc6db946aa283d6cab8928a3599a21feaa269357002c31a93e"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 521722,
+        "sha256": "af56b0f463ddf4c10d0f9be39aa875cdeb5dbcbc5c211f339f3324d5bb9efbe5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 345348,
+        "sha256": "31ec2b54b2216a6063df01cee1c19e2e4475f2c44672922862a823226c67cf45"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 223017,
+        "sha256": "c6b4b22507a67fa5150523895c7191405265733422d25de3fafd74b3ffd4c91c"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 522526,
+        "sha256": "7a9e9df831e3dadabf857ac1e0574f756dcd97b95df197a93e7111beffc37224"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 395772,
+        "sha256": "3847225d59b8220efed1cd73a343cfa958b8ba4a5eaeaeeab98b3016ae082910"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 220853,
+        "sha256": "4e7d818b04bbb11fef692e7b1ff5066ed2fcf73e8ec8c8ecb14356d2cd6b46bc"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 520969,
+        "sha256": "91523ff7462eda9ac52812d6b309b820f610bdcd072622be6887385978b95185"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 385069,
+        "sha256": "5e3fd767cafb33acdb6dde6a4025510872adb70736d22e24b995e7b367886327"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 218214,
+        "sha256": "65869f8eb031600fa0f5c101347665c66e0231a5d912b56fe802bf3d30ea70cb"
+      },
+      {
+        "size": [
+          1024,
+          1024
+        ],
+        "bytes": 2277769,
+        "sha256": "8090c4b78c704444fca611fc61349a81035474924f5a5a0e1b56eed19d24400c"
+      },
+      {
+        "size": [
+          1024,
+          1024
+        ],
+        "bytes": 1272365,
+        "sha256": "d3730e032b31d7def00a6a8ffc9ed5aeffe753004d3783f4af8ab6de0b89bfa2"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 447087,
+        "sha256": "eb5567c162c4973ef3324a7a96ee938da6d1613c4424fe543009a78b60835d48"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 339551,
+        "sha256": "5912b7b34619402c2bd9dcbc97451426e92b5bf2943f0f25bba46740266b76e6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 130287,
+        "sha256": "4651cfaad3a3b0d4f433d3a5b6f5569e1e4a54fa170dddbc7192c09671ee6141"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 447390,
+        "sha256": "31bdda515f38ea7176dd4313e168268e62e5dabf0ad091081b245310b740d0e8"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 366184,
+        "sha256": "2401192560dadfe9595336942e19eb3c346b4230dd45ac712850ab97fc82f3c5"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 129591,
+        "sha256": "c2dcdd75cc38e137e773dcc26c58d6a3a0ac0707e9366874dd10b52c282dd0a9"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 101498,
+        "sha256": "51d68cd41ea85b93ad08ef6e1439cb90471e83a27d6f94f7cf68d8426716ceed"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 305426,
+        "sha256": "311554a574c3fec7f5d3616ac3a3d5356e7833a5140e2bd44529abdc65fa27d7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 298665,
+        "sha256": "107a02b3b51a67d79ea851f36e56629854453cbca3a6d8f6b4b1ea0188970472"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 521162,
+        "sha256": "836f3d06788051a9b9a2f60be5fff87c0f6f7850ce60996825ec704fb8b33024"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 346215,
+        "sha256": "0fcf7a4bfc891efa72a7e1a14b4c7748bf1375bf6ba3fec2513399f596bcfc08"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 217185,
+        "sha256": "f120c64ed9e56d8f108bc9e6c6c7f29d88f2b1fd435efeb3700efe32fce8a112"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 503900,
+        "sha256": "515302cf6fbbe31c4e6f6d6cf4453718453ff603c3bbc097c17f491486406c8f"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 295252,
+        "sha256": "407738804fd39640a450052f508b25a421237b500377c4f3cc1c4eed4c6237d7"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 159055,
+        "sha256": "b5d73ba7c1dcb64f79a1f7dac96a1281931c5979c6e8bd712811fafd5412ffeb"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 524043,
+        "sha256": "b53bd95d9a9b19166cd6db5368ca13d96edef9d47034afa16ec09fe47189b7d6"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 398357,
+        "sha256": "f094cdabb93e3a7f7d2ee6278c0881aea6a311ae5743dacb09f15c0087def428"
+      },
+      {
+        "size": [
+          512,
+          512
+        ],
+        "bytes": 228585,
+        "sha256": "467eb0a72d0fb7a66621bee7e79424f346ae38c3f9cb96e53a69177faa9bbe90"
+      }
+    ],
+    "scope": "Decoded geometry, UV, normals, material flags, embedded images and world bounds. Not collision, engine import, FPS, LOD perceptual equivalence or visual-quality proof."
+  }
+}

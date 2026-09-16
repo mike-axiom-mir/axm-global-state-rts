@@ -1,0 +1,248 @@
+{
+  "schema": "axm.rts-workshop-polish/v0.1",
+  "asset": "improvised-workshop",
+  "reference": "1000000415.png",
+  "reference_sha256": "4e154be2ff7451318b09abc6d2153297ab9f1b51bae4ad94599d5901dfd7368f",
+  "geometry": {
+    "collapsed_triangles_removed": 2622,
+    "batches": 19,
+    "triangles": 190431
+  },
+  "units": "meters",
+  "glb_up": "Y",
+  "glb_forward": "+Z",
+  "source_up": "Z",
+  "source_forward": "-Y",
+  "source_runtime": "4.3.0",
+  "source_sha256": {
+    "axm_rts_workshop.py": "2b0a7fc72ef215fd950cc8f30402aa01a2fc0a74ade97be9a27ade1847f264b1",
+    "axm_salvage_construction.py": "6cd19b7c651f32fe1f2fe1432ae01f3d0875f86375ca1576a10a86516dbd0858",
+    "axm_salvage_surfaces.py": "8012d00d7f1ff70ec48f7311868ff4ba04f0ef34a911490372e0db2ba9b41422",
+    "axm_salvage_personality.py": "e655ba7d413a9a7470ffb422a0678784bf0e558d609793d0f074496cbd87488d",
+    "axm_rts_workshop_lods.py": "929056d841a8cff331d160690c1034915a01c45616fcfa13ec1e2e39762cbfb6",
+    "verify_rts_workshop.py": "ba3e2793c00322dccc8379dd4ee0ff2082211d5bb20ba948170068a08a5cdac2"
+  },
+  "font_sha256": "5c1247acef7f2b8522a31742c76d6adcb5569bacc0be7ceaa4dc39dd252ce895",
+  "fresh_import_meshes": 19,
+  "practical_lights": [
+    {
+      "name": "interior lamp practical",
+      "position_source_z_up": [
+        0.6200000047683716,
+        0.3952000141143799,
+        2.492799997329712
+      ],
+      "color": [
+        1.0,
+        0.47999998927116394,
+        0.14000000059604645
+      ],
+      "watts": 64.5
+    },
+    {
+      "name": "canopy lantern practical",
+      "position_source_z_up": [
+        -0.3499999940395355,
+        -1.367400050163269,
+        2.4514000415802
+      ],
+      "color": [
+        1.0,
+        0.47999998927116394,
+        0.14000000059604645
+      ],
+      "watts": 69.75
+    },
+    {
+      "name": "canopy lantern practical.001",
+      "position_source_z_up": [
+        1.9600000381469727,
+        -1.367400050163269,
+        2.6013998985290527
+      ],
+      "color": [
+        1.0,
+        0.47999998927116394,
+        0.14000000059604645
+      ],
+      "watts": 69.75
+    },
+    {
+      "name": "workbench warm task spill",
+      "position_source_z_up": [
+        0.699999988079071,
+        0.23000000417232513,
+        2.3299999237060547
+      ],
+      "color": [
+        1.0,
+        0.5199999809265137,
+        0.20000000298023224
+      ],
+      "watts": 95.0
+    }
+  ],
+  "render_views": [
+    "workshop-hero.png",
+    "workshop-rear.png",
+    "workshop-detail.png"
+  ],
+  "artifacts": {
+    "workshop-rear.png": {
+      "bytes": 1638058,
+      "sha256": "b320d09ff660a2edecaa5ee9797aa64c25e170673557408b6a4f28016e6acc2c"
+    },
+    "glb-inspection.json": {
+      "bytes": 47251,
+      "sha256": "09e25cb2da640ea543d1d07b8caa17f57d3e3cee21928dceffb13b059460dfdc"
+    },
+    "workshop-hero.png": {
+      "bytes": 1726389,
+      "sha256": "b46190ecd81eeb93d0b6e73329d3dae61d4c08ed37b77d5fe7e56aa252812180"
+    },
+    "workshop-editable.blend": {
+      "bytes": 25786856,
+      "sha256": "ca6c6942b2e5f36db2eb2bd543d2b768a7b01436053c8b5efd25598ebc3bf8d5"
+    },
+    "improvised-workshop-lod1.glb": {
+      "bytes": 22429176,
+      "sha256": "436fed13865d48ec99ca90dc4aef6156116f2197672d2415050449b6e2297a2f"
+    },
+    "workshop-detail.png": {
+      "bytes": 2067140,
+      "sha256": "6b61d8e053c7b2ebfd8c74042f72894e74388908050a49b477a85b1bae4b383b"
+    },
+    "improvised-workshop.glb": {
+      "bytes": 28623904,
+      "sha256": "defa76e42047eb6e89826faa89f22a5ee8d2933f46212b7db859e762ea26e897"
+    },
+    "improvised-workshop-tactical.glb": {
+      "bytes": 20588552,
+      "sha256": "19cad661f3c21d965d6a0697fc5178e974e9c45eb8b283d0f5726f9f88c02cf4"
+    },
+    "improvised-workshop-rts.glb": {
+      "bytes": 19213280,
+      "sha256": "3cbe135aecabb2e3a2764bfb1fed9887c4c5035c97c4e690998cb82a456f299c"
+    },
+    "improvised-workshop-far.glb": {
+      "bytes": 17831544,
+      "sha256": "01765f279a301af0df1fabde790674f860a8e54bb8dcce2098479f082d4942ab"
+    },
+    "lod-ladder-build.json": {
+      "bytes": 1288,
+      "sha256": "395fbf5438220ff3769f32cee8811d2a1ae69a94beb86016a4735a0678b80aa3"
+    },
+    "game-readiness-gates.json": {
+      "bytes": 2208,
+      "sha256": "bdd4b0a61ce46301fe62e32094673be888130fdb30421567b363be76f4f1a34b"
+    }
+  },
+  "scope": "Reference-led authored asset with fresh-import Blender hero renders and a structurally verified runtime LOD ladder. LOD visual equivalence, target RTS acceptance and target-device performance remain separate evidence.",
+  "lod_ladder": {
+    "schema": "axm.rts-workshop-lod-ladder-build/v0.1",
+    "source": "improvised-workshop-lod1.glb",
+    "source_triangles_in_blender": 68534,
+    "stages": [
+      {
+        "role": "near-tactical",
+        "filename": "improvised-workshop-tactical.glb",
+        "ratio": 0.45,
+        "target_triangles": [
+          20000,
+          40000
+        ],
+        "input_triangles_in_blender": 68534,
+        "output_triangles_in_blender": 30829,
+        "observed_ratio_in_blender": 0.4498351183354248
+      },
+      {
+        "role": "ordinary-rts",
+        "filename": "improvised-workshop-rts.glb",
+        "ratio": 0.3,
+        "target_triangles": [
+          4000,
+          12000
+        ],
+        "input_triangles_in_blender": 30829,
+        "output_triangles_in_blender": 9268,
+        "observed_ratio_in_blender": 0.30062603392909276
+      },
+      {
+        "role": "far-rts",
+        "filename": "improvised-workshop-far.glb",
+        "ratio": 0.1,
+        "target_triangles": [
+          500,
+          2000
+        ],
+        "input_triangles_in_blender": 9268,
+        "output_triangles_in_blender": 1868,
+        "observed_ratio_in_blender": 0.20155373327578766
+      }
+    ],
+    "scope": "Sequential Blender decimation from the existing verified LOD1. Triangle bands are targets for later independent GLB verification, not visual-equivalence claims."
+  },
+  "game_readiness_gates": {
+    "schema": "axm.workshop-game-readiness-gates/v0.2-lod-ladder",
+    "source": "glb-inspection.json",
+    "measured": {
+      "detailed_triangles": 190431,
+      "lod1_triangles": 68534,
+      "lod1_triangle_ratio": 0.35988888363764304,
+      "tactical_triangles": 30829,
+      "rts_triangles": 9268,
+      "far_triangles": 1868,
+      "runtime_lod_target_bands": {
+        "improvised-workshop-tactical.glb": {
+          "triangles": 30829,
+          "target_min": 20000,
+          "target_max": 40000,
+          "inside_target_band": true
+        },
+        "improvised-workshop-rts.glb": {
+          "triangles": 9268,
+          "target_min": 4000,
+          "target_max": 12000,
+          "inside_target_band": true
+        },
+        "improvised-workshop-far.glb": {
+          "triangles": 1868,
+          "target_min": 500,
+          "target_max": 2000,
+          "inside_target_band": true
+        }
+      },
+      "detailed_materials": 19,
+      "lod1_materials": 19,
+      "tactical_materials": 19,
+      "rts_materials": 19,
+      "far_materials": 18,
+      "detailed_double_sided_materials": 19,
+      "lod1_double_sided_materials": 19,
+      "detailed_embedded_images": 47,
+      "detailed_embedded_compressed_bytes": 18547635,
+      "detailed_estimated_rgba8_bytes_before_mips": 55574528
+    },
+    "gates": {
+      "geometry_structure": "TESTED",
+      "embedded_texture_integrity": "TESTED",
+      "lod_triangle_reduction": "TESTED",
+      "runtime_lod_target_bands": "TESTED",
+      "lod_perceptual_equivalence": "NOT_TESTED",
+      "collision": "NOT_TESTED",
+      "navigation": "NOT_TESTED",
+      "target_engine_import": "NOT_TESTED",
+      "target_rts_integration": "NOT_TESTED",
+      "target_device_fps": "NOT_TESTED",
+      "material_texture_budget_acceptance": "NOT_TESTED",
+      "visual_quality": "NOT_TESTED"
+    },
+    "nonclaims": [
+      "A valid GLB is not a game-ready asset by itself.",
+      "Triangle reduction and target-band membership are not LOD visual equivalence.",
+      "Material/image counts are measured cost surfaces, not accepted budgets.",
+      "The far geometry tier is not an impostor and is not automatically the final far-distance solution.",
+      "No collision, navigation, target-engine, target-RTS or target-device performance claim is created by this report."
+    ]
+  }
+}

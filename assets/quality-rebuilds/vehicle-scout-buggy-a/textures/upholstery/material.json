@@ -1,0 +1,34 @@
+{
+  "maps": {
+    "base_color": {
+      "bytes": 3295,
+      "file": "textures/upholstery/base_color.png",
+      "sha256": "496558de95a4f3c935e293256885f5d738adbd471d52e40adaa3e426df9a308c"
+    },
+    "normal": {
+      "bytes": 4387,
+      "file": "textures/upholstery/normal.png",
+      "sha256": "4be1f568b9222237acea04151e4833a25f517ebf6dff8c0fa575f25c4c7a190b"
+    },
+    "orm": {
+      "bytes": 281,
+      "file": "textures/upholstery/orm.png",
+      "sha256": "bd001b163f6ed1e32967dd37698b494f617c65ef0200c68211f2ccb8779ee250"
+    }
+  },
+  "spec": {
+    "base_color": [
+      73,
+      57,
+      42
+    ],
+    "emissive": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "metallic": 0.02,
+    "roughness": 0.82,
+    "wear": 0.32
+  }
+}

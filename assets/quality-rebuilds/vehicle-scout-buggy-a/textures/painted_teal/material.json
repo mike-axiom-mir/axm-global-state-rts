@@ -1,0 +1,34 @@
+{
+  "maps": {
+    "base_color": {
+      "bytes": 3348,
+      "file": "textures/painted_teal/base_color.png",
+      "sha256": "17193a60f4fe740b71a8c3fb13f3ff1d7334111dcccf2e450916ecac9351e1fa"
+    },
+    "normal": {
+      "bytes": 4382,
+      "file": "textures/painted_teal/normal.png",
+      "sha256": "aa3fbd07d043de7de652367b2e7b33761bcb22f191f9becd64997ec06a001137"
+    },
+    "orm": {
+      "bytes": 241,
+      "file": "textures/painted_teal/orm.png",
+      "sha256": "ea0e6311bde034bda7ad30215954c3a16887a1f36e4795292a583b66a20ebdcc"
+    }
+  },
+  "spec": {
+    "base_color": [
+      44,
+      104,
+      105
+    ],
+    "emissive": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "metallic": 0.62,
+    "roughness": 0.53,
+    "wear": 0.34
+  }
+}

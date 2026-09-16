@@ -1,0 +1,15 @@
+{
+  "schema": "axm.global-state-rts.quality-rebuild-catalog/v0.1",
+  "status": "EXPERIMENTAL_CREATED_CANDIDATES",
+  "assets": [
+    {
+      "asset_id": "vehicle-scout-buggy-a",
+      "candidate_id": "scrap-buggy-quality-v2",
+      "manifest": "vehicle-scout-buggy-a/manifest.json",
+      "primary_delivery": "vehicle-scout-buggy-a/delivery/vehicle_scout_buggy_a_quality_v2_lod0.glb",
+      "status": "CREATED_NOT_ACCEPTED"
+    }
+  ],
+  "acceptance_rule": "Static creation evidence is not runtime, visual, performance, gameplay, CANON, or default-asset acceptance."
+}
+

@@ -1,0 +1,34 @@
+{
+  "maps": {
+    "base_color": {
+      "bytes": 4831,
+      "file": "textures/old_cream/base_color.png",
+      "sha256": "0709493508d4f2192620bf82f7ee5fb106de447fa9f5b3f747820bc6a8d0496a"
+    },
+    "normal": {
+      "bytes": 4393,
+      "file": "textures/old_cream/normal.png",
+      "sha256": "a373c183d962782737f6ea8aaf802613c184cc607b8019aebf3d6857acffe9d0"
+    },
+    "orm": {
+      "bytes": 317,
+      "file": "textures/old_cream/orm.png",
+      "sha256": "2789bb74e1310d143002dacfff763d45091c2bf5d2545803a16f674250256ae0"
+    }
+  },
+  "spec": {
+    "base_color": [
+      206,
+      190,
+      148
+    ],
+    "emissive": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "metallic": 0.22,
+    "roughness": 0.68,
+    "wear": 0.42
+  }
+}

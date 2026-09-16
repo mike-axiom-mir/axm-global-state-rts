@@ -1,0 +1,25 @@
+{
+  "asset_id": "vehicle-scout-buggy-a",
+  "candidate_id": "scrap-buggy-quality-v2",
+  "checks": {
+    "collision_cheaper": true,
+    "diagnostic_frames": 12,
+    "lod_descent": true,
+    "material_family_count": 9,
+    "multi_angle_beauty_proofs": 4,
+    "required_named_nodes": true
+  },
+  "manifest_sha256": "f30046d8c902b7d693d3587fb4f4a912f2a5913ba1681854bab08b6432578762",
+  "result": "PASS_STATIC_CREATED",
+  "schema": "axm.global-state-rts.quality-rebuild-receipt/v0.1",
+  "truth_boundary": {
+    "collision_physics": "NOT_RUN",
+    "engine_import": "NOT_RUN",
+    "runtime_scale": "NOT_RUN",
+    "split_screen_readability": "NOT_RUN",
+    "static_structure": "PASS",
+    "target_device_performance": "NOT_RUN",
+    "visual_review": "STATIC_PROOF_READY",
+    "wheel_or_steering_motion": "NOT_RUN"
+  }
+}

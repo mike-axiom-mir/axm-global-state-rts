@@ -1,0 +1,34 @@
+{
+  "maps": {
+    "base_color": {
+      "bytes": 4811,
+      "file": "textures/glass_lamp/base_color.png",
+      "sha256": "b6d89b09807287e0d0d5093374249c4b5377ba346738ebab0ab72eb617e90a5b"
+    },
+    "normal": {
+      "bytes": 4394,
+      "file": "textures/glass_lamp/normal.png",
+      "sha256": "b54148d02b3e8f3a26ccb7cfc218bccba6945d6b1f1ff82c74623b2d16f7dfee"
+    },
+    "orm": {
+      "bytes": 162,
+      "file": "textures/glass_lamp/orm.png",
+      "sha256": "cb7ffd6c07d8c3b1ddd90a8c1227634ce4c92c7b64b7e15afe8a5006c6fa81f9"
+    }
+  },
+  "spec": {
+    "base_color": [
+      255,
+      218,
+      126
+    ],
+    "emissive": [
+      1.0,
+      0.55,
+      0.12
+    ],
+    "metallic": 0.05,
+    "roughness": 0.2,
+    "wear": 0.05
+  }
+}

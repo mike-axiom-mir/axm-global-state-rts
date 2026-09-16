@@ -170,6 +170,8 @@ export class SplitScreenPlanetRenderer {
     this.scene.add(rim);
 
     this.seatStates = new Map();
+    this.frameIntervalMs = 0;
+    this.lastRenderAt = -Infinity;
     this.setSeatIds(seatIds);
     this.resizeObserver = typeof ResizeObserver === 'function'
       ? new ResizeObserver(() => this.resize())
@@ -201,6 +203,10 @@ export class SplitScreenPlanetRenderer {
     // Soft dynamic shadows are reserved for single-seat presentation. Split-screen keeps the
     // material/geometry/sky upgrades but avoids multiplying shadow passes across 2-4 views.
     this.renderer.shadowMap.enabled = seatIds.length === 1;
+    // Keep input/UI time available when several independently rendered worlds share one WebGL
+    // context. This is a general split-screen budget, not a test-specific shortcut.
+    this.frameIntervalMs = seatIds.length >= 3 ? 1000 / 30 : seatIds.length === 2 ? 1000 / 45 : 0;
+    this.lastRenderAt = -Infinity;
     this.resize();
   }
 
@@ -421,12 +427,14 @@ export class SplitScreenPlanetRenderer {
   }
 
   render() {
+    const nowMs = globalThis.performance?.now?.() ?? Date.now();
+    if (this.frameIntervalMs > 0 && nowMs - this.lastRenderAt < this.frameIntervalMs) return;
+    this.lastRenderAt = nowMs;
     this.resize();
     const width = this.renderer.domElement.clientWidth || 1;
     const height = this.renderer.domElement.clientHeight || 1;
     const seatIds = [...this.seatStates.keys()];
     const viewports = pixelSplitLayout(width, height, seatIds.length);
-    const nowMs = globalThis.performance?.now?.() ?? Date.now();
     this.globeQuality.update(nowMs);
 
     for (let index = 0; index < seatIds.length; index++) {

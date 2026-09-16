@@ -1,31 +1,31 @@
 export const LOCAL_SURFACE_PAINT_SCHEMA = 'axm.global-state-rts.local-surface-paint/v0.1';
 
 const PALETTE = Object.freeze({
-  deep_ocean_bed: Object.freeze([0.055, 0.075, 0.078]),
-  ocean_bed: Object.freeze([0.105, 0.125, 0.118]),
-  wet_sand: Object.freeze([0.35, 0.34, 0.27]),
-  sand: Object.freeze([0.60, 0.52, 0.35]),
-  dry_soil: Object.freeze([0.40, 0.32, 0.22]),
-  rich_soil: Object.freeze([0.22, 0.25, 0.17]),
-  rock: Object.freeze([0.36, 0.36, 0.33]),
-  dark_rock: Object.freeze([0.24, 0.26, 0.25]),
-  snow: Object.freeze([0.79, 0.84, 0.83]),
-  shallow_water: Object.freeze([0.075, 0.27, 0.34]),
-  shelf_water: Object.freeze([0.055, 0.20, 0.31]),
-  deep_water: Object.freeze([0.022, 0.075, 0.14])
+  deep_ocean_bed: Object.freeze([0.045, 0.060, 0.064]),
+  ocean_bed: Object.freeze([0.085, 0.105, 0.098]),
+  wet_sand: Object.freeze([0.31, 0.29, 0.21]),
+  sand: Object.freeze([0.57, 0.48, 0.29]),
+  dry_soil: Object.freeze([0.34, 0.24, 0.13]),
+  rich_soil: Object.freeze([0.14, 0.17, 0.09]),
+  rock: Object.freeze([0.31, 0.32, 0.29]),
+  dark_rock: Object.freeze([0.20, 0.22, 0.21]),
+  snow: Object.freeze([0.80, 0.86, 0.85]),
+  shallow_water: Object.freeze([0.055, 0.29, 0.35]),
+  shelf_water: Object.freeze([0.035, 0.18, 0.30]),
+  deep_water: Object.freeze([0.015, 0.060, 0.13])
 });
 
 const BIOME_BASE = Object.freeze({
-  coast: Object.freeze([0.53, 0.47, 0.31]),
-  desert: Object.freeze([0.56, 0.43, 0.27]),
-  savanna: Object.freeze([0.43, 0.43, 0.24]),
-  grassland: Object.freeze([0.29, 0.40, 0.24]),
-  temperate_forest: Object.freeze([0.16, 0.29, 0.20]),
-  rainforest: Object.freeze([0.10, 0.24, 0.17]),
-  taiga: Object.freeze([0.22, 0.31, 0.26]),
-  tundra: Object.freeze([0.39, 0.40, 0.35]),
-  alpine: Object.freeze([0.43, 0.43, 0.40]),
-  ice: Object.freeze([0.76, 0.82, 0.82]),
+  coast: Object.freeze([0.49, 0.42, 0.25]),
+  desert: Object.freeze([0.55, 0.40, 0.22]),
+  savanna: Object.freeze([0.38, 0.36, 0.16]),
+  grassland: Object.freeze([0.20, 0.34, 0.16]),
+  temperate_forest: Object.freeze([0.10, 0.24, 0.13]),
+  rainforest: Object.freeze([0.06, 0.19, 0.11]),
+  taiga: Object.freeze([0.17, 0.28, 0.21]),
+  tundra: Object.freeze([0.35, 0.37, 0.31]),
+  alpine: Object.freeze([0.39, 0.40, 0.37]),
+  ice: Object.freeze([0.76, 0.83, 0.83]),
   ocean: PALETTE.ocean_bed,
   deep_ocean: PALETTE.deep_ocean_bed
 });
@@ -81,18 +81,18 @@ export function describeLocalSurfacePaint(sample, {
     const deepMix = smoothstep(90, 2200, depth);
     rgb = mixRgb(PALETTE.ocean_bed, PALETTE.deep_ocean_bed, deepMix);
     if (depth < 45) rgb = mixRgb(PALETTE.wet_sand, rgb, smoothstep(4, 45, depth));
-    rgb = scaleRgb(rgb, 0.90 + macroNoise * 0.15 + fineNoise * 0.04);
+    rgb = scaleRgb(rgb, 0.86 + macroNoise * 0.19 + fineNoise * 0.05);
     surfaceKind = depth < 45 ? 'submerged-shelf' : 'submerged-bed';
   } else if (elevationM < 70 || biome === 'coast') {
     const coastRise = smoothstep(0, 85, elevationM);
     rgb = mixRgb(PALETTE.wet_sand, PALETTE.sand, smoothstep(0, 18, elevationM));
     rgb = mixRgb(rgb, BIOME_BASE.coast, coastRise * 0.55);
     rgb = mixRgb(rgb, PALETTE.rock, Math.max(0, slope - 0.35) * 0.65);
-    rgb = scaleRgb(rgb, 0.91 + macroNoise * 0.17 + patchNoise * 0.05);
+    rgb = scaleRgb(rgb, 0.86 + macroNoise * 0.21 + patchNoise * 0.07);
     surfaceKind = elevationM < 8 ? 'wet-shore' : 'coastal-ground';
   } else {
-    const dryMix = clamp01((0.46 - moisture) * 0.65);
-    const lushMix = clamp01((moisture - 0.52) * 0.42);
+    const dryMix = clamp01((0.46 - moisture) * 0.72);
+    const lushMix = clamp01((moisture - 0.50) * 0.52);
     const shallowSoil = clamp01((0.75 - soilDepthM) / 0.75);
     const slopeRock = smoothstep(0.20, 0.72, slope);
     const erosionRock = smoothstep(0.34, 0.88, erosionRisk) * 0.34;
@@ -121,7 +121,7 @@ export function describeLocalSurfacePaint(sample, {
       surfaceKind = 'mixed-ground';
     }
 
-    const variation = 0.89 + macroNoise * 0.16 + fineNoise * 0.055 + (patchNoise - 0.5) * 0.05;
+    const variation = 0.83 + macroNoise * 0.23 + fineNoise * 0.075 + (patchNoise - 0.5) * 0.07;
     rgb = scaleRgb(rgb, variation);
   }
 
@@ -144,7 +144,7 @@ export function describeLocalWaterPaint(sample, { xM = 0, zM = 0 } = {}) {
   const deepMix = smoothstep(180, 1800, depthM);
   let rgb = mixRgb(PALETTE.shallow_water, PALETTE.shelf_water, shelfMix);
   rgb = mixRgb(rgb, PALETTE.deep_water, deepMix);
-  const shimmer = 0.94 + hash01(xM * 0.14, zM * 0.14, 73) * 0.11;
+  const shimmer = 0.92 + hash01(xM * 0.14, zM * 0.14, 73) * 0.14;
   rgb = scaleRgb(rgb, shimmer);
   return Object.freeze({
     schema: LOCAL_SURFACE_PAINT_SCHEMA,

@@ -81,14 +81,19 @@ jobs:
           gates=json.loads((root/'game-readiness-gates.json').read_text())
           continuity=json.loads((root/'semantic-continuity-receipt.json').read_text())
           verification=json.loads((root/'verification.json').read_text())
-          rts=verification['artifacts']['improvised-workshop-rts.glb']
+          inspection=json.loads((root/'glb-inspection.json').read_text())
+          rts_artifact=verification['artifacts']['improvised-workshop-rts.glb']
+          rts=inspection['improvised-workshop-rts.glb']
           assert gates['gates']['geometry_structure']=='TESTED'
           assert gates['gates']['runtime_lod_target_bands']=='TESTED'
           assert gates['gates']['target_rts_integration']=='NOT_TESTED'
           assert continuity['status']=='SEMANTIC_CONTINUITY_TESTED_BINARY_IDENTITY_FRESH'
           assert continuity['producer_source_commit']=='8089d47937aeac63db367f2193c48fb92bed2071'
           assert continuity['historical_raw_identity_reused'] is False
+          assert rts_artifact['sha256']==rts['sha256']
           assert 4_000 <= rts['triangles'] <= 12_000
+          assert rts['material_batches']==19
+          assert rts['embedded_images']==47
           print(json.dumps(rts, indent=2))
           print(json.dumps(continuity, indent=2))
           PY
@@ -109,7 +114,8 @@ jobs:
           node scripts/serve.mjs > /tmp/axm-global-state-rts-real-workshop.log 2>&1 &
           for i in {1..30}; do
             if curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/improvised-workshop-rts.glb > /dev/null \
-              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/verification.json > /dev/null; then
+              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/verification.json > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/glb-inspection.json > /dev/null; then
               exit 0
             fi
             sleep 1

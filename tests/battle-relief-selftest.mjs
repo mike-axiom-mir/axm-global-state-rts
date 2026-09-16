@@ -10,7 +10,7 @@ assert.equal(water.archetype, 'coast-water-preserved');
 const center = describeLocalBattleRelief(frame, 0, 0, 420);
 assert.ok(Math.abs(center.offsetM) < 1e-9, 'settlement core footprint must stay stable');
 
-const openingMountain = describeLocalBattleRelief(frame, 270, -355, 420);
+const openingMountain = describeLocalBattleRelief(frame, 190, -270, 420);
 assert.ok(openingMountain.offsetM > 180, 'normal opening view must contain a visible mountain shoulder');
 assert.ok(openingMountain.mountain > 0.20, 'opening high ground must classify as meaningful mountain relief');
 

@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test';
 const WORKSHOP_FILENAME = 'improvised-workshop-rts.glb';
 const WORKSHOP_URL = `http://127.0.0.1:4174/runtime-assets/workshop-specialist/${WORKSHOP_FILENAME}`;
 const VERIFICATION_URL = 'http://127.0.0.1:4174/runtime-assets/workshop-specialist/verification.json';
+const INSPECTION_URL = 'http://127.0.0.1:4174/runtime-assets/workshop-specialist/glb-inspection.json';
 
 function captureRuntimeFailures(page) {
   const failures = [];
@@ -25,13 +26,20 @@ test('high-quality Universal Creation RTS-tier workshop renders through Global S
   await expect(page.locator('[data-seat-id="seat-1"]')).toContainText('LOCAL RTS');
   await page.waitForTimeout(800);
 
-  const installed = await page.evaluate(async ({ workshopUrl, verificationUrl, workshopFilename }) => {
-    const verificationResponse = await fetch(verificationUrl, { cache: 'no-store' });
+  const installed = await page.evaluate(async ({ workshopUrl, verificationUrl, inspectionUrl, workshopFilename }) => {
+    const [verificationResponse, inspectionResponse] = await Promise.all([
+      fetch(verificationUrl, { cache: 'no-store' }),
+      fetch(inspectionUrl, { cache: 'no-store' })
+    ]);
     if (!verificationResponse.ok) throw new Error(`producer verification fetch failed: ${verificationResponse.status}`);
+    if (!inspectionResponse.ok) throw new Error(`producer inspection fetch failed: ${inspectionResponse.status}`);
     const verification = await verificationResponse.json();
+    const inspection = await inspectionResponse.json();
     const artifact = verification?.artifacts?.[workshopFilename];
+    const inspected = inspection?.[workshopFilename];
     const expectedSha256 = artifact?.sha256;
     if (!/^[a-f0-9]{64}$/.test(expectedSha256 || '')) throw new Error('producer did not supply a valid RTS-tier GLB sha256');
+    if (!inspected || inspected.sha256 !== expectedSha256) throw new Error('producer inspection identity does not match verification');
 
     const response = await fetch(workshopUrl, { cache: 'no-store' });
     if (!response.ok) throw new Error(`workshop fetch failed: ${response.status}`);
@@ -44,17 +52,25 @@ test('high-quality Universal Creation RTS-tier workshop renders through Global S
       uniformScale: 1,
       focus: true
     });
-    return { receipt, producerSha256: expectedSha256, producerArtifact: artifact };
-  }, { workshopUrl: WORKSHOP_URL, verificationUrl: VERIFICATION_URL, workshopFilename: WORKSHOP_FILENAME });
+    return { receipt, producerSha256: expectedSha256, producerArtifact: artifact, producerInspection: inspected };
+  }, {
+    workshopUrl: WORKSHOP_URL,
+    verificationUrl: VERIFICATION_URL,
+    inspectionUrl: INSPECTION_URL,
+    workshopFilename: WORKSHOP_FILENAME
+  });
 
-  const { receipt, producerSha256, producerArtifact } = installed;
+  const { receipt, producerSha256, producerArtifact, producerInspection } = installed;
   expect(producerSha256).toMatch(/^[a-f0-9]{64}$/);
   expect(receipt.status).toBe('RUNTIME_IMPORTED_NOT_VISUALLY_ACCEPTED');
   expect(receipt.sha256).toBe(producerSha256);
   expect(receipt.assetId).toBe('building-workshop-a');
   expect(receipt.triangles).toBeGreaterThanOrEqual(4_000);
   expect(receipt.triangles).toBeLessThanOrEqual(12_000);
-  expect(receipt.triangles).toBe(producerArtifact.triangles);
+  expect(receipt.triangles).toBe(producerInspection.triangles);
+  expect(producerInspection.embedded_images).toBe(47);
+  expect(producerInspection.material_batches).toBe(19);
+  expect(producerArtifact.bytes).toBeGreaterThan(0);
   expect(receipt.materials).toBeGreaterThan(1);
   expect(receipt.meshes).toBeGreaterThan(1);
   expect(receipt.primitives).toBeGreaterThan(1);
@@ -68,7 +84,7 @@ test('high-quality Universal Creation RTS-tier workshop renders through Global S
   expect(retained.placement.uniformScale).toBe(1);
   writeFileSync(
     'test-results/global-state-rts-real-workshop-receipt.json',
-    `${JSON.stringify({ ...receipt, producerSha256, producerArtifact, sourceFilename: WORKSHOP_FILENAME }, null, 2)}\n`
+    `${JSON.stringify({ ...receipt, producerSha256, producerArtifact, producerInspection, sourceFilename: WORKSHOP_FILENAME }, null, 2)}\n`
   );
 
   await page.mouse.move(640, 360);

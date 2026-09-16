@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import { BIOMES, PLANET_DEFAULTS } from '../planet-upstream/worlds/foundation-planet/core/planet-model.mjs';
 import {
+  GRAPHICS_QUALITY_PASS_SCHEMA,
+  GRAPHICS_QUALITY_PROFILE,
+  describeGraphicsQualityPass
+} from '../src/presentation/graphics-quality-pass.mjs';
+import {
   PLANET_PRESENTATION,
   PLANET_PRESENTATION_SCHEMA,
   materialRoleForBiome
@@ -25,6 +30,16 @@ assert.equal(materialRoleForBiome('not-a-real-biome'), 'surface.unknown');
 assert.ok(PLANET_PRESENTATION.invariants.some(rule => rule.includes('cannot erase authoritative')));
 assert.ok(PLANET_PRESENTATION.invariants.some(rule => rule.includes('cannot invent authoritative')));
 
+assert.equal(GRAPHICS_QUALITY_PROFILE.schema, GRAPHICS_QUALITY_PASS_SCHEMA);
+assert.equal(GRAPHICS_QUALITY_PROFILE.status, 'EXPERIMENTAL');
+assert.equal(GRAPHICS_QUALITY_PROFILE.visualOnly, true);
+assert.ok(GRAPHICS_QUALITY_PROFILE.renderer.multiSeatPixelRatioCap < GRAPHICS_QUALITY_PROFILE.renderer.singleSeatPixelRatioCap);
+assert.ok(GRAPHICS_QUALITY_PROFILE.truthBoundary.some(rule => rule.includes('may not create authoritative world state')));
+assert.ok(GRAPHICS_QUALITY_PROFILE.truthBoundary.some(rule => rule.includes('may not grant mechanics')));
+const qualityDescription = describeGraphicsQualityPass();
+assert.equal(qualityDescription.visualOnly, true);
+assert.equal(qualityDescription.id, 'cinematic-rts-quality-v1');
+
 assert.equal(WORKSHOP_RUNTIME_LOD_POLICY.schema, WORKSHOP_RUNTIME_LOD_POLICY_SCHEMA);
 assert.equal(WORKSHOP_RUNTIME_LOD_POLICY.status, 'TEST_EVIDENCE_BOUND');
 assert.equal(selectWorkshopRuntimeLod(90).role, 'tactical');
@@ -39,4 +54,4 @@ assert.throws(() => selectWorkshopRuntimeLod(2600.1), /between 90 and 2600/);
 assert.throws(() => selectWorkshopRuntimeLod(Number.NaN), /finite/);
 assert.throws(() => workshopRuntimeLodTier('hero'), /unknown workshop runtime LOD role/);
 
-console.log(`planet presentation selftest: PASS (${Object.keys(BIOMES).length} upstream biomes covered; workshop LOD evidence policy bounded)`);
+console.log(`planet presentation selftest: PASS (${Object.keys(BIOMES).length} upstream biomes covered; cinematic graphics pass remains presentation-only; workshop LOD evidence policy bounded)`);

@@ -2,23 +2,29 @@ import * as THREE from '../../planet-upstream/shared/vendor/three-r160/three.mod
 import { sampleVector } from '../../planet-upstream/worlds/foundation-planet/core/planet-model.mjs';
 import { createStarterRegion } from '../world/starter-region.mjs';
 import { createGlobeWorldOverlay } from './globe-world-overlay.mjs';
+import {
+  applyLocalGraphicsQuality,
+  configureGraphicsRenderer,
+  createGlobeGraphicsQualityLayer,
+  syncLocalGraphicsQuality
+} from './graphics-quality-pass.mjs';
 import { createLocalRegionScene } from './local-region-scene.mjs';
 import { PLANET_PRESENTATION } from './planet-style.mjs';
 import { pixelSplitLayout } from './split-screen-layout.mjs';
 
 const BIOME_COLORS = Object.freeze({
-  deep_ocean: '#101e2b',
-  ocean: '#17374a',
-  coast: '#8e8668',
-  desert: '#9d7e55',
-  savanna: '#767849',
-  grassland: '#536d45',
-  temperate_forest: '#324c38',
-  rainforest: '#273f34',
-  taiga: '#3b4b42',
-  tundra: '#696d63',
-  alpine: '#777772',
-  ice: '#b7c6c5'
+  deep_ocean: '#0b1b2a',
+  ocean: '#12384c',
+  coast: '#9a8c69',
+  desert: '#a47c4e',
+  savanna: '#747b43',
+  grassland: '#496c42',
+  temperate_forest: '#294a35',
+  rainforest: '#1f4032',
+  taiga: '#344a40',
+  tundra: '#6d7064',
+  alpine: '#7b7972',
+  ice: '#c4d3d1'
 });
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -34,7 +40,7 @@ function disposeObject(root) {
 
 function makePlanetMesh() {
   const radius = PLANET_PRESENTATION.globeExpression.previewRadiusSceneUnits;
-  const geometry = new THREE.IcosahedronGeometry(radius, 3);
+  const geometry = new THREE.IcosahedronGeometry(radius, 4);
   const positions = geometry.getAttribute('position');
   const colors = new Float32Array(positions.count * 3);
   const color = new THREE.Color();
@@ -47,14 +53,15 @@ function makePlanetMesh() {
     const unit = { x: x / length, y: y / length, z: z / length };
     const sample = sampleVector(unit);
     const relief = sample.elevationM > 0
-      ? clamp(sample.elevationM / 6500, 0, 1) * 0.72 * PLANET_PRESENTATION.globeExpression.terrainHeightExaggeration
-      : clamp(sample.elevationM / 9000, -1, 0) * 0.10;
+      ? clamp(sample.elevationM / 6500, 0, 1) * 0.78 * PLANET_PRESENTATION.globeExpression.terrainHeightExaggeration
+      : clamp(sample.elevationM / 9000, -1, 0) * 0.11;
     const renderedRadius = radius + relief;
     positions.setXYZ(index, unit.x * renderedRadius, unit.y * renderedRadius, unit.z * renderedRadius);
 
     color.set(BIOME_COLORS[sample.biome] || '#666666');
-    const heightTint = sample.elevationM > 2500 ? 1.08 : sample.elevationM < 0 ? 0.92 : 1;
-    color.multiplyScalar(heightTint);
+    const latitudeShade = 0.96 + Math.abs(unit.y) * 0.08;
+    const heightTint = sample.elevationM > 2500 ? 1.11 : sample.elevationM < 0 ? 0.90 : 1;
+    color.multiplyScalar(latitudeShade * heightTint);
     colors[index * 3] = color.r;
     colors[index * 3 + 1] = color.g;
     colors[index * 3 + 2] = color.b;
@@ -64,9 +71,10 @@ function makePlanetMesh() {
   geometry.computeVertexNormals();
   const material = new THREE.MeshStandardMaterial({
     vertexColors: true,
-    roughness: 0.92,
-    metalness: 0.02,
-    flatShading: false
+    roughness: 0.78,
+    metalness: 0.035,
+    flatShading: false,
+    dithering: true
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.castShadow = false;
@@ -78,13 +86,14 @@ function makePlanetMesh() {
 function makeAtmosphere() {
   const radius = PLANET_PRESENTATION.globeExpression.previewRadiusSceneUnits * 1.026;
   return new THREE.Mesh(
-    new THREE.SphereGeometry(radius, 48, 24),
+    new THREE.SphereGeometry(radius, 64, 32),
     new THREE.MeshBasicMaterial({
-      color: 0x7090a1,
+      color: 0x7aa4b8,
       transparent: true,
-      opacity: 0.075,
+      opacity: 0.085,
       side: THREE.BackSide,
-      depthWrite: false
+      depthWrite: false,
+      toneMapped: false
     })
   );
 }
@@ -131,32 +140,38 @@ export class SplitScreenPlanetRenderer {
     this.container = container;
     this.worldSeed = String(worldSeed);
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 1.5));
+    configureGraphicsRenderer(this.renderer, { seatCount: seatIds.length });
     this.renderer.autoClear = false;
     this.renderer.setScissorTest(true);
     this.renderer.domElement.className = 'rts-canvas';
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x05080c);
+    this.scene.background = new THREE.Color(0x03070c);
     this.planetRoot = new THREE.Group();
     this.scene.add(this.planetRoot);
     this.planet = makePlanetMesh();
     this.atmosphere = makeAtmosphere();
     this.worldOverlay = createGlobeWorldOverlay({ worldSeed: this.worldSeed });
     this.planetRoot.add(this.planet, this.worldOverlay.root, this.atmosphere);
+    this.globeQuality = createGlobeGraphicsQualityLayer({
+      radius: PLANET_PRESENTATION.globeExpression.previewRadiusSceneUnits,
+      seed: this.worldSeed
+    });
+    this.scene.add(this.globeQuality.root);
 
-    const hemi = new THREE.HemisphereLight(0xa9c1ce, 0x171713, 1.18);
+    const hemi = new THREE.HemisphereLight(0xb5ceda, 0x15140f, 1.24);
     this.scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xffdfb2, 3.15);
+    const sun = new THREE.DirectionalLight(0xffd8a8, 3.45);
     sun.position.set(-45, 32, 40);
     this.scene.add(sun);
-    const rim = new THREE.DirectionalLight(0x607f95, 0.55);
+    const rim = new THREE.DirectionalLight(0x6d93ab, 0.72);
     rim.position.set(35, -18, -42);
     this.scene.add(rim);
 
     this.seatStates = new Map();
+    this.frameIntervalMs = 0;
+    this.lastRenderAt = -Infinity;
     this.setSeatIds(seatIds);
     this.resizeObserver = typeof ResizeObserver === 'function'
       ? new ResizeObserver(() => this.resize())
@@ -166,7 +181,10 @@ export class SplitScreenPlanetRenderer {
   }
 
   #ensureLocalRegion(state) {
-    if (!state.localBundle) state.localBundle = createLocalRegionScene(state.localRegion);
+    if (!state.localBundle) {
+      state.localBundle = createLocalRegionScene(state.localRegion);
+      applyLocalGraphicsQuality(state.localBundle);
+    }
     return state.localBundle;
   }
 
@@ -181,6 +199,14 @@ export class SplitScreenPlanetRenderer {
       if (!next.has(seatId)) state.localBundle?.dispose?.();
     }
     this.seatStates = next;
+    configureGraphicsRenderer(this.renderer, { seatCount: seatIds.length });
+    // Soft dynamic shadows are reserved for single-seat presentation. Split-screen keeps the
+    // material/geometry/sky upgrades but avoids multiplying shadow passes across 2-4 views.
+    this.renderer.shadowMap.enabled = seatIds.length === 1;
+    // Keep input/UI time available when several independently rendered worlds share one WebGL
+    // context. This is a general split-screen budget, not a test-specific shortcut.
+    this.frameIntervalMs = seatIds.length >= 3 ? 1000 / 30 : seatIds.length === 2 ? 1000 / 45 : 0;
+    this.lastRenderAt = -Infinity;
     this.resize();
   }
 
@@ -213,6 +239,7 @@ export class SplitScreenPlanetRenderer {
           centerZM: state.localTargetZ
         });
       }
+      syncLocalGraphicsQuality(bundle, state.latestSimulationSnapshot);
     }
     state.transition = {
       from: state.mode,
@@ -400,12 +427,15 @@ export class SplitScreenPlanetRenderer {
   }
 
   render() {
+    const nowMs = globalThis.performance?.now?.() ?? Date.now();
+    if (this.frameIntervalMs > 0 && nowMs - this.lastRenderAt < this.frameIntervalMs) return;
+    this.lastRenderAt = nowMs;
     this.resize();
     const width = this.renderer.domElement.clientWidth || 1;
     const height = this.renderer.domElement.clientHeight || 1;
     const seatIds = [...this.seatStates.keys()];
     const viewports = pixelSplitLayout(width, height, seatIds.length);
-    const nowMs = globalThis.performance?.now?.() ?? Date.now();
+    this.globeQuality.update(nowMs);
 
     for (let index = 0; index < seatIds.length; index++) {
       const seatId = seatIds[index];
@@ -425,12 +455,13 @@ export class SplitScreenPlanetRenderer {
             centerZM: state.localTargetZ
           });
         }
-        this.renderer.setClearColor(state.latestSimulationSnapshot?.environment?.lightingPhase === 'night' ? 0x091118 : 0x48535a, 1);
+        syncLocalGraphicsQuality(bundle, state.latestSimulationSnapshot, nowMs);
+        this.renderer.setClearColor(state.latestSimulationSnapshot?.environment?.lightingPhase === 'night' ? 0x07101a : 0x4a5256, 1);
         this.renderer.clear(true, true, true);
         this.#updateLocalCamera(state, aspect, view.distanceOverride);
         this.renderer.render(bundle.scene, state.localCamera);
       } else {
-        this.renderer.setClearColor(0x05080c, 1);
+        this.renderer.setClearColor(0x03070c, 1);
         this.renderer.clear(true, true, true);
         this.#updateGlobeCamera(state, aspect, view.distanceOverride);
         this.renderer.render(this.scene, state.camera);
@@ -441,6 +472,7 @@ export class SplitScreenPlanetRenderer {
   dispose() {
     this.resizeObserver?.disconnect();
     for (const state of this.seatStates.values()) state.localBundle?.dispose?.();
+    disposeObject(this.globeQuality?.root);
     disposeObject(this.planetRoot);
     this.renderer.dispose();
     this.renderer.domElement.remove();

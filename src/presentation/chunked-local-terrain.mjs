@@ -4,27 +4,43 @@ import {
   createLocalTerrainStreamProfile,
   planLocalTerrainChunks
 } from '../world/local-terrain-stream.mjs';
+import {
+  describeLocalSurfacePaint,
+  describeLocalWaterPaint
+} from './local-surface-paint.mjs';
 
-const BIOME_COLORS = Object.freeze({
-  deep_ocean: '#101e2b',
-  ocean: '#17374a',
-  coast: '#8e8668',
-  desert: '#9d7e55',
-  savanna: '#767849',
-  grassland: '#536d45',
-  temperate_forest: '#324c38',
-  rainforest: '#273f34',
-  taiga: '#3b4b42',
-  tundra: '#696d63',
-  alpine: '#777772',
-  ice: '#b7c6c5'
-});
+function sampleSlope01(samples, resolution, row, col, spacingM) {
+  const leftCol = Math.max(0, col - 1);
+  const rightCol = Math.min(resolution - 1, col + 1);
+  const downRow = Math.max(0, row - 1);
+  const upRow = Math.min(resolution - 1, row + 1);
+  const left = samples[row * resolution + leftCol].planet.elevationM;
+  const right = samples[row * resolution + rightCol].planet.elevationM;
+  const down = samples[downRow * resolution + col].planet.elevationM;
+  const up = samples[upRow * resolution + col].planet.elevationM;
+  const xSpan = Math.max(spacingM, (rightCol - leftCol) * spacingM);
+  const zSpan = Math.max(spacingM, (upRow - downRow) * spacingM);
+  const gradient = Math.hypot((right - left) / xSpan, (up - down) / zSpan);
+  return Math.min(1, Math.atan(gradient) / (Math.PI * 0.5));
+}
+
+function triangleUnderSea(samples, a, b, c) {
+  const elevations = [
+    samples[a].planet.elevationM,
+    samples[b].planet.elevationM,
+    samples[c].planet.elevationM
+  ];
+  const below = elevations.filter(value => value < 0).length;
+  const mean = (elevations[0] + elevations[1] + elevations[2]) / 3;
+  return below >= 2 && mean < 8;
+}
 
 function buildChunkGeometry(region, descriptor, centerElevationM) {
   const resolution = descriptor.resolution;
   const chunkSizeM = descriptor.chunkSizeM;
   const startXM = descriptor.cx * chunkSizeM;
   const startZM = descriptor.cz * chunkSizeM;
+  const spacingM = chunkSizeM / Math.max(1, resolution - 1);
   const points = [];
   for (let row = 0; row < resolution; row++) {
     const zM = startZM + (row / (resolution - 1)) * chunkSizeM;
@@ -37,22 +53,45 @@ function buildChunkGeometry(region, descriptor, centerElevationM) {
   const samples = sampleLocalBatch(region.frame, points, { enforceOperationalRadius: true });
   const positions = new Float32Array(samples.length * 3);
   const colors = new Float32Array(samples.length * 3);
-  const color = new THREE.Color();
+  const waterPositions = new Float32Array(samples.length * 3);
+  const waterColors = new Float32Array(samples.length * 3);
+  const seaLevelY = -centerElevationM;
 
   for (let index = 0; index < samples.length; index++) {
     const sample = samples[index];
+    const row = Math.floor(index / resolution);
+    const col = index % resolution;
+    const slope01 = sampleSlope01(samples, resolution, row, col, spacingM);
+    const paint = describeLocalSurfacePaint(sample.planet, {
+      slope01,
+      xM: sample.local.xM,
+      zM: sample.local.zM
+    });
+    const waterPaint = describeLocalWaterPaint(sample.planet, {
+      xM: sample.local.xM,
+      zM: sample.local.zM
+    });
+
     positions[index * 3] = sample.local.xM;
     positions[index * 3 + 1] = sample.planet.elevationM - centerElevationM;
     positions[index * 3 + 2] = sample.local.zM;
-    color.set(BIOME_COLORS[sample.planet.biome] || '#666666');
-    if (sample.planet.elevationM > 2200) color.multiplyScalar(1.06);
-    if (sample.planet.elevationM < 0) color.multiplyScalar(0.92);
-    colors[index * 3] = color.r;
-    colors[index * 3 + 1] = color.g;
-    colors[index * 3 + 2] = color.b;
+    colors[index * 3] = paint.rgb[0];
+    colors[index * 3 + 1] = paint.rgb[1];
+    colors[index * 3 + 2] = paint.rgb[2];
+
+    const ripple = sample.planet.elevationM < 0
+      ? Math.sin(sample.local.xM * 0.035 + sample.local.zM * 0.021) * 0.035
+      : 0;
+    waterPositions[index * 3] = sample.local.xM;
+    waterPositions[index * 3 + 1] = seaLevelY + 0.08 + ripple;
+    waterPositions[index * 3 + 2] = sample.local.zM;
+    waterColors[index * 3] = waterPaint.rgb[0];
+    waterColors[index * 3 + 1] = waterPaint.rgb[1];
+    waterColors[index * 3 + 2] = waterPaint.rgb[2];
   }
 
   const indices = [];
+  const waterIndices = [];
   for (let row = 0; row < resolution - 1; row++) {
     for (let col = 0; col < resolution - 1; col++) {
       const a = row * resolution + col;
@@ -60,15 +99,29 @@ function buildChunkGeometry(region, descriptor, centerElevationM) {
       const c = a + resolution;
       const d = c + 1;
       indices.push(a, c, b, b, c, d);
+      if (triangleUnderSea(samples, a, c, b)) waterIndices.push(a, c, b);
+      if (triangleUnderSea(samples, b, c, d)) waterIndices.push(b, c, d);
     }
   }
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  return geometry;
+  const terrainGeometry = new THREE.BufferGeometry();
+  terrainGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  terrainGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  terrainGeometry.setIndex(indices);
+  terrainGeometry.computeVertexNormals();
+
+  const waterGeometry = new THREE.BufferGeometry();
+  waterGeometry.setAttribute('position', new THREE.BufferAttribute(waterPositions, 3));
+  waterGeometry.setAttribute('color', new THREE.BufferAttribute(waterColors, 3));
+  waterGeometry.setIndex(waterIndices);
+  waterGeometry.computeVertexNormals();
+
+  return Object.freeze({
+    terrainGeometry,
+    waterGeometry,
+    waterTriangles: Math.floor(waterIndices.length / 3),
+    seaLevelY
+  });
 }
 
 export function createChunkedLocalTerrain(region, {
@@ -78,37 +131,68 @@ export function createChunkedLocalTerrain(region, {
   const centerElevationM = sampleLocalSurface(region.frame, 0, 0, { enforceOperationalRadius: true }).planet.elevationM;
   const root = new THREE.Group();
   root.name = `chunked-local-terrain:${region.id}`;
+  root.userData.surfacePaint = 'foundation-elevation-moisture-geology-v2';
+  root.userData.presentationOnly = true;
+
   const material = new THREE.MeshStandardMaterial({
     vertexColors: true,
-    roughness: 0.96,
-    metalness: 0.01,
-    flatShading: false
+    roughness: 0.91,
+    metalness: 0.015,
+    flatShading: false,
+    dithering: true
+  });
+  const waterMaterial = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.84,
+    roughness: 0.24,
+    metalness: 0.045,
+    depthWrite: true,
+    side: THREE.DoubleSide,
+    dithering: true
   });
   const cache = new Map();
   let lastPlanSignature = null;
-  let lastStats = Object.freeze({ activeChunks: 0, warmChunks: 0, vertices: 0, residentChunks: 0 });
+  let lastStats = Object.freeze({ activeChunks: 0, warmChunks: 0, vertices: 0, residentChunks: 0, waterTriangles: 0 });
   let autoFocusEnabled = true;
   const recentHeightQueries = [];
 
   function removeEntry(key) {
     const entry = cache.get(key);
     if (!entry) return;
-    root.remove(entry.mesh);
-    entry.mesh.geometry.dispose();
+    root.remove(entry.group);
+    entry.terrainMesh.geometry.dispose();
+    entry.waterMesh.geometry.dispose();
     cache.delete(key);
   }
 
   function createEntry(descriptor) {
-    const geometry = buildChunkGeometry(region, { ...descriptor, chunkSizeM: profile.chunkSizeM }, centerElevationM);
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.receiveShadow = true;
-    mesh.castShadow = false;
-    mesh.name = `terrain-chunk:${region.id}:${descriptor.key}:${descriptor.lod}`;
-    mesh.userData.chunkKey = descriptor.key;
-    mesh.userData.lod = descriptor.lod;
-    mesh.userData.resolution = descriptor.resolution;
-    root.add(mesh);
-    return { descriptor, mesh };
+    const built = buildChunkGeometry(region, { ...descriptor, chunkSizeM: profile.chunkSizeM }, centerElevationM);
+    const group = new THREE.Group();
+    group.name = `terrain-chunk-group:${region.id}:${descriptor.key}:${descriptor.lod}`;
+
+    const terrainMesh = new THREE.Mesh(built.terrainGeometry, material);
+    terrainMesh.receiveShadow = true;
+    terrainMesh.castShadow = false;
+    terrainMesh.name = `terrain-chunk:${region.id}:${descriptor.key}:${descriptor.lod}`;
+    terrainMesh.userData.chunkKey = descriptor.key;
+    terrainMesh.userData.lod = descriptor.lod;
+    terrainMesh.userData.resolution = descriptor.resolution;
+    terrainMesh.userData.presentationOnly = true;
+
+    const waterMesh = new THREE.Mesh(built.waterGeometry, waterMaterial);
+    waterMesh.receiveShadow = true;
+    waterMesh.castShadow = false;
+    waterMesh.renderOrder = 1;
+    waterMesh.name = `terrain-water-surface:${region.id}:${descriptor.key}:${descriptor.lod}`;
+    waterMesh.userData.chunkKey = descriptor.key;
+    waterMesh.userData.waterTriangles = built.waterTriangles;
+    waterMesh.userData.seaLevelY = built.seaLevelY;
+    waterMesh.userData.presentationOnly = true;
+
+    group.add(terrainMesh, waterMesh);
+    root.add(group);
+    return { descriptor, group, terrainMesh, waterMesh, waterTriangles: built.waterTriangles };
   }
 
   function updateFocusPoints(focusPoints) {
@@ -138,7 +222,8 @@ export function createChunkedLocalTerrain(region, {
       activeChunks: plan.active.length,
       warmChunks: plan.warm.length,
       vertices: plan.estimatedTerrainVertices,
-      residentChunks: cache.size
+      residentChunks: cache.size,
+      waterTriangles: [...cache.values()].reduce((sum, entry) => sum + entry.waterTriangles, 0)
     });
     return lastStats;
   }
@@ -183,6 +268,7 @@ export function createChunkedLocalTerrain(region, {
     recentHeightQueries.length = 0;
     for (const key of [...cache.keys()]) removeEntry(key);
     material.dispose();
+    waterMaterial.dispose();
   }
 
   return {
@@ -190,6 +276,8 @@ export function createChunkedLocalTerrain(region, {
     root,
     profile,
     centerElevationM,
+    seaLevelY: -centerElevationM,
+    surfaceWaterEnabled: true,
     updateFocusPoints,
     enableAutoFocus,
     heightAt,

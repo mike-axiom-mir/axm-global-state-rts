@@ -1,0 +1,107 @@
+name: Replay forged UC workshop in target browser
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'tests/browser/workshop-real-glb.spec.js'
+      - '.github/workflows/replay-uc-workshop-artifact.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  replay-forged-workshop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SOURCE_RUN_ID: '35060240363'
+      SOURCE_ARTIFACT: global-state-rts-real-workshop-runtime-evidence
+    steps:
+      - name: Check out exact RTS candidate and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Download already-forged UC candidate from the source run
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.SOURCE_ARTIFACT }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: /tmp/uc-workshop-evidence
+
+      - name: Stage the exact forged runtime packet
+        run: |
+          set -euo pipefail
+          mkdir -p runtime-assets/workshop-specialist
+          for name in \
+            improvised-workshop-rts.glb \
+            improvised-workshop-tactical.glb \
+            verification.json \
+            glb-inspection.json \
+            game-readiness-gates.json \
+            semantic-continuity-receipt.json; do
+            src="$(find /tmp/uc-workshop-evidence -type f -name "$name" -print -quit)"
+            test -n "$src"
+            cp "$src" "runtime-assets/workshop-specialist/$name"
+          done
+          python - <<'PY'
+          import json, hashlib
+          from pathlib import Path
+          root=Path('runtime-assets/workshop-specialist')
+          verification=json.loads((root/'verification.json').read_text())
+          inspection=json.loads((root/'glb-inspection.json').read_text())
+          rts=inspection['improvised-workshop-rts.glb']
+          expected=verification['artifacts']['improvised-workshop-rts.glb']['sha256']
+          actual=hashlib.sha256((root/'improvised-workshop-rts.glb').read_bytes()).hexdigest()
+          assert actual == expected == rts['sha256']
+          assert rts['triangles'] == 9268
+          assert rts['material_batches'] == 19
+          assert rts['embedded_images'] == 47
+          print(json.dumps({'sha256': actual, 'triangles': rts['triangles'], 'materials': rts['material_batches'], 'embedded_images': rts['embedded_images']}, indent=2))
+          PY
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install pinned Playwright browser route
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start actual Global State RTS shell
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-uc-replay.log 2>&1 &
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/improvised-workshop-rts.glb > /dev/null \
+              && curl --fail --silent http://127.0.0.1:4174/runtime-assets/workshop-specialist/glb-inspection.json > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-uc-replay.log
+          exit 1
+
+      - name: Render exact forged RTS asset through target runtime
+        run: npx playwright test tests/browser/workshop-real-glb.spec.js --reporter=line
+
+      - name: Preserve target proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-forged-workshop-replay-proof
+          path: |
+            test-results/global-state-rts-real-workshop.png
+            test-results/global-state-rts-real-workshop-receipt.json
+            runtime-assets/workshop-specialist/verification.json
+            runtime-assets/workshop-specialist/glb-inspection.json
+            /tmp/axm-global-state-rts-uc-replay.log
+          if-no-files-found: warn
+          retention-days: 14

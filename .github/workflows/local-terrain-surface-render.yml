@@ -74,11 +74,27 @@ jobs:
           await page.keyboard.press('m');
           await page.waitForFunction(() => window.__AXM_GLOBAL_STATE_RTS__?.describeSeatView('seat-1')?.mode === 'local-rts');
           await page.waitForTimeout(1800);
-          const view = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatView('seat-1'));
-          if (view.local.distanceM !== 360) throw new Error(`unexpected default local distance ${view.local.distanceM}`);
+
+          const closeView = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatView('seat-1'));
+          if (closeView.local.distanceM !== 360) throw new Error(`unexpected default local distance ${closeView.local.distanceM}`);
           fs.mkdirSync('test-results', { recursive: true });
-          fs.writeFileSync('test-results/local-terrain-surface-view.json', `${JSON.stringify(view, null, 2)}\n`);
+          fs.writeFileSync('test-results/local-terrain-surface-view.json', `${JSON.stringify(closeView, null, 2)}\n`);
           await page.screenshot({ path: 'test-results/local-terrain-surface.png', fullPage: true });
+
+          // Use only the same wheel zoom available to a human player. This proves the larger
+          // mountain/ridge/basin composition without a hidden test camera or special renderer path.
+          const viewport = page.locator('#viewport');
+          await viewport.hover();
+          for (let index = 0; index < 10; index++) {
+            await page.mouse.wheel(0, 600);
+            await page.waitForTimeout(45);
+          }
+          await page.waitForTimeout(1300);
+          const wideView = await page.evaluate(() => window.__AXM_GLOBAL_STATE_RTS__.describeSeatView('seat-1'));
+          if (wideView.local.distanceM < 1200) throw new Error(`wide terrain proof did not zoom out far enough: ${wideView.local.distanceM}`);
+          fs.writeFileSync('test-results/local-terrain-mountain-wide-view.json', `${JSON.stringify(wideView, null, 2)}\n`);
+          await page.screenshot({ path: 'test-results/local-terrain-mountain-wide.png', fullPage: true });
+
           await browser.close();
           if (failures.length) throw new Error(failures.join('\n'));
           JS
@@ -91,6 +107,8 @@ jobs:
           path: |
             test-results/local-terrain-surface.png
             test-results/local-terrain-surface-view.json
+            test-results/local-terrain-mountain-wide.png
+            test-results/local-terrain-mountain-wide-view.json
             /tmp/axm-global-state-rts-terrain.log
           if-no-files-found: error
           retention-days: 14

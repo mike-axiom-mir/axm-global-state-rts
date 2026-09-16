@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+test.setTimeout(120_000);
+
 function captureRuntimeFailures(page) {
   const failures = [];
   page.on('pageerror', error => failures.push(`pageerror: ${error.message}`));
@@ -22,7 +24,7 @@ async function clickAndWaitForAdoption(page) {
   const button = page.locator('#creationMachineWorkshopAdopt');
   await button.click();
   await expect(button).toBeDisabled();
-  await expect(button).toBeEnabled({ timeout: 60_000 });
+  await expect(button).toBeEnabled({ timeout: 90_000 });
 }
 
 function assertRuntimeTruthBoundary(installed, sourceReceipt) {

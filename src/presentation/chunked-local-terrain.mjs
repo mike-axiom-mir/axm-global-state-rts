@@ -9,6 +9,128 @@ import {
   describeLocalWaterPaint
 } from './local-surface-paint.mjs';
 
+function installTerrainDetailShader(material) {
+  material.onBeforeCompile = shader => {
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        `#include <common>\nvarying vec3 vAxmTerrainPosition;\nvarying vec3 vAxmTerrainNormal;`
+      )
+      .replace(
+        '#include <beginnormal_vertex>',
+        `#include <beginnormal_vertex>\nvAxmTerrainNormal = objectNormal;`
+      )
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>\nvAxmTerrainPosition = position;`
+      );
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+varying vec3 vAxmTerrainPosition;
+varying vec3 vAxmTerrainNormal;
+
+float axmTerrainHash(vec2 p) {
+  p = fract(p * vec2(123.34, 345.45));
+  p += dot(p, p + 34.345);
+  return fract(p.x * p.y);
+}
+
+float axmTerrainNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = axmTerrainHash(i);
+  float b = axmTerrainHash(i + vec2(1.0, 0.0));
+  float c = axmTerrainHash(i + vec2(0.0, 1.0));
+  float d = axmTerrainHash(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}`
+      )
+      .replace(
+        'vec4 diffuseColor = vec4( diffuse, opacity );',
+        `vec4 diffuseColor = vec4( diffuse, opacity );
+  vec2 axmGround = vAxmTerrainPosition.xz;
+  float axmMacro = axmTerrainNoise(axmGround * 0.0065 + vec2(11.3, -7.9));
+  float axmMid = axmTerrainNoise(axmGround * 0.031 + vec2(-4.2, 13.1));
+  float axmFine = axmTerrainNoise(axmGround * 0.145 + vec2(21.7, 8.4));
+  float axmGrain = axmTerrainHash(floor(axmGround * 0.52));
+  float axmSlope = 1.0 - clamp(abs(normalize(vAxmTerrainNormal).y), 0.0, 1.0);
+  float axmHeightBand = 0.5 + 0.5 * sin(vAxmTerrainPosition.y * 0.032 + axmMacro * 4.5);
+  float axmValue = (axmMacro - 0.5) * 0.25 + (axmMid - 0.5) * 0.19 + (axmFine - 0.5) * 0.08;
+  diffuseColor.rgb *= 1.0 + axmValue;
+  vec3 axmDrySoil = vec3(0.30, 0.22, 0.12);
+  vec3 axmDarkSoil = vec3(0.12, 0.15, 0.08);
+  vec3 axmRock = vec3(0.29, 0.30, 0.28);
+  float axmDryPatch = smoothstep(0.62, 0.90, axmMid) * (1.0 - smoothstep(0.18, 0.55, axmSlope));
+  float axmDarkPatch = smoothstep(0.68, 0.94, 1.0 - axmMacro) * (0.35 + 0.65 * axmFine);
+  float axmRockPatch = smoothstep(0.16, 0.62, axmSlope) * (0.20 + 0.24 * axmFine);
+  diffuseColor.rgb = mix(diffuseColor.rgb, axmDrySoil, axmDryPatch * 0.16);
+  diffuseColor.rgb = mix(diffuseColor.rgb, axmDarkSoil, axmDarkPatch * 0.10);
+  diffuseColor.rgb = mix(diffuseColor.rgb, axmRock, axmRockPatch);
+  diffuseColor.rgb *= 0.94 + axmHeightBand * 0.08;
+  diffuseColor.rgb += (axmGrain - 0.5) * 0.045;
+  diffuseColor.rgb = clamp(diffuseColor.rgb, vec3(0.018), vec3(0.92));`
+      )
+      .replace(
+        '#include <roughnessmap_fragment>',
+        `#include <roughnessmap_fragment>\n  roughnessFactor = clamp(roughnessFactor + (axmFine - 0.5) * 0.13 + axmSlope * 0.08, 0.56, 1.0);`
+      );
+  };
+  material.customProgramCacheKey = () => 'axm-foundation-terrain-detail-v2';
+  material.userData.surfaceDetailShader = 'foundation-height-slope-macro-mid-fine-v2';
+  return material;
+}
+
+function installWaterDetailShader(material) {
+  material.onBeforeCompile = shader => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\nvarying vec3 vAxmWaterPosition;`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>\nvAxmWaterPosition = position;`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+varying vec3 vAxmWaterPosition;
+float axmWaterHash(vec2 p) {
+  p = fract(p * vec2(443.897, 441.423));
+  p += dot(p, p + 19.19);
+  return fract(p.x * p.y);
+}
+float axmWaterNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = axmWaterHash(i);
+  float b = axmWaterHash(i + vec2(1.0, 0.0));
+  float c = axmWaterHash(i + vec2(0.0, 1.0));
+  float d = axmWaterHash(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}`
+      )
+      .replace(
+        'vec4 diffuseColor = vec4( diffuse, opacity );',
+        `vec4 diffuseColor = vec4( diffuse, opacity );
+  vec2 axmWaterXZ = vAxmWaterPosition.xz;
+  float axmWaveA = axmWaterNoise(axmWaterXZ * 0.045 + vec2(2.7, 8.1));
+  float axmWaveB = axmWaterNoise(axmWaterXZ * 0.13 + vec2(-4.9, 1.4));
+  float axmWaterLift = (axmWaveA - 0.5) * 0.13 + (axmWaveB - 0.5) * 0.07;
+  diffuseColor.rgb *= 1.0 + axmWaterLift;
+  diffuseColor.rgb += vec3(0.005, 0.018, 0.025) * smoothstep(0.62, 0.94, axmWaveB);
+  diffuseColor.rgb = clamp(diffuseColor.rgb, vec3(0.01), vec3(0.78));`
+      )
+      .replace(
+        '#include <roughnessmap_fragment>',
+        `#include <roughnessmap_fragment>\n  roughnessFactor = clamp(roughnessFactor + (axmWaveB - 0.5) * 0.10, 0.14, 0.42);`
+      );
+  };
+  material.customProgramCacheKey = () => 'axm-foundation-water-detail-v2';
+  material.userData.surfaceDetailShader = 'foundation-sea-level-water-v2';
+  return material;
+}
+
 function sampleSlope01(samples, resolution, row, col, spacingM) {
   const leftCol = Math.max(0, col - 1);
   const rightCol = Math.min(resolution - 1, col + 1);
@@ -134,14 +256,14 @@ export function createChunkedLocalTerrain(region, {
   root.userData.surfacePaint = 'foundation-elevation-moisture-geology-v2';
   root.userData.presentationOnly = true;
 
-  const material = new THREE.MeshStandardMaterial({
+  const material = installTerrainDetailShader(new THREE.MeshStandardMaterial({
     vertexColors: true,
-    roughness: 0.91,
-    metalness: 0.015,
+    roughness: 0.86,
+    metalness: 0.012,
     flatShading: false,
     dithering: true
-  });
-  const waterMaterial = new THREE.MeshStandardMaterial({
+  }));
+  const waterMaterial = installWaterDetailShader(new THREE.MeshStandardMaterial({
     vertexColors: true,
     transparent: true,
     opacity: 0.84,
@@ -150,7 +272,7 @@ export function createChunkedLocalTerrain(region, {
     depthWrite: true,
     side: THREE.DoubleSide,
     dithering: true
-  });
+  }));
   const cache = new Map();
   let lastPlanSignature = null;
   let lastStats = Object.freeze({ activeChunks: 0, warmChunks: 0, vertices: 0, residentChunks: 0, waterTriangles: 0 });

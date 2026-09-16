@@ -38,7 +38,7 @@
     {"id":"defense-turret-base-a","category":"defense","priority":0,"status":"READY","kind":"universal turret base","requirements":["named weapon hardpoint","works with multiple weapon modules"]},
 
     {"id":"vehicle-scrap-truck-a","category":"vehicle","priority":0,"status":"READY","kind":"basic cargo truck","requirements":["separate wheel nodes","cargo hardpoint","simple rugged cab"]},
-    {"id":"vehicle-scout-buggy-a","category":"vehicle","priority":0,"status":"READY","kind":"light scout buggy","requirements":["open frame","strong small silhouette","separate wheel nodes"]},
+    {"id":"vehicle-scout-buggy-a","category":"vehicle","priority":0,"status":"CREATED","candidate":"assets/quality-rebuilds/vehicle-scout-buggy-a/manifest.json","kind":"light scout buggy","requirements":["open frame","strong small silhouette","separate wheel nodes"]},
     {"id":"vehicle-cargo-trailer-a","category":"vehicle-module","priority":0,"status":"READY","kind":"towable cargo trailer","requirements":["universal hitch","cargo volume readable"]},
 
     {"id":"weapon-rifle-a","category":"weapon","priority":0,"status":"READY","kind":"basic crew rifle","requirements":["simple silhouette","shared crew grip compatibility"]},

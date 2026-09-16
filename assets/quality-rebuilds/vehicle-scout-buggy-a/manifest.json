@@ -1,0 +1,635 @@
+{
+  "art_direction": "miniature post-apocalyptic diorama RTS; chunky readable open-frame scout buggy; believable scrap repair history",
+  "asset_id": "vehicle-scout-buggy-a",
+  "authority": "Candidate creation only. This manifest does not mark the asset ACCEPTED, TESTED in engine, or CANON.",
+  "candidate_id": "scrap-buggy-quality-v2",
+  "contract": {
+    "axis": "+Y up",
+    "forward": "+Z",
+    "meters_per_unit": 1,
+    "pivot": "vehicle body/axle center at world origin; ground is y=0.04",
+    "separate_moving_nodes": [
+      "wheel_front_left",
+      "wheel_front_right",
+      "wheel_rear_left",
+      "wheel_rear_right",
+      "steering_wheel",
+      "utility_mount_swivel"
+    ],
+    "sockets": [
+      "socket_driver",
+      "socket_passenger",
+      "socket_utility_hardpoint",
+      "socket_front_tow",
+      "socket_rear_hitch",
+      "socket_headlight_left",
+      "socket_headlight_right"
+    ]
+  },
+  "deliveries": {
+    "collision": {
+      "bounds": {
+        "max": [
+          0.85,
+          1.5999999999999999,
+          1.104226946144639
+        ],
+        "min": [
+          -0.85,
+          0.06291680410135475,
+          -1.104226946144639
+        ]
+      },
+      "bytes": 18828,
+      "file": "vehicle_scout_buggy_a_quality_v2_collision.glb",
+      "materials": 1,
+      "nodes": 7,
+      "sha256": "02c4767b83e223a7436e4100647b9e60291f30a705e6778c85bbe65062b0dfd8",
+      "triangles": 152
+    },
+    "editable_gltf": {
+      "bin": "vehicle_scout_buggy_a_quality_v2_lod0.bin",
+      "bin_sha256": "e7a36608e47554b14047d4af88da737b5626c5b0aa47d893bc4df0781f29e45e",
+      "gltf": "vehicle_scout_buggy_a_quality_v2_lod0.gltf",
+      "gltf_sha256": "5e3e7095b579a4df3663b88d40d3baedc416cd1881f00e20f2ae65f3bdae63a7"
+    },
+    "lod0": {
+      "bounds": {
+        "max": [
+          0.9950000000000001,
+          1.7222507054240157,
+          1.1605
+        ],
+        "min": [
+          -0.875,
+          -0.03054079923707241,
+          -1.1605
+        ]
+      },
+      "bytes": 448664,
+      "file": "vehicle_scout_buggy_a_quality_v2_lod0.glb",
+      "materials": 9,
+      "nodes": 249,
+      "sha256": "a5a39500854e4d7cdce97ebded59a64691cfb494333bb6efbab87eb4a078440d",
+      "triangles": 7874
+    },
+    "lod1": {
+      "bounds": {
+        "max": [
+          0.9950000000000001,
+          1.7222507054240157,
+          1.1530769230769229
+        ],
+        "min": [
+          -0.8579156782817915,
+          -0.03054079923707241,
+          -1.1487003400963123
+        ]
+      },
+      "bytes": 277084,
+      "file": "vehicle_scout_buggy_a_quality_v2_lod1.glb",
+      "materials": 9,
+      "nodes": 149,
+      "sha256": "3f5b4c684e45b40542a7b08d191bf33e179de850339eec42fbb7096dfbdab2b4",
+      "triangles": 3762
+    }
+  },
+  "diagnostics": [
+    {
+      "bytes": 17261,
+      "camera": [
+        0,
+        1.1,
+        5.5
+      ],
+      "file": "front-silhouette.png",
+      "mode": "silhouette",
+      "sha256": "50d52e13ab7f3a03bc54cba46178eac7e552173ea46f546036fc8c244768093f"
+    },
+    {
+      "bytes": 41832,
+      "camera": [
+        0,
+        1.1,
+        5.5
+      ],
+      "file": "front-depth.png",
+      "mode": "depth",
+      "sha256": "38690be2ff822eb4c2cb45898652c901af6871e6490c2a52336de002f9a43557"
+    },
+    {
+      "bytes": 81917,
+      "camera": [
+        0,
+        1.1,
+        5.5
+      ],
+      "file": "front-normal.png",
+      "mode": "normal",
+      "sha256": "79aea95cbd187f1591777fda8bcd912f14b5033c88462f3c086b525e7ad73ae9"
+    },
+    {
+      "bytes": 26218,
+      "camera": [
+        5.5,
+        1.1,
+        0
+      ],
+      "file": "side-silhouette.png",
+      "mode": "silhouette",
+      "sha256": "f3725a4e991f897bbf98fc76282e16747acc2429c7cf6b56c83f7323e60d5b28"
+    },
+    {
+      "bytes": 51916,
+      "camera": [
+        5.5,
+        1.1,
+        0
+      ],
+      "file": "side-depth.png",
+      "mode": "depth",
+      "sha256": "239862a2ca1f414fc6c2aff2986a854137718f93452d9ad50cf06e74c7f0f72a"
+    },
+    {
+      "bytes": 88731,
+      "camera": [
+        5.5,
+        1.1,
+        0
+      ],
+      "file": "side-normal.png",
+      "mode": "normal",
+      "sha256": "757e151c3dd29cafa992e0102bfba95ebc3537d0f6a01307f5f973610b22008b"
+    },
+    {
+      "bytes": 15021,
+      "camera": [
+        0,
+        1.1,
+        -5.5
+      ],
+      "file": "rear-silhouette.png",
+      "mode": "silhouette",
+      "sha256": "4f6f480721ececedacc5e9d3969e14a7f738ba5aea5c0feb7b156807ab566d8b"
+    },
+    {
+      "bytes": 36926,
+      "camera": [
+        0,
+        1.1,
+        -5.5
+      ],
+      "file": "rear-depth.png",
+      "mode": "depth",
+      "sha256": "46c7c9d334f2bf38618c8de9d664be48c4f7cb23b810618be9a5a845cb54b2c2"
+    },
+    {
+      "bytes": 73190,
+      "camera": [
+        0,
+        1.1,
+        -5.5
+      ],
+      "file": "rear-normal.png",
+      "mode": "normal",
+      "sha256": "da6a591b048276d0e6019f969bf649792c846a5a7957a293d9ed597e114cfcf9"
+    },
+    {
+      "bytes": 21614,
+      "camera": [
+        0,
+        6.8,
+        0.01
+      ],
+      "file": "top-silhouette.png",
+      "mode": "silhouette",
+      "sha256": "8ccb120d1ff9825ce7ac100adb7b314c1872426bfa65623c50785c43fcf14acf"
+    },
+    {
+      "bytes": 39560,
+      "camera": [
+        0,
+        6.8,
+        0.01
+      ],
+      "file": "top-depth.png",
+      "mode": "depth",
+      "sha256": "4ba02a648fc72b13f92760967b71f7a4b2f9bc86b22b290ef812a080457875cf"
+    },
+    {
+      "bytes": 71328,
+      "camera": [
+        0,
+        6.8,
+        0.01
+      ],
+      "file": "top-normal.png",
+      "mode": "normal",
+      "sha256": "a9b8eaa743b843c5e1a55206841a0afc337267e4b883ef0d60c9215ace277474"
+    }
+  ],
+  "materials": {
+    "families": 9,
+    "names": [
+      "painted_teal",
+      "old_cream",
+      "signal_yellow",
+      "oxidized_red",
+      "dark_iron",
+      "steel",
+      "rubber",
+      "upholstery",
+      "glass_lamp"
+    ],
+    "procedural_maps": {
+      "dark_iron": {
+        "maps": {
+          "base_color": {
+            "bytes": 2612,
+            "file": "textures/dark_iron/base_color.png",
+            "sha256": "2f6f02579570961877f989425682c724ea512a23979c893478f5f19dcfacef12"
+          },
+          "normal": {
+            "bytes": 4433,
+            "file": "textures/dark_iron/normal.png",
+            "sha256": "fbe955f62c2afd17ec267eb405b4ca94f65e0cc9a1339482309f37071ad5a92b"
+          },
+          "orm": {
+            "bytes": 290,
+            "file": "textures/dark_iron/orm.png",
+            "sha256": "4d593b5cbf25ce886fc053ff8d7c2c5d1d5986b03e41ed56edb0a460f6bc3077"
+          }
+        },
+        "spec": {
+          "base_color": [
+            50,
+            55,
+            53
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "metallic": 0.82,
+          "roughness": 0.37,
+          "wear": 0.38
+        }
+      },
+      "glass_lamp": {
+        "maps": {
+          "base_color": {
+            "bytes": 4811,
+            "file": "textures/glass_lamp/base_color.png",
+            "sha256": "b6d89b09807287e0d0d5093374249c4b5377ba346738ebab0ab72eb617e90a5b"
+          },
+          "normal": {
+            "bytes": 4394,
+            "file": "textures/glass_lamp/normal.png",
+            "sha256": "b54148d02b3e8f3a26ccb7cfc218bccba6945d6b1f1ff82c74623b2d16f7dfee"
+          },
+          "orm": {
+            "bytes": 162,
+            "file": "textures/glass_lamp/orm.png",
+            "sha256": "cb7ffd6c07d8c3b1ddd90a8c1227634ce4c92c7b64b7e15afe8a5006c6fa81f9"
+          }
+        },
+        "spec": {
+          "base_color": [
+            255,
+            218,
+            126
+          ],
+          "emissive": [
+            1.0,
+            0.55,
+            0.12
+          ],
+          "metallic": 0.05,
+          "roughness": 0.2,
+          "wear": 0.05
+        }
+      },
+      "old_cream": {
+        "maps": {
+          "base_color": {
+            "bytes": 4831,
+            "file": "textures/old_cream/base_color.png",
+            "sha256": "0709493508d4f2192620bf82f7ee5fb106de447fa9f5b3f747820bc6a8d0496a"
+          },
+          "normal": {
+            "bytes": 4393,
+            "file": "textures/old_cream/normal.png",
+            "sha256": "a373c183d962782737f6ea8aaf802613c184cc607b8019aebf3d6857acffe9d0"
+          },
+          "orm": {
+            "bytes": 317,
+            "file": "textures/old_cream/orm.png",
+            "sha256": "2789bb74e1310d143002dacfff763d45091c2bf5d2545803a16f674250256ae0"
+          }
+        },
+        "spec": {
+          "base_color": [
+            206,
+            190,
+            148
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "metallic": 0.22,
+          "roughness": 0.68,
+          "wear": 0.42
+        }
+      },
+      "oxidized_red": {
+        "maps": {
+          "base_color": {
+            "bytes": 3761,
+            "file": "textures/oxidized_red/base_color.png",
+            "sha256": "fdfc5addaa09ff86e4ee9f8bfc9346b6e15b99ae4c57971f19ddf8f159410cf4"
+          },
+          "normal": {
+            "bytes": 4369,
+            "file": "textures/oxidized_red/normal.png",
+            "sha256": "8fb5b58e5f9abbcadf261245099b374d5e308e5cba2397d66f9c96d0f9d562c9"
+          },
+          "orm": {
+            "bytes": 311,
+            "file": "textures/oxidized_red/orm.png",
+            "sha256": "40c3bf6146fb8b4d30bf7f05827d516d88bc0f6895e3a8e64b326e97c9fdc916"
+          }
+        },
+        "spec": {
+          "base_color": [
+            133,
+            51,
+            39
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "metallic": 0.48,
+          "roughness": 0.64,
+          "wear": 0.52
+        }
+      },
+      "painted_teal": {
+        "maps": {
+          "base_color": {
+            "bytes": 3348,
+            "file": "textures/painted_teal/base_color.png",
+            "sha256": "17193a60f4fe740b71a8c3fb13f3ff1d7334111dcccf2e450916ecac9351e1fa"
+          },
+          "normal": {
+            "bytes": 4382,
+            "file": "textures/painted_teal/normal.png",
+            "sha256": "aa3fbd07d043de7de652367b2e7b33761bcb22f191f9becd64997ec06a001137"
+          },
+          "orm": {
+            "bytes": 241,
+            "file": "textures/painted_teal/orm.png",
+            "sha256": "ea0e6311bde034bda7ad30215954c3a16887a1f36e4795292a583b66a20ebdcc"
+          }
+        },
+        "spec": {
+          "base_color": [
+            44,
+            104,
+            105
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "metallic": 0.62,
+          "roughness": 0.53,
+          "wear": 0.34
+        }
+      },
+      "rubber": {
+        "maps": {
+          "base_color": {
+            "bytes": 2037,
+            "file": "textures/rubber/base_color.png",
+            "sha256": "69f6c7fa95b171af01af625b11d155b37fc34b300c9f19ee18223d8091afa9c4"
+          },
+          "normal": {
+            "bytes": 4407,
+            "file": "textures/rubber/normal.png",
+            "sha256": "440479cbe4200b88cd43bdd10214c5a894fc2d1abbb1f04cfe38aa0bf4c98281"
+          },
+          "orm": {
+            "bytes": 269,
+            "file": "textures/rubber/orm.png",
+            "sha256": "38fe2b0094a0f4708fdc72a1dee92819dbe5f17284e0776f6bb5638ec4894a5e"
+          }
+        },
+        "spec": {
+          "base_color": [
+            34,
+            33,
+            28
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "metallic": 0.02,
+          "roughness": 0.88,
+          "wear": 0.22
+        }
+      },
+      "signal_yellow": {
+        "maps": {
+          "base_color": {
+            "bytes": 4694,
+            "file": "textures/signal_yellow/base_color.png",
+            "sha256": "67ee6b88f202739ef01183f0884bc2d063c7addb415bfc3867c1defae92396b9"
+          },
+          "normal": {
+            "bytes": 4426,
+            "file": "textures/signal_yellow/normal.png",
+            "sha256": "28f014d1ac7c1ae3dde0e0ce6709dda467f86412bfd2b08a88361e775b9024af"
+          },
+          "orm": {
+            "bytes": 257,
+            "file": "textures/signal_yellow/orm.png",
+            "sha256": "edee50e580b78d8a24e608edae198e4d1a8a136a048ea143bf77469f7658290e"
+          }
+        },
+        "spec": {
+          "base_color": [
+            227,
+            170,
+            49
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "metallic": 0.28,
+          "roughness": 0.52,
+          "wear": 0.26
+        }
+      },
+      "steel": {
+        "maps": {
+          "base_color": {
+            "bytes": 3773,
+            "file": "textures/steel/base_color.png",
+            "sha256": "3f33bfc8e93af98953a094df4c95281f3f0a4a98b7416b70029bcfbaec4720b6"
+          },
+          "normal": {
+            "bytes": 4388,
+            "file": "textures/steel/normal.png",
+            "sha256": "f11d950e7a7915b18b44cf73e5e6cc1611ab503a829ce286b4813d3eaaeb7d3e"
+          },
+          "orm": {
+            "bytes": 226,
+            "file": "textures/steel/orm.png",
+            "sha256": "d0d29eb6798a23563af447fc8f3bac534fbd80d52df3611f5a3091965658e757"
+          }
+        },
+        "spec": {
+          "base_color": [
+            126,
+            133,
+            126
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "metallic": 0.9,
+          "roughness": 0.25,
+          "wear": 0.18
+        }
+      },
+      "upholstery": {
+        "maps": {
+          "base_color": {
+            "bytes": 3295,
+            "file": "textures/upholstery/base_color.png",
+            "sha256": "496558de95a4f3c935e293256885f5d738adbd471d52e40adaa3e426df9a308c"
+          },
+          "normal": {
+            "bytes": 4387,
+            "file": "textures/upholstery/normal.png",
+            "sha256": "4be1f568b9222237acea04151e4833a25f517ebf6dff8c0fa575f25c4c7a190b"
+          },
+          "orm": {
+            "bytes": 281,
+            "file": "textures/upholstery/orm.png",
+            "sha256": "bd001b163f6ed1e32967dd37698b494f617c65ef0200c68211f2ccb8779ee250"
+          }
+        },
+        "spec": {
+          "base_color": [
+            73,
+            57,
+            42
+          ],
+          "emissive": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "metallic": 0.02,
+          "roughness": 0.82,
+          "wear": 0.32
+        }
+      }
+    }
+  },
+  "measurements": {
+    "bounds": {
+      "max": [
+        0.9950000000000001,
+        1.7222507054240157,
+        1.1605
+      ],
+      "min": [
+        -0.875,
+        -0.03054079923707241,
+        -1.1605
+      ]
+    },
+    "collision_triangles": 152,
+    "lod0_triangles": 7874,
+    "lod1_triangles": 3762
+  },
+  "name": "Scrap Scout Buggy \u2014 quality v2",
+  "previews": [
+    {
+      "bytes": 213711,
+      "camera": [
+        3.3,
+        2.65,
+        4.7
+      ],
+      "file": "hero-front.png",
+      "mode": "beauty",
+      "sha256": "201a11566a8c9ca86858ba426abdfb81a5a30b21454f185e647203a9a897ae72"
+    },
+    {
+      "bytes": 187140,
+      "camera": [
+        -3.4,
+        2.55,
+        -4.6
+      ],
+      "file": "hero-rear.png",
+      "mode": "beauty",
+      "sha256": "e800c7aaf98836ced2b72d6c3c10a9f602cf044caae212ecfd6682d03caeb66b"
+    },
+    {
+      "bytes": 192989,
+      "camera": [
+        5.4,
+        2.25,
+        0.25
+      ],
+      "file": "hero-side.png",
+      "mode": "beauty",
+      "sha256": "3751838515ee42b14227ab5642d027feed1270929a6127a990a2daa0f43e3799"
+    },
+    {
+      "bytes": 202056,
+      "camera": [
+        3.7,
+        6.6,
+        3.5
+      ],
+      "file": "hero-top.png",
+      "mode": "beauty",
+      "sha256": "7db08c5b117dadf3c596adf04b7c1c83c1cdea7095be4d4a056fe85bbbc673ba"
+    }
+  ],
+  "schema": "axm.global-state-rts.quality-rebuild/v0.1",
+  "source": {
+    "builder": "source/native_scrap_scout_buggy.py",
+    "compiler": "source/native_scene_gltf.py",
+    "generation": "deterministic AXM-native procedural geometry and software proof renders",
+    "reference_sha256": "0fbad9cbbf521be91028dcef3e73112ceacab5837910a3d5700762ff67cada82"
+  },
+  "status": "CREATED_NOT_ACCEPTED",
+  "verification": {
+    "collision_physics": "NOT_RUN",
+    "engine_import": "NOT_RUN",
+    "runtime_scale": "NOT_RUN",
+    "split_screen_readability": "NOT_RUN",
+    "static_structure": "PASS",
+    "target_device_performance": "NOT_RUN",
+    "visual_review": "STATIC_PROOF_READY",
+    "wheel_or_steering_motion": "NOT_RUN"
+  }
+}

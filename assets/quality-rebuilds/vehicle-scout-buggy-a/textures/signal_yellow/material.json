@@ -1,0 +1,34 @@
+{
+  "maps": {
+    "base_color": {
+      "bytes": 4694,
+      "file": "textures/signal_yellow/base_color.png",
+      "sha256": "67ee6b88f202739ef01183f0884bc2d063c7addb415bfc3867c1defae92396b9"
+    },
+    "normal": {
+      "bytes": 4426,
+      "file": "textures/signal_yellow/normal.png",
+      "sha256": "28f014d1ac7c1ae3dde0e0ce6709dda467f86412bfd2b08a88361e775b9024af"
+    },
+    "orm": {
+      "bytes": 257,
+      "file": "textures/signal_yellow/orm.png",
+      "sha256": "edee50e580b78d8a24e608edae198e4d1a8a136a048ea143bf77469f7658290e"
+    }
+  },
+  "spec": {
+    "base_color": [
+      227,
+      170,
+      49
+    ],
+    "emissive": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "metallic": 0.28,
+    "roughness": 0.52,
+    "wear": 0.26
+  }
+}

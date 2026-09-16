@@ -83,7 +83,7 @@ These are `READY` because they directly support the first local gameplay slice.
 | `defense-watch-post-a` | Small observation post | Cheap silhouette; no need to imply it is a continuity anchor | READY |
 | `defense-turret-base-a` | Improvised defensive turret base | Universal hardpoint for several weapon modules | READY |
 | `vehicle-scrap-truck-a` | Basic cargo truck | Cab + cargo bed, modular wheels, universal cargo hardpoint | READY |
-| `vehicle-scout-buggy-a` | Fast light scout vehicle | Small, open-frame, easy to read at distance | READY |
+| `vehicle-scout-buggy-a` | Fast light scout vehicle | Small, open-frame, easy to read at distance; quality-v2 candidate under `assets/quality-rebuilds/vehicle-scout-buggy-a/` | CREATED |
 | `vehicle-cargo-trailer-a` | Towable cargo trailer | Simple logistics multiplier, universal hitch | READY |
 | `weapon-rifle-a` | Basic rifle | Crew-held; simple silhouette | READY |
 | `weapon-machinegun-module-a` | Mounted machine gun | Turret/vehicle hardpoint module | READY |

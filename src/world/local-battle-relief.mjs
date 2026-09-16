@@ -98,52 +98,70 @@ export function describeLocalBattleRelief(frame, xM, zM, foundationElevationM) {
   const angle = (hash2(17, 29, seed) * TAU) + 0.31;
   const local = rotate(x, z, angle);
   const r = Math.hypot(local.x, local.z);
-  const centerProtection = smoothstep(300, 720, r);
+  const centerProtection = smoothstep(340, 650, r);
   const landStrength = smoothstep(18, 180, baseElevationM);
 
-  // Rolling battlefield-scale relief: visible from the normal RTS camera but not noisy.
-  const rolling = (fbm2(local.x / 1050, local.z / 1050, seed ^ 0x19a4, 4) - 0.5) * 118;
+  // Rolling terrain keeps open ground from reading like a board without turning it into noise.
+  const rolling = (fbm2(local.x / 920, local.z / 920, seed ^ 0x19a4, 4) - 0.5) * 150;
 
-  // Two long, imperfect ridges cross the inner battle area. They create high ground and flanks.
-  const ridgeCurveA = 620 + Math.sin(local.x / 720 + 0.8) * 190;
-  const ridgeCurveB = -760 + Math.sin(local.z / 910 - 0.5) * 250;
-  const ridgeA = gaussian(local.z - ridgeCurveA, 185)
-    * (135 + fbm2(local.x / 720, local.z / 720, seed ^ 0x41d3, 3) * 155);
-  const ridgeB = gaussian(local.x - ridgeCurveB, 235)
-    * (95 + fbm2(local.x / 850, local.z / 850, seed ^ 0x731b, 3) * 130);
-  const ridge = (ridgeA + ridgeB) * smoothstep(360, 900, r);
+  // Two readable inner ridges create high ground and flanking choices near the actual fight.
+  const ridgeCurveA = 470 + Math.sin(local.x / 650 + 0.8) * 155;
+  const ridgeCurveB = -610 + Math.sin(local.z / 760 - 0.5) * 185;
+  const ridgeA = gaussian(local.z - ridgeCurveA, 155)
+    * (205 + fbm2(local.x / 620, local.z / 620, seed ^ 0x41d3, 3) * 225);
+  const ridgeB = gaussian(local.x - ridgeCurveB, 190)
+    * (155 + fbm2(local.x / 700, local.z / 700, seed ^ 0x731b, 3) * 205);
+  const ridge = (ridgeA + ridgeB) * smoothstep(300, 680, r);
 
-  // A broad mountain ring/shoulder gives the battlefield a real surrounding landform instead
-  // of an infinite flat board. It rises gradually enough for the streamed terrain mesh.
-  const mountainNoise = fbm2(local.x / 1950, local.z / 1950, seed ^ 0x5c27, 4);
-  let mountain = smoothstep(1450, 3900, r) * (285 + mountainNoise * 515);
+  // Broad mountain shoulders sit close enough to be visible from ordinary RTS play. Their slopes
+  // are deliberately broad, while a pass notch prevents them from becoming one impassable wall.
+  const shoulderNoiseA = fbm2(local.x / 980, local.z / 980, seed ^ 0x53c1, 4);
+  const shoulderNoiseB = fbm2(local.x / 1120, local.z / 1120, seed ^ 0x72f9, 4);
+  const shoulderCurveA = 930 + Math.sin(local.x / 780 - 0.2) * 210;
+  const shoulderCurveB = -1120 + Math.sin(local.z / 880 + 0.7) * 260;
+  const shoulderA = gaussian(local.z - shoulderCurveA, 330)
+    * smoothstep(500, 930, r)
+    * (310 + shoulderNoiseA * 410);
+  const shoulderB = gaussian(local.x - shoulderCurveB, 390)
+    * smoothstep(620, 1080, r)
+    * (250 + shoulderNoiseB * 350);
 
-  // Cut multiple broad passes through that mountain mass so it never becomes a closed wall.
-  const passA = gaussian(local.z, 330);
+  const shoulderPassA = gaussian(local.x - 120, 260);
+  const shoulderPassB = gaussian(local.z + 180, 300);
+  const mountainShoulders = shoulderA * (1 - shoulderPassA * 0.82)
+    + shoulderB * (1 - shoulderPassB * 0.76);
+
+  // The larger surrounding mountain mass still gives the whole battlefield a valley/basin feel.
+  const mountainNoise = fbm2(local.x / 1550, local.z / 1550, seed ^ 0x5c27, 4);
+  let mountainRing = smoothstep(980, 3000, r) * (330 + mountainNoise * 610);
+
+  // Multiple broad routes cut through the mountain mass so the map keeps movement choices.
+  const passA = gaussian(local.z, 340);
   const passB = gaussian(local.x * 0.72 + local.z * 0.69 - 520, 390);
   const passC = gaussian(local.x * 0.64 - local.z * 0.77 + 690, 430);
   const pass = clamp01(Math.max(passA, passB * 0.88, passC * 0.80));
-  mountain *= 1 - pass * 0.82;
+  mountainRing *= 1 - pass * 0.82;
 
   // A shallow basin/valley keeps useful open fighting ground between the ridges and mountains.
-  const basinShape = gaussian(local.x * 0.38 + local.z * 0.92 + 120, 760)
-    * smoothstep(580, 1800, r)
-    * (1 - smoothstep(2200, 3500, r));
-  const basin = basinShape * 72;
+  const basinShape = gaussian(local.x * 0.38 + local.z * 0.92 + 120, 720)
+    * smoothstep(520, 1500, r)
+    * (1 - smoothstep(1850, 3000, r));
+  const basin = basinShape * 95;
 
   // Keep bases and immediate spawn fixtures stable; relief ramps in outside the core footprint.
+  const mountain = mountainShoulders + mountainRing;
   const rawOffset = rolling + ridge + mountain - basin;
   const offsetM = rawOffset * centerProtection * landStrength;
   const elevationM = Math.max(19, baseElevationM + offsetM);
 
-  const mountainStrength = clamp01(mountain / 800);
-  const ridgeStrength = clamp01(ridge / 300);
-  const basinStrength = clamp01(basin / 72);
-  const archetype = mountainStrength > 0.48
+  const mountainStrength = clamp01(mountain / 900);
+  const ridgeStrength = clamp01(ridge / 420);
+  const basinStrength = clamp01(basin / 95);
+  const archetype = mountainStrength > 0.42
     ? 'mountain-pass'
     : basinStrength > 0.48
       ? 'valley-basin'
-      : ridgeStrength > 0.30
+      : ridgeStrength > 0.28
         ? 'plains-ridges'
         : 'rolling-open-ground';
 

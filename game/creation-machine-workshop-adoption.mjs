@@ -1,14 +1,15 @@
 const statusElement = document.getElementById('creationMachineWorkshopStatus');
 const adoptButton = document.getElementById('creationMachineWorkshopAdopt');
 
-const RECEIPT_URL = '../assets/creation-machine/runtime-prepared/improvised-workshop-lod1.receipt.json';
-const GLB_URL = '../assets/creation-machine/runtime-prepared/improvised-workshop-lod1.glb';
+const RECEIPT_URL = '../assets/creation-machine/specialist-workshop/promotion-receipt.json';
+const GLB_URL = '../assets/creation-machine/specialist-workshop/improvised-workshop-rts.glb';
 const ASSET_ID = 'building-workshop-a';
-const EXPECTED_SOURCE_STATUS = 'PREPARED_RUNTIME_DERIVATIVE_NOT_VISUALLY_ACCEPTED';
+const EXPECTED_SOURCE_STATUS = 'PROMOTED_PRESENTATION_CANDIDATE_NOT_CANON';
+const EXPECTED_FILENAME = 'improvised-workshop-rts.glb';
 
 let lastStatus = Object.freeze({
   status: 'PROCEDURAL_FALLBACK_ACTIVE',
-  reason: 'prepared-derivative-not-checked',
+  reason: 'specialist-candidate-not-checked',
   assetId: ASSET_ID
 });
 
@@ -17,32 +18,32 @@ function renderStatus(result) {
   if (!statusElement) return lastStatus;
 
   if (result.status === 'RUNTIME_IMPORTED_NOT_VISUALLY_ACCEPTED') {
-    statusElement.textContent = `Creation Machine workshop loaded for ${result.seatId} · runtime imported · visual/performance/collision/navigation acceptance NOT TESTED.`;
+    statusElement.textContent = `UC specialist workshop loaded for ${result.seatId} · machine-forged ${result.triangles} triangles · runtime imported · collision/navigation/target-device acceptance remains separately gated.`;
     return lastStatus;
   }
 
-  if (result.status === 'PREPARED_DERIVATIVE_AVAILABLE') {
-    statusElement.textContent = 'Creation Machine workshop derivative available · procedural fallback remains active until explicit adoption.';
+  if (result.status === 'SPECIALIST_CANDIDATE_AVAILABLE') {
+    statusElement.textContent = `UC specialist workshop available · ${result.triangles} triangles · ${result.materialBatches} material groups · procedural fallback remains active until adoption.`;
     return lastStatus;
   }
 
   if (result.status === 'LOCAL_RTS_REQUIRED') {
-    statusElement.textContent = `${result.seatId} must enter LOCAL RTS before workshop adoption · procedural fallback remains active.`;
+    statusElement.textContent = `${result.seatId} must enter LOCAL RTS before specialist workshop adoption · procedural fallback remains active.`;
     return lastStatus;
   }
 
-  statusElement.textContent = `Procedural workshop fallback active · ${result.reason || 'prepared Creation Machine derivative unavailable'}.`;
+  statusElement.textContent = `Procedural workshop fallback active · ${result.reason || 'promoted UC specialist candidate unavailable'}.`;
   return lastStatus;
 }
 
-async function readPreparedReceipt() {
+async function readPromotedReceipt() {
   let response;
   try {
     response = await fetch(RECEIPT_URL, { cache: 'no-store' });
   } catch (error) {
     return renderStatus({
       status: 'PROCEDURAL_FALLBACK_ACTIVE',
-      reason: `receipt fetch failed: ${String(error?.message || error)}`,
+      reason: `specialist receipt fetch failed: ${String(error?.message || error)}`,
       assetId: ASSET_ID
     });
   }
@@ -50,7 +51,7 @@ async function readPreparedReceipt() {
   if (!response.ok) {
     return renderStatus({
       status: 'PROCEDURAL_FALLBACK_ACTIVE',
-      reason: `prepared derivative unavailable (${response.status})`,
+      reason: `specialist candidate unavailable (${response.status})`,
       assetId: ASSET_ID
     });
   }
@@ -61,42 +62,50 @@ async function readPreparedReceipt() {
   } catch (error) {
     return renderStatus({
       status: 'PROCEDURAL_FALLBACK_ACTIVE',
-      reason: `prepared receipt is not valid JSON: ${String(error?.message || error)}`,
+      reason: `specialist receipt is not valid JSON: ${String(error?.message || error)}`,
       assetId: ASSET_ID
     });
   }
 
   if (
     receipt?.status !== EXPECTED_SOURCE_STATUS
-    || receipt?.asset !== 'improvised-workshop'
-    || receipt?.variant !== 'far'
-    || typeof receipt?.outputGlbSha256 !== 'string'
-    || !/^[a-f0-9]{64}$/i.test(receipt.outputGlbSha256)
+    || receipt?.asset_id !== ASSET_ID
+    || receipt?.filename !== EXPECTED_FILENAME
+    || typeof receipt?.sha256 !== 'string'
+    || !/^[a-f0-9]{64}$/i.test(receipt.sha256)
+    || !Number.isInteger(receipt?.triangles)
+    || receipt.triangles < 4_000
+    || receipt.triangles > 12_000
+    || receipt?.material_batches !== 19
+    || receipt?.embedded_images !== 47
   ) {
     return renderStatus({
       status: 'PROCEDURAL_FALLBACK_ACTIVE',
-      reason: 'prepared receipt failed the expected source identity contract',
+      reason: 'specialist receipt failed the promoted source identity contract',
       assetId: ASSET_ID
     });
   }
 
   return renderStatus({
-    status: 'PREPARED_DERIVATIVE_AVAILABLE',
+    status: 'SPECIALIST_CANDIDATE_AVAILABLE',
     assetId: ASSET_ID,
-    sourceAsset: receipt.asset,
-    variant: receipt.variant,
-    sha256: receipt.outputGlbSha256,
+    filename: receipt.filename,
+    sourceRepository: receipt.source_repository,
+    sourceCommit: receipt.source_commit,
+    sha256: receipt.sha256,
     triangles: receipt.triangles,
+    materialBatches: receipt.material_batches,
+    embeddedImages: receipt.embedded_images,
     receipt
   });
 }
 
-async function adoptPreparedWorkshop({ seatId = 'seat-1', focus = true } = {}) {
+async function adoptPromotedWorkshop({ seatId = 'seat-1', focus = true } = {}) {
   const bridge = window.__AXM_GLOBAL_STATE_RTS__;
   if (!bridge) throw new Error('Global State RTS runtime bridge is unavailable');
 
-  const availability = await readPreparedReceipt();
-  if (availability.status !== 'PREPARED_DERIVATIVE_AVAILABLE') return availability;
+  const availability = await readPromotedReceipt();
+  if (availability.status !== 'SPECIALIST_CANDIDATE_AVAILABLE') return availability;
 
   let response;
   try {
@@ -104,7 +113,7 @@ async function adoptPreparedWorkshop({ seatId = 'seat-1', focus = true } = {}) {
   } catch (error) {
     return renderStatus({
       status: 'PROCEDURAL_FALLBACK_ACTIVE',
-      reason: `GLB fetch failed: ${String(error?.message || error)}`,
+      reason: `specialist GLB fetch failed: ${String(error?.message || error)}`,
       assetId: ASSET_ID,
       seatId
     });
@@ -112,7 +121,7 @@ async function adoptPreparedWorkshop({ seatId = 'seat-1', focus = true } = {}) {
   if (!response.ok) {
     return renderStatus({
       status: 'PROCEDURAL_FALLBACK_ACTIVE',
-      reason: `prepared GLB unavailable (${response.status})`,
+      reason: `specialist GLB unavailable (${response.status})`,
       assetId: ASSET_ID,
       seatId
     });
@@ -128,13 +137,19 @@ async function adoptPreparedWorkshop({ seatId = 'seat-1', focus = true } = {}) {
       uniformScale: 1,
       focus
     });
+    if (runtimeReceipt.triangles !== availability.triangles) {
+      throw new Error(`runtime triangle identity mismatch: expected ${availability.triangles}, got ${runtimeReceipt.triangles}`);
+    }
     return renderStatus({
       status: runtimeReceipt.status,
       assetId: ASSET_ID,
       seatId,
       sha256: runtimeReceipt.sha256,
       triangles: runtimeReceipt.triangles,
+      materials: runtimeReceipt.materials,
+      embeddedImages: runtimeReceipt.embeddedImages,
       sourceStatus: availability.receipt.status,
+      sourceCommit: availability.sourceCommit,
       collision: runtimeReceipt.collision,
       navigation: runtimeReceipt.navigation,
       splitScreenReadability: runtimeReceipt.splitScreenReadability,
@@ -159,7 +174,7 @@ if (adoptButton) {
   adoptButton.addEventListener('click', async () => {
     adoptButton.disabled = true;
     try {
-      await adoptPreparedWorkshop({ seatId: 'seat-1', focus: true });
+      await adoptPromotedWorkshop({ seatId: 'seat-1', focus: true });
     } finally {
       adoptButton.disabled = false;
     }
@@ -167,8 +182,8 @@ if (adoptButton) {
 }
 
 const adoptionBridge = Object.freeze({
-  availability: readPreparedReceipt,
-  adopt: adoptPreparedWorkshop,
+  availability: readPromotedReceipt,
+  adopt: adoptPromotedWorkshop,
   status() {
     return lastStatus;
   }

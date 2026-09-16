@@ -198,6 +198,9 @@ export class SplitScreenPlanetRenderer {
     }
     this.seatStates = next;
     configureGraphicsRenderer(this.renderer, { seatCount: seatIds.length });
+    // Soft dynamic shadows are reserved for single-seat presentation. Split-screen keeps the
+    // material/geometry/sky upgrades but avoids multiplying shadow passes across 2-4 views.
+    this.renderer.shadowMap.enabled = seatIds.length === 1;
     this.resize();
   }
 

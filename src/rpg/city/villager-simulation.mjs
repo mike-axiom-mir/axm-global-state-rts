@@ -569,15 +569,6 @@ function candidateScore(city, simulation, culture, resident, action, tick) {
   let score = 0.20 + jitter + bias + cityCulture * 0.18 + Math.min(0.20, skill / 2500);
 
   if (action === 'rest') score += (1 - n.energy) * 1.5 + t.thrift * 0.05;
-  if (action === 'rest') {
-    resident.vitality = Math.min(100, resident.vitality + 6);
-  }
-
-  if (action === 'forage') {
-    simulation.economy.foodReserve = Math.max(simulation.economy.foodReserve, simulation.residents.length * 6);
-    output = { survivalOnly: true, growth: false };
-  }
-
   if (action === 'eat') {
     score += (1 - n.hunger) * 1.55;
     if (simulation.economy.foodReserve < 1) score -= 0.20;
@@ -963,6 +954,16 @@ function maybeInformalWork(simulation, resident, action, tick) {
 
 function applyActionEconomy(simulation, city, resident, action, tick, effects, party = null) {
   let output = null;
+  if (action === 'rest') {
+    resident.vitality = Math.min(100, resident.vitality + 6);
+    output = { healing: 6 };
+  }
+
+  if (action === 'forage') {
+    simulation.economy.foodReserve = Math.max(simulation.economy.foodReserve, simulation.residents.length * 6);
+    output = { survivalOnly: true, growth: false };
+  }
+
   if (action === 'eat') {
     if (simulation.economy.foodReserve >= 1) {
       simulation.economy.foodReserve -= 1;

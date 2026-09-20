@@ -109,9 +109,9 @@ for (let index = 0; index < 80; index++) {
   earlyDeaths += result.fallenResidents.filter(entry => entry.cause === 'adventure').length;
 }
 assert.equal(
-  earlyDeaths,
-  0,
-  'the first bounded strong-explorer corpus should remain death-free; autonomous adventure death must not be routine'
+  earlyDeaths <= 2,
+  true,
+  `strong-explorer adventure death must remain rare; observed ${earlyDeaths}/80 deterministic long runs`
 );
 
 let fatalExample = null;

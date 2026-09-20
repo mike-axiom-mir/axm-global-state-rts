@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { createPersistentRpgWorld, RPG_WORLD_EVENT_TYPES } from '../rpg/persistent-world.mjs';
 import { createRunLeaderboard } from '../sim/run-leaderboard.mjs';
 import { createGlobalWorldRuntime } from '../world/global-world-runtime.mjs';
 import { createMemoryWorldJournalStore } from './journal-store.mjs';
@@ -9,7 +10,8 @@ export const HOSTED_WORLD_JOURNAL_SCHEMA = 'axm.global-state-rts.hosted-world-jo
 export const HOSTED_EVENT_TYPES = Object.freeze([
   'territory.claim',
   'city.provoke',
-  'run.closed'
+  'run.closed',
+  ...RPG_WORLD_EVENT_TYPES
 ]);
 
 function cloneJson(value) {
@@ -58,7 +60,11 @@ function normalizeCommand(raw) {
 function freshState(worldOptions) {
   return {
     world: createGlobalWorldRuntime(worldOptions),
-    leaderboard: createRunLeaderboard()
+    leaderboard: createRunLeaderboard(),
+    rpg: createPersistentRpgWorld({
+      worldId: worldOptions.rpgWorldId || 'foundation-rpg-world',
+      worldSeed: worldOptions.worldSeed || 'axm-persistent-rpg-v0'
+    })
   };
 }
 
@@ -102,11 +108,15 @@ function validateAndApply(state, command) {
     });
   }
 
+  if (RPG_WORLD_EVENT_TYPES.includes(eventType)) {
+    return state.rpg.applyCommand(command);
+  }
+
   throw new RangeError(`unhandled hosted event type: ${eventType}`);
 }
 
 function stateProjection(state) {
-  return Object.freeze({
+  const projection = {
     world: Object.freeze({
       summary: state.world.snapshot(),
       territory: state.world.territory.snapshot(),
@@ -114,9 +124,10 @@ function stateProjection(state) {
       cities: state.world.cityFabric.snapshot()
     }),
     leaderboard: state.leaderboard.snapshot()
-  });
+  };
+  if (state.rpg.revision > 0) projection.rpg = state.rpg.snapshot();
+  return Object.freeze(projection);
 }
-
 function entryHashInput(entry) {
   return {
     schema: entry.schema,
@@ -258,6 +269,10 @@ export class HostedSharedStateAuthority {
       leaderboardRevision: this.state.leaderboard.revision,
       recordedRuns: this.state.leaderboard.snapshot().runCount
     });
+  }
+
+  rpgSnapshot() {
+    return this.state.rpg.snapshot();
   }
 
   leaderboard(metric = 'dominance', limit = 100) {

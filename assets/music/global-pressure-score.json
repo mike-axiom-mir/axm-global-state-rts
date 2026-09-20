@@ -1,0 +1,91 @@
+{
+  "schema": "axm.music-project/v1",
+  "id": "global-state-rts-strategic-pressure-v1",
+  "tempo_bpm": 92,
+  "ppq": 960,
+  "meter": {"numerator": 4, "denominator": 4},
+  "provenance": {
+    "origin": "ai",
+    "source_id": "game-music-voice-integrator:2026-09-20"
+  },
+  "clips": [
+    {
+      "id": "wasteland-motif",
+      "length_ticks": 3840,
+      "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:wasteland-motif"},
+      "events": [
+        {"id": "wm-1", "kind": "note", "start_tick": 0, "duration_ticks": 720, "pitch_midi": 45, "velocity": 58, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:wasteland-motif"}},
+        {"id": "wm-2", "kind": "note", "start_tick": 960, "duration_ticks": 720, "pitch_midi": 48, "velocity": 52, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:wasteland-motif"}},
+        {"id": "wm-3", "kind": "note", "start_tick": 1920, "duration_ticks": 720, "pitch_midi": 52, "velocity": 61, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:wasteland-motif"}},
+        {"id": "wm-4", "kind": "note", "start_tick": 2880, "duration_ticks": 720, "pitch_midi": 48, "velocity": 54, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:wasteland-motif"}}
+      ]
+    },
+    {
+      "id": "pressure-pulse",
+      "length_ticks": 3840,
+      "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:pressure-pulse"},
+      "events": [
+        {"id": "pp-1", "kind": "note", "start_tick": 0, "duration_ticks": 240, "pitch_midi": 33, "velocity": 68, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:pressure-pulse"}},
+        {"id": "pp-2", "kind": "note", "start_tick": 960, "duration_ticks": 240, "pitch_midi": 33, "velocity": 73, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:pressure-pulse"}},
+        {"id": "pp-3", "kind": "note", "start_tick": 1920, "duration_ticks": 240, "pitch_midi": 33, "velocity": 77, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:pressure-pulse"}},
+        {"id": "pp-4", "kind": "note", "start_tick": 2880, "duration_ticks": 240, "pitch_midi": 33, "velocity": 82, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:pressure-pulse"}}
+      ]
+    },
+    {
+      "id": "combat-drive",
+      "length_ticks": 3840,
+      "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:combat-drive"},
+      "events": [
+        {"id": "cd-1", "kind": "note", "start_tick": 0, "duration_ticks": 480, "pitch_midi": 33, "velocity": 94, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:combat-drive"}},
+        {"id": "cd-2", "kind": "note", "start_tick": 480, "duration_ticks": 360, "pitch_midi": 36, "velocity": 86, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:combat-drive"}},
+        {"id": "cd-3", "kind": "note", "start_tick": 960, "duration_ticks": 480, "pitch_midi": 40, "velocity": 101, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:combat-drive"}},
+        {"id": "cd-4", "kind": "note", "start_tick": 1440, "duration_ticks": 360, "pitch_midi": 36, "velocity": 90, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:combat-drive"}},
+        {"id": "cd-5", "kind": "note", "start_tick": 1920, "duration_ticks": 480, "pitch_midi": 33, "velocity": 106, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:combat-drive"}},
+        {"id": "cd-6", "kind": "note", "start_tick": 2400, "duration_ticks": 360, "pitch_midi": 43, "velocity": 92, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:combat-drive"}},
+        {"id": "cd-7", "kind": "note", "start_tick": 2880, "duration_ticks": 480, "pitch_midi": 40, "velocity": 103, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:combat-drive"}},
+        {"id": "cd-8", "kind": "note", "start_tick": 3360, "duration_ticks": 360, "pitch_midi": 36, "velocity": 96, "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:combat-drive"}}
+      ]
+    },
+    {
+      "id": "raid-radio-call",
+      "length_ticks": 3840,
+      "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:raid-radio-call"},
+      "events": [
+        {
+          "id": "radio-1",
+          "kind": "voice_line",
+          "start_tick": 1920,
+          "duration_ticks": 960,
+          "speaker_id": "field-radio-operator",
+          "text": "Raid route confirmed. Brace the perimeter.",
+          "provenance": {"origin": "ai", "source_id": "global-state-rts-strategic-pressure-v1:raid-radio-call"}
+        }
+      ]
+    }
+  ],
+  "stems": [
+    {"id": "wasteland-motif-stem", "role": "melody", "clip_ids": ["wasteland-motif"]},
+    {"id": "pressure-pulse-stem", "role": "rhythm", "clip_ids": ["pressure-pulse"]},
+    {"id": "combat-drive-stem", "role": "bass", "clip_ids": ["combat-drive"]},
+    {"id": "raid-radio-stem", "role": "voice", "clip_ids": ["raid-radio-call"]}
+  ],
+  "sections": [
+    {"id": "exploration-section", "length_bars": 4, "stem_ids": ["wasteland-motif-stem"]},
+    {"id": "danger-section", "length_bars": 4, "stem_ids": ["wasteland-motif-stem", "pressure-pulse-stem", "raid-radio-stem"]},
+    {"id": "combat-section", "length_bars": 4, "stem_ids": ["wasteland-motif-stem", "pressure-pulse-stem", "combat-drive-stem"]}
+  ],
+  "states": [
+    {"id": "exploration", "section_id": "exploration-section"},
+    {"id": "danger", "section_id": "danger-section"},
+    {"id": "combat", "section_id": "combat-section"}
+  ],
+  "initial_state": "exploration",
+  "transitions": [
+    {"id": "exploration-to-danger", "from_state": "exploration", "trigger": "world-pressure", "to_state": "danger", "quantize": "bar", "priority": 10},
+    {"id": "exploration-to-combat", "from_state": "exploration", "trigger": "combat-contact", "to_state": "combat", "quantize": "beat", "priority": 20},
+    {"id": "danger-to-combat", "from_state": "danger", "trigger": "combat-contact", "to_state": "combat", "quantize": "beat", "priority": 20},
+    {"id": "combat-to-danger", "from_state": "combat", "trigger": "combat-cleared-pressure-remains", "to_state": "danger", "quantize": "bar", "priority": 15},
+    {"id": "danger-to-exploration", "from_state": "danger", "trigger": "pressure-cleared", "to_state": "exploration", "quantize": "bar", "priority": 10},
+    {"id": "combat-to-exploration", "from_state": "combat", "trigger": "pressure-cleared", "to_state": "exploration", "quantize": "bar", "priority": 10}
+  ]
+}

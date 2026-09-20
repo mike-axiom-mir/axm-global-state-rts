@@ -105,11 +105,17 @@ jobs:
           }, null, 2));
           NODE
 
-      - name: Run product VFX and stacked Action checks
+      - name: Run product VFX selftest
+        run: node tests/local-combat-rifle-vfx-selftest.mjs
+
+      - name: Run stacked Ability selftest
+        run: node tests/local-combat-rifle-ability-selftest.mjs
+
+      - name: Run stacked Animation selftest
+        run: node tests/local-combat-rifle-motion-selftest.mjs
+
+      - name: Check VFX module syntax
         run: |
-          node tests/local-combat-rifle-vfx-selftest.mjs
-          node tests/local-combat-rifle-ability-selftest.mjs
-          node tests/local-combat-rifle-motion-selftest.mjs
           node --check src/presentation/local-combat-rifle-vfx.mjs
           node --check game/local-combat-rifle-vfx-player.mjs
           node --check tests/browser/local-combat-rifle-vfx.spec.js

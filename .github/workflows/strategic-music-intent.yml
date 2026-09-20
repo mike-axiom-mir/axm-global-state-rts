@@ -5,7 +5,7 @@ on:
     paths:
       - 'assets/music/**'
       - 'game/strategic-music-intent-runtime.mjs'
-      - 'game/index.html'
+      - 'game/primary-strategic-surface.mjs'
       - 'src/presentation/strategic-music-intent.mjs'
       - 'scripts/verify-strategic-music-project.py'
       - 'tests/strategic-music-intent-selftest.mjs'
@@ -54,6 +54,7 @@ jobs:
         run: |
           node --check src/presentation/strategic-music-intent.mjs
           node --check game/strategic-music-intent-runtime.mjs
+          node --check game/primary-strategic-surface.mjs
 
       - name: Preserve verification receipt
         if: always()

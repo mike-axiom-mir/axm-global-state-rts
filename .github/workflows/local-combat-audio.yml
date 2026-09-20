@@ -1,0 +1,68 @@
+name: Local combat audio
+
+on:
+  pull_request:
+    paths:
+      - 'assets/audio/**'
+      - 'game/audio-fabric-pack-player.mjs'
+      - 'game/combat-proving-ground.*'
+      - 'src/presentation/local-combat-audio.mjs'
+      - 'scripts/render-combat-sfx-pack.py'
+      - 'tests/local-combat-audio-selftest.mjs'
+      - '.github/workflows/local-combat-audio.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout RTS candidate
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned Audio Fabric
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-audio-fabric
+          ref: 19246a121791e546defeb7d83743cc7f755826d3
+          path: .deps/axm-audio-fabric
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify exact Audio Fabric pin
+        run: test "$(git -C .deps/axm-audio-fabric rev-parse HEAD)" = "19246a121791e546defeb7d83743cc7f755826d3"
+
+      - name: Re-render combat cue artifacts through Audio Fabric
+        run: |
+          rm -rf /tmp/axm-rts-combat-audio
+          python scripts/render-combat-sfx-pack.py \
+            --audio-fabric-path .deps/axm-audio-fabric \
+            --recipes assets/audio/combat-sfx-recipes.json \
+            --output-dir /tmp/axm-rts-combat-audio
+
+      - name: Require byte-identical committed artifacts
+        run: diff -ru assets/audio/generated /tmp/axm-rts-combat-audio
+
+      - name: Verify cue mapping and WAV receipts
+        run: node tests/local-combat-audio-selftest.mjs
+
+      - name: Syntax-check browser integration
+        run: |
+          node --check game/audio-fabric-pack-player.mjs
+          node --check game/combat-proving-ground.mjs
+          node --check src/presentation/local-combat-audio.mjs
+
+      - name: Preserve rendered candidate evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-combat-audio-candidate
+          path: /tmp/axm-rts-combat-audio
+          if-no-files-found: warn

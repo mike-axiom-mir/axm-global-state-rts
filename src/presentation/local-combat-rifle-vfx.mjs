@@ -21,7 +21,7 @@ const MUZZLE_TEMPLATE = Object.freeze({
   effectRef: 'rts-local-rifle-muzzle-flash-v1',
   kind: 'particle-burst',
   time: 0.12,
-  duration: 0.12,
+  duration: 0.14,
   anchor: Object.freeze({ entity: 'selected-party-formation', socket: 'formation-fire-origin' }),
   parameters: Object.freeze({
     count: 18,
@@ -40,7 +40,7 @@ const TRACER_TEMPLATE = Object.freeze({
   effectRef: 'rts-local-rifle-tracer-v1',
   kind: 'beam',
   time: 0.12,
-  duration: 0.18,
+  duration: 0.28,
   anchor: Object.freeze({ entity: 'selected-party-formation', socket: 'formation-fire-origin' }),
   parameters: Object.freeze({
     target: Object.freeze({ entity: 'local-hostile-contact', socket: 'formation-center' }),

@@ -91,24 +91,24 @@ function renderBundle(bundle) {
   const flashCore = svgNode('circle', {
     cx: source.x,
     cy: source.y,
-    r: reducedMotion ? 4 : 7,
-    fill: '#fff4cf',
-    opacity: '0.95'
+    r: reducedMotion ? 6 : 10,
+    fill: '#fff7d6',
+    opacity: '1'
   });
   group.appendChild(flashCore);
 
   for (let i = 0; i < muzzleCount; i += 1) {
-    const angle = ((i / muzzleCount) - 0.5) * 0.9;
-    const length = 9 + (i % 3) * 4;
+    const angle = ((i / muzzleCount) - 0.5) * 1.05;
+    const length = 16 + (i % 3) * 7;
     const ray = svgNode('line', {
       x1: source.x,
       y1: source.y,
       x2: source.x + Math.cos(angle) * length,
       y2: source.y + Math.sin(angle) * length,
-      stroke: i % 2 === 0 ? '#ffd37a' : '#fff0b8',
-      'stroke-width': i % 3 === 0 ? 2.4 : 1.4,
+      stroke: i % 2 === 0 ? '#ffd166' : '#fff2b3',
+      'stroke-width': i % 3 === 0 ? 4.4 : 2.8,
       'stroke-linecap': 'round',
-      opacity: '0.9'
+      opacity: '0.98'
     });
     group.appendChild(ray);
   }
@@ -121,10 +121,10 @@ function renderBundle(bundle) {
       y1: source.y + (target.y - source.y) * t0,
       x2: source.x + (target.x - source.x) * t1,
       y2: source.y + (target.y - source.y) * t1,
-      stroke: '#ffd37a',
-      'stroke-width': 2.2,
+      stroke: i === 0 ? '#fff6c7' : '#ffd166',
+      'stroke-width': i === 0 ? 4.8 : 4.0,
       'stroke-linecap': 'round',
-      opacity: String(0.95 - i * 0.18)
+      opacity: String(0.98 - i * 0.12)
     });
     group.appendChild(line);
   }
@@ -140,9 +140,10 @@ function renderBundle(bundle) {
   const lifetimeMs = Math.max(...bundle.requests.map(request => request.duration)) * 1000;
   if (!reducedMotion && typeof group.animate === 'function') {
     group.animate([
-      { opacity: 0.98 },
-      { opacity: 0.9, offset: 0.35 },
-      { opacity: 0 }
+      { opacity: 1, offset: 0 },
+      { opacity: 1, offset: 0.45 },
+      { opacity: 0.7, offset: 0.72 },
+      { opacity: 0, offset: 1 }
     ], {
       duration: lifetimeMs,
       easing: 'ease-out',

@@ -1,7 +1,9 @@
 import {
   createCityVillagerSimulation,
   advanceCityVillagerSimulation,
-  snapshotCityVillagerSimulation
+  snapshotCityVillagerSimulation,
+  gearCityResident,
+  setCityResidentAdventurePolicy
 } from './city/villager-simulation.mjs';
 import {
   CITY_EMERGENCE_STAGES,
@@ -13,7 +15,7 @@ import {
   projectCompletion
 } from './city/city-emergence.mjs';
 
-export const PERSISTENT_RPG_WORLD_SCHEMA = 'axm.persistent-rpg.world/v0.3';
+export const PERSISTENT_RPG_WORLD_SCHEMA = 'axm.persistent-rpg.world/v0.4';
 
 export const RPG_CITY_PATHS = Object.freeze([
   'balanced',
@@ -45,6 +47,8 @@ export const RPG_WORLD_EVENT_TYPES = Object.freeze([
   'rpg.city.path.changed',
   'rpg.city.pool.withdrawn',
   'rpg.city.project.contributed',
+  'rpg.city.villager.geared',
+  'rpg.city.villager.adventure.policy.changed',
   'rpg.city.sim.advanced'
 ]);
 
@@ -303,7 +307,7 @@ function cityProjection(city) {
     departures: city.departures,
     withdrawals: city.withdrawals,
     truthBoundary:
-      'Shared domain XP is cumulative knowledge and is not spent away. Safe departure creates equal unassigned development XP. Project funding consumes only that development budget plus real shared materials. Ordinary villagers are deterministic autonomous simulations whose choices grow from needs, traits, relationships, skills, city context and bounded deterministic variation. Their personal production/possessions, communal food pressure, maintenance condition, discoveries, informal works and advisory proposals persist inside city state; voluntarily shared material enters the same canonical city item pool used by projects. Service shop/quest NPCs remain fixed interfaces.'
+      'Shared domain XP is cumulative knowledge and is not spent away. Safe departure creates equal unassigned development XP. Project funding consumes only that development budget plus real shared materials. Ordinary villagers are deterministic autonomous simulations whose choices grow from needs, traits, relationships, skills, city context and bounded deterministic variation. Their personal production/possessions, communal food pressure, maintenance condition, discoveries, informal works, adventure history and advisory proposals persist inside city state. Shared gear is explicitly assigned from the canonical city pool, and adventure permission/risk is explicit journaled policy. Human, machine and autonomous characters use the same capability contract; autonomous adventure can cause real injury/death, but no aging/passive mortality exists. Service shop/quest NPCs remain fixed interfaces.'
   });
 }
 function validateProjectFunding(city, definition, xp, items) {
@@ -664,6 +668,59 @@ export class PersistentRpgWorld {
         mapEffect: completedNow ? definition.mapEffect : null,
         city: cityProjection(city)
       };
+    } else if (eventType === 'rpg.city.villager.geared') {
+      const city = this.city(payload.cityId || this.defaultCityId, { create: false });
+      if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
+      const residentId = nonEmpty(payload.residentId, 'payload.residentId');
+      const itemId = nonEmpty(payload.itemId, 'payload.itemId');
+      if ((city.sharedItems[itemId] || 0) < 1) {
+        return Object.freeze({
+          accepted: false,
+          reason: 'rpg-city-pool-insufficient-item',
+          itemId,
+          available: city.sharedItems[itemId] || 0,
+          requested: 1,
+          revision: this.revision
+        });
+      }
+
+      const geared = gearCityResident(city.villagerSimulation, residentId, itemId);
+      if (!geared.accepted) return Object.freeze({ ...geared, revision: this.revision });
+
+      city.sharedItems[itemId] -= 1;
+      if (city.sharedItems[itemId] === 0) delete city.sharedItems[itemId];
+      if (geared.replacedItemId) {
+        city.sharedItems[geared.replacedItemId] = (city.sharedItems[geared.replacedItemId] || 0) + 1;
+      }
+
+      result = {
+        kind: 'city-villager-geared',
+        cityId: city.id,
+        residentId,
+        slot: geared.slot,
+        itemId,
+        replacedItemId: geared.replacedItemId,
+        capability: geared.capability,
+        city: cityProjection(city)
+      };
+    } else if (eventType === 'rpg.city.villager.adventure.policy.changed') {
+      const city = this.city(payload.cityId || this.defaultCityId, { create: false });
+      if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
+      const residentId = nonEmpty(payload.residentId, 'payload.residentId');
+      const policy = setCityResidentAdventurePolicy(city.villagerSimulation, residentId, {
+        enabled: payload.enabled,
+        maxRisk: payload.maxRisk,
+        focus: payload.focus
+      });
+      if (!policy.accepted) return Object.freeze({ ...policy, revision: this.revision });
+      result = {
+        kind: 'city-villager-adventure-policy-changed',
+        cityId: city.id,
+        residentId,
+        policy: policy.policy,
+        capability: policy.capability,
+        city: cityProjection(city)
+      };
     } else if (eventType === 'rpg.city.sim.advanced') {
       const city = this.city(payload.cityId || this.defaultCityId, { create: false });
       if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
@@ -688,6 +745,8 @@ export class PersistentRpgWorld {
         discoveryCount: simulation.snapshot.discoveries.length,
         proposalCount: simulation.snapshot.proposals.length,
         informalWorkCount: simulation.snapshot.informalWorks.length,
+        adventureCount: simulation.snapshot.adventures.length,
+        fallenResidentCount: simulation.snapshot.fallenResidents.length,
         city: cityProjection(city)
       };
     }

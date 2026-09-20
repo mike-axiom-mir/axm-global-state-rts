@@ -5,6 +5,10 @@ import {
   RPG_XP_DOMAINS
 } from '../src/rpg/persistent-world.mjs';
 import { createRpgCharacterLife } from '../src/rpg/character-life.mjs';
+import {
+  rpgEquipmentDefinition,
+  rpgEquipmentQuality
+} from '../src/rpg/character-capability.mjs';
 
 const WORLD_STORAGE_KEY = 'axm.persistent-rpg.browser-world-journal/v0.3';
 const LIFE_COUNTER_KEY = 'axm.persistent-rpg.browser-life-counter/v0.1';
@@ -36,6 +40,7 @@ const poolHint = document.getElementById('poolHint');
 const villagerSummary = document.getElementById('villagerSummary');
 const villagers = document.getElementById('villagers');
 const serviceNpcs = document.getElementById('serviceNpcs');
+const lifeCapability = document.getElementById('lifeCapability');
 const residentEconomy = document.getElementById('residentEconomy');
 const residentProposals = document.getElementById('residentProposals');
 const residentDiscoveries = document.getElementById('residentDiscoveries');
@@ -313,6 +318,76 @@ function renderProjects(city) {
   }
 }
 
+function equipmentText(equipment = {}) {
+  const entries = Object.entries(equipment).filter(([, itemId]) => itemId);
+  return entries.length
+    ? entries.map(([slot, itemId]) => `${slot}: ${itemId}`).join(' · ')
+    : 'no gear';
+}
+
+function bestGearUpgradeFromPool(city, resident) {
+  const candidates = [];
+  for (const [itemId, count] of Object.entries(city.sharedItems || {})) {
+    if (count < 1) continue;
+    const definition = rpgEquipmentDefinition(itemId);
+    if (!definition) continue;
+    const currentItem = resident.equipment?.[definition.slot] || null;
+    const currentQuality = currentItem ? rpgEquipmentQuality(currentItem) : 0;
+    if (definition.quality <= currentQuality) continue;
+    candidates.push({
+      itemId,
+      slot: definition.slot,
+      quality: definition.quality,
+      improvement: definition.quality - currentQuality
+    });
+  }
+  return candidates.sort((a, b) =>
+    b.improvement - a.improvement
+    || b.quality - a.quality
+    || a.itemId.localeCompare(b.itemId)
+  )[0] || null;
+}
+
+function bestCarriedGearUpgrade() {
+  const snapshot = life.snapshot();
+  const candidates = [];
+  for (const [itemId, count] of Object.entries(snapshot.items || {})) {
+    if (count < 1) continue;
+    const definition = rpgEquipmentDefinition(itemId);
+    if (!definition) continue;
+    const currentItem = snapshot.equipment?.[definition.slot] || null;
+    const currentQuality = currentItem ? rpgEquipmentQuality(currentItem) : 0;
+    if (definition.quality <= currentQuality) continue;
+    candidates.push({
+      itemId,
+      quality: definition.quality,
+      improvement: definition.quality - currentQuality
+    });
+  }
+  return candidates.sort((a, b) =>
+    b.improvement - a.improvement
+    || b.quality - a.quality
+    || a.itemId.localeCompare(b.itemId)
+  )[0] || null;
+}
+
+function nextAdventurePolicy(policy) {
+  if (!policy?.enabled) return { enabled: true, maxRisk: 'safe', focus: policy?.focus || 'city' };
+  if (policy.maxRisk === 'safe') return { enabled: true, maxRisk: 'standard', focus: policy.focus || 'city' };
+  if (policy.maxRisk === 'standard') return { enabled: true, maxRisk: 'bold', focus: policy.focus || 'city' };
+  return { enabled: false, maxRisk: 'safe', focus: policy.focus || 'city' };
+}
+
+function nextAdventureFocus(policy) {
+  const focus = policy?.focus || 'mixed';
+  const next = focus === 'self' ? 'mixed' : focus === 'mixed' ? 'city' : 'self';
+  return {
+    enabled: Boolean(policy?.enabled),
+    maxRisk: policy?.maxRisk || 'safe',
+    focus: next
+  };
+}
+
 function strongestTrait(resident) {
   return Object.entries(resident.traits || {})
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || 'unknown';
@@ -423,11 +498,41 @@ function renderVillagers(city) {
     const possessionText = Object.entries(resident.possessions || {})
       .map(([itemId, count]) => `${itemId}×${count}`)
       .join(', ') || 'none';
+    const capability = resident.capability;
+    const gearUpgrade = bestGearUpgradeFromPool(city, resident);
+    const policy = resident.adventurePolicy || { enabled: false, maxRisk: 'safe', focus: 'mixed' };
+    const adventureLabel = policy.enabled ? `Adventure: ${titleCase(policy.maxRisk)}` : 'Adventure: Off';
     card.innerHTML =
       `<div class="villager-top"><strong>${resident.name}</strong><span>${titleCase(resident.currentAction)}</span></div>`
-      + `<div class="villager-meta"><span>strong trait: ${strongestTrait(resident)}</span><span>${skill} ${skillXp} · ${relationCount} ties</span></div>`
+      + `<div class="villager-meta"><span>autonomous villager · strong trait: ${strongestTrait(resident)}</span><span>${skill} ${skillXp} · ${relationCount} ties</span></div>`
+      + `<div class="villager-capability">P${Math.round(capability.power)} · D${Math.round(capability.defense)} · S${Math.round(capability.survival)} · U${Math.round(capability.utility)} · vitality ${resident.vitality}</div>`
+      + `<div class="villager-equipment">${equipmentText(resident.equipment)}</div>`
       + `<div class="villager-meta"><span>possessions: ${possessionText}</span><span>wealth ${resident.wealth}</span></div>`
       + `<div class="villager-memory">${lastMemory ? `last: ${titleCase(lastMemory.action)}${lastMemory.output ? ' · produced/used something' : ''}${lastMemory.partnerId ? ' with someone' : ''}` : 'new resident'}</div>`;
+
+    const controls = document.createElement('div');
+    controls.className = 'villager-controls';
+
+    const gearButton = document.createElement('button');
+    gearButton.type = 'button';
+    gearButton.dataset.gearResident = resident.id;
+    gearButton.disabled = !gearUpgrade;
+    gearButton.textContent = gearUpgrade ? `Gear: ${gearUpgrade.itemId}` : 'No gear upgrade';
+    controls.appendChild(gearButton);
+
+    const adventureButton = document.createElement('button');
+    adventureButton.type = 'button';
+    adventureButton.dataset.adventureResident = resident.id;
+    adventureButton.textContent = adventureLabel;
+    controls.appendChild(adventureButton);
+
+    const focusButton = document.createElement('button');
+    focusButton.type = 'button';
+    focusButton.dataset.adventureFocusResident = resident.id;
+    focusButton.textContent = `Returns: ${titleCase(policy.focus)}`;
+    controls.appendChild(focusButton);
+
+    card.appendChild(controls);
     villagers.appendChild(card);
   }
 
@@ -513,6 +618,8 @@ function renderAll() {
   lifeIdEl.textContent = lifeSnapshot.lifeId;
   lifeXp.textContent = String(lifeXpTotal());
   lifeItems.textContent = `${lifeItemTotal()}/${lifeSnapshot.effectiveCarrySlots}`;
+  lifeCapability.textContent =
+    `Human-controlled villager · P${Math.round(lifeSnapshot.capability.power)} D${Math.round(lifeSnapshot.capability.defense)} S${Math.round(lifeSnapshot.capability.survival)} U${Math.round(lifeSnapshot.capability.utility)} · ${equipmentText(lifeSnapshot.equipment)}`;
   modeLabel.textContent = renderer.getMode() === 'local' ? 'LOCAL WORLD' : 'GLOBE';
 
   if (city) renderCity(city);
@@ -609,6 +716,15 @@ for (const path of RPG_CITY_PATHS) {
   option.textContent = path;
   cityPath.appendChild(option);
 }
+
+document.getElementById('equipLifeAction').addEventListener('click', () => {
+  const upgrade = bestCarriedGearUpgrade();
+  if (!upgrade) return setStatus('This human-controlled villager has no better equippable carried item.');
+  const result = life.equipItem(upgrade.itemId);
+  if (!result.accepted) return setStatus(`Equip rejected: ${result.reason}`);
+  renderAll();
+  setStatus(`Equipped ${upgrade.itemId}. Same capability contract used by autonomous residents.`);
+});
 
 document.getElementById('toggleMode').addEventListener('click', () => {
   renderer.toggleMode();
@@ -753,6 +869,67 @@ cityProjects.addEventListener('click', event => {
   const itemButton = event.target.closest('[data-fund-project-item]');
   if (itemButton) {
     fundProjectItem(itemButton.dataset.fundProjectItem, itemButton.dataset.itemId, itemButton.dataset.amount);
+  }
+});
+
+villagers.addEventListener('click', event => {
+  const city = citySnapshot();
+
+  const gearButton = event.target.closest('[data-gear-resident]');
+  if (gearButton) {
+    const resident = city?.villagers?.residents?.find(candidate => candidate.id === gearButton.dataset.gearResident);
+    if (!resident) return;
+    const upgrade = bestGearUpgradeFromPool(city, resident);
+    if (!upgrade) return setStatus('No better equippable item is available in the shared city pool.');
+    const result = applyWorldEvent('rpg.city.villager.geared', {
+      cityId: CITY_ID,
+      placeId: CITY_ID,
+      xM: 0,
+      zM: 0,
+      residentId: resident.id,
+      itemId: upgrade.itemId
+    }, 'villager-gear');
+    if (!result.accepted) return setStatus(`Villager gear rejected: ${result.reason}`);
+    renderAll();
+    setStatus(`${resident.name} equipped ${upgrade.itemId} from the shared city pool; replaced gear returned to the pool.`);
+    return;
+  }
+
+  const adventureButton = event.target.closest('[data-adventure-resident]');
+  if (adventureButton) {
+    const resident = city?.villagers?.residents?.find(candidate => candidate.id === adventureButton.dataset.adventureResident);
+    if (!resident) return;
+    const policy = nextAdventurePolicy(resident.adventurePolicy);
+    const result = applyWorldEvent('rpg.city.villager.adventure.policy.changed', {
+      cityId: CITY_ID,
+      placeId: CITY_ID,
+      xM: 0,
+      zM: 0,
+      residentId: resident.id,
+      ...policy
+    }, 'villager-adventure-policy');
+    if (!result.accepted) return setStatus(`Adventure policy rejected: ${result.reason}`);
+    renderAll();
+    setStatus(`${resident.name} adventure permission → ${policy.enabled ? policy.maxRisk : 'off'}; capability still decides what is actually safe enough to attempt.`);
+    return;
+  }
+
+  const focusButton = event.target.closest('[data-adventure-focus-resident]');
+  if (focusButton) {
+    const resident = city?.villagers?.residents?.find(candidate => candidate.id === focusButton.dataset.adventureFocusResident);
+    if (!resident) return;
+    const policy = nextAdventureFocus(resident.adventurePolicy);
+    const result = applyWorldEvent('rpg.city.villager.adventure.policy.changed', {
+      cityId: CITY_ID,
+      placeId: CITY_ID,
+      xM: 0,
+      zM: 0,
+      residentId: resident.id,
+      ...policy
+    }, 'villager-adventure-focus');
+    if (!result.accepted) return setStatus(`Adventure focus rejected: ${result.reason}`);
+    renderAll();
+    setStatus(`${resident.name} expedition returns → ${policy.focus}.`);
   }
 });
 

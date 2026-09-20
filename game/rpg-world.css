@@ -240,3 +240,37 @@ button.danger { border-color: rgba(233,191,152,.35); color: #ffe2ca; }
 .resident-event.proposal { border-color: rgba(183,229,188,.16); }
 .resident-event.discovery { border-color: rgba(140,172,211,.18); }
 .resident-event.informal { border-color: rgba(198,166,113,.18); }
+
+.life-capability {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(223,239,225,.09);
+  background: rgba(0,0,0,.10);
+  color: var(--muted);
+  font-size: 9px;
+}
+.villager-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 6px;
+}
+.villager-controls button {
+  padding: 5px 7px;
+  font-size: 9px;
+}
+.villager-capability {
+  margin-top: 4px;
+  color: #d5dfd6;
+  font-size: 9px;
+}
+.villager-equipment {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+}

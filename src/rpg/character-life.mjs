@@ -1,6 +1,11 @@
 import { RPG_XP_DOMAINS } from './persistent-world.mjs';
+import {
+  createEmptyRpgEquipment,
+  deriveRpgCharacterCapability,
+  equipRpgItem
+} from './character-capability.mjs';
 
-export const RPG_CHARACTER_LIFE_SCHEMA = 'axm.persistent-rpg.character-life/v0.3';
+export const RPG_CHARACTER_LIFE_SCHEMA = 'axm.persistent-rpg.character-life/v0.4';
 
 const BASELINE = Object.freeze({
   vitality: 100,
@@ -66,15 +71,26 @@ function normalizeCitySupport(raw = null) {
 }
 
 export class RpgCharacterLife {
-  constructor({ actorId, lifeId, supplies = null, citySupport = null, startingItems = {} } = {}) {
+  constructor({
+    actorId,
+    lifeId,
+    supplies = null,
+    citySupport = null,
+    startingItems = {},
+    controllerKind = 'human'
+  } = {}) {
     this.schema = RPG_CHARACTER_LIFE_SCHEMA;
+    this.kind = 'resident';
     this.actorId = nonEmpty(actorId, 'actorId');
     this.lifeId = nonEmpty(lifeId, 'lifeId');
     this.baseline = BASELINE;
+    this.controllerKind = String(controllerKind || 'human');
     this.citySupport = normalizeCitySupport(citySupport);
     const defaultSupplies = 3 + this.citySupport.worldEffects.startingSuppliesBonus;
     this.supplies = Math.max(0, supplies === null ? defaultSupplies : nonNegativeInteger(supplies, 'supplies'));
-    this.effectiveCarrySlots = BASELINE.carrySlots + this.citySupport.worldEffects.carrySlotBonus;
+    this.baseCarrySlots = BASELINE.carrySlots + this.citySupport.worldEffects.carrySlotBonus;
+    this.equipment = { ...createEmptyRpgEquipment() };
+    this.vitality = BASELINE.vitality;
     this.experience = Object.fromEntries(RPG_XP_DOMAINS.map(domain => [domain, 0]));
     this.items = {};
     for (const [itemId, count] of Object.entries(startingItems || {})) this.addItem(itemId, count);
@@ -113,12 +129,47 @@ export class RpgCharacterLife {
     return Object.values(this.items).reduce((sum, value) => sum + Number(value || 0), 0);
   }
 
+  capability() {
+    const skillXp = Object.fromEntries(RPG_XP_DOMAINS.map(domain => [
+      domain,
+      (this.citySupport.skills[domain] || 0) * 100 + (this.experience[domain] || 0)
+    ]));
+    return deriveRpgCharacterCapability({
+      controllerKind: this.controllerKind,
+      skills: skillXp,
+      equipment: this.equipment,
+      supplies: this.supplies,
+      vitality: this.vitality,
+      vitality: this.vitality,
+      baseCarrySlots: this.baseCarrySlots
+    });
+  }
+
+  equipItem(itemId) {
+    if (!this.assertActive()) return Object.freeze({ accepted: false, reason: 'life-closed' });
+    const id = nonEmpty(itemId, 'itemId');
+    if ((this.items[id] || 0) < 1) return Object.freeze({ accepted: false, reason: 'item-not-carried', itemId: id });
+    const equipped = equipRpgItem(this.equipment, id);
+    if (!equipped.accepted) return equipped;
+
+    this.removeItem(id, 1);
+    if (equipped.replacedItemId) this.addItem(equipped.replacedItemId, 1);
+    this.equipment = { ...equipped.equipment };
+    return Object.freeze({
+      accepted: true,
+      slot: equipped.slot,
+      itemId: id,
+      replacedItemId: equipped.replacedItemId,
+      capability: this.capability()
+    });
+  }
+
   addItem(itemId, count = 1) {
     if (!this.assertActive()) return false;
     const id = nonEmpty(itemId, 'itemId');
     const amount = nonNegativeInteger(count, 'count');
     if (amount === 0) return this.items[id] || 0;
-    if (this.itemCount() + amount > this.effectiveCarrySlots) return false;
+    if (this.itemCount() + amount > this.capability().carrySlots) return false;
     this.items[id] = (this.items[id] || 0) + amount;
     return this.items[id];
   }
@@ -141,11 +192,16 @@ export class RpgCharacterLife {
 
   departureContribution({ cityId = this.citySupport.cityId || 'first-city' } = {}) {
     if (!this.assertActive()) throw new Error('life is already closed');
+    const contributedItems = { ...this.items };
+    for (const itemId of Object.values(this.equipment)) {
+      if (!itemId) continue;
+      contributedItems[itemId] = (contributedItems[itemId] || 0) + 1;
+    }
     return Object.freeze({
       lifeId: this.lifeId,
       cityId: String(cityId),
       experience: Object.freeze({ ...this.experience }),
-      items: Object.freeze({ ...this.items })
+      items: Object.freeze(contributedItems)
     });
   }
 
@@ -170,14 +226,19 @@ export class RpgCharacterLife {
       domain,
       this.citySupport.skills[domain] + Math.floor((this.experience[domain] || 0) / 100)
     ])));
+    const capability = this.capability();
     return Object.freeze({
       schema: RPG_CHARACTER_LIFE_SCHEMA,
+      kind: this.kind,
       actorId: this.actorId,
       lifeId: this.lifeId,
+      controllerKind: this.controllerKind,
       baseline: BASELINE,
       citySupport: this.citySupport,
       effectiveSkills,
-      effectiveCarrySlots: this.effectiveCarrySlots,
+      equipment: Object.freeze({ ...this.equipment }),
+      capability,
+      effectiveCarrySlots: capability.carrySlots,
       experience: Object.freeze({ ...this.experience }),
       items: Object.freeze({ ...this.items }),
       supplies: this.supplies,
@@ -187,7 +248,7 @@ export class RpgCharacterLife {
       departed: this.departed,
       persistentAccountPowerGain: 0,
       truthBoundary:
-        'Life XP is temporary until safe departure. A later life may inherit city-wide skills, supplies, carry support and unlocked possibilities produced by completed shared projects, but no private account power is carried between lives.'
+        'Human, machine and autonomous characters use the same equipment/capability contract. This human-controlled life differs by controller, not species or hidden stat bonuses. Life XP remains temporary until safe departure; no private account power is carried between lives.'
     });
   }
 }

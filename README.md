@@ -174,6 +174,50 @@ The city simulation now tracks:
 
 When a resident voluntarily shares physical material, the deterministic simulation returns that as a city effect and the persistent-world authority puts it into the exact same canonical `sharedItems` pool used by official city projects.
 
+## Same resident model for player and villagers
+
+The human-controlled character is also `kind: resident`.
+
+The meaningful distinction is controller:
+
+- `human`
+- `autonomous`
+- `machine`
+
+All three use the same equipment/capability contract. Controller kind grants no hidden combat, defense, survival, utility or carry bonus.
+
+Shared equipment slots:
+
+- weapon
+- armor
+- tool
+- pack
+
+Adventure capability is derived from actual skills, equipment, supplies and vitality. It exposes power, defense, survival, utility, carry capacity, learned abilities and an adventure score.
+
+For autonomous residents, the city/user can explicitly:
+
+- assign real gear from the canonical shared city pool;
+- set adventure permission on/off;
+- set the maximum allowed risk: safe / standard / bold;
+- set expedition-return focus: self / mixed / city.
+
+Permission does not override capability. Setting a resident to `bold` means “you may go this far if you are ready,” not “pretend you are ready.” The resident only gets the autonomous adventure option when the same shared capability rules say the chosen risk is supportable.
+
+A geared and experienced ordinary resident can therefore become adventurer-like without changing class.
+
+Successful expeditions can:
+
+- grow exploration / defense / gathering skill;
+- return materials or equipment;
+- create discoveries;
+- keep loot personally, split it, or return it to the city depending on policy;
+- feed the same canonical city pool used by player-funded projects.
+
+Adventure is also an explicit gameplay danger. A failed expedition can injure or kill the resident. On death, some gear/possessions may be recovered to the city and some may be lost; the resident and accumulated skill/labor leave the active population, while a fallen-resident record remains. There is **no aging, old-age death or passive mortality timer**.
+
+Human-controlled residents currently perform moment-to-moment world play directly, while autonomous residents use the deterministic action selector. That controller difference is input/control only, not a different character species or hidden ruleset.
+
 ## Clean active surface
 
 The browser game layer remains only:
@@ -233,6 +277,11 @@ The RPG-specific suite verifies:
 - food production/shortage and maintenance-pressure state;
 - local discoveries and informal resident works;
 - advisory resident project proposals that cannot auto-spend city resources;
+- identical capability math for human/autonomous/machine controllers;
+- journaled villager gearing from canonical city inventory;
+- journaled autonomous adventure permission/risk/return focus;
+- autonomous adventure loot/skill growth and explicit gameplay death;
+- no aging/passive resident mortality;
 - deterministic host journal replay;
 - human/machine participant parity;
 - the clean no-RTS active browser boundary.

@@ -1,7 +1,17 @@
 import { CITY_PROJECT_INDEX } from './city-emergence.mjs';
+import {
+  RPG_ADVENTURE_FOCI,
+  RPG_ADVENTURE_RISKS,
+  createEmptyRpgEquipment,
+  deriveRpgCharacterCapability,
+  describeRpgAdventureReadiness,
+  equipRpgItem,
+  rpgAdventureRiskDefinition,
+  strongestAllowedRpgAdventureRisk
+} from '../character-capability.mjs';
 
-export const CITY_VILLAGER_SIM_SCHEMA = 'axm.persistent-rpg.city-villager-sim/v0.2';
-export const CITY_VILLAGER_SCHEMA = 'axm.persistent-rpg.villager/v0.2';
+export const CITY_VILLAGER_SIM_SCHEMA = 'axm.persistent-rpg.city-villager-sim/v0.3';
+export const CITY_VILLAGER_SCHEMA = 'axm.persistent-rpg.villager/v0.3';
 
 export const VILLAGER_SKILLS = Object.freeze([
   'gathering',
@@ -27,6 +37,7 @@ export const VILLAGER_ACTIONS = Object.freeze([
   'study',
   'patrol',
   'explore',
+  'adventure',
   'maintain-city'
 ]);
 
@@ -43,13 +54,13 @@ const STAGE_CAPACITY = Object.freeze({
 });
 
 const PATH_BIAS = Object.freeze({
-  balanced: Object.freeze({ socialize: 0.12, 'help-neighbor': 0.12, 'maintain-city': 0.10, 'share-surplus': 0.05 }),
-  frontier: Object.freeze({ explore: 0.32, gather: 0.18, patrol: 0.08 }),
-  forge: Object.freeze({ craft: 0.38, gather: 0.12, 'maintain-city': 0.08 }),
-  harvest: Object.freeze({ 'grow-food': 0.40, gather: 0.12, 'help-neighbor': 0.06 }),
-  defense: Object.freeze({ patrol: 0.42, 'maintain-city': 0.08, craft: 0.06 }),
-  trade: Object.freeze({ trade: 0.42, socialize: 0.10, 'share-surplus': 0.07 }),
-  lore: Object.freeze({ study: 0.42, explore: 0.08, socialize: 0.05 })
+  balanced: Object.freeze({ socialize: 0.12, 'help-neighbor': 0.12, 'maintain-city': 0.10, 'share-surplus': 0.05, adventure: 0.04 }),
+  frontier: Object.freeze({ explore: 0.32, gather: 0.18, patrol: 0.08, adventure: 0.40 }),
+  forge: Object.freeze({ craft: 0.38, gather: 0.12, 'maintain-city': 0.08, adventure: 0.05 }),
+  harvest: Object.freeze({ 'grow-food': 0.40, gather: 0.12, 'help-neighbor': 0.06, adventure: 0.04 }),
+  defense: Object.freeze({ patrol: 0.42, 'maintain-city': 0.08, craft: 0.06, adventure: 0.12 }),
+  trade: Object.freeze({ trade: 0.42, socialize: 0.10, 'share-surplus': 0.07, adventure: 0.06 }),
+  lore: Object.freeze({ study: 0.42, explore: 0.08, socialize: 0.05, adventure: 0.08 })
 });
 
 const ACTION_SKILL = Object.freeze({
@@ -61,6 +72,7 @@ const ACTION_SKILL = Object.freeze({
   patrol: 'defense',
   'help-neighbor': 'care',
   explore: 'exploration',
+  adventure: 'exploration',
   'maintain-city': 'craft'
 });
 
@@ -77,6 +89,7 @@ const ACTION_LOCATIONS = Object.freeze({
   study: ['archive', 'great-archive', 'guild-hall'],
   patrol: ['watch-post', 'palisade', 'bastion'],
   explore: ['trailhead', 'frontier-lodge', 'road-yard'],
+  adventure: ['trailhead', 'frontier-lodge', 'road-yard'],
   'maintain-city': ['workshop', 'waterworks', 'road-yard']
 });
 
@@ -93,6 +106,7 @@ const ACTION_NEED_EFFECTS = Object.freeze({
   study: Object.freeze({ energy: -0.09, hunger: -0.03, belonging: -0.01, purpose: 0.16, safety: 0 }),
   patrol: Object.freeze({ energy: -0.16, hunger: -0.06, belonging: 0.01, purpose: 0.16, safety: 0.08 }),
   explore: Object.freeze({ energy: -0.20, hunger: -0.07, belonging: -0.03, purpose: 0.18, safety: -0.08 }),
+  adventure: Object.freeze({ energy: -0.28, hunger: -0.12, belonging: -0.02, purpose: 0.28, safety: -0.12 }),
   'maintain-city': Object.freeze({ energy: -0.14, hunger: -0.05, belonging: 0.03, purpose: 0.18, safety: 0.06 })
 });
 
@@ -181,6 +195,8 @@ function createResident(cityId, worldSeed, serial, bornTick = 0) {
     schema: CITY_VILLAGER_SCHEMA,
     id,
     kind: 'resident',
+    controllerKind: 'autonomous',
+    alive: true,
     name: residentName(seed, serial),
     bornTick,
     seed,
@@ -190,6 +206,14 @@ function createResident(cityId, worldSeed, serial, bornTick = 0) {
     relationships: {},
     memories: [],
     possessions: {},
+    equipment: { ...createEmptyRpgEquipment() },
+    vitality: 100,
+    adventurePolicy: {
+      enabled: false,
+      maxRisk: 'safe',
+      focus: 'mixed'
+    },
+    adventureHistory: [],
     wealth: 0,
     discoveries: [],
     proposalIds: [],
@@ -244,6 +268,64 @@ function firstPossession(resident, preferred = []) {
   return Object.keys(resident.possessions).sort()[0] || null;
 }
 
+function residentCapability(resident, simulation = null) {
+  return deriveRpgCharacterCapability({
+    controllerKind: resident.controllerKind || 'autonomous',
+    skills: resident.skills,
+    equipment: resident.equipment,
+    supplies: simulation?.economy?.foodReserve >= 1 ? 1 : 0,
+    vitality: resident.vitality ?? 100,
+    baseCarrySlots: 6
+  });
+}
+
+function normalizedAdventurePolicy(raw = {}) {
+  const maxRisk = String(raw.maxRisk || 'safe');
+  const focus = String(raw.focus || 'mixed');
+  if (!RPG_ADVENTURE_RISKS.includes(maxRisk)) throw new RangeError(`unsupported adventure risk: ${maxRisk}`);
+  if (!RPG_ADVENTURE_FOCI.includes(focus)) throw new RangeError(`unsupported adventure focus: ${focus}`);
+  return {
+    enabled: Boolean(raw.enabled),
+    maxRisk,
+    focus
+  };
+}
+
+export function gearCityResident(simulation, residentId, itemId) {
+  if (!simulation || simulation.schema !== CITY_VILLAGER_SIM_SCHEMA) throw new TypeError('city villager simulation required');
+  const resident = simulation.residents.find(candidate => candidate.id === String(residentId));
+  if (!resident) return Object.freeze({ accepted: false, reason: 'resident-not-found' });
+  const result = equipRpgItem(resident.equipment, itemId);
+  if (!result.accepted) return result;
+  resident.equipment = { ...result.equipment };
+  resident.revision += 1;
+  simulation.revision += 1;
+  return Object.freeze({
+    accepted: true,
+    residentId: resident.id,
+    slot: result.slot,
+    itemId: result.itemId,
+    replacedItemId: result.replacedItemId,
+    capability: residentCapability(resident, simulation)
+  });
+}
+
+export function setCityResidentAdventurePolicy(simulation, residentId, policy = {}) {
+  if (!simulation || simulation.schema !== CITY_VILLAGER_SIM_SCHEMA) throw new TypeError('city villager simulation required');
+  const resident = simulation.residents.find(candidate => candidate.id === String(residentId));
+  if (!resident) return Object.freeze({ accepted: false, reason: 'resident-not-found' });
+  resident.adventurePolicy = normalizedAdventurePolicy(policy);
+  resident.revision += 1;
+  simulation.revision += 1;
+  return Object.freeze({
+    accepted: true,
+    residentId: resident.id,
+    policy: freezeJson(cloneJson(resident.adventurePolicy)),
+    capability: residentCapability(resident, simulation)
+  });
+}
+
+
 function availableActionSet(city, simulation, resident) {
   const complete = completedProjectSet(city);
   const actions = new Set(['rest', 'eat', 'socialize', 'help-neighbor', 'gather', 'explore']);
@@ -254,6 +336,13 @@ function availableActionSet(city, simulation, resident) {
   if (complete.has('archive') || complete.has('great-archive')) actions.add('study');
   if (complete.has('watch-post') || complete.has('palisade') || complete.has('bastion')) actions.add('patrol');
   if (complete.has('workshop') || complete.has('waterworks') || complete.has('road-yard')) actions.add('maintain-city');
+  if (
+    resident.adventurePolicy?.enabled
+    && (complete.has('trailhead') || complete.has('frontier-lodge') || complete.has('road-yard'))
+  ) {
+    const capability = residentCapability(resident, simulation);
+    if (strongestAllowedRpgAdventureRisk(capability, resident.adventurePolicy.maxRisk)) actions.add('adventure');
+  }
   if (simulation.economy.infrastructureCondition < 0.22) actions.delete('craft');
   return [...actions];
 }
@@ -316,6 +405,14 @@ function candidateScore(city, simulation, culture, resident, action, tick) {
     if (simulation.economy.security < 0.45) score += 0.20;
   }
   if (action === 'explore') score += t.curiosity * 0.55 + t.risk * 0.38 + t.ambition * 0.12;
+  if (action === 'adventure') {
+    const capability = residentCapability(resident, simulation);
+    const risk = strongestAllowedRpgAdventureRisk(capability, resident.adventurePolicy.maxRisk);
+    const readiness = risk ? describeRpgAdventureReadiness(capability, risk) : null;
+    score += t.curiosity * 0.42 + t.risk * 0.42 + t.ambition * 0.30;
+    score += readiness ? Math.max(-0.2, Math.min(0.28, readiness.margin / 120)) : -0.8;
+    if (resident.adventurePolicy.focus === 'city') score += t.empathy * 0.08 + t.tradition * 0.05;
+  }
   if (action === 'maintain-city') {
     score += t.industry * 0.48 + t.tradition * 0.25 + t.empathy * 0.16;
     score += Math.min(0.45, simulation.economy.maintenanceBacklog * 0.08);
@@ -323,7 +420,7 @@ function candidateScore(city, simulation, culture, resident, action, tick) {
 
   if (n.energy < 0.22 && !['rest', 'eat'].includes(action)) score -= 0.65;
   if (n.hunger < 0.20 && action !== 'eat') score -= 0.70;
-  if (n.safety < 0.18 && ['explore', 'gather'].includes(action)) score -= 0.38;
+  if (n.safety < 0.18 && ['explore', 'gather', 'adventure'].includes(action)) score -= 0.38;
   if (simulation.economy.infrastructureCondition < 0.35 && ['craft', 'trade', 'study'].includes(action)) score -= 0.14;
 
   return score;
@@ -384,6 +481,173 @@ function decayNeeds(resident) {
 function deterministicMaterial(resident, tick) {
   return MATERIALS[Math.floor(unit(resident.seed, `material:${tick}`) * MATERIALS.length) % MATERIALS.length];
 }
+
+function adventureLoot(simulation, resident, risk, tick, successTier) {
+  const riskDef = rpgAdventureRiskDefinition(risk);
+  const countBase = Math.max(1, Math.round(riskDef.lootScale + (successTier === 'success' ? 1 : 0)));
+  const count = successTier === 'failure' ? 0 : countBase;
+  const items = {};
+  for (let index = 0; index < count; index++) {
+    const itemId = MATERIALS[Math.floor(unit(resident.seed, `adventure-loot:${tick}:${index}`) * MATERIALS.length) % MATERIALS.length];
+    items[itemId] = (items[itemId] || 0) + 1;
+  }
+  if (
+    successTier === 'success'
+    && risk !== 'safe'
+    && unit(resident.seed, `adventure-gear:${tick}`) > 0.78
+  ) {
+    const itemId = risk === 'bold'
+      ? pick(resident.seed, `adventure-gear-kind:${tick}`, ['field-weapon', 'reinforced-armor', 'field-pack'])
+      : pick(resident.seed, `adventure-gear-kind:${tick}`, ['iron-knife', 'scrap-plate', 'field-pack']);
+    items[itemId] = (items[itemId] || 0) + 1;
+  }
+  return items;
+}
+
+function resolveResidentAdventure(simulation, city, resident, tick, effects) {
+  const capability = residentCapability(resident, simulation);
+  const risk = strongestAllowedRpgAdventureRisk(capability, resident.adventurePolicy.maxRisk);
+  if (!risk) return { attempted: false, reason: 'not-adventure-ready', capability };
+
+  const riskDef = rpgAdventureRiskDefinition(risk);
+  const readiness = describeRpgAdventureReadiness(capability, risk);
+  const challenge = riskDef.challenge + (unit(resident.seed, `adventure-challenge:${tick}`) - 0.5) * 20;
+  const performance = capability.adventureScore
+    + resident.traits.risk * 4
+    + resident.traits.curiosity * 2
+    + (unit(resident.seed, `adventure-performance:${tick}`) - 0.5) * 12;
+  const margin = performance - challenge;
+  const successTier = margin >= 0 ? 'success' : margin >= -10 ? 'partial' : 'failure';
+
+  let damage = successTier === 'success'
+    ? Math.floor(unit(resident.seed, `adventure-damage:${tick}`) * 5)
+    : successTier === 'partial'
+      ? 6 + Math.floor(unit(resident.seed, `adventure-damage:${tick}`) * 15)
+      : 16 + Math.floor(unit(resident.seed, `adventure-damage:${tick}`) * 31);
+
+  const protection = Math.min(0.6, (capability.defense + capability.survival) / 180);
+  damage = Math.max(0, Math.round(damage * (1 - protection)));
+  resident.vitality = Math.max(0, resident.vitality - damage);
+
+  const fatalChance = riskDef.fatalBase
+    * Math.max(0.18, 1 - capability.defense / 70)
+    * Math.max(0.18, 1 - capability.survival / 70)
+    * (successTier === 'failure' ? 1.8 : successTier === 'partial' ? 0.55 : 0.12);
+  const fatal = resident.vitality <= 0
+    || unit(resident.seed, `adventure-fatal:${tick}`) < fatalChance;
+
+  const loot = fatal ? {} : adventureLoot(simulation, resident, risk, tick, successTier);
+  const cityItems = {};
+  const personalItems = {};
+  if (!fatal) {
+    for (const [itemId, count] of Object.entries(loot)) {
+      const cityCount = resident.adventurePolicy.focus === 'city'
+        ? count
+        : resident.adventurePolicy.focus === 'mixed'
+          ? Math.floor(count / 2)
+          : 0;
+      const personalCount = count - cityCount;
+      if (cityCount > 0) {
+        effects.sharedItemDeltas[itemId] = (effects.sharedItemDeltas[itemId] || 0) + cityCount;
+        cityItems[itemId] = cityCount;
+      }
+      if (personalCount > 0) {
+        addPossession(resident, itemId, personalCount);
+        personalItems[itemId] = personalCount;
+      }
+    }
+  }
+
+  const riskXp = risk === 'bold' ? 15 : risk === 'standard' ? 10 : 6;
+  if (!fatal) {
+    resident.skills.exploration += riskXp;
+    resident.skills.defense += Math.max(3, Math.floor(riskXp * 0.6));
+    resident.skills.gathering += successTier === 'success' ? Math.max(2, Math.floor(riskXp * 0.4)) : 1;
+  }
+
+  const adventureId = `${simulation.cityId}:adventure-${simulation.nextAdventureSerial++}`;
+  const record = {
+    id: adventureId,
+    tick,
+    residentId: resident.id,
+    risk,
+    focus: resident.adventurePolicy.focus,
+    successTier,
+    margin: Number(margin.toFixed(3)),
+    damage,
+    fatal,
+    loot: { ...loot },
+    cityItems,
+    personalItems,
+    capability: {
+      power: capability.power,
+      defense: capability.defense,
+      survival: capability.survival,
+      utility: capability.utility,
+      adventureScore: capability.adventureScore
+    }
+  };
+  simulation.adventures.push(record);
+  resident.adventureHistory.push(adventureId);
+  while (resident.adventureHistory.length > 16) resident.adventureHistory.shift();
+  while (simulation.adventures.length > 80) simulation.adventures.shift();
+
+  if (successTier !== 'failure' && !fatal) {
+    const discovery = {
+      id: `${simulation.cityId}:discovery-${simulation.nextDiscoverySerial++}`,
+      tick,
+      residentId: resident.id,
+      type: risk === 'safe' ? 'adventure-route' : risk === 'standard' ? 'expedition-site' : 'dangerous-expedition-site',
+      action: 'adventure',
+      projectId: null,
+      xM: Number(resident.xM.toFixed(2)),
+      zM: Number(resident.zM.toFixed(2))
+    };
+    simulation.discoveries.push(discovery);
+    resident.discoveries.push(discovery.id);
+    while (resident.discoveries.length > 12) resident.discoveries.shift();
+    while (simulation.discoveries.length > 64) simulation.discoveries.shift();
+    record.discoveryId = discovery.id;
+  }
+
+  if (fatal) {
+    const recoveredItems = {};
+    const lostItems = {};
+    const allItems = { ...resident.possessions };
+    for (const itemId of Object.values(resident.equipment || {})) {
+      if (itemId) allItems[itemId] = (allItems[itemId] || 0) + 1;
+    }
+    for (const [itemId, count] of Object.entries(allItems)) {
+      let recovered = 0;
+      for (let index = 0; index < count; index++) {
+        if (unit(resident.seed, `adventure-recovery:${tick}:${itemId}:${index}`) > 0.46) recovered += 1;
+      }
+      if (recovered > 0) {
+        recoveredItems[itemId] = recovered;
+        effects.sharedItemDeltas[itemId] = (effects.sharedItemDeltas[itemId] || 0) + recovered;
+      }
+      if (count - recovered > 0) lostItems[itemId] = count - recovered;
+    }
+
+    simulation.fallenResidents.push({
+      id: resident.id,
+      name: resident.name,
+      tick,
+      cause: 'adventure',
+      adventureId,
+      risk,
+      skills: cloneJson(resident.skills),
+      relationships: Object.keys(resident.relationships).length,
+      recoveredItems,
+      lostItems,
+      truthBoundary: 'death-was-an-explicit-adventure-outcome-not-aging-or-passive-mortality'
+    });
+    resident.alive = false;
+  }
+
+  return { attempted: true, record, capability, readiness };
+}
+
 
 function maybeDiscovery(simulation, resident, action, tick, project) {
   if (!['study', 'explore', 'gather'].includes(action)) return null;
@@ -549,6 +813,10 @@ function applyActionEconomy(simulation, city, resident, action, tick, effects) {
     output = { securityGain: Number(gain.toFixed(4)) };
   }
 
+  if (action === 'adventure') {
+    output = resolveResidentAdventure(simulation, city, resident, tick, effects);
+  }
+
   if (action === 'maintain-city') {
     const work = 0.40 + Math.min(0.35, resident.skills.craft / 300);
     simulation.economy.maintenanceBacklog = Math.max(0, simulation.economy.maintenanceBacklog - work);
@@ -612,9 +880,10 @@ function actionOutcome(city, simulation, resident, action, tick, residents, effe
   );
   resident.revision += 1;
 
-  const discovery = maybeDiscovery(simulation, resident, action, tick, project);
-  const informalWork = maybeInformalWork(simulation, resident, action, tick);
-  const proposal = maybeProposal(simulation, city, resident, tick);
+  const fatalAdventure = action === 'adventure' && Boolean(output?.record?.fatal);
+  const discovery = fatalAdventure ? null : maybeDiscovery(simulation, resident, action, tick, project);
+  const informalWork = fatalAdventure ? null : maybeInformalWork(simulation, resident, action, tick);
+  const proposal = fatalAdventure ? null : maybeProposal(simulation, city, resident, tick);
 
   const memory = {
     tick,
@@ -708,12 +977,15 @@ export function createCityVillagerSimulation({
     nextProposalSerial: 1,
     nextDiscoverySerial: 1,
     nextInformalSerial: 1,
+    nextAdventureSerial: 1,
     residents,
     actionCounts: {},
     births: [],
     discoveries: [],
     proposals: [],
     informalWorks: [],
+    adventures: [],
+    fallenResidents: [],
     economy: {
       foodReserve: residentCount * 6,
       foodProduced: 0,
@@ -753,8 +1025,9 @@ export function advanceCityVillagerSimulation(simulation, city, {
 
     for (const resident of simulation.residents) decayNeeds(resident);
 
-    const residents = [...simulation.residents].sort((a, b) => a.id.localeCompare(b.id));
+    const residents = [...simulation.residents].filter(resident => resident.alive !== false).sort((a, b) => a.id.localeCompare(b.id));
     for (const resident of residents) {
+      if (resident.alive === false) continue;
       const choice = chooseAction(city, simulation, culture, resident, simulation.tick);
       const memory = actionOutcome(city, simulation, resident, choice.action, simulation.tick, residents, effects);
       simulation.actionCounts[choice.action] = (simulation.actionCounts[choice.action] || 0) + 1;
@@ -767,6 +1040,7 @@ export function advanceCityVillagerSimulation(simulation, city, {
       }));
     }
 
+    simulation.residents = simulation.residents.filter(resident => resident.alive !== false);
     proposalSupportTick(simulation);
 
     const capacity = populationCapacity(city);
@@ -808,6 +1082,8 @@ export function snapshotCityVillagerSimulation(simulation, city) {
       schema: resident.schema,
       id: resident.id,
       kind: resident.kind,
+      controllerKind: resident.controllerKind,
+      alive: resident.alive !== false,
       name: resident.name,
       bornTick: resident.bornTick,
       traits: resident.traits,
@@ -816,6 +1092,11 @@ export function snapshotCityVillagerSimulation(simulation, city) {
       relationships: resident.relationships,
       memories: resident.memories,
       possessions: resident.possessions,
+      equipment: resident.equipment,
+      vitality: resident.vitality,
+      capability: residentCapability(resident, simulation),
+      adventurePolicy: resident.adventurePolicy,
+      adventureHistory: resident.adventureHistory,
       wealth: resident.wealth,
       discoveries: resident.discoveries,
       proposalIds: resident.proposalIds,
@@ -849,9 +1130,11 @@ export function snapshotCityVillagerSimulation(simulation, city) {
     discoveries: simulation.discoveries,
     proposals: simulation.proposals,
     informalWorks: simulation.informalWorks,
+    adventures: simulation.adventures,
+    fallenResidents: simulation.fallenResidents,
     residents,
     serviceNpcs: serviceNpcsForCity(city),
     truthBoundary:
-      'Residents autonomously produce/hold/share goods, experience food and maintenance pressure, discover local facts, create small informal works, form relationships and make advisory project proposals. Their next action is deterministic from needs, traits, skills, relationships, city path/culture/opportunities and bounded seeded variation. Proposals never spend city resources or complete projects. Store/quest service NPCs remain fixed interfaces.'
+      'Human, machine and autonomous characters share the same capability/equipment contract; controller kind gives no hidden stat bonus. Autonomous residents may adventure only when explicitly permitted and actually capable at the configured risk. Adventure outcomes can grow skills, return loot/knowledge to the city, injure or kill the resident. There is no aging or passive mortality. Proposals never spend city resources or complete projects. Store/quest service NPCs remain fixed interfaces.'
   }));
 }

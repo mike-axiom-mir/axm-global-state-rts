@@ -83,7 +83,8 @@ function normalizeCommand(raw) {
 }
 
 export class PersistentRpgWorld {
-  constructor({ worldId = 'foundation-rpg-world', worldSeed = 'axm-persistent-rpg-v0' } = {}) {
+  constructor({ worldId = 'foundation-rpg-world', worldSeed = 'axm-persistent-rpg-v0', journal = [] } = {}) {
+    if (!Array.isArray(journal)) throw new TypeError('journal must be an array');
     this.schema = PERSISTENT_RPG_WORLD_SCHEMA;
     this.worldId = String(worldId);
     this.worldSeed = String(worldSeed);
@@ -95,6 +96,11 @@ export class PersistentRpgWorld {
     this.waystones = new Map();
     this.artifacts = new Map();
     this.lifeEnds = [];
+    this.journal = [];
+    for (const command of journal) {
+      const replay = this.applyCommand(command);
+      if (!replay.accepted) throw new Error(`RPG journal replay rejected at revision ${this.revision + 1}: ${replay.reason}`);
+    }
   }
 
   applyCommand(raw) {
@@ -203,8 +209,13 @@ export class PersistentRpgWorld {
     }
 
     this.commandIds.add(command.commandId);
+    this.journal.push(freezeJson(cloneJson(command)));
     this.revision += 1;
     return Object.freeze({ accepted: true, revision: this.revision, result: freezeJson(result), world: this.snapshot() });
+  }
+
+  exportJournal() {
+    return freezeJson(cloneJson(this.journal));
   }
 
   snapshot() {

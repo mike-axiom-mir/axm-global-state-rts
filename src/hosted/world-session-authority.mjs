@@ -4,13 +4,15 @@ import { createWorldParticipantRegistry } from './world-participant-registry.mjs
 import { createVerifiedLocalSalvageLedger } from './verified-local-salvage-ledger.mjs';
 import { createVerifiedLocalSalvageReservationLedger } from './verified-local-salvage-reservation-ledger.mjs';
 import { LOCAL_CHECKPOINT_ADOPTION_SCHEMA } from '../session/local-checkpoint-adoption.mjs';
+import { RPG_WORLD_EVENT_TYPES } from '../rpg/persistent-world.mjs';
 
 export const WORLD_SESSION_AUTHORITY_SCHEMA = 'axm.global-state-rts.world-session-authority/v0.5';
 
 const WORLD_EVENT_ACTION_IDS = Object.freeze({
   'territory.claim': 'world-territory-claim',
   'city.provoke': 'world-city-provoke',
-  'run.closed': 'world-run-close'
+  'run.closed': 'world-run-close',
+  ...Object.fromEntries(RPG_WORLD_EVENT_TYPES.map(type => [type, `world-${type.replaceAll('.', '-')}`]))
 });
 
 function nonEmpty(value, label) {

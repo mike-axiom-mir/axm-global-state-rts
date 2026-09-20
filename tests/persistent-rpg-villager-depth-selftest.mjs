@@ -57,8 +57,13 @@ let totalRelationships = 0;
 let totalSkillXp = 0;
 for (const resident of runA.snapshot.residents) {
   assert.equal(resident.kind, 'resident');
-  assert.equal(resident.memories.length > 0, true);
-  assert.equal(Object.values(resident.actionCounts).reduce((sum, value) => sum + value, 0) > 0, true);
+  const established = resident.bornTick < runA.snapshot.tick;
+  if (established) {
+    assert.equal(resident.memories.length > 0, true);
+    assert.equal(Object.values(resident.actionCounts).reduce((sum, value) => sum + value, 0) > 0, true);
+  } else {
+    assert.equal(resident.memories.length, 0, 'resident added after this tick should begin without fake history');
+  }
   for (const action of Object.keys(resident.actionCounts)) allActions.add(action);
   totalRelationships += Object.keys(resident.relationships).length;
   totalSkillXp += Object.values(resident.skills).reduce((sum, value) => sum + value, 0);

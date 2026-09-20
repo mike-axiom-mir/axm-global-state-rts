@@ -1,0 +1,112 @@
+{
+  "schema": "axm.global-state-rts.music-realization/v0.1",
+  "id": "global-state-rts-strategic-pressure-realization-v1",
+  "project_id": "global-state-rts-strategic-pressure-v1",
+  "music_maker_commit": "6257e2763cac3e64822867ce325e844a0f03cfd3",
+  "audio_fabric_commit": "19246a121791e546defeb7d83743cc7f755826d3",
+  "provenance": {
+    "origin": "ai",
+    "source_id": "game-music-voice-integrator:2026-09-20:strategic-realization-v1"
+  },
+  "profiles": [
+    {
+      "schema": "axm.audio-realization-profile/v1",
+      "id": "rts-wasteland-triangle-v1",
+      "kind": "instrument",
+      "waveform": "triangle",
+      "sample_rate": 44100,
+      "gain": 0.16,
+      "envelope": {},
+      "effects": [],
+      "provenance": {
+        "origin": "ai",
+        "source_id": "game-music-voice-integrator:2026-09-20:wasteland-triangle-v1"
+      }
+    },
+    {
+      "schema": "axm.audio-realization-profile/v1",
+      "id": "rts-pressure-square-v1",
+      "kind": "instrument",
+      "waveform": "square",
+      "sample_rate": 44100,
+      "gain": 0.08,
+      "envelope": {},
+      "effects": [],
+      "provenance": {
+        "origin": "ai",
+        "source_id": "game-music-voice-integrator:2026-09-20:pressure-square-v1"
+      }
+    },
+    {
+      "schema": "axm.audio-realization-profile/v1",
+      "id": "rts-combat-triangle-v1",
+      "kind": "instrument",
+      "waveform": "triangle",
+      "sample_rate": 44100,
+      "gain": 0.18,
+      "envelope": {},
+      "effects": [],
+      "provenance": {
+        "origin": "ai",
+        "source_id": "game-music-voice-integrator:2026-09-20:combat-triangle-v1"
+      }
+    }
+  ],
+  "states": {
+    "exploration": {
+      "status": "bound_note_only_candidate",
+      "audible_candidate": true,
+      "bindings": [
+        {
+          "scope": "stem",
+          "key": "wasteland-motif-stem",
+          "binding_ref": "rts-wasteland-triangle-v1",
+          "provenance": {
+            "origin": "ai",
+            "source_id": "game-music-voice-integrator:2026-09-20:exploration-binding-v1"
+          }
+        }
+      ]
+    },
+    "combat": {
+      "status": "bound_note_only_candidate",
+      "audible_candidate": true,
+      "bindings": [
+        {
+          "scope": "stem",
+          "key": "wasteland-motif-stem",
+          "binding_ref": "rts-wasteland-triangle-v1",
+          "provenance": {
+            "origin": "ai",
+            "source_id": "game-music-voice-integrator:2026-09-20:combat-motif-binding-v1"
+          }
+        },
+        {
+          "scope": "stem",
+          "key": "pressure-pulse-stem",
+          "binding_ref": "rts-pressure-square-v1",
+          "provenance": {
+            "origin": "ai",
+            "source_id": "game-music-voice-integrator:2026-09-20:combat-pressure-binding-v1"
+          }
+        },
+        {
+          "scope": "stem",
+          "key": "combat-drive-stem",
+          "binding_ref": "rts-combat-triangle-v1",
+          "provenance": {
+            "origin": "ai",
+            "source_id": "game-music-voice-integrator:2026-09-20:combat-drive-binding-v1"
+          }
+        }
+      ]
+    },
+    "danger": {
+      "status": "hold_voice_performance_unrealized",
+      "audible_candidate": false,
+      "bindings": [],
+      "hold_reason": "The canonical danger section contains raid-radio-stem / radio-1 voice performance. Audio Fabric music-plan v1 rejects voice performance, so this state must not be rendered by silently dropping, replacing, or synthesizing the line."
+    }
+  },
+  "truth_boundary": "These are explicit product-owned realization choices for exploration and combat note events. Repeating the same structured inputs may produce deterministic Music Maker plans and Audio Fabric bytes, but the authored musical choices remain AI-originated and are not listening-quality or creative-acceptance evidence. Danger remains structurally valid but audibly unrealized until an explicit voice-performance contract exists."
+}

@@ -83,6 +83,10 @@ export class WorldBrowserClient {
     return this.#request('GET', '/api/world/events');
   }
 
+  rpgWorld() {
+    return this.#request('GET', '/api/world/rpg');
+  }
+
   worldEvent(eventId) {
     return this.#request('GET', `/api/world/events/${encodeURIComponent(nonEmpty(eventId, 'eventId'))}`);
   }

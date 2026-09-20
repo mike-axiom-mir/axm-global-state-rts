@@ -1,0 +1,155 @@
+name: LOCAL combat rifle VFX
+
+on:
+  pull_request:
+    paths:
+      - 'game/combat-proving-ground.html'
+      - 'game/local-combat-rifle-vfx-player.mjs'
+      - 'src/presentation/local-combat-rifle-vfx.mjs'
+      - 'tests/local-combat-rifle-vfx-selftest.mjs'
+      - 'tests/browser/local-combat-rifle-vfx.spec.js'
+      - '.github/workflows/local-combat-rifle-vfx.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-product-vfx:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out RTS candidate and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check out pinned Visual Effect Fabric
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-visual-effect-fabric
+          ref: 7efbbb8a62f3a32807ef5fb5343b330a566183a8
+          path: .deps/axm-visual-effect-fabric
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Verify exact VFX Fabric pin and its game-runtime suite
+        run: |
+          test "$(git -C .deps/axm-visual-effect-fabric rev-parse HEAD)" = "7efbbb8a62f3a32807ef5fb5343b330a566183a8"
+          npm --prefix .deps/axm-visual-effect-fabric/game-runtime test
+
+      - name: Compile product recipes through real VFX Fabric and apply renderer budgets
+        run: |
+          mkdir -p test-results
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { writeFile } from 'node:fs/promises';
+          import { compileRequest } from './.deps/axm-visual-effect-fabric/game-runtime/src/index.mjs';
+          import { adaptPlanForRenderer } from './.deps/axm-visual-effect-fabric/game-runtime/src/renderer-adapter.mjs';
+          import { deriveLocalRifleAbilityBinding } from './src/presentation/local-combat-rifle-ability.mjs';
+          import {
+            LOCAL_RIFLE_VFX_RENDER_PROFILE,
+            VISUAL_EFFECT_FABRIC_PIN,
+            createLocalRifleVfxBundle
+          } from './src/presentation/local-combat-rifle-vfx.mjs';
+
+          assert.equal(VISUAL_EFFECT_FABRIC_PIN, '7efbbb8a62f3a32807ef5fb5343b330a566183a8');
+          const binding = deriveLocalRifleAbilityBinding(3, { revision: 4, lastOutcome: { kind: 'exchange' } });
+          const bundle = createLocalRifleVfxBundle(binding);
+          assert.equal(bundle.fireTimeSeconds, 0.12);
+          assert.equal(bundle.contactClaim, false);
+          assert.equal(bundle.impactClaim, false);
+
+          const firstPlans = bundle.requests.map(compileRequest);
+          const secondPlans = bundle.requests.map(compileRequest);
+          assert.deepEqual(firstPlans, secondPlans);
+          assert.ok(firstPlans.every(plan => plan.time === 0.12));
+          assert.ok(firstPlans.every(plan => plan.sourceEvidence.combatRevision === 4));
+          assert.ok(firstPlans.every(plan => plan.sourceEvidence.contactClaim === false));
+
+          const renderPlans = firstPlans.map(plan => adaptPlanForRenderer(plan, LOCAL_RIFLE_VFX_RENDER_PROFILE));
+          const muzzle = renderPlans.find(plan => plan.kind === 'particle-burst');
+          const tracer = renderPlans.find(plan => plan.kind === 'beam');
+          assert.equal(muzzle.renderable, true);
+          assert.equal(muzzle.payload.count, 8);
+          assert.deepEqual(muzzle.adaptation.reasons, [{ type: 'particle-budget', from: 18, to: 8 }]);
+          assert.equal(tracer.renderable, true);
+          assert.equal(tracer.payload.segments, 3);
+          assert.deepEqual(tracer.adaptation.reasons, [{ type: 'beam-segment-budget', from: 6, to: 3 }]);
+          assert.ok(renderPlans.every(plan => plan.adaptation.timingPreserved === true));
+          assert.ok(renderPlans.every(plan => plan.time === 0.12));
+
+          const evidence = {
+            ok: true,
+            visualEffectFabricPin: VISUAL_EFFECT_FABRIC_PIN,
+            actionInstanceId: bundle.actionInstanceId,
+            combatRevision: bundle.combatRevision,
+            fireTimeSeconds: bundle.fireTimeSeconds,
+            sourceVfxRequestId: bundle.sourceVfxRequestId,
+            contactClaim: false,
+            impactClaim: false,
+            canonicalPlans: firstPlans,
+            renderPlans
+          };
+          await writeFile('test-results/local-combat-rifle-vfx-plans.json', JSON.stringify(evidence, null, 2) + '\n');
+          console.log(JSON.stringify({
+            ok: true,
+            effectKinds: firstPlans.map(plan => plan.kind),
+            fireTimeSeconds: bundle.fireTimeSeconds,
+            particleBudget: [18, muzzle.payload.count],
+            beamSegmentBudget: [6, tracer.payload.segments],
+            contactClaim: false
+          }, null, 2));
+          NODE
+
+      - name: Run product VFX selftest
+        run: node tests/local-combat-rifle-vfx-selftest.mjs
+
+      - name: Run stacked Ability selftest
+        run: node tests/local-combat-rifle-ability-selftest.mjs
+
+      - name: Run stacked Animation selftest
+        run: node tests/local-combat-rifle-motion-selftest.mjs
+
+      - name: Check VFX module syntax
+        run: |
+          node --check src/presentation/local-combat-rifle-vfx.mjs
+          node --check game/local-combat-rifle-vfx-player.mjs
+          node --check tests/browser/local-combat-rifle-vfx.spec.js
+
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start local browser shell
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-rifle-vfx.log 2>&1 &
+          echo $! > /tmp/axm-global-state-rts-rifle-vfx.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/combat-proving-ground.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-rifle-vfx.log
+          exit 1
+
+      - name: Exercise accepted exchange and no-fabrication paths in Chromium
+        run: npx playwright test tests/browser/local-combat-rifle-vfx.spec.js --reporter=line
+
+      - name: Preserve VFX/browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-local-combat-rifle-vfx
+          path: |
+            test-results/local-combat-rifle-vfx-plans.json
+            test-results/global-state-rts-local-combat-rifle-vfx-active.png
+            /tmp/axm-global-state-rts-rifle-vfx.log
+          if-no-files-found: warn
+          retention-days: 14

@@ -133,6 +133,18 @@ export class WorldHttpApiService {
         });
       }
 
+      if (verb === 'GET' && route === '/api/world/rpg') {
+        if (typeof this.authority.sharedState?.rpgSnapshot !== 'function') {
+          return response(501, { error: 'persistent RPG world authority unavailable' });
+        }
+        return response(200, {
+          schema: 'axm.persistent-rpg.http-snapshot/v0.1',
+          sharedRevision: this.authority.sharedState.meta().revision,
+          headHash: this.authority.sharedState.meta().headHash,
+          world: this.authority.sharedState.rpgSnapshot()
+        });
+      }
+
       if (verb === 'GET' && route === '/api/world/participant') {
         const participantId = queryValue(searchParams, 'participantId');
         if (!participantId) return response(400, { error: 'participantId query parameter required' });

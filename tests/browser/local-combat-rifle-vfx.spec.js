@@ -42,6 +42,7 @@ test('accepted LOCAL exchange realizes bounded muzzle/tracer VFX and retreat/rej
 
   await expect.poll(async () => page.evaluate(() => window.__AXM_LOCAL_COMBAT_RIFLE_VFX__.snapshot().scheduledCount)).toBe(1);
   await expect(page.locator('[data-axm-rifle-vfx]')).toBeVisible({ timeout: 2_000 });
+  await page.screenshot({ path: 'test-results/global-state-rts-local-combat-rifle-vfx-active.png', fullPage: true });
 
   const activeMarkup = await page.locator('[data-axm-rifle-vfx]').evaluate(node => ({
     actionInstanceId: node.getAttribute('data-axm-rifle-vfx'),
@@ -52,7 +53,6 @@ test('accepted LOCAL exchange realizes bounded muzzle/tracer VFX and retreat/rej
   expect(activeMarkup.contactClaim).toBe('false');
   expect(activeMarkup.childCount).toBe(12);
 
-  await page.screenshot({ path: 'test-results/global-state-rts-local-combat-rifle-vfx-active.png', fullPage: true });
   await expect.poll(async () => page.evaluate(() => window.__AXM_LOCAL_COMBAT_RIFLE_VFX__.snapshot().playCount)).toBe(1);
 
   vfx = await page.evaluate(() => window.__AXM_LOCAL_COMBAT_RIFLE_VFX__.snapshot());

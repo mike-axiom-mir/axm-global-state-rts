@@ -1,0 +1,26 @@
+name: Global State aggregate city time characterization
+
+on:
+  pull_request:
+    paths:
+      - "src/sim/aggregate-city.mjs"
+      - "src/world/world-landmarks.mjs"
+      - "tests/global-state-city-time-characterization.mjs"
+      - "docs/GLOBAL_STATE_CITY_TIME_CHARACTERIZATION_V0.md"
+      - ".github/workflows/global-state-city-time-characterization.yml"
+
+jobs:
+  characterize-city-time:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Existing city regression
+        run: npm run test:city-guardian
+      - name: Characterize time chunk behavior
+        run: node tests/global-state-city-time-characterization.mjs

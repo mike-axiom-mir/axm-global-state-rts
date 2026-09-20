@@ -2,11 +2,9 @@ export const LOCAL_COMBAT_AUDIO_MAP_SCHEMA = 'axm.global-state-rts.local-combat-
 
 export const LOCAL_COMBAT_CUE_IDS = Object.freeze({
   menuOpen: 'combat-menu-open',
-  engage: 'combat-engage',
   exchange: 'combat-exchange',
   victory: 'combat-victory',
-  defeat: 'combat-defeat',
-  retreat: 'combat-retreat'
+  defeat: 'combat-defeat'
 });
 
 /**
@@ -20,14 +18,11 @@ export function cueForLocalCombatResult(result, outcome = null) {
   if (!result || result.handled !== true || result.accepted !== true) return null;
 
   if (result.action === 'combat-menu-open') return LOCAL_COMBAT_CUE_IDS.menuOpen;
-  if (result.action === 'combat-retreat') return LOCAL_COMBAT_CUE_IDS.retreat;
   if (result.action !== 'combat-exchange') return null;
 
   const kind = String(outcome?.kind || '');
   if (kind === 'victory' || kind === 'siege-repelled') return LOCAL_COMBAT_CUE_IDS.victory;
   if (kind === 'defeat' || kind === 'civilization-death') return LOCAL_COMBAT_CUE_IDS.defeat;
-
-  if (Number(result.receipt?.tick) === 1) return LOCAL_COMBAT_CUE_IDS.engage;
   return LOCAL_COMBAT_CUE_IDS.exchange;
 }
 

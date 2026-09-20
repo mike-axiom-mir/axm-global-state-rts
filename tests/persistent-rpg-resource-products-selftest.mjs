@@ -150,12 +150,16 @@ const noInputs = createCityVillagerSimulation({
 });
 awakenCityVillagerSimulation(noInputs, 'production-test');
 noInputs.economy.foodReserve = 0;
-const emptyCity = Object.freeze({ ...resourceCity, sharedItems: Object.freeze({}) });
+const emptyCity = Object.freeze({
+  ...resourceCity,
+  sharedItems: Object.freeze({}),
+  projects: Object.freeze([])
+});
 advanceCityVillagerSimulation(noInputs, emptyCity, { ticks: 24, hoursPerTick: 4 });
 assert.equal(
   Object.values(noInputs.products.produced).reduce((sum, value) => sum + value, 0),
   0,
-  'city products must not appear without real food/material inputs'
+  'city products must not appear without real facilities or inputs'
 );
 
 console.log('persistent RPG finite resources and useful products selftest passed');

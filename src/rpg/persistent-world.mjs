@@ -222,6 +222,7 @@ export class PersistentRpgWorld {
     this.waystones = new Map();
     this.artifacts = new Map();
     this.cities = new Map();
+    this.cities.set(this.defaultCityId, makeCity(this.defaultCityId, { worldHour: 0, path: this.defaultCityPath }));
     this.lifeEnds = [];
     this.lifeDepartures = [];
     this.journal = [];

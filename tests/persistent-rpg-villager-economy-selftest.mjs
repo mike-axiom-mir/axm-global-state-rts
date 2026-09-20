@@ -60,10 +60,13 @@ for (const resident of [seededA, seededB]) {
   resident.possessions.timber = 3;
   resident.skills.craft = 32;
   resident.skills.growing = 28;
-  resident.traits.industry = 1;
-  resident.traits.empathy = 1;
-  resident.traits.tradition = 1;
-  resident.traits.thrift = 0.2;
+  resident.traits = Object.freeze({
+    ...resident.traits,
+    industry: 1,
+    empathy: 1,
+    tradition: 1,
+    thrift: 0.2
+  });
   resident.needs.energy = 1;
   resident.needs.hunger = 1;
   resident.needs.belonging = 1;
@@ -121,9 +124,12 @@ const informal = createCityVillagerSimulation({
   residentCount: 1
 });
 informal.residents[0].actionCounts.explore = 7;
-informal.residents[0].traits.curiosity = 1;
-informal.residents[0].traits.risk = 1;
-informal.residents[0].traits.ambition = 1;
+informal.residents[0].traits = Object.freeze({
+  ...informal.residents[0].traits,
+  curiosity: 1,
+  risk: 1,
+  ambition: 1
+});
 informal.residents[0].needs.energy = 1;
 informal.residents[0].needs.hunger = 1;
 informal.residents[0].needs.belonging = 1;

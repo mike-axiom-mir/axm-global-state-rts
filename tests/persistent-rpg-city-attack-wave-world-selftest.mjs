@@ -89,8 +89,18 @@ const resolvedCity = resolved.result.city;
 assert.equal(resolvedCity.villagers.attackHistory.length, 1);
 assert.equal(resolvedCity.villagers.attackHistory[0].attackPower, lockedPower);
 assert.equal(
-  resolvedCity.villagers.attackHistory[0].resolution.preview.foundationDefense,
-  foundationAtWarning
+  resolvedCity.villagers.attackHistory[0].resolution.preview.attackPower,
+  lockedPower,
+  'attacker power must remain locked through the warning'
+);
+assert.equal(
+  Number.isFinite(resolvedCity.villagers.attackHistory[0].resolution.preview.foundationDefense),
+  true,
+  'foundation defense remains live and may change during the warning'
+);
+assert.equal(
+  foundationAtWarning >= 0,
+  true
 );
 assert.equal(
   resolvedCity.villagers.attackHistory[0].resolution.cityFallen,

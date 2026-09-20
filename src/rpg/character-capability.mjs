@@ -1,4 +1,4 @@
-export const RPG_CHARACTER_CAPABILITY_SCHEMA = 'axm.persistent-rpg.character-capability/v0.1';
+export const RPG_CHARACTER_CAPABILITY_SCHEMA = 'axm.persistent-rpg.character-capability/v0.2';
 
 export const RPG_CHARACTER_CONTROLLERS = Object.freeze([
   'human',
@@ -109,6 +109,11 @@ const ITEM_DEFINITIONS = Object.freeze({
   })
 });
 
+export const RPG_EQUIPMENT_CATALOG = Object.freeze(Object.fromEntries(
+  Object.entries(ITEM_DEFINITIONS).map(([itemId, definition]) => [itemId, Object.freeze({ id: itemId, ...definition })])
+));
+
+
 const RISK_REQUIREMENTS = Object.freeze({
   safe: Object.freeze({
     power: 13,
@@ -116,7 +121,7 @@ const RISK_REQUIREMENTS = Object.freeze({
     survival: 16,
     utility: 8,
     challenge: 18,
-    fatalBase: 0.025,
+    fatalBase: 0.0015,
     lootScale: 1
   }),
   standard: Object.freeze({
@@ -125,7 +130,7 @@ const RISK_REQUIREMENTS = Object.freeze({
     survival: 22,
     utility: 11,
     challenge: 25,
-    fatalBase: 0.07,
+    fatalBase: 0.006,
     lootScale: 1.6
   }),
   bold: Object.freeze({
@@ -134,7 +139,7 @@ const RISK_REQUIREMENTS = Object.freeze({
     survival: 29,
     utility: 15,
     challenge: 34,
-    fatalBase: 0.14,
+    fatalBase: 0.018,
     lootScale: 2.4
   })
 });
@@ -223,6 +228,13 @@ export function rpgEquipmentSlot(itemId) {
 
 export function rpgEquipmentQuality(itemId) {
   return rpgEquipmentDefinition(itemId)?.quality || 0;
+}
+
+export function rpgEquipmentSetQuality(equipment = {}) {
+  return RPG_EQUIPMENT_SLOTS.reduce(
+    (sum, slot) => sum + rpgEquipmentQuality(equipment?.[slot]),
+    0
+  );
 }
 
 export function createEmptyRpgEquipment() {

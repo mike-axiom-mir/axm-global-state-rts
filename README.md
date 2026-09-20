@@ -218,6 +218,65 @@ Adventure is also an explicit gameplay danger. A failed expedition can injure or
 
 Human-controlled residents currently perform moment-to-moment world play directly, while autonomous residents use the deterministic action selector. That controller difference is input/control only, not a different character species or hidden ruleset.
 
+## Dormant equilibrium, session survivors and chained explorers
+
+A city now begins in a **living equilibrium** rather than a free idle-growth machine.
+
+Before meaningful interaction, residents can stay alive, eat, forage, rest, socialize and form ordinary memories/relationships, but the untouched city does not autonomously snowball:
+
+- no population expansion;
+- no accumulating resident skill progression;
+- no discoveries;
+- no informal works;
+- no proposals;
+- no adventures;
+- no passive infrastructure decay spiral.
+
+The first real resident/user interaction explicitly awakens the city. From that point the existing open-ended causal simulation can roll without a fixed destination.
+
+Human-controlled lives now have a deterministic session-survival threshold. The current threshold is based on actual accumulated XP plus journey marks from travel/discovery. Before the threshold, safe session exit uses the existing city-contribution path. After the threshold, a living session can instead become a persistent city resident.
+
+A retained session survivor:
+
+- keeps the exact personal equipment worn at session end;
+- keeps personal carried possessions instead of double-banking them into the city;
+- keeps personal earned skill growth translated into the resident skill fabric;
+- receives a stable survivor-chain index;
+- switches from `controllerKind: human` to autonomous control after the session;
+- starts with conservative city-oriented exploration permission;
+- remains in the greater world until a real gameplay outcome kills them.
+
+There is no aging or passive mortality.
+
+### Explorer package rule
+
+The city has an adjustable **explorer package**: a desired weapon / armor / tool / pack loadout.
+
+For retained session-survivors:
+
+- if their own session gear is as strong or stronger than the configured package, they keep their own gear and may continue exploring when capable;
+- if the configured package would be stronger, they do **not** discard their existing gear and do not blindly adventure;
+- they remain in town and keep choosing useful city work while waiting;
+- once the actual stronger package items exist in canonical city inventory, the resident equips only the slots that are upgrades;
+- replaced personal gear goes back into the canonical city pool;
+- package gear is actually consumed from that pool, not conjured.
+
+Adventure permission is still bounded by the same character capability contract. Autonomous residents also use higher self-preservation vitality floors than a human-directed player would voluntarily choose for themselves. Resting heals vitality.
+
+### Survivor expedition groups
+
+When multiple retained session-survivors independently choose adventure on the same simulation tick, they can form deterministic expedition groups of up to three.
+
+Group membership:
+
+- is derived from retained survivor order/state;
+- is recorded in expedition history;
+- gives no hidden stat rewrite;
+- instead provides a bounded expedition support bonus and reduces fatal risk;
+- lets chained successful player sessions gradually become an organically persistent exploration crew.
+
+This means city population can grow not only through baseline simulation conditions, but also from actual human/machine sessions that survived long enough to become part of the world.
+
 ## Clean active surface
 
 The browser game layer remains only:
@@ -282,6 +341,11 @@ The RPG-specific suite verifies:
 - journaled autonomous adventure permission/risk/return focus;
 - autonomous adventure loot/skill growth and explicit gameplay death;
 - no aging/passive resident mortality;
+- untouched-city equilibrium without autonomous snowballing;
+- deterministic survivor-residency threshold and no double-banking of retained gear;
+- stronger-session-gear versus stronger-explorer-package comparison;
+- canonical city-inventory consumption when survivor package upgrades become available;
+- chained session-survivor expedition grouping;
 - deterministic host journal replay;
 - human/machine participant parity;
 - the clean no-RTS active browser boundary.

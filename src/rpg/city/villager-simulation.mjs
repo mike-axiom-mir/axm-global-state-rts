@@ -2,16 +2,20 @@ import { CITY_PROJECT_INDEX } from './city-emergence.mjs';
 import {
   RPG_ADVENTURE_FOCI,
   RPG_ADVENTURE_RISKS,
+  RPG_EQUIPMENT_SLOTS,
   createEmptyRpgEquipment,
   deriveRpgCharacterCapability,
   describeRpgAdventureReadiness,
   equipRpgItem,
   rpgAdventureRiskDefinition,
+  rpgEquipmentDefinition,
+  rpgEquipmentQuality,
+  rpgEquipmentSetQuality,
   strongestAllowedRpgAdventureRisk
 } from '../character-capability.mjs';
 
-export const CITY_VILLAGER_SIM_SCHEMA = 'axm.persistent-rpg.city-villager-sim/v0.3';
-export const CITY_VILLAGER_SCHEMA = 'axm.persistent-rpg.villager/v0.3';
+export const CITY_VILLAGER_SIM_SCHEMA = 'axm.persistent-rpg.city-villager-sim/v0.4';
+export const CITY_VILLAGER_SCHEMA = 'axm.persistent-rpg.villager/v0.4';
 
 export const VILLAGER_SKILLS = Object.freeze([
   'gathering',
@@ -29,6 +33,7 @@ export const VILLAGER_ACTIONS = Object.freeze([
   'eat',
   'socialize',
   'help-neighbor',
+  'forage',
   'gather',
   'share-surplus',
   'craft',
@@ -42,6 +47,19 @@ export const VILLAGER_ACTIONS = Object.freeze([
 ]);
 
 const MATERIALS = Object.freeze(['timber', 'stone', 'fiber', 'ore']);
+
+export const DEFAULT_EXPLORER_PACKAGE = Object.freeze({
+  weapon: 'iron-knife',
+  armor: 'scrap-plate',
+  tool: 'rope',
+  pack: 'field-pack'
+});
+
+const AUTONOMOUS_RISK_VITALITY_FLOOR = Object.freeze({
+  safe: 55,
+  standard: 68,
+  bold: 80
+});
 
 const STAGE_CAPACITY = Object.freeze({
   'seed-camp': 3,
@@ -98,6 +116,7 @@ const ACTION_NEED_EFFECTS = Object.freeze({
   eat: Object.freeze({ energy: 0.08, hunger: 0.46, belonging: 0.01, purpose: 0, safety: 0 }),
   socialize: Object.freeze({ energy: -0.05, hunger: -0.03, belonging: 0.30, purpose: 0.04, safety: 0.03 }),
   'help-neighbor': Object.freeze({ energy: -0.10, hunger: -0.04, belonging: 0.18, purpose: 0.18, safety: 0.02 }),
+  forage: Object.freeze({ energy: -0.10, hunger: 0.12, belonging: 0.01, purpose: 0.05, safety: -0.01 }),
   gather: Object.freeze({ energy: -0.18, hunger: -0.07, belonging: -0.02, purpose: 0.14, safety: -0.05 }),
   'share-surplus': Object.freeze({ energy: -0.03, hunger: -0.01, belonging: 0.12, purpose: 0.13, safety: 0.02 }),
   craft: Object.freeze({ energy: -0.13, hunger: -0.05, belonging: 0.01, purpose: 0.18, safety: 0 }),
@@ -197,6 +216,9 @@ function createResident(cityId, worldSeed, serial, bornTick = 0) {
     kind: 'resident',
     controllerKind: 'autonomous',
     alive: true,
+    originKind: 'seed-resident',
+    survivorChainIndex: null,
+    retainedFromLifeId: null,
     name: residentName(seed, serial),
     bornTick,
     seed,
@@ -213,6 +235,7 @@ function createResident(cityId, worldSeed, serial, bornTick = 0) {
       maxRisk: 'safe',
       focus: 'mixed'
     },
+    explorerPackageStatus: 'not-session-survivor',
     adventureHistory: [],
     wealth: 0,
     discoveries: [],
@@ -279,6 +302,163 @@ function residentCapability(resident, simulation = null) {
   });
 }
 
+function normalizeExplorerPackageEquipment(raw = {}) {
+  const equipment = {};
+  for (const slot of RPG_EQUIPMENT_SLOTS) {
+    const itemId = raw?.[slot] || null;
+    if (itemId === null) {
+      equipment[slot] = null;
+      continue;
+    }
+    const definition = rpgEquipmentDefinition(itemId);
+    if (!definition || definition.slot !== slot) throw new RangeError(`invalid explorer package ${slot}: ${itemId}`);
+    equipment[slot] = String(itemId);
+  }
+  return equipment;
+}
+
+export function awakenCityVillagerSimulation(simulation, reason = 'world-interaction') {
+  if (!simulation || simulation.schema !== CITY_VILLAGER_SIM_SCHEMA) throw new TypeError('city villager simulation required');
+  if (simulation.growthState === 'awakened') {
+    simulation.interactionCount += 1;
+    simulation.lastInteractionReason = String(reason);
+    return Object.freeze({ accepted: true, awakenedNow: false, growthState: simulation.growthState });
+  }
+  simulation.growthState = 'awakened';
+  simulation.awakenedAtTick = simulation.tick;
+  simulation.interactionCount += 1;
+  simulation.lastInteractionReason = String(reason);
+  simulation.revision += 1;
+  return Object.freeze({ accepted: true, awakenedNow: true, growthState: simulation.growthState });
+}
+
+export function configureCityExplorerPackage(simulation, equipment = {}) {
+  if (!simulation || simulation.schema !== CITY_VILLAGER_SIM_SCHEMA) throw new TypeError('city villager simulation required');
+  const normalized = normalizeExplorerPackageEquipment(equipment);
+  simulation.explorerPackage = {
+    enabled: Object.values(normalized).some(Boolean),
+    equipment: normalized,
+    revision: Number(simulation.explorerPackage?.revision || 0) + 1
+  };
+  simulation.revision += 1;
+  return Object.freeze({
+    accepted: true,
+    explorerPackage: freezeJson(cloneJson(simulation.explorerPackage))
+  });
+}
+
+export function retainSessionSurvivor(simulation, manifest = {}) {
+  if (!simulation || simulation.schema !== CITY_VILLAGER_SIM_SCHEMA) throw new TypeError('city villager simulation required');
+  const lifeId = String(manifest.lifeId || '').trim();
+  if (!lifeId) return Object.freeze({ accepted: false, reason: 'survivor-life-id-required' });
+  if (simulation.residents.some(resident => resident.retainedFromLifeId === lifeId)) {
+    return Object.freeze({ accepted: false, reason: 'session-survivor-already-retained', lifeId });
+  }
+
+  const serial = simulation.nextResidentSerial++;
+  const resident = createResident(simulation.cityId, simulation.worldSeed, serial, simulation.tick);
+  resident.id = `${simulation.cityId}:survivor:${lifeId}`;
+  resident.seed = `${simulation.worldSeed}|city:${simulation.cityId}|survivor:${lifeId}`;
+  resident.name = String(manifest.displayName || lifeId).slice(0, 80);
+  resident.traits = traitSet(resident.seed);
+  resident.originKind = 'session-survivor';
+  resident.survivorChainIndex = ++simulation.survivorResidencyCount;
+  resident.retainedFromLifeId = lifeId;
+  resident.skills = { ...emptySkills(), ...(manifest.skills || {}) };
+  resident.equipment = normalizeExplorerPackageEquipment(manifest.equipment || {});
+  resident.possessions = { ...(manifest.possessions || {}) };
+  resident.vitality = Math.max(1, Math.min(100, Number(manifest.vitality ?? 100)));
+  resident.adventurePolicy = { enabled: true, maxRisk: 'safe', focus: 'city' };
+  resident.explorerPackageStatus = 'checking-package';
+  resident.currentAction = 'settled-from-session';
+  resident.memories.push({
+    tick: simulation.tick,
+    action: 'session-survived',
+    sourceActorId: String(manifest.sourceActorId || ''),
+    progressScore: Number(manifest.progress?.progressScore || 0),
+    journeyMarks: Number(manifest.progress?.journeyMarks || 0)
+  });
+
+  simulation.residents.push(resident);
+  simulation.retainedSurvivors.push({
+    residentId: resident.id,
+    lifeId,
+    chainIndex: resident.survivorChainIndex,
+    retainedAtTick: simulation.tick,
+    sourceActorId: String(manifest.sourceActorId || '')
+  });
+  awakenCityVillagerSimulation(simulation, 'session-survivor-retained');
+  simulation.revision += 1;
+  return Object.freeze({
+    accepted: true,
+    residentId: resident.id,
+    chainIndex: resident.survivorChainIndex,
+    resident: freezeJson(cloneJson(resident))
+  });
+}
+
+function explorerPackageAssessment(resident, simulation, city) {
+  if (resident.originKind !== 'session-survivor') {
+    return Object.freeze({ status: 'not-session-survivor', strongerPackage: false, missingItems: Object.freeze({}) });
+  }
+  const packageState = simulation.explorerPackage;
+  if (!packageState?.enabled) {
+    return Object.freeze({ status: 'no-package', strongerPackage: false, missingItems: Object.freeze({}) });
+  }
+  const currentQuality = rpgEquipmentSetQuality(resident.equipment);
+  const packageQuality = rpgEquipmentSetQuality(packageState.equipment);
+  if (packageQuality <= currentQuality) {
+    return Object.freeze({ status: 'own-gear-stronger', strongerPackage: false, currentQuality, packageQuality, missingItems: Object.freeze({}) });
+  }
+
+  const missingItems = {};
+  for (const slot of RPG_EQUIPMENT_SLOTS) {
+    const packageItem = packageState.equipment?.[slot] || null;
+    if (!packageItem) continue;
+    const currentItem = resident.equipment?.[slot] || null;
+    if (rpgEquipmentQuality(packageItem) <= rpgEquipmentQuality(currentItem)) continue;
+    if ((city.sharedItems?.[packageItem] || 0) < 1) missingItems[packageItem] = 1;
+  }
+  const ready = Object.keys(missingItems).length === 0;
+  return Object.freeze({
+    status: ready ? 'package-ready' : 'waiting-for-stronger-package',
+    strongerPackage: true,
+    currentQuality,
+    packageQuality,
+    missingItems: Object.freeze(missingItems)
+  });
+}
+
+function tryPrepareExplorerPackage(resident, simulation, city, effects, availableCityItems) {
+  const assessment = explorerPackageAssessment(resident, simulation, { ...city, sharedItems: availableCityItems });
+  resident.explorerPackageStatus = assessment.status;
+  if (assessment.status !== 'package-ready') return assessment;
+
+  for (const slot of RPG_EQUIPMENT_SLOTS) {
+    const packageItem = simulation.explorerPackage.equipment?.[slot] || null;
+    if (!packageItem) continue;
+    const currentItem = resident.equipment?.[slot] || null;
+    if (rpgEquipmentQuality(packageItem) <= rpgEquipmentQuality(currentItem)) continue;
+    if ((availableCityItems[packageItem] || 0) < 1) continue;
+
+    availableCityItems[packageItem] -= 1;
+    effects.sharedItemConsumes[packageItem] = (effects.sharedItemConsumes[packageItem] || 0) + 1;
+    const equipped = equipRpgItem(resident.equipment, packageItem);
+    resident.equipment = { ...equipped.equipment };
+    if (equipped.replacedItemId) {
+      effects.sharedItemDeltas[equipped.replacedItemId] = (effects.sharedItemDeltas[equipped.replacedItemId] || 0) + 1;
+      availableCityItems[equipped.replacedItemId] = (availableCityItems[equipped.replacedItemId] || 0) + 1;
+    }
+  }
+  resident.explorerPackageStatus = 'package-equipped';
+  resident.revision += 1;
+  return explorerPackageAssessment(resident, simulation, { ...city, sharedItems: availableCityItems });
+}
+
+function autonomousVitalityReady(resident, risk) {
+  return Number(resident.vitality || 0) >= (AUTONOMOUS_RISK_VITALITY_FLOOR[risk] || 100);
+}
+
 function normalizedAdventurePolicy(raw = {}) {
   const maxRisk = String(raw.maxRisk || 'safe');
   const focus = String(raw.focus || 'mixed');
@@ -328,6 +508,9 @@ export function setCityResidentAdventurePolicy(simulation, residentId, policy = 
 
 function availableActionSet(city, simulation, resident) {
   const complete = completedProjectSet(city);
+  if (simulation.growthState === 'equilibrium') {
+    return ['rest', 'eat', 'socialize', 'help-neighbor', 'forage'];
+  }
   const actions = new Set(['rest', 'eat', 'socialize', 'help-neighbor', 'gather', 'explore']);
   if (possessionCount(resident) > 1) actions.add('share-surplus');
   if (complete.has('workshop') || complete.has('guild-hall') || complete.has('foundry')) actions.add('craft');
@@ -340,8 +523,12 @@ function availableActionSet(city, simulation, resident) {
     resident.adventurePolicy?.enabled
     && (complete.has('trailhead') || complete.has('frontier-lodge') || complete.has('road-yard'))
   ) {
+    const packageAssessment = explorerPackageAssessment(resident, simulation, city);
     const capability = residentCapability(resident, simulation);
-    if (strongestAllowedRpgAdventureRisk(capability, resident.adventurePolicy.maxRisk)) actions.add('adventure');
+    const risk = strongestAllowedRpgAdventureRisk(capability, resident.adventurePolicy.maxRisk);
+    const packageBlocks = resident.originKind === 'session-survivor'
+      && packageAssessment.status === 'waiting-for-stronger-package';
+    if (risk && autonomousVitalityReady(resident, risk) && !packageBlocks) actions.add('adventure');
   }
   if (simulation.economy.infrastructureCondition < 0.22) actions.delete('craft');
   return [...actions];
@@ -382,12 +569,22 @@ function candidateScore(city, simulation, culture, resident, action, tick) {
   let score = 0.20 + jitter + bias + cityCulture * 0.18 + Math.min(0.20, skill / 2500);
 
   if (action === 'rest') score += (1 - n.energy) * 1.5 + t.thrift * 0.05;
+  if (action === 'rest') {
+    resident.vitality = Math.min(100, resident.vitality + 6);
+  }
+
+  if (action === 'forage') {
+    simulation.economy.foodReserve = Math.max(simulation.economy.foodReserve, simulation.residents.length * 6);
+    output = { survivalOnly: true, growth: false };
+  }
+
   if (action === 'eat') {
     score += (1 - n.hunger) * 1.55;
     if (simulation.economy.foodReserve < 1) score -= 0.20;
   }
   if (action === 'socialize') score += (1 - n.belonging) * 1.2 + t.sociability * 0.55 + relationshipMean(resident) * 0.12;
   if (action === 'help-neighbor') score += (1 - n.belonging) * 0.4 + (1 - n.purpose) * 0.3 + t.empathy * 0.7;
+  if (action === 'forage') score += (1 - n.hunger) * 0.65 + t.industry * 0.16 + t.tradition * 0.12;
   if (action === 'gather') score += t.industry * 0.5 + t.thrift * 0.18 + (1 - n.purpose) * 0.18;
   if (action === 'share-surplus') {
     score += t.empathy * 0.42 + t.tradition * 0.16 + t.sociability * 0.10 - t.thrift * 0.10;
@@ -416,6 +613,14 @@ function candidateScore(city, simulation, culture, resident, action, tick) {
   if (action === 'maintain-city') {
     score += t.industry * 0.48 + t.tradition * 0.25 + t.empathy * 0.16;
     score += Math.min(0.45, simulation.economy.maintenanceBacklog * 0.08);
+  }
+
+  if (
+    resident.originKind === 'session-survivor'
+    && resident.explorerPackageStatus === 'waiting-for-stronger-package'
+  ) {
+    if (['gather', 'craft', 'maintain-city', 'share-surplus', 'trade'].includes(action)) score += 0.18;
+    if (action === 'adventure') score -= 1;
   }
 
   if (n.energy < 0.22 && !['rest', 'eat'].includes(action)) score -= 0.65;
@@ -504,7 +709,7 @@ function adventureLoot(simulation, resident, risk, tick, successTier) {
   return items;
 }
 
-function resolveResidentAdventure(simulation, city, resident, tick, effects) {
+function resolveResidentAdventure(simulation, city, resident, tick, effects, party = null) {
   const capability = residentCapability(resident, simulation);
   const risk = strongestAllowedRpgAdventureRisk(capability, resident.adventurePolicy.maxRisk);
   if (!risk) return { attempted: false, reason: 'not-adventure-ready', capability };
@@ -512,9 +717,11 @@ function resolveResidentAdventure(simulation, city, resident, tick, effects) {
   const riskDef = rpgAdventureRiskDefinition(risk);
   const readiness = describeRpgAdventureReadiness(capability, risk);
   const challenge = riskDef.challenge + (unit(resident.seed, `adventure-challenge:${tick}`) - 0.5) * 20;
+  const partySize = Math.max(1, Number(party?.memberIds?.length || 1));
   const performance = capability.adventureScore
     + resident.traits.risk * 4
     + resident.traits.curiosity * 2
+    + (partySize - 1) * 4
     + (unit(resident.seed, `adventure-performance:${tick}`) - 0.5) * 12;
   const margin = performance - challenge;
   const successTier = margin >= 0 ? 'success' : margin >= -10 ? 'partial' : 'failure';
@@ -532,7 +739,8 @@ function resolveResidentAdventure(simulation, city, resident, tick, effects) {
   const fatalChance = riskDef.fatalBase
     * Math.max(0.18, 1 - capability.defense / 70)
     * Math.max(0.18, 1 - capability.survival / 70)
-    * (successTier === 'failure' ? 1.8 : successTier === 'partial' ? 0.55 : 0.12);
+    * (successTier === 'failure' ? 1.25 : successTier === 'partial' ? 0.40 : 0.08)
+    / (1 + (partySize - 1) * 0.65);
   const fatal = resident.vitality <= 0
     || unit(resident.seed, `adventure-fatal:${tick}`) < fatalChance;
 
@@ -570,6 +778,8 @@ function resolveResidentAdventure(simulation, city, resident, tick, effects) {
     id: adventureId,
     tick,
     residentId: resident.id,
+    groupId: party?.id || null,
+    partyMemberIds: party?.memberIds || [resident.id],
     risk,
     focus: resident.adventurePolicy.focus,
     successTier,
@@ -751,7 +961,7 @@ function maybeInformalWork(simulation, resident, action, tick) {
   return work;
 }
 
-function applyActionEconomy(simulation, city, resident, action, tick, effects) {
+function applyActionEconomy(simulation, city, resident, action, tick, effects, party = null) {
   let output = null;
   if (action === 'eat') {
     if (simulation.economy.foodReserve >= 1) {
@@ -814,7 +1024,7 @@ function applyActionEconomy(simulation, city, resident, action, tick, effects) {
   }
 
   if (action === 'adventure') {
-    output = resolveResidentAdventure(simulation, city, resident, tick, effects);
+    output = resolveResidentAdventure(simulation, city, resident, tick, effects, party);
   }
 
   if (action === 'maintain-city') {
@@ -827,7 +1037,7 @@ function applyActionEconomy(simulation, city, resident, action, tick, effects) {
   return output;
 }
 
-function actionOutcome(city, simulation, resident, action, tick, residents, effects) {
+function actionOutcome(city, simulation, resident, action, tick, residents, effects, party = null) {
   const needEffects = ACTION_NEED_EFFECTS[action];
   const dominantNeedBefore = dominantNeed(resident);
   for (const [need, delta] of Object.entries(needEffects)) {
@@ -835,7 +1045,7 @@ function actionOutcome(city, simulation, resident, action, tick, residents, effe
   }
 
   const skillId = ACTION_SKILL[action] || null;
-  if (skillId) {
+  if (skillId && simulation.growthState === 'awakened') {
     const aptitude =
       skillId === 'exploration' ? resident.traits.curiosity :
       skillId === 'care' ? resident.traits.empathy :
@@ -870,7 +1080,7 @@ function actionOutcome(city, simulation, resident, action, tick, residents, effe
   resident.xM = targetX + Math.cos(angle) * radius;
   resident.zM = targetZ + Math.sin(angle) * radius;
 
-  const output = applyActionEconomy(simulation, city, resident, action, tick, effects);
+  const output = applyActionEconomy(simulation, city, resident, action, tick, effects, party);
 
   resident.currentAction = action;
   resident.currentProjectId = project?.id || null;
@@ -881,9 +1091,10 @@ function actionOutcome(city, simulation, resident, action, tick, residents, effe
   resident.revision += 1;
 
   const fatalAdventure = action === 'adventure' && Boolean(output?.record?.fatal);
-  const discovery = fatalAdventure ? null : maybeDiscovery(simulation, resident, action, tick, project);
-  const informalWork = fatalAdventure ? null : maybeInformalWork(simulation, resident, action, tick);
-  const proposal = fatalAdventure ? null : maybeProposal(simulation, city, resident, tick);
+  const growthEnabled = simulation.growthState === 'awakened';
+  const discovery = (!growthEnabled || fatalAdventure) ? null : maybeDiscovery(simulation, resident, action, tick, project);
+  const informalWork = (!growthEnabled || fatalAdventure) ? null : maybeInformalWork(simulation, resident, action, tick);
+  const proposal = (!growthEnabled || fatalAdventure) ? null : maybeProposal(simulation, city, resident, tick);
 
   const memory = {
     tick,
@@ -946,6 +1157,13 @@ function proposalSupportTick(simulation) {
 }
 
 function updateEconomyPressure(simulation, city) {
+  if (simulation.growthState === 'equilibrium') {
+    simulation.economy.foodReserve = Math.max(simulation.economy.foodReserve, simulation.residents.length * 6);
+    simulation.economy.maintenanceBacklog = 0;
+    simulation.economy.infrastructureCondition = 1;
+    simulation.economy.security = 0.7;
+    return;
+  }
   const completed = completedProjectSet(city).size;
   simulation.economy.maintenanceBacklog += 0.025 * completed;
   const normalization = Math.max(2.5, completed * 0.9);
@@ -978,6 +1196,19 @@ export function createCityVillagerSimulation({
     nextDiscoverySerial: 1,
     nextInformalSerial: 1,
     nextAdventureSerial: 1,
+    nextPartySerial: 1,
+    growthState: 'equilibrium',
+    interactionCount: 0,
+    awakenedAtTick: null,
+    lastInteractionReason: null,
+    survivorResidencyCount: 0,
+    retainedSurvivors: [],
+    explorerPackage: {
+      enabled: true,
+      equipment: { ...DEFAULT_EXPLORER_PACKAGE },
+      revision: 0
+    },
+    expeditionGroups: [],
     residents,
     actionCounts: {},
     births: [],
@@ -1015,7 +1246,8 @@ export function advanceCityVillagerSimulation(simulation, city, {
   if (!Number.isInteger(hoursPerTick) || hoursPerTick < 1 || hoursPerTick > 24) throw new RangeError('hoursPerTick must be an integer from 1 through 24');
 
   const receipts = [];
-  const effects = { sharedItemDeltas: {} };
+  const effects = { sharedItemDeltas: {}, sharedItemConsumes: {} };
+  const availableCityItems = { ...(city.sharedItems || {}) };
 
   for (let step = 0; step < ticks; step++) {
     simulation.tick += 1;
@@ -1026,16 +1258,56 @@ export function advanceCityVillagerSimulation(simulation, city, {
     for (const resident of simulation.residents) decayNeeds(resident);
 
     const residents = [...simulation.residents].filter(resident => resident.alive !== false).sort((a, b) => a.id.localeCompare(b.id));
-    for (const resident of residents) {
+    if (simulation.growthState === 'awakened') {
+      for (const resident of residents) {
+        if (resident.originKind === 'session-survivor') {
+          tryPrepareExplorerPackage(resident, simulation, city, effects, availableCityItems);
+        }
+      }
+    }
+
+    const decisions = residents.map(resident => ({
+      resident,
+      choice: chooseAction(city, simulation, culture, resident, simulation.tick)
+    }));
+
+    const survivorAdventurers = decisions
+      .filter(entry => entry.choice.action === 'adventure' && entry.resident.originKind === 'session-survivor')
+      .map(entry => entry.resident)
+      .sort((a, b) => a.survivorChainIndex - b.survivorChainIndex || a.id.localeCompare(b.id));
+    const partyByResident = new Map();
+    for (let index = 0; index < survivorAdventurers.length; index += 3) {
+      const members = survivorAdventurers.slice(index, index + 3);
+      if (members.length < 2) continue;
+      const party = {
+        id: `${simulation.cityId}:party-${simulation.nextPartySerial++}`,
+        tick: simulation.tick,
+        memberIds: members.map(member => member.id)
+      };
+      simulation.expeditionGroups.push(party);
+      while (simulation.expeditionGroups.length > 80) simulation.expeditionGroups.shift();
+      for (const member of members) partyByResident.set(member.id, party);
+    }
+
+    for (const { resident, choice } of decisions) {
       if (resident.alive === false) continue;
-      const choice = chooseAction(city, simulation, culture, resident, simulation.tick);
-      const memory = actionOutcome(city, simulation, resident, choice.action, simulation.tick, residents, effects);
+      const memory = actionOutcome(
+        city,
+        simulation,
+        resident,
+        choice.action,
+        simulation.tick,
+        residents,
+        effects,
+        partyByResident.get(resident.id) || null
+      );
       simulation.actionCounts[choice.action] = (simulation.actionCounts[choice.action] || 0) + 1;
       receipts.push(Object.freeze({
         tick: simulation.tick,
         residentId: resident.id,
         action: choice.action,
         score: Number(choice.score.toFixed(5)),
+        groupId: partyByResident.get(resident.id)?.id || null,
         memory
       }));
     }
@@ -1046,7 +1318,8 @@ export function advanceCityVillagerSimulation(simulation, city, {
     const capacity = populationCapacity(city);
     const wellbeing = populationWellbeing(simulation.residents);
     if (
-      simulation.residents.length < capacity
+      simulation.growthState === 'awakened'
+      && simulation.residents.length < capacity
       && wellbeing >= 0.57
       && simulation.economy.foodReserve >= simulation.residents.length * 1.5
       && simulation.tick % 6 === 0
@@ -1084,6 +1357,10 @@ export function snapshotCityVillagerSimulation(simulation, city) {
       kind: resident.kind,
       controllerKind: resident.controllerKind,
       alive: resident.alive !== false,
+      originKind: resident.originKind,
+      survivorChainIndex: resident.survivorChainIndex,
+      retainedFromLifeId: resident.retainedFromLifeId,
+      explorerPackageStatus: resident.explorerPackageStatus,
       name: resident.name,
       bornTick: resident.bornTick,
       traits: resident.traits,
@@ -1120,6 +1397,14 @@ export function snapshotCityVillagerSimulation(simulation, city) {
     tick: simulation.tick,
     elapsedHours: simulation.elapsedHours,
     revision: simulation.revision,
+    growthState: simulation.growthState,
+    interactionCount: simulation.interactionCount,
+    awakenedAtTick: simulation.awakenedAtTick,
+    lastInteractionReason: simulation.lastInteractionReason,
+    survivorResidencyCount: simulation.survivorResidencyCount,
+    retainedSurvivors: simulation.retainedSurvivors,
+    explorerPackage: simulation.explorerPackage,
+    expeditionGroups: simulation.expeditionGroups,
     residentCount: residents.length,
     capacity: populationCapacity(city),
     averageWellbeing: Number(populationWellbeing(simulation.residents).toFixed(4)),
@@ -1135,6 +1420,6 @@ export function snapshotCityVillagerSimulation(simulation, city) {
     residents,
     serviceNpcs: serviceNpcsForCity(city),
     truthBoundary:
-      'Human, machine and autonomous characters share the same capability/equipment contract; controller kind gives no hidden stat bonus. Autonomous residents may adventure only when explicitly permitted and actually capable at the configured risk. Adventure outcomes can grow skills, return loot/knowledge to the city, injure or kill the resident. There is no aging or passive mortality. Proposals never spend city resources or complete projects. Store/quest service NPCs remain fixed interfaces.'
+      'A never-interacted city begins in equilibrium: residents stay alive/social and the city does not autonomously snowball population, skills, discoveries or infrastructure. Interaction awakens open-ended growth. Human-session survivors can persist as autonomous residents with their exact earned equipment/skills. Survivor explorers keep stronger session gear; if the configured explorer package would be stronger, they stay useful in town until that real package is available, equip it from canonical city inventory, then may adventure. Multiple ready session survivors can group. Autonomous residents use conservative vitality gates and resting heals them; death only comes from explicit gameplay outcomes, never aging/passive time.'
   }));
 }

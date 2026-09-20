@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import {
   createCityVillagerSimulation,
-  advanceCityVillagerSimulation
+  advanceCityVillagerSimulation,
+  awakenCityVillagerSimulation
 } from '../src/rpg/city/villager-simulation.mjs';
 
 const completed = (id, xM = 0, zM = 0) => Object.freeze({
@@ -74,6 +75,8 @@ for (const resident of [seededA, seededB]) {
   resident.needs.safety = 1;
 }
 
+awakenCityVillagerSimulation(a, 'test-interaction');
+awakenCityVillagerSimulation(b, 'test-interaction');
 const runA = advanceCityVillagerSimulation(a, workingCity, { ticks: 42, hoursPerTick: 4 });
 const runB = advanceCityVillagerSimulation(b, workingCity, { ticks: 42, hoursPerTick: 4 });
 
@@ -135,6 +138,7 @@ informal.residents[0].needs.hunger = 1;
 informal.residents[0].needs.belonging = 1;
 informal.residents[0].needs.purpose = 1;
 informal.residents[0].needs.safety = 1;
+awakenCityVillagerSimulation(informal, 'test-interaction');
 const informalRun = advanceCityVillagerSimulation(informal, informalCity, { ticks: 2, hoursPerTick: 4 }).snapshot;
 assert.equal(
   informalRun.informalWorks.some(work => work.kind === 'footpath'),
@@ -163,6 +167,7 @@ const neglected = createCityVillagerSimulation({
   worldSeed: 'neglect-seed',
   residentCount: 4
 });
+awakenCityVillagerSimulation(neglected, 'test-interaction');
 const neglectedRun = advanceCityVillagerSimulation(neglected, exhaustedCity, { ticks: 84, hoursPerTick: 4 }).snapshot;
 assert.equal(neglectedRun.economy.infrastructureCondition < 1, true);
 assert.equal(neglectedRun.economy.shortages.maintenanceTicks > 0, true, 'unmaintained infrastructure must create real maintenance pressure');

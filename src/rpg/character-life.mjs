@@ -5,7 +5,12 @@ import {
   equipRpgItem
 } from './character-capability.mjs';
 
-export const RPG_CHARACTER_LIFE_SCHEMA = 'axm.persistent-rpg.character-life/v0.4';
+export const RPG_CHARACTER_LIFE_SCHEMA = 'axm.persistent-rpg.character-life/v0.5';
+
+export const RPG_SURVIVOR_RESIDENCY_THRESHOLD = Object.freeze({
+  progressScore: 180,
+  journeyMarks: 4
+});
 
 const BASELINE = Object.freeze({
   vitality: 100,
@@ -140,7 +145,6 @@ export class RpgCharacterLife {
       equipment: this.equipment,
       supplies: this.supplies,
       vitality: this.vitality,
-      vitality: this.vitality,
       baseCarrySlots: this.baseCarrySlots
     });
   }
@@ -188,6 +192,61 @@ export class RpgCharacterLife {
     if (!this.assertActive() || this.supplies < 1) return false;
     this.supplies -= 1;
     return true;
+  }
+
+  sessionProgress() {
+    const xp = Object.values(this.experience).reduce((sum, value) => sum + Number(value || 0), 0);
+    const journeyMarks = this.stepsThisLife + this.discoveriesThisLife;
+    const progressScore = xp + this.stepsThisLife * 8 + this.discoveriesThisLife * 14;
+    return Object.freeze({
+      xp,
+      journeyMarks,
+      progressScore,
+      threshold: RPG_SURVIVOR_RESIDENCY_THRESHOLD,
+      eligible:
+        progressScore >= RPG_SURVIVOR_RESIDENCY_THRESHOLD.progressScore
+        && journeyMarks >= RPG_SURVIVOR_RESIDENCY_THRESHOLD.journeyMarks
+        && this.vitality > 0
+        && this.assertActive()
+    });
+  }
+
+  survivorManifest({
+    cityId = this.citySupport.cityId || 'first-city',
+    displayName = null
+  } = {}) {
+    const progress = this.sessionProgress();
+    if (!progress.eligible) {
+      return Object.freeze({
+        accepted: false,
+        reason: 'session-survivor-threshold-not-reached',
+        progress
+      });
+    }
+    const personalSkills = Object.freeze({
+      gathering: Math.floor((this.experience.survival || 0) * 0.55),
+      craft: this.experience.craft || 0,
+      growing: 0,
+      trade: this.experience.trade || 0,
+      lore: this.experience.lore || 0,
+      defense: this.experience.combat || 0,
+      care: 0,
+      exploration: this.experience.exploration || 0
+    });
+    return Object.freeze({
+      accepted: true,
+      cityId: String(cityId),
+      lifeId: this.lifeId,
+      sourceActorId: this.actorId,
+      displayName: String(displayName || this.lifeId),
+      controllerKindBeforeRetention: this.controllerKind,
+      skills: personalSkills,
+      equipment: Object.freeze({ ...this.equipment }),
+      possessions: Object.freeze({ ...this.items }),
+      vitality: this.vitality,
+      supplies: this.supplies,
+      progress
+    });
   }
 
   departureContribution({ cityId = this.citySupport.cityId || 'first-city' } = {}) {
@@ -244,6 +303,7 @@ export class RpgCharacterLife {
       supplies: this.supplies,
       stepsThisLife: this.stepsThisLife,
       discoveriesThisLife: this.discoveriesThisLife,
+      sessionProgress: this.sessionProgress(),
       ended: this.ended,
       departed: this.departed,
       persistentAccountPowerGain: 0,

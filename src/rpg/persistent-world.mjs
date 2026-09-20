@@ -3,7 +3,10 @@ import {
   advanceCityVillagerSimulation,
   snapshotCityVillagerSimulation,
   gearCityResident,
-  setCityResidentAdventurePolicy
+  setCityResidentAdventurePolicy,
+  awakenCityVillagerSimulation,
+  configureCityExplorerPackage,
+  retainSessionSurvivor
 } from './city/villager-simulation.mjs';
 import {
   CITY_EMERGENCE_STAGES,
@@ -15,7 +18,7 @@ import {
   projectCompletion
 } from './city/city-emergence.mjs';
 
-export const PERSISTENT_RPG_WORLD_SCHEMA = 'axm.persistent-rpg.world/v0.4';
+export const PERSISTENT_RPG_WORLD_SCHEMA = 'axm.persistent-rpg.world/v0.5';
 
 export const RPG_CITY_PATHS = Object.freeze([
   'balanced',
@@ -44,6 +47,9 @@ export const RPG_WORLD_EVENT_TYPES = Object.freeze([
   'rpg.artifact.left',
   'rpg.life.ended',
   'rpg.life.departed',
+  'rpg.life.session.retained',
+  'rpg.city.interacted',
+  'rpg.city.explorer.package.changed',
   'rpg.city.path.changed',
   'rpg.city.pool.withdrawn',
   'rpg.city.project.contributed',
@@ -259,7 +265,8 @@ function citySimulationContext(city) {
     stage: emergence.stage,
     projects,
     possibilities: emergence.possibilities,
-    worldEffects: emergence.worldEffects
+    worldEffects: emergence.worldEffects,
+    sharedItems: Object.fromEntries(Object.entries(city.sharedItems).sort(([a], [b]) => a.localeCompare(b)))
   });
 }
 
@@ -379,6 +386,7 @@ export class PersistentRpgWorld {
     }));
     this.lifeEnds = [];
     this.lifeDepartures = [];
+    this.lifeRetentions = [];
     this.journal = [];
     for (const command of journal) {
       const replay = this.applyCommand(command);
@@ -394,6 +402,17 @@ export class PersistentRpgWorld {
       this.cities.set(id, city);
     }
     return city;
+  }
+
+  lifeClosed(lifeId) {
+    const id = String(lifeId || '');
+    return this.lifeEnds.some(entry => entry.lifeId === id)
+      || this.lifeDepartures.some(entry => entry.lifeId === id)
+      || this.lifeRetentions.some(entry => entry.lifeId === id);
+  }
+
+  awakenCity(city, reason) {
+    return awakenCityVillagerSimulation(city.villagerSimulation, reason);
   }
 
   applyCommand(raw) {
@@ -485,7 +504,7 @@ export class PersistentRpgWorld {
       result = { kind: 'artifact', id, label: entry.label };
     } else if (eventType === 'rpg.life.ended') {
       const lifeId = nonEmpty(payload.lifeId, 'payload.lifeId');
-      if (this.lifeEnds.some(entry => entry.lifeId === lifeId) || this.lifeDepartures.some(entry => entry.lifeId === lifeId)) {
+      if (this.lifeClosed(lifeId)) {
         return Object.freeze({ accepted: false, reason: 'rpg-life-already-closed', revision: this.revision });
       }
       const entry = {
@@ -502,10 +521,11 @@ export class PersistentRpgWorld {
       result = { kind: 'life-ended', lifeId, contributionTransferred: false };
     } else if (eventType === 'rpg.life.departed') {
       const lifeId = nonEmpty(payload.lifeId, 'payload.lifeId');
-      if (this.lifeEnds.some(entry => entry.lifeId === lifeId) || this.lifeDepartures.some(entry => entry.lifeId === lifeId)) {
+      if (this.lifeClosed(lifeId)) {
         return Object.freeze({ accepted: false, reason: 'rpg-life-already-closed', revision: this.revision });
       }
       const city = this.city(payload.cityId || this.defaultCityId, { worldHour });
+      this.awakenCity(city, 'safe-life-departure');
       const experience = normalizeXp(payload.experience || {});
       const items = normalizeItems(payload.items || {});
       const contributedXp = sumValues(experience);
@@ -541,8 +561,64 @@ export class PersistentRpgWorld {
         pathAtDeparture: city.path,
         city: cityProjection(city)
       };
+    } else if (eventType === 'rpg.life.session.retained') {
+      const lifeId = nonEmpty(payload.lifeId || payload.manifest?.lifeId, 'payload.lifeId');
+      if (this.lifeClosed(lifeId)) {
+        return Object.freeze({ accepted: false, reason: 'rpg-life-already-closed', revision: this.revision });
+      }
+      const city = this.city(payload.cityId || payload.manifest?.cityId || this.defaultCityId, { worldHour });
+      const manifest = cloneJson(payload.manifest || {});
+      manifest.lifeId = lifeId;
+      manifest.sourceActorId = String(manifest.sourceActorId || actorId);
+      const retained = retainSessionSurvivor(city.villagerSimulation, manifest);
+      if (!retained.accepted) return Object.freeze({ ...retained, revision: this.revision });
+      addContributor(city, actorId);
+      const entry = {
+        id: lifeId,
+        lifeId,
+        actorId,
+        cityId: city.id,
+        residentId: retained.residentId,
+        survivorChainIndex: retained.chainIndex,
+        worldHour,
+        progress: cloneJson(manifest.progress || {}),
+        reason: 'session-survived-into-persistent-residency'
+      };
+      this.lifeRetentions.push(entry);
+      this.lifeRetentions.sort((a, b) => a.worldHour - b.worldHour || a.lifeId.localeCompare(b.lifeId));
+      result = {
+        kind: 'life-session-retained',
+        lifeId,
+        cityId: city.id,
+        residentId: retained.residentId,
+        survivorChainIndex: retained.chainIndex,
+        city: cityProjection(city)
+      };
+    } else if (eventType === 'rpg.city.interacted') {
+      const city = this.city(payload.cityId || this.defaultCityId, { worldHour });
+      const wake = this.awakenCity(city, String(payload.reason || 'resident-session-entered'));
+      addContributor(city, actorId);
+      result = {
+        kind: 'city-interacted',
+        cityId: city.id,
+        awakenedNow: wake.awakenedNow,
+        growthState: wake.growthState,
+        city: cityProjection(city)
+      };
+    } else if (eventType === 'rpg.city.explorer.package.changed') {
+      const city = this.city(payload.cityId || this.defaultCityId, { create: false });
+      if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
+      this.awakenCity(city, 'explorer-package-configured');
+      const configured = configureCityExplorerPackage(city.villagerSimulation, payload.equipment || {});
+      result = {
+        kind: 'city-explorer-package-changed',
+        cityId: city.id,
+        explorerPackage: configured.explorerPackage,
+        city: cityProjection(city)
+      };
     } else if (eventType === 'rpg.city.path.changed') {
       const city = this.city(payload.cityId || this.defaultCityId, { worldHour });
+      this.awakenCity(city, 'city-path-changed');
       const nextPath = normalizeCityPath(payload.path);
       const previousPath = city.path;
       if (nextPath === previousPath) {
@@ -600,6 +676,7 @@ export class PersistentRpgWorld {
     } else if (eventType === 'rpg.city.project.contributed') {
       const city = this.city(payload.cityId || this.defaultCityId, { create: false });
       if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
+      this.awakenCity(city, 'city-project-contributed');
       const projectId = nonEmpty(payload.projectId, 'payload.projectId');
       const definition = cityProjectDefinition(projectId);
       if (!definition) return Object.freeze({ accepted: false, reason: 'rpg-city-project-not-found', projectId, revision: this.revision });
@@ -671,6 +748,7 @@ export class PersistentRpgWorld {
     } else if (eventType === 'rpg.city.villager.geared') {
       const city = this.city(payload.cityId || this.defaultCityId, { create: false });
       if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
+      this.awakenCity(city, 'villager-geared');
       const residentId = nonEmpty(payload.residentId, 'payload.residentId');
       const itemId = nonEmpty(payload.itemId, 'payload.itemId');
       if ((city.sharedItems[itemId] || 0) < 1) {
@@ -706,6 +784,7 @@ export class PersistentRpgWorld {
     } else if (eventType === 'rpg.city.villager.adventure.policy.changed') {
       const city = this.city(payload.cityId || this.defaultCityId, { create: false });
       if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
+      this.awakenCity(city, 'villager-adventure-policy-changed');
       const residentId = nonEmpty(payload.residentId, 'payload.residentId');
       const policy = setCityResidentAdventurePolicy(city.villagerSimulation, residentId, {
         enabled: payload.enabled,
@@ -731,6 +810,11 @@ export class PersistentRpgWorld {
         citySimulationContext(city),
         { ticks, hoursPerTick: 4 }
       );
+      for (const [itemId, count] of Object.entries(simulation.effects?.sharedItemConsumes || {})) {
+        if (count <= 0) continue;
+        city.sharedItems[itemId] = Math.max(0, (city.sharedItems[itemId] || 0) - count);
+        if (city.sharedItems[itemId] === 0) delete city.sharedItems[itemId];
+      }
       for (const [itemId, count] of Object.entries(simulation.effects?.sharedItemDeltas || {})) {
         if (count > 0) city.sharedItems[itemId] = (city.sharedItems[itemId] || 0) + count;
       }
@@ -742,6 +826,7 @@ export class PersistentRpgWorld {
         residentCount: simulation.snapshot.residentCount,
         averageWellbeing: simulation.snapshot.averageWellbeing,
         sharedItemDeltas: simulation.effects?.sharedItemDeltas || {},
+        sharedItemConsumes: simulation.effects?.sharedItemConsumes || {},
         discoveryCount: simulation.snapshot.discoveries.length,
         proposalCount: simulation.snapshot.proposals.length,
         informalWorkCount: simulation.snapshot.informalWorks.length,
@@ -772,6 +857,7 @@ export class PersistentRpgWorld {
       legacy: {
         deaths: this.lifeEnds.length,
         departures: this.lifeDepartures.length,
+        retainedSessionSurvivors: this.lifeRetentions.length,
         trailCount: this.trails.size,
         roadCount: [...this.trails.values()].filter(trail => trail.tier === 'road').length,
         cacheCount: this.caches.size,
@@ -790,8 +876,9 @@ export class PersistentRpgWorld {
         .map(cityProjection),
       endedLives: this.lifeEnds.map(entry => freezeJson(cloneJson(entry))),
       departedLives: this.lifeDepartures.map(entry => freezeJson(cloneJson(entry))),
+      retainedLives: this.lifeRetentions.map(entry => freezeJson(cloneJson(entry))),
       truthBoundary:
-        'Voluntary departure transfers declared life XP/items into the selected city and creates equal unassigned development XP. Development XP and pooled materials can then be deliberately assigned to deterministic city projects. Projects can alter stage, possibilities and rendered map effects. Death does not automatically transfer life-local XP/items.'
+        'Untouched cities begin in a living equilibrium and do not autonomously snowball. Interaction awakens open-ended growth. A session that ends below the survivor threshold can still use ordinary safe departure; a sufficiently progressed living session can instead persist as an autonomous resident, keeping its exact personal gear/skills rather than double-banking them into the city. Explorer packages, survivor parties and autonomous adventures remain deterministic/journaled. Death comes only from explicit gameplay outcomes, never aging/passive time.'
     });
   }
 }

@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import {
   createCityVillagerSimulation,
   advanceCityVillagerSimulation,
-  snapshotCityVillagerSimulation
+  snapshotCityVillagerSimulation,
+  awakenCityVillagerSimulation
 } from '../src/rpg/city/villager-simulation.mjs';
 
 const completed = (id, xM, zM) => Object.freeze({
@@ -40,6 +41,8 @@ const simB = createCityVillagerSimulation({
   residentCount: 4
 });
 
+awakenCityVillagerSimulation(simA, 'test-interaction');
+awakenCityVillagerSimulation(simB, 'test-interaction');
 const runA = advanceCityVillagerSimulation(simA, baseCity, { ticks: 36, hoursPerTick: 4 });
 const runB = advanceCityVillagerSimulation(simB, baseCity, { ticks: 36, hoursPerTick: 4 });
 
@@ -85,6 +88,8 @@ const frontierCity = Object.freeze({ ...baseCity, path: 'frontier' });
 const forgeSim = createCityVillagerSimulation({ cityId: baseCity.id, worldSeed: 'city-bias-seed', residentCount: 4 });
 const frontierSim = createCityVillagerSimulation({ cityId: baseCity.id, worldSeed: 'city-bias-seed', residentCount: 4 });
 
+awakenCityVillagerSimulation(forgeSim, 'test-interaction');
+awakenCityVillagerSimulation(frontierSim, 'test-interaction');
 const forge = advanceCityVillagerSimulation(forgeSim, forgeCity, { ticks: 36, hoursPerTick: 4 }).snapshot;
 const frontier = advanceCityVillagerSimulation(frontierSim, frontierCity, { ticks: 36, hoursPerTick: 4 }).snapshot;
 

@@ -3,7 +3,8 @@ import {
   createCityVillagerSimulation,
   advanceCityVillagerSimulation,
   gearCityResident,
-  setCityResidentAdventurePolicy
+  setCityResidentAdventurePolicy,
+  awakenCityVillagerSimulation
 } from '../src/rpg/city/villager-simulation.mjs';
 
 const completed = (id, xM = 0, zM = 0) => Object.freeze({
@@ -33,6 +34,7 @@ function prepare(seed, { policy = true } = {}) {
     worldSeed: seed,
     residentCount: 1
   });
+  awakenCityVillagerSimulation(sim, 'test-interaction');
   const resident = sim.residents[0];
   resident.skills.exploration = 60;
   resident.skills.defense = 60;

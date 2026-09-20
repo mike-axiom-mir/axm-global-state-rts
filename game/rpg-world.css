@@ -274,3 +274,23 @@ button.danger { border-color: rgba(233,191,152,.35); color: #ffe2ca; }
   color: var(--muted);
   font-size: 9px;
 }
+
+.package-editor {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 7px;
+}
+.package-editor label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 9px;
+}
+.package-editor select { width: 100%; min-width: 0; padding: 7px; }
+.package-save { margin-top: 6px; width: 100%; }
+.villager-origin {
+  margin-top: 4px;
+  color: #b9c9bb;
+  font-size: 9px;
+}

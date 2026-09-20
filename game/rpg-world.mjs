@@ -6,6 +6,8 @@ import {
 } from '../src/rpg/persistent-world.mjs';
 import { createRpgCharacterLife } from '../src/rpg/character-life.mjs';
 import {
+  RPG_EQUIPMENT_CATALOG,
+  RPG_EQUIPMENT_SLOTS,
   rpgEquipmentDefinition,
   rpgEquipmentQuality
 } from '../src/rpg/character-capability.mjs';
@@ -45,6 +47,9 @@ const residentEconomy = document.getElementById('residentEconomy');
 const residentProposals = document.getElementById('residentProposals');
 const residentDiscoveries = document.getElementById('residentDiscoveries');
 const informalWorks = document.getElementById('informalWorks');
+const explorerPackage = document.getElementById('explorerPackage');
+const saveExplorerPackage = document.getElementById('saveExplorerPackage');
+const departAction = document.getElementById('departAction');
 
 function storageGet(key) {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -89,6 +94,24 @@ try {
 const renderer = createPersistentRpgRenderer(viewport, {
   worldSeed: 'axm-persistent-rpg-v0'
 });
+
+if (world.snapshot().cities.find(city => city.id === CITY_ID)?.villagers?.growthState === 'equilibrium') {
+  const wake = world.applyCommand({
+    commandId: `browser:${world.revision + 1}:session-enter`,
+    eventType: 'rpg.city.interacted',
+    actorId: ACTOR_ID,
+    payload: {
+      worldHour: world.revision,
+      cityId: CITY_ID,
+      placeId: CITY_ID,
+      xM: 0,
+      zM: 0,
+      reason: 'human-session-entered-city'
+    }
+  });
+  if (wake.accepted) saveWorld?.();
+}
+
 
 function citySnapshot() {
   return world.snapshot().cities.find(city => city.id === CITY_ID) || null;
@@ -211,6 +234,45 @@ function renderHistory(snapshot) {
     row.innerHTML = `<strong>#${journal.length - index}</strong> · ${friendlyEvent(entry)}`;
     worldHistory.appendChild(row);
   });
+}
+
+function equipmentOptionsForSlot(slot) {
+  return Object.values(RPG_EQUIPMENT_CATALOG)
+    .filter(definition => definition.slot === slot)
+    .sort((a, b) => a.quality - b.quality || a.id.localeCompare(b.id));
+}
+
+function renderExplorerPackage(city) {
+  explorerPackage.replaceChildren();
+  const current = city.villagers?.explorerPackage?.equipment || {};
+  for (const slot of RPG_EQUIPMENT_SLOTS) {
+    const label = document.createElement('label');
+    label.textContent = titleCase(slot);
+    const select = document.createElement('select');
+    select.dataset.packageSlot = slot;
+
+    const none = document.createElement('option');
+    none.value = '';
+    none.textContent = 'None';
+    select.appendChild(none);
+
+    for (const definition of equipmentOptionsForSlot(slot)) {
+      const option = document.createElement('option');
+      option.value = definition.id;
+      option.textContent = `${definition.id} (q${definition.quality})`;
+      select.appendChild(option);
+    }
+    select.value = current[slot] || '';
+    label.appendChild(select);
+    explorerPackage.appendChild(label);
+  }
+}
+
+function selectedExplorerPackage() {
+  return Object.fromEntries(
+    [...explorerPackage.querySelectorAll('[data-package-slot]')]
+      .map(select => [select.dataset.packageSlot, select.value || null])
+  );
 }
 
 function titleCase(value) {
@@ -480,9 +542,12 @@ function renderResidentEvents(city) {
 function renderVillagers(city) {
   const sim = city.villagers;
   villagerSummary.textContent =
-    `${sim.residentCount}/${sim.capacity} autonomous residents · `
+    `${sim.residentCount}/${sim.capacity} residents · `
+    + `${titleCase(sim.growthState)} · survivors ${sim.survivorResidencyCount} · `
     + `wellbeing ${Math.round(sim.averageWellbeing * 100)}% · tick ${sim.tick}. `
-    + 'Needs, personality, relationships, learned skills, city direction and deterministic variation shape what they choose next.';
+    + (sim.growthState === 'equilibrium'
+      ? 'Untouched baseline stays alive without snowballing.'
+      : 'Interaction unlocked open-ended growth; no fixed end state.');
 
   villagers.replaceChildren();
   const shown = [...sim.residents]
@@ -505,6 +570,7 @@ function renderVillagers(city) {
     card.innerHTML =
       `<div class="villager-top"><strong>${resident.name}</strong><span>${titleCase(resident.currentAction)}</span></div>`
       + `<div class="villager-meta"><span>autonomous villager · strong trait: ${strongestTrait(resident)}</span><span>${skill} ${skillXp} · ${relationCount} ties</span></div>`
+      + `<div class="villager-origin">${resident.originKind === 'session-survivor' ? `Session survivor #${resident.survivorChainIndex} · package: ${titleCase(resident.explorerPackageStatus)}` : 'World resident'}</div>`
       + `<div class="villager-capability">P${Math.round(capability.power)} · D${Math.round(capability.defense)} · S${Math.round(capability.survival)} · U${Math.round(capability.utility)} · vitality ${resident.vitality}</div>`
       + `<div class="villager-equipment">${equipmentText(resident.equipment)}</div>`
       + `<div class="villager-meta"><span>possessions: ${possessionText}</span><span>wealth ${resident.wealth}</span></div>`
@@ -566,6 +632,7 @@ function renderCity(city) {
 
   renderProjects(city);
   renderVillagers(city);
+  renderExplorerPackage(city);
   renderResidentEconomy(city);
   renderResidentEvents(city);
 
@@ -619,8 +686,10 @@ function renderAll() {
   lifeXp.textContent = String(lifeXpTotal());
   lifeItems.textContent = `${lifeItemTotal()}/${lifeSnapshot.effectiveCarrySlots}`;
   lifeCapability.textContent =
-    `Human-controlled villager · P${Math.round(lifeSnapshot.capability.power)} D${Math.round(lifeSnapshot.capability.defense)} S${Math.round(lifeSnapshot.capability.survival)} U${Math.round(lifeSnapshot.capability.utility)} · ${equipmentText(lifeSnapshot.equipment)}`;
-  modeLabel.textContent = renderer.getMode() === 'local' ? 'LOCAL WORLD' : 'GLOBE';
+    `Human-controlled villager · P${Math.round(lifeSnapshot.capability.power)} D${Math.round(lifeSnapshot.capability.defense)} S${Math.round(lifeSnapshot.capability.survival)} U${Math.round(lifeSnapshot.capability.utility)} · progress ${lifeSnapshot.sessionProgress.progressScore}/${lifeSnapshot.sessionProgress.threshold.progressScore} · ${equipmentText(lifeSnapshot.equipment)}`;
+  departAction.textContent = lifeSnapshot.sessionProgress.eligible
+    ? 'End session → stay in city'
+    : 'Leave safely → contribute';  modeLabel.textContent = renderer.getMode() === 'local' ? 'LOCAL WORLD' : 'GLOBE';
 
   if (city) renderCity(city);
   renderHistory(snapshot);
@@ -716,6 +785,19 @@ for (const path of RPG_CITY_PATHS) {
   option.textContent = path;
   cityPath.appendChild(option);
 }
+
+saveExplorerPackage.addEventListener('click', () => {
+  const result = applyWorldEvent('rpg.city.explorer.package.changed', {
+    cityId: CITY_ID,
+    placeId: CITY_ID,
+    xM: 0,
+    zM: 0,
+    equipment: selectedExplorerPackage()
+  }, 'explorer-package');
+  if (!result.accepted) return setStatus(`Explorer package rejected: ${result.reason}`);
+  renderAll();
+  setStatus('Explorer package saved. Session-survivors keep stronger personal gear; weaker survivors wait/work until this stronger real package is available.');
+});
 
 document.getElementById('equipLifeAction').addEventListener('click', () => {
   const upgrade = bestCarriedGearUpgrade();
@@ -957,20 +1039,40 @@ sharedPool.addEventListener('click', event => {
   setStatus(`This life took one ${itemId} from the shared storehouse.`);
 });
 
-document.getElementById('departAction').addEventListener('click', () => {
-  const contribution = life.departureContribution({ cityId: CITY_ID });
+departAction.addEventListener('click', () => {
   const current = currentLocation();
+  const survivor = life.survivorManifest({
+    cityId: CITY_ID,
+    displayName: `Survivor ${life.lifeId}`
+  });
+
+  if (survivor.accepted) {
+    const result = applyWorldEvent('rpg.life.session.retained', {
+      ...current,
+      lifeId: life.lifeId,
+      cityId: CITY_ID,
+      manifest: survivor
+    }, 'retain-session-survivor');
+    if (!result.accepted) return setStatus(`Session retention rejected: ${result.reason}`);
+    life.depart();
+    startNextLife(
+      `Session survived. ${result.result.residentId} remains in the greater city story as survivor #${result.result.survivorChainIndex} with the exact gear and personal skills from that run.`
+    );
+    return;
+  }
+
+  const contribution = life.departureContribution({ cityId: CITY_ID });
   const result = applyWorldEvent('rpg.life.departed', {
     ...current,
     ...contribution,
-    reason: 'player-left-world-safely'
+    reason: 'player-left-world-safely-before-survivor-threshold'
   }, 'depart');
 
   if (!result.accepted) return setStatus(`Departure rejected: ${result.reason}`);
   const itemCount = Object.values(contribution.items).reduce((sum, value) => sum + value, 0);
   life.depart();
   startNextLife(
-    `Safe departure transferred ${result.result.contributedXp} XP into both permanent city knowledge and the development budget, plus ${itemCount} carried materials/items.`
+    `This run ended before persistent-resident threshold, so it used the normal safe contribution: ${result.result.contributedXp} XP and ${itemCount} items.`
   );
 });
 

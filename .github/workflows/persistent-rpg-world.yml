@@ -1,4 +1,4 @@
-name: Persistent RPG world
+name: Persistent RPG clean branch
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deterministic-rpg:
+  verify-clean-rpg:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -21,22 +21,5 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Syntax gate
-        run: |
-          node --check src/rpg/persistent-world.mjs
-          node --check src/rpg/character-life.mjs
-          node --check src/hosted/shared-state-authority.mjs
-          node --check src/hosted/world-session-authority.mjs
-          node --check src/hosted/world-http-api.mjs
-          node --check src/session/world-seat-binding.mjs
-          node --check src/session/world-browser-client.mjs
-          node --check game/rpg-world.mjs
-
-      - name: Deterministic world inheritance
-        run: npm run test:rpg-world
-
-      - name: Hosted hash-journal replay
-        run: npm run test:rpg-hosted
-
-      - name: Human and machine participant parity
-        run: npm run test:rpg-participant
+      - name: Verify clean RPG restart
+        run: npm test

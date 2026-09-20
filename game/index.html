@@ -3,108 +3,80 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <meta name="theme-color" content="#07100d">
-  <title>AXM Persistent World RPG — Foundation Planet</title>
+  <meta name="theme-color" content="#111713">
+  <title>AXM Persistent World RPG</title>
   <link rel="stylesheet" href="./rpg-world.css">
 </head>
 <body>
-  <main class="rpg-shell">
-    <section class="world-stage" aria-label="Persistent Foundation Planet RPG world">
-      <div id="viewport" class="viewport"></div>
-      <div class="world-hud">
-        <div class="brand">
-          <span class="eyebrow">EXPERIMENTAL · PERSISTENT WORLD RPG</span>
-          <strong>FOUNDATION WORLD</strong>
-          <span id="modeLabel">GLOBE</span>
-        </div>
-        <div class="world-rule">Players are temporary. The world inherits what they leave behind.</div>
+  <main class="world">
+    <div id="viewport" class="viewport" aria-label="Foundation Planet RPG world"></div>
+
+    <header class="topbar">
+      <div>
+        <span class="eyebrow">CLEAN RPG RESTART · FOUNDATION PLANET</span>
+        <strong>Persistent World</strong>
       </div>
-      <div class="controls-hint">M globe/local · WASD move view · arrows move local cursor · Q/E zoom</div>
+      <div class="top-stats">
+        <span id="modeLabel">GLOBE</span>
+        <span>world <b id="worldRevision">0</b></span>
+        <span>life <b id="lifeId">—</b></span>
+      </div>
+    </header>
+
+    <section class="action-dock" aria-label="Current life actions">
+      <button id="toggleMode" type="button">Globe / local</button>
+      <button id="exploreAction" type="button">Explore</button>
+      <button id="salvageAction" type="button">Salvage</button>
+      <button id="studyAction" type="button">Study</button>
+      <button id="leaveArtifactAction" type="button">Leave artifact</button>
+      <button id="departAction" class="safe" type="button">Leave safely</button>
+      <button id="deathAction" class="danger" type="button">Die here</button>
     </section>
 
-    <aside class="world-panel">
-      <header>
+    <aside class="ledger">
+      <div class="ledger-head">
         <div>
-          <p class="eyebrow">ONE WORLD · MANY LIVES</p>
-          <h1>Persistent World RPG</h1>
+          <span class="eyebrow">WORLD, NOT ACCOUNT</span>
+          <h1 id="cityName">First City</h1>
         </div>
-        <a class="small-link" href="./rts-shell.html">donor RTS shell</a>
-      </header>
+        <span id="cityRank" class="rank">Rank 0</span>
+      </div>
 
-      <section class="status-card">
-        <div class="metric"><span>World revision</span><strong id="worldRevision">0</strong></div>
-        <div class="metric"><span>Current life</span><strong id="lifeId">—</strong></div>
-        <div class="metric"><span>Life XP</span><strong id="lifeXp">0</strong></div>
-        <div class="metric"><span>Carried items</span><strong id="lifeItems">0</strong></div>
-      </section>
+      <div class="life-line">
+        <span>temporary XP <b id="lifeXp">0</b></span>
+        <span>carried items <b id="lifeItems">0</b></span>
+      </div>
 
-      <section class="card">
-        <div class="section-title">
-          <div>
-            <p class="eyebrow">YOUR TEMPORARY LIFE</p>
-            <h2>Act in the world</h2>
-          </div>
-          <button id="toggleMode" type="button">Globe / local</button>
-        </div>
-        <div class="action-grid">
-          <button id="exploreAction" type="button"><strong>Explore here</strong><span>Walk the land; repeated travel becomes a path, then a road.</span></button>
-          <button id="salvageAction" type="button"><strong>Salvage</strong><span>Gain life-local craft/survival XP and carry material home.</span></button>
-          <button id="studyAction" type="button"><strong>Study place</strong><span>Record knowledge into the world immediately.</span></button>
-          <button id="leaveArtifactAction" type="button"><strong>Leave artifact</strong><span>Turn carried material into a persistent world object.</span></button>
-        </div>
-      </section>
-
-      <section class="card city-card">
-        <div class="section-title">
-          <div>
-            <p class="eyebrow">SHARED CIVILIZATION</p>
-            <h2 id="cityName">First City</h2>
-          </div>
-          <span id="cityRank" class="rank-chip">Rank 0</span>
-        </div>
-
-        <div class="path-row">
-          <label for="cityPath">Development path</label>
+      <label class="path-control">
+        <span>City direction</span>
+        <div>
           <select id="cityPath"></select>
-          <button id="changePath" type="button">Change path</button>
+          <button id="changePath" type="button">Change</button>
         </div>
+      </label>
 
-        <div id="citySummary" class="city-summary"></div>
+      <p id="citySummary" class="summary"></p>
 
-        <div class="split-heading">
-          <h3>Shared item pool</h3>
-          <span>Take one item into this life</span>
-        </div>
-        <div id="sharedPool" class="pool-grid"></div>
-
-        <div class="split-heading">
-          <h3>City skills</h3>
-          <span>Past lives improve future support</span>
-        </div>
-        <div id="citySkills" class="skill-grid"></div>
+      <section>
+        <div class="section-title"><strong>Shared pool</strong><span>tap to take one</span></div>
+        <div id="sharedPool" class="pool"></div>
       </section>
 
-      <section class="card leave-card">
-        <p class="eyebrow">THE IMPORTANT CHOICE</p>
-        <h2>How this life ends</h2>
-        <p>Leaving safely transfers this life’s XP and carried items into the city. Dying does not magically bank them.</p>
-        <div class="leave-actions">
-          <button id="departAction" class="primary" type="button">Leave world → contribute to city</button>
-          <button id="deathAction" class="danger" type="button">Die here → no city transfer</button>
-        </div>
+      <section>
+        <div class="section-title"><strong>City skills</strong><span>inherited support</span></div>
+        <div id="citySkills" class="skills"></div>
       </section>
 
-      <section class="card history-card">
-        <div class="split-heading">
-          <h3>World memory</h3>
-          <span id="memoryCount">0 persistent traces</span>
-        </div>
+      <section>
+        <div class="section-title"><strong>World memory</strong><span id="memoryCount">0 traces</span></div>
         <div id="worldHistory" class="history"></div>
       </section>
 
-      <p id="status" class="status" aria-live="polite">World loaded.</p>
-      <p class="truth">Prototype truth boundary: the Foundation Planet renderer and deterministic RPG world/city journals are real on this branch. The page uses browser-local journal persistence for immediate play. The same RPG event family is also wired through the existing host hash journal, but this page is not yet claiming deployed multi-user synchronization, final combat, NPC simulation, economy balance, or finished RPG art.</p>
+      <p id="status" class="status" aria-live="polite">Clean RPG world loaded.</p>
+      <p class="truth">This branch no longer loads the RTS game shell, RTS units, RTS buildings, strategic overlays or post-apocalyptic presentation. It keeps Foundation Planet, spatial conversion and persistent authority underneath. Current rendering is a fresh RPG debug surface, not final art.</p>
     </aside>
+
+    <div class="controls">WASD view · arrows cursor · Q/E zoom · M globe/local</div>
   </main>
   <script type="module" src="./rpg-world.mjs"></script>
 </body>

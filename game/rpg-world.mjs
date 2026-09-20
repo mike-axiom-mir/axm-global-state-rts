@@ -1,4 +1,4 @@
-import { SplitScreenPlanetRenderer } from '../src/presentation/planet-renderer.mjs';
+import { createPersistentRpgRenderer } from '../src/rpg/presentation/rpg-renderer.mjs';
 import {
   createPersistentRpgWorld,
   RPG_CITY_PATHS,
@@ -10,7 +10,6 @@ const WORLD_STORAGE_KEY = 'axm.persistent-rpg.browser-world-journal/v0.2';
 const LIFE_COUNTER_KEY = 'axm.persistent-rpg.browser-life-counter/v0.1';
 const ACTOR_ID = 'browser-player';
 const CITY_ID = 'first-city';
-const SEAT_ID = 'seat-1';
 
 const viewport = document.getElementById('viewport');
 const status = document.getElementById('status');
@@ -28,11 +27,11 @@ const citySkills = document.getElementById('citySkills');
 const worldHistory = document.getElementById('worldHistory');
 const memoryCount = document.getElementById('memoryCount');
 
-function safeLocalStorageGet(key) {
+function storageGet(key) {
   try { return localStorage.getItem(key); } catch { return null; }
 }
 
-function safeLocalStorageSet(key, value) {
+function storageSet(key, value) {
   try {
     localStorage.setItem(key, value);
     return true;
@@ -42,7 +41,7 @@ function safeLocalStorageSet(key, value) {
 }
 
 function loadJournal() {
-  const raw = safeLocalStorageGet(WORLD_STORAGE_KEY);
+  const raw = storageGet(WORLD_STORAGE_KEY);
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
@@ -61,12 +60,14 @@ try {
   });
 } catch (error) {
   console.error(error);
-  world = createPersistentRpgWorld({ worldSeed: 'axm-persistent-rpg-v0', defaultCityId: CITY_ID });
-  status.textContent = 'Stored browser journal could not be replayed; started a clean local preview world. Host journal was not touched.';
+  world = createPersistentRpgWorld({
+    worldSeed: 'axm-persistent-rpg-v0',
+    defaultCityId: CITY_ID
+  });
+  status.textContent = 'Browser journal replay failed. Started a clean local preview without touching hosted state.';
 }
 
-const renderer = new SplitScreenPlanetRenderer(viewport, {
-  seatIds: [SEAT_ID],
+const renderer = createPersistentRpgRenderer(viewport, {
   worldSeed: 'axm-persistent-rpg-v0'
 });
 
@@ -75,9 +76,9 @@ function citySnapshot() {
 }
 
 function nextLifeId() {
-  const prior = Number(safeLocalStorageGet(LIFE_COUNTER_KEY) || 0);
+  const prior = Number(storageGet(LIFE_COUNTER_KEY) || 0);
   const next = Number.isSafeInteger(prior) && prior >= 0 ? prior + 1 : 1;
-  safeLocalStorageSet(LIFE_COUNTER_KEY, String(next));
+  storageSet(LIFE_COUNTER_KEY, String(next));
   return `life-${String(next).padStart(4, '0')}`;
 }
 
@@ -112,8 +113,8 @@ function worldHour() {
 }
 
 function currentLocation() {
-  const view = renderer.describeSeatView(SEAT_ID);
-  if (view?.mode === 'local-rts') {
+  const view = renderer.describeView();
+  if (view.mode === 'local') {
     return {
       placeId: view.local.regionId,
       xM: Math.round(view.local.cursorXM),
@@ -124,17 +125,16 @@ function currentLocation() {
 }
 
 function localLocationRequired() {
-  const view = renderer.describeSeatView(SEAT_ID);
-  if (view?.mode !== 'local-rts') {
-    setStatus('Enter LOCAL WORLD first (M or Globe / local) before acting on a physical place.');
+  if (renderer.getMode() !== 'local') {
+    setStatus('Enter the local world before acting on a physical place.');
     return null;
   }
   return currentLocation();
 }
 
 function saveWorld() {
-  const saved = safeLocalStorageSet(WORLD_STORAGE_KEY, JSON.stringify(world.exportJournal()));
-  if (!saved) setStatus('World changed, but browser-local persistence is unavailable in this environment.');
+  const saved = storageSet(WORLD_STORAGE_KEY, JSON.stringify(world.exportJournal()));
+  if (!saved) setStatus('World changed, but browser-local persistence is unavailable here.');
   return saved;
 }
 
@@ -152,20 +152,20 @@ function applyWorldEvent(eventType, payload, kind = eventType) {
 function friendlyEvent(command) {
   const p = command.payload || {};
   switch (command.eventType) {
-    case 'rpg.trail.walked': return `Travel strengthened ${p.trailId}`;
-    case 'rpg.knowledge.recorded': return `Knowledge recorded: ${p.topic}`;
-    case 'rpg.artifact.left': return `Artifact left in world: ${p.label}`;
-    case 'rpg.life.departed': return `${p.lifeId} left safely; XP/items entered ${p.cityId}`;
-    case 'rpg.life.ended': return `${p.lifeId} died; no automatic city transfer`;
-    case 'rpg.city.path.changed': return `${p.cityId} changed path → ${p.path}`;
-    case 'rpg.city.pool.withdrawn': return `A later life withdrew from ${p.cityId}`;
+    case 'rpg.trail.walked': return `travel strengthened ${p.trailId}`;
+    case 'rpg.knowledge.recorded': return `knowledge recorded · ${p.topic}`;
+    case 'rpg.artifact.left': return `artifact left · ${p.label}`;
+    case 'rpg.life.departed': return `${p.lifeId} contributed to ${p.cityId}`;
+    case 'rpg.life.ended': return `${p.lifeId} died without city transfer`;
+    case 'rpg.city.path.changed': return `${p.cityId} direction → ${p.path}`;
+    case 'rpg.city.pool.withdrawn': return `shared item taken from ${p.cityId}`;
     default: return command.eventType;
   }
 }
 
 function renderHistory(snapshot) {
   const journal = world.exportJournal();
-  const recent = [...journal].slice(-12).reverse();
+  const recent = [...journal].slice(-10).reverse();
   const traces = snapshot.legacy.trailCount
     + snapshot.legacy.cacheCount
     + snapshot.legacy.knowledgeCount
@@ -173,15 +173,17 @@ function renderHistory(snapshot) {
     + snapshot.legacy.artifactCount
     + snapshot.legacy.departures
     + snapshot.legacy.deaths;
-  memoryCount.textContent = `${traces} persistent traces`;
+  memoryCount.textContent = `${traces} traces`;
   worldHistory.replaceChildren();
+
   if (!recent.length) {
-    const empty = document.createElement('div');
-    empty.className = 'history-row';
-    empty.textContent = 'No history yet. This world is still young.';
-    worldHistory.appendChild(empty);
+    const row = document.createElement('div');
+    row.className = 'history-row';
+    row.textContent = 'Nothing has been left behind yet.';
+    worldHistory.appendChild(row);
     return;
   }
+
   recent.forEach((entry, index) => {
     const row = document.createElement('div');
     row.className = 'history-row';
@@ -195,24 +197,23 @@ function renderCity(city) {
   cityRank.textContent = `Rank ${city.cityRank}`;
   cityPath.value = city.path;
   citySummary.textContent =
-    `Active path: ${city.path} rank ${city.activePathRank}. `
-    + `${city.totalXp} XP has been contributed by ${city.contributors.length} player identity${city.contributors.length === 1 ? '' : 'ies'} across ${city.departureCount} safe departure${city.departureCount === 1 ? '' : 's'}. `
-    + `Old path progress is retained when direction changes.`;
+    `${city.totalXp} shared XP · active ${city.path} rank ${city.activePathRank} · `
+    + `${city.departureCount} safe departures. Old path progress remains stored when direction changes.`;
 
   sharedPool.replaceChildren();
-  const itemEntries = Object.entries(city.sharedItems);
-  if (!itemEntries.length) {
+  const items = Object.entries(city.sharedItems);
+  if (!items.length) {
     const empty = document.createElement('div');
     empty.className = 'pool-item';
-    empty.innerHTML = '<strong>Empty</strong><span>Leave safely with carried items to seed the city pool.</span>';
+    empty.innerHTML = '<strong>Empty</strong><span>safe departures can fill this</span>';
     sharedPool.appendChild(empty);
   } else {
-    for (const [itemId, count] of itemEntries) {
+    for (const [itemId, count] of items) {
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'pool-item';
       item.dataset.withdrawItem = itemId;
-      item.innerHTML = `<strong>${itemId} × ${count}</strong><span>Take one into this life</span>`;
+      item.innerHTML = `<strong>${itemId} × ${count}</strong><span>take one</span>`;
       sharedPool.appendChild(item);
     }
   }
@@ -221,7 +222,7 @@ function renderCity(city) {
   for (const domain of RPG_XP_DOMAINS) {
     const item = document.createElement('div');
     item.className = 'skill-item';
-    item.innerHTML = `<strong>${domain} · rank ${city.skillRanks[domain]}</strong><span>${city.domainXp[domain]} shared XP</span>`;
+    item.innerHTML = `<strong>${domain} · ${city.skillRanks[domain]}</strong><span>${city.domainXp[domain]} XP</span>`;
     citySkills.appendChild(item);
   }
 }
@@ -230,19 +231,22 @@ function renderAll() {
   const snapshot = world.snapshot();
   const lifeSnapshot = life.snapshot();
   const city = citySnapshot();
+
+  renderer.syncWorldSnapshot(snapshot);
   worldRevision.textContent = String(snapshot.revision);
   lifeIdEl.textContent = lifeSnapshot.lifeId;
   lifeXp.textContent = String(lifeXpTotal());
   lifeItems.textContent = String(lifeItemTotal());
-  modeLabel.textContent = renderer.getSeatMode(SEAT_ID) === 'local-rts' ? 'LOCAL WORLD' : 'GLOBE';
+  modeLabel.textContent = renderer.getMode() === 'local' ? 'LOCAL WORLD' : 'GLOBE';
+
   if (city) renderCity(city);
   renderHistory(snapshot);
 }
 
-function startNextLife(reason) {
+function startNextLife(prefix) {
   life = makeLife();
   renderAll();
-  setStatus(`${reason} New life ${life.lifeId} entered the same world and inherited only the city's current support—not private account XP.`);
+  setStatus(`${prefix} New life ${life.lifeId} enters the same world with city support only.`);
 }
 
 for (const path of RPG_CITY_PATHS) {
@@ -253,16 +257,17 @@ for (const path of RPG_CITY_PATHS) {
 }
 
 document.getElementById('toggleMode').addEventListener('click', () => {
-  renderer.toggleSeatMode(SEAT_ID);
+  renderer.toggleMode();
   renderAll();
-  setStatus(renderer.getSeatMode(SEAT_ID) === 'local-rts'
-    ? 'Entered LOCAL WORLD. Cursor marks the physical place your actions affect.'
-    : 'Returned to the globe view.');
+  setStatus(renderer.getMode() === 'local'
+    ? 'Local Foundation surface loaded. No RTS fixtures are present.'
+    : 'Globe view.');
 });
 
 document.getElementById('exploreAction').addEventListener('click', () => {
   const location = localLocationRequired();
   if (!location) return;
+
   life.walk();
   life.gainExperience('exploration', 15);
   life.gainExperience('survival', 5);
@@ -274,71 +279,70 @@ document.getElementById('exploreAction').addEventListener('click', () => {
     trailId,
     distanceM: 80
   }, 'walk');
+
   if (!result.accepted) return setStatus(`Explore rejected: ${result.reason}`);
-  const trail = result.result;
   renderAll();
-  setStatus(`Explored here. Life gained 20 temporary XP; repeated travel left a persistent ${trail.tier} with ${trail.uses} use${trail.uses === 1 ? '' : 's'}.`);
+  setStatus(`20 temporary XP gained. The world now remembers a ${result.result.tier} here.`);
 });
 
 document.getElementById('salvageAction').addEventListener('click', () => {
-  const location = localLocationRequired();
-  if (!location) return;
+  if (!localLocationRequired()) return;
   life.gainExperience('craft', 12);
   life.gainExperience('survival', 3);
   life.addItem('salvaged-material', 1);
   renderAll();
-  setStatus('Recovered one salvaged-material. It and 15 life XP remain temporary until you safely contribute them to the city.');
+  setStatus('Recovered one salvaged-material. It remains temporary until safe departure.');
 });
 
 document.getElementById('studyAction').addEventListener('click', () => {
   const location = localLocationRequired();
   if (!location) return;
+
   life.discover();
   life.gainExperience('lore', 10);
   life.gainExperience('exploration', 5);
-  const knowledgeId = `knowledge:${world.revision + 1}`;
   const result = applyWorldEvent('rpg.knowledge.recorded', {
     ...location,
-    knowledgeId,
+    knowledgeId: `knowledge:${world.revision + 1}`,
     topic: `field-note-${world.revision + 1}`,
-    record: `Recorded at ${location.placeId} near ${location.xM},${location.zM}`
+    record: `Foundation surface observation near ${location.xM},${location.zM}`
   }, 'knowledge');
-  if (!result.accepted) return setStatus(`Knowledge rejected: ${result.reason}`);
+
+  if (!result.accepted) return setStatus(`Study rejected: ${result.reason}`);
   renderAll();
-  setStatus('This place is now part of shared world knowledge. Your 15 XP is still life-local until safe departure.');
+  setStatus('The world keeps the observation immediately; your life XP is still temporary.');
 });
 
 document.getElementById('leaveArtifactAction').addEventListener('click', () => {
   const location = localLocationRequired();
   if (!location) return;
   if (!life.removeItem('salvaged-material', 1)) {
-    setStatus('You need a salvaged-material in this life before you can leave an artifact.');
+    setStatus('Carry a salvaged-material first.');
     return;
   }
-  const artifactId = `artifact:${world.revision + 1}`;
+
   const label = `Field Relic ${world.revision + 1}`;
   const result = applyWorldEvent('rpg.artifact.left', {
     ...location,
-    artifactId,
+    artifactId: `artifact:${world.revision + 1}`,
     label,
     material: 'salvaged-material'
   }, 'artifact');
+
   if (!result.accepted) {
     life.addItem('salvaged-material', 1);
     return setStatus(`Artifact rejected: ${result.reason}`);
   }
   life.gainExperience('craft', 5);
   renderAll();
-  setStatus(`${label} now persists at this physical location for later lives.`);
+  setStatus(`${label} now exists in the persistent world.`);
 });
 
 document.getElementById('changePath').addEventListener('click', () => {
   const city = citySnapshot();
   if (!city) return;
-  if (city.path === cityPath.value) {
-    setStatus('The city is already following that path.');
-    return;
-  }
+  if (city.path === cityPath.value) return setStatus('That direction is already active.');
+
   const result = applyWorldEvent('rpg.city.path.changed', {
     cityId: CITY_ID,
     placeId: CITY_ID,
@@ -347,9 +351,10 @@ document.getElementById('changePath').addEventListener('click', () => {
     path: cityPath.value,
     reason: 'player-directed-city-development'
   }, 'path');
+
   if (!result.accepted) return setStatus(`Path change rejected: ${result.reason}`);
   renderAll();
-  setStatus(`City direction changed from ${result.result.previousPath} to ${result.result.path}. Existing path XP was preserved; future departures now strengthen ${result.result.path}.`);
+  setStatus(`Future contributions now advance ${result.result.path}; prior ${result.result.previousPath} progress was preserved.`);
 });
 
 sharedPool.addEventListener('click', event => {
@@ -365,41 +370,41 @@ sharedPool.addEventListener('click', event => {
     items: { [itemId]: 1 },
     purpose: `equip-${life.lifeId}`
   }, 'withdraw');
+
   if (!result.accepted) return setStatus(`Withdrawal rejected: ${result.reason}`);
   life.addItem(itemId, 1);
   renderAll();
-  setStatus(`This life took one ${itemId} that a past life left in the shared city pool.`);
+  setStatus(`This life took one ${itemId} left by the shared city history.`);
 });
 
 document.getElementById('departAction').addEventListener('click', () => {
-  const location = currentLocation();
   const contribution = life.departureContribution({ cityId: CITY_ID });
-  const before = citySnapshot();
+  const current = currentLocation();
   const result = applyWorldEvent('rpg.life.departed', {
-    ...location,
+    ...current,
     ...contribution,
     reason: 'player-left-world-safely'
   }, 'depart');
+
   if (!result.accepted) return setStatus(`Departure rejected: ${result.reason}`);
-  const xp = result.result.contributedXp;
-  const items = Object.values(contribution.items).reduce((sum, value) => sum + value, 0);
+  const itemCount = Object.values(contribution.items).reduce((sum, value) => sum + value, 0);
   life.depart();
-  const path = before?.path || result.result.pathAtDeparture;
-  startNextLife(`Safe departure contributed ${xp} XP and ${items} carried item${items === 1 ? '' : 's'} to ${CITY_ID}; ${xp} XP also advanced the city's active ${path} path.`);
+  startNextLife(`Safe departure transferred ${result.result.contributedXp} XP and ${itemCount} items into ${CITY_ID}.`);
 });
 
 document.getElementById('deathAction').addEventListener('click', () => {
-  const location = currentLocation();
+  const current = currentLocation();
   const lostXp = lifeXpTotal();
   const lostItems = lifeItemTotal();
   const result = applyWorldEvent('rpg.life.ended', {
-    ...location,
+    ...current,
     lifeId: life.lifeId,
     cause: 'prototype-death-action'
   }, 'death');
-  if (!result.accepted) return setStatus(`Death event rejected: ${result.reason}`);
+
+  if (!result.accepted) return setStatus(`Death rejected: ${result.reason}`);
   life.die();
-  startNextLife(`The previous life died with ${lostXp} unbanked XP and ${lostItems} carried item${lostItems === 1 ? '' : 's'}. The city did not receive them automatically.`);
+  startNextLife(`Death left ${lostXp} unbanked XP and ${lostItems} carried items outside the city inheritance pool.`);
 });
 
 const keys = new Set();
@@ -407,19 +412,18 @@ window.addEventListener('keydown', event => {
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(event.key)) event.preventDefault();
   const key = event.key.toLowerCase();
   if (key === 'm' && !event.repeat) {
-    renderer.toggleSeatMode(SEAT_ID);
+    renderer.toggleMode();
     renderAll();
   }
   keys.add(key);
 }, { passive: false });
-
 window.addEventListener('keyup', event => keys.delete(event.key.toLowerCase()));
 
 let previous = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, Math.max(0, (now - previous) / 1000));
   previous = now;
-  renderer.applyContinuousInput(SEAT_ID, {
+  renderer.applyInput({
     cameraX: (keys.has('d') ? 1 : 0) - (keys.has('a') ? 1 : 0),
     cameraY: (keys.has('s') ? 1 : 0) - (keys.has('w') ? 1 : 0),
     cursorX: (keys.has('arrowright') ? 1 : 0) - (keys.has('arrowleft') ? 1 : 0),

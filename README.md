@@ -1,89 +1,94 @@
-# AXM Global State RTS
+# AXM Persistent World RPG
 
-Status: **EXPERIMENTAL**
+Status: **EXPERIMENTAL — CLEAN RPG RESTART**
 
-Persistent browser-scale mass-macro RTS built on the existing AXM Foundation Planet rather than a new simplified globe.
+This branch began as a copy of `axm-global-state-rts` because that project already had useful Foundation Planet, state, website, spatial, input and persistence machinery.
 
-The source planet is pulled into this repository as the pinned `planet-upstream` submodule. The source repository stays untouched; game-specific scaling, flat RTS operating frames, units, buildings, economy, fog, cities, Guardian defense, progression, multiplayer work, and the post-apocalyptic miniature presentation belong here.
+The active RTS game and presentation layer has now been removed from this branch.
 
-## First architectural rule
+## Active rule
 
-The world remains a real sphere globally, but units/buildings should not pay spherical-geometry cost for ordinary RTS logic.
+**Players are temporary. The world and its cities inherit what players safely leave behind.**
 
-- canonical global identity: Foundation Planet coordinate / globe vector;
-- local gameplay identity: bounded flat X/Z metres;
-- when an entity travels far enough, rebase it into a neighbouring local frame while preserving the same global position;
-- render the globe as a miniature global expression, but resolve active battles through the local frame appropriate to that area.
+A life may gain temporary XP and carry items. Safe departure can transfer those into a shared city. Death does not magically bank them. Cities keep domain XP, shared inventory, overall rank and retained development-path XP.
 
-This gives us one huge planet without pretending the actual world state is a giant flat rectangle.
+Current city directions:
 
-## Planet presentation
+- balanced
+- frontier
+- forge
+- harvest
+- defense
+- trade
+- lore
 
-The game is intentionally allowed to make Foundation Planet look radically different without changing its canonical world truth. The current target is a miniature post-apocalyptic diorama world with cheap globe/region LOD and richer local RTS rendering.
+Changing direction affects future contributions. Previous path progress is retained rather than erased.
 
-See:
+## Clean visual boundary
 
-- `docs/PLANET_PRESENTATION_TARGET.md`
-- `src/presentation/planet-style.mjs`
+The active browser surface now consists only of:
 
-## First browser shell
+- `game/index.html`
+- `game/rpg-world.css`
+- `game/rpg-world.mjs`
 
-The current experimental browser shell already starts from the multi-seat boundary rather than assuming one camera forever:
+The RPG renderer is new:
 
-- 1–4 local seat viewports from one authoritative world;
-- equal split-screen layouts;
-- controller-first per-seat camera path;
-- Seat 1 keyboard/mouse camera fallback for one-player PC use;
-- human and machine seats share the same player-seat observation/visual/command contract;
-- every discrete human or machine player action passes through the same rolling **100 APM** gate;
-- Foundation Planet samples drive the first miniature globe mesh.
+- `src/rpg/presentation/rpg-renderer.mjs`
+- `src/rpg/world/rpg-region.mjs`
+- `src/rpg/world/rpg-foundation-sampler.mjs`
 
-Run locally after cloning with submodules:
+It samples the existing Foundation Planet directly. It does **not** load the donor RTS renderer, RTS local scene, Crew, buildings, combat presentation, strategic overlays, Creation Machine RTS asset adoption, or post-apocalyptic style.
 
-```bash
-npm start
-```
+## Capabilities deliberately retained underneath
 
-Then open `http://127.0.0.1:4174/game/`.
+The branch still retains reusable donor infrastructure while capability extraction continues:
 
-Optional query examples:
+- pinned Foundation Planet submodule;
+- global globe sampling;
+- local/global spatial-frame conversion;
+- hosted hash-chained world journal;
+- world participants and equal human/machine action admission;
+- browser/host API seams;
+- deterministic RPG world replay;
+- persistent city inheritance;
+- existing server/bootstrap machinery.
 
-- `?players=4` — four local seats;
-- `?players=3&seat3=machine` — two human seats plus one machine user seat.
+Dormant donor source under older `src/` areas remains available as rollback/reference until each useful capability is either adopted into the RPG namespace or proven unnecessary. It is not part of the active RPG browser path.
 
-The machine seat is a truthful seat shell only; no connected AI provider is claimed yet.
-
-See `docs/MULTISEAT_CONTROLLER_ARCHITECTURE.md`.
-
-## Reuse from the earlier RTS
-
-The previous Many-Race RTS already contains useful globe geometry, globe-aware map authoring, one-schema flat/globe map data, visual layers and deterministic decoration ideas. The new game reuses those ideas selectively instead of copying the small-skirmish assumptions.
-
-See `docs/OLD_RTS_REUSE_ANALYSIS.md`.
-
-## Asset work
-
-Creation Machine / working-chat handoff:
-
-- human-readable backlog: `ASSET_LIST.md`
-- machine-readable READY requests: `assets/asset-requests.v0.1.json`
-
-Assets use stable IDs so procedural placeholders can later be replaced without rewriting canonical game state.
-
-## Pull the exact Planet body
+## Run
 
 ```bash
 git clone --recurse-submodules https://github.com/mike-axiom-mir/axm-global-state-rts.git
+git checkout game/persistent-rpg-world-20260920
+npm start
 ```
 
-For an existing clone:
+Open:
+
+```
+http://127.0.0.1:4174/game/
+```
+
+## Verify
 
 ```bash
-git submodule update --init --recursive
+npm test
 ```
 
-The pinned source revision is recorded in `UPSTREAM_PLANET.json`.
+The branch-specific gates verify:
 
-## Current rung
+- world progression without account-power progression;
+- safe-departure city XP/item inheritance;
+- retained city path progress;
+- deterministic hosted hash-journal replay;
+- human/machine participant parity;
+- spatial-frame capability;
+- active browser boundary contains no RTS game/presentation files;
+- syntax of the clean RPG renderer and host seams.
 
-The current game code establishes the globe/local spatial seam, miniature Planet presentation, a real multi-viewport browser shell, controller/input contracts, and the shaped design foundation. It does **not** yet claim the global multiplayer network simulation, final local RTS terrain renderer, physical-controller QA, connected AI provider, or mass-war performance is finished.
+## Truth boundary
+
+This is a clean architectural restart, not a finished RPG.
+
+The globe and local Foundation surface are real rendered inputs from the existing planet model. The local RPG terrain renderer is intentionally simple and new. NPC ecology, individual character movement/animation, final city visuals, combat, quests, economy, multiplayer synchronization, world-scale local streaming, final materials and visual acceptance remain future work.

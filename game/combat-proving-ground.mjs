@@ -1,4 +1,6 @@
+import { createAudioFabricPackPlayer } from './audio-fabric-pack-player.mjs';
 import { GamepadSeatRouter } from '../src/input/gamepad-seat-router.mjs';
+import { cueForLocalCombatResult } from '../src/presentation/local-combat-audio.mjs';
 import { createLocalRoster } from '../src/session/seat-contract.mjs';
 import { LocalSeatRuntime } from '../src/session/local-seat-runtime.mjs';
 import { createLocalCivilizationGameplay } from '../src/sim/local-civilization-gameplay.mjs';
@@ -12,6 +14,7 @@ const simulation = createLocalRegionSimulation(createStarterRegion(seatId));
 const party = createLocalPartyGameplay(simulation.snapshot().crew.map(crew => crew.id));
 const civilization = createLocalCivilizationGameplay(simulation, { seatId });
 const combat = createLocalCombatGameplay({ seatId, simulation, partyGameplay: party, civilizationGameplay: civilization });
+const audio = createAudioFabricPackPlayer();
 
 const roster = createLocalRoster({ seatKinds: ['human'], teams: ['coop'] });
 const runtime = new LocalSeatRuntime({ roster });
@@ -26,6 +29,8 @@ const partyMeta = document.getElementById('partyMeta');
 const hostileMeta = document.getElementById('hostileMeta');
 const partyPips = document.getElementById('partyPips');
 const hostilePips = document.getElementById('hostilePips');
+const audioToggle = document.getElementById('audioToggle');
+const audioStatus = document.getElementById('audioStatus');
 const actionButtons = [...document.querySelectorAll('[data-action]')];
 
 function connectedGamepads() {
@@ -58,6 +63,34 @@ function applyAdmittedAction(event) {
   return Object.freeze({ handled: false, accepted: false, reason: 'action-not-used-by-combat-proving-ground' });
 }
 
+function refreshAudioUi(message = null) {
+  const snapshot = audio.snapshot();
+  audioToggle.textContent = `Combat audio: ${snapshot.enabled ? 'on' : 'off'}`;
+  audioToggle.setAttribute('aria-pressed', snapshot.enabled ? 'true' : 'false');
+  if (message) audioStatus.textContent = message;
+  else if (snapshot.lastFailure) audioStatus.textContent = `Audio fallback · ${snapshot.lastFailure}`;
+  else if (snapshot.enabled) audioStatus.textContent = 'Audio enabled · pre-rendered AXM Audio Fabric combat cues.';
+  else audioStatus.textContent = 'Audio is opt-in and has no combat authority.';
+}
+
+async function toggleAudio() {
+  if (audio.snapshot().enabled) {
+    audio.disable();
+    refreshAudioUi('Audio disabled.');
+    return;
+  }
+  const result = await audio.unlock();
+  refreshAudioUi(result.enabled ? 'Audio enabled · pre-rendered AXM Audio Fabric combat cues.' : `Audio unavailable · ${result.reason || result.state}`);
+}
+
+function playCombatAudio(result, outcome) {
+  const cueId = cueForLocalCombatResult(result, outcome);
+  if (!cueId) return;
+  void audio.play(cueId).then(playback => {
+    if (!playback.played && playback.reason !== 'disabled') refreshAudioUi(`Audio fallback · ${playback.reason}`);
+  });
+}
+
 function submitAction(actionId, sourceKind = 'keyboard-pointer', timestampMs = performance.now()) {
   try {
     const admitted = runtime.submitAction({ seatId, sourceKind, actionId, timestampMs });
@@ -70,6 +103,7 @@ function submitAction(actionId, sourceKind = 'keyboard-pointer', timestampMs = p
     if (result.accepted) status.textContent = outcome?.message || `${actionId} accepted`;
     else if (result.handled) status.textContent = outcome?.message || `${actionId} rejected · ${result.reason}`;
     else status.textContent = `${actionId} is not used on this proving surface.`;
+    playCombatAudio(result, outcome);
     render();
     return Object.freeze({ admitted, command: result });
   } catch (error) {
@@ -146,6 +180,8 @@ for (const button of actionButtons) {
   button.addEventListener('click', () => submitAction(button.dataset.action, 'keyboard-pointer', performance.now()));
 }
 
+audioToggle.addEventListener('click', () => void toggleAudio());
+
 function frame(now) {
   ensureGamepadBinding();
   if (boundGamepad !== null) {
@@ -158,6 +194,7 @@ function frame(now) {
       const result = applyAdmittedAction(admitted.event);
       const outcome = combat.snapshot().lastOutcome;
       status.textContent = result.accepted ? (outcome?.message || `${admitted.event.actionId} accepted`) : (outcome?.message || result.reason || 'rejected');
+      playCombatAudio(result, outcome);
       render();
     }
   }
@@ -166,11 +203,14 @@ function frame(now) {
 
 Object.defineProperty(window, '__AXM_LOCAL_COMBAT_PROVING_GROUND__', {
   value: Object.freeze({
-    snapshot: () => Object.freeze({ simulation: simulation.snapshot(), party: party.snapshot(), civilization: civilization.snapshot(), combat: combat.snapshot() }),
-    submitAction: actionId => submitAction(actionId, 'keyboard-pointer', performance.now())
+    snapshot: () => Object.freeze({ simulation: simulation.snapshot(), party: party.snapshot(), civilization: civilization.snapshot(), combat: combat.snapshot(), audio: audio.snapshot() }),
+    submitAction: actionId => submitAction(actionId, 'keyboard-pointer', performance.now()),
+    enableAudio: () => audio.unlock(),
+    disableAudio: () => audio.disable()
   }),
   configurable: false
 });
 
+refreshAudioUi();
 render();
 requestAnimationFrame(frame);

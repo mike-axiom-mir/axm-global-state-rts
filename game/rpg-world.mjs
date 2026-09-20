@@ -44,6 +44,7 @@ const villagers = document.getElementById('villagers');
 const serviceNpcs = document.getElementById('serviceNpcs');
 const lifeCapability = document.getElementById('lifeCapability');
 const residentEconomy = document.getElementById('residentEconomy');
+const cityThreat = document.getElementById('cityThreat');
 const residentProposals = document.getElementById('residentProposals');
 const residentDiscoveries = document.getElementById('residentDiscoveries');
 const informalWorks = document.getElementById('informalWorks');
@@ -460,6 +461,44 @@ function strongestSkill(resident) {
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] || ['none', 0];
 }
 
+function renderCityThreat(city) {
+  const sim = city.villagers;
+  const wave = sim.activeAttackWave;
+  const defense = sim.defensePreview || {};
+  cityThreat.className = 'threat-panel';
+
+  if (sim.cityStatus === 'fallen') {
+    cityThreat.classList.add('fallen');
+    cityThreat.innerHTML =
+      `<div class="threat-head"><strong>City fallen</strong><span>integrity ${Math.round((sim.cityIntegrity || 0) * 100)}%</span></div>`
+      + '<div class="threat-note">The foundation failed under repeated pressure. The city remains historical state, but normal growth is stopped until a recovery system is built.</div>';
+    return;
+  }
+
+  if (!wave) {
+    cityThreat.innerHTML =
+      `<div class="threat-head"><strong>No active wave</strong><span>integrity ${Math.round((sim.cityIntegrity || 1) * 100)}%</span></div>`
+      + `<div class="threat-rows"><div class="threat-row"><span>Living resident power</span><b>${Number(defense.residentPower || 0).toFixed(1)}</b></div><div class="threat-row"><span>Foundation defense</span><b>+${Number(defense.foundationDefense || 0).toFixed(1)}</b></div></div>`
+      + '<div class="threat-note">The next un-crossed resident power milestone can start a warning. Buildings never raise incoming wave power; they only improve defense.</div>';
+    return;
+  }
+
+  cityThreat.classList.add('warning');
+  const ticksLeft = Math.max(0, Number(wave.dueTick || 0) - Number(sim.tick || 0));
+  const hoursLeft = ticksLeft * 4;
+  const ratio = Number(defense.defenseRatio || 0);
+  const readiness = ratio >= 1.15 ? 'strongly prepared' : ratio >= 1 ? 'prepared' : ratio >= 0.76 ? 'risky' : 'dangerously exposed';
+  cityThreat.innerHTML =
+    `<div class="threat-head"><strong>Attack warning</strong><span>${hoursLeft}h · milestone ${wave.triggerMilestone}</span></div>`
+    + '<div class="threat-rows">'
+    + `<div class="threat-row"><span>Locked incoming power</span><b>${Number(wave.attackPower || 0).toFixed(1)}</b></div>`
+    + `<div class="threat-row"><span>Resident defense</span><b>${Number(defense.residentDefense || 0).toFixed(1)}</b></div>`
+    + `<div class="threat-row"><span>Foundation extra</span><b>+${Number(defense.foundationDefense || 0).toFixed(1)}</b></div>`
+    + `<div class="threat-row"><span>Total defense</span><b>${Number(defense.totalDefense || 0).toFixed(1)} · ×${ratio.toFixed(2)}</b></div>`
+    + '</div>'
+    + `<div class="threat-note">Explorers are recalled. Current state is <strong>${readiness}</strong>. Repairing, fortifying and keeping supplies/security healthy improves defense without increasing this already-locked wave.</div>`;
+}
+
 function renderResidentEconomy(city) {
   const sim = city.villagers;
   const economy = sim.economy;
@@ -633,6 +672,7 @@ function renderCity(city) {
   renderProjects(city);
   renderVillagers(city);
   renderExplorerPackage(city);
+  renderCityThreat(city);
   renderResidentEconomy(city);
   renderResidentEvents(city);
 

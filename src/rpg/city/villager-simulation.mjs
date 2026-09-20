@@ -14,7 +14,7 @@ import {
   strongestAllowedRpgAdventureRisk
 } from '../character-capability.mjs';
 
-export const CITY_VILLAGER_SIM_SCHEMA = 'axm.persistent-rpg.city-villager-sim/v0.4';
+export const CITY_VILLAGER_SIM_SCHEMA = 'axm.persistent-rpg.city-villager-sim/v0.5';
 export const CITY_VILLAGER_SCHEMA = 'axm.persistent-rpg.villager/v0.4';
 
 export const VILLAGER_SKILLS = Object.freeze([
@@ -59,6 +59,21 @@ const AUTONOMOUS_RISK_VITALITY_FLOOR = Object.freeze({
   safe: 55,
   standard: 68,
   bold: 80
+});
+
+export const CITY_POWER_MILESTONES = Object.freeze([22, 30, 40, 52, 66]);
+export const CITY_ATTACK_WARNING_TICKS = 12;
+
+const CITY_DEFENSE_PROJECT_BONUS = Object.freeze({
+  'watch-post': 14,
+  palisade: 30,
+  bastion: 58,
+  storehouse: 5,
+  'field-kitchen': 4,
+  'road-yard': 5,
+  'guild-hall': 7,
+  waterworks: 7,
+  'council-hall': 5
 });
 
 const STAGE_CAPACITY = Object.freeze({
@@ -237,6 +252,8 @@ function createResident(cityId, worldSeed, serial, bornTick = 0) {
     },
     explorerPackageStatus: 'not-session-survivor',
     adventureHistory: [],
+    powerMilestonesTriggered: [],
+    defenseRecall: false,
     wealth: 0,
     discoveries: [],
     proposalIds: [],
@@ -459,6 +476,217 @@ function autonomousVitalityReady(resident, risk) {
   return Number(resident.vitality || 0) >= (AUTONOMOUS_RISK_VITALITY_FLOOR[risk] || 100);
 }
 
+function activePendingWave(simulation) {
+  return simulation.attackWaves.find(wave => wave.status === 'warning') || null;
+}
+
+function residentPowerMetric(resident, simulation) {
+  const capability = residentCapability(resident, simulation);
+  const vitality = Math.max(0.25, Number(resident.vitality || 0) / 100);
+  return (
+    capability.power * 0.46
+    + capability.defense * 0.28
+    + capability.survival * 0.18
+    + capability.utility * 0.08
+  ) * vitality;
+}
+
+function aggregateResidentPower(simulation) {
+  return simulation.residents
+    .filter(resident => resident.alive !== false)
+    .reduce((sum, resident) => sum + residentPowerMetric(resident, simulation), 0);
+}
+
+function completedDefenseProjectBonus(city) {
+  const completed = completedProjectSet(city);
+  let total = 0;
+  for (const [projectId, bonus] of Object.entries(CITY_DEFENSE_PROJECT_BONUS)) {
+    if (completed.has(projectId)) total += bonus;
+  }
+  return total;
+}
+
+function cityDefensePreview(simulation, city, wave = activePendingWave(simulation)) {
+  const residentPower = aggregateResidentPower(simulation);
+  const residentDefense = residentPower * 0.60;
+  const projectBonusRaw = completedDefenseProjectBonus(city);
+  const maintenance = clamp(simulation.economy.infrastructureCondition);
+  const security = clamp(simulation.economy.security);
+  const foodSupport = Math.min(4, simulation.economy.foodReserve / Math.max(1, simulation.residents.length * 3));
+  const foundationDefense = projectBonusRaw * (0.45 + maintenance * 0.55) * (0.82 + security * 0.18) + foodSupport;
+  const totalDefense = residentDefense + foundationDefense;
+  const attackPower = Number(wave?.attackPower || 0);
+  return Object.freeze({
+    residentPower: Number(residentPower.toFixed(3)),
+    residentDefense: Number(residentDefense.toFixed(3)),
+    foundationDefense: Number(foundationDefense.toFixed(3)),
+    projectDefenseRaw: projectBonusRaw,
+    infrastructureCondition: Number(maintenance.toFixed(4)),
+    security: Number(security.toFixed(4)),
+    totalDefense: Number(totalDefense.toFixed(3)),
+    attackPower: Number(attackPower.toFixed(3)),
+    defenseRatio: attackPower > 0 ? Number((totalDefense / attackPower).toFixed(4)) : null
+  });
+}
+
+function highestNewResidentMilestone(resident, simulation) {
+  const metric = residentPowerMetric(resident, simulation);
+  const seen = new Set(simulation.cityPowerMilestonesTriggered || []);
+  let highest = null;
+  for (const milestone of CITY_POWER_MILESTONES) {
+    if (metric >= milestone && !seen.has(milestone)) highest = milestone;
+  }
+  return highest === null ? null : Object.freeze({ milestone: highest, metric });
+}
+
+function queueAttackFromMilestone(simulation, resident, milestoneInfo) {
+  if (activePendingWave(simulation)) return null;
+  for (const milestone of CITY_POWER_MILESTONES) {
+    if (milestone <= milestoneInfo.milestone && !simulation.cityPowerMilestonesTriggered.includes(milestone)) {
+      simulation.cityPowerMilestonesTriggered.push(milestone);
+    }
+    if (milestone <= milestoneInfo.milestone && !resident.powerMilestonesTriggered.includes(milestone)) {
+      resident.powerMilestonesTriggered.push(milestone);
+    }
+  }
+  simulation.cityPowerMilestonesTriggered.sort((a, b) => a - b);
+  resident.powerMilestonesTriggered.sort((a, b) => a - b);
+
+  const attackPower = aggregateResidentPower(simulation);
+  const wave = {
+    id: `${simulation.cityId}:wave-${simulation.nextAttackWaveSerial++}`,
+    status: 'warning',
+    triggerTick: simulation.tick,
+    dueTick: simulation.tick + CITY_ATTACK_WARNING_TICKS,
+    triggerResidentId: resident.id,
+    triggerMilestone: milestoneInfo.milestone,
+    triggerResidentMetric: Number(milestoneInfo.metric.toFixed(3)),
+    attackPower: Number(attackPower.toFixed(3)),
+    livingResidentCountAtTrigger: simulation.residents.filter(candidate => candidate.alive !== false).length,
+    sourceMetric: 'aggregate-living-resident-power-only',
+    resolution: null
+  };
+  simulation.attackWaves.push(wave);
+  for (const candidate of simulation.residents) candidate.defenseRecall = true;
+  return wave;
+}
+
+function detectResidentPowerMilestones(simulation) {
+  if (simulation.growthState !== 'awakened' || activePendingWave(simulation)) return null;
+  const candidates = simulation.residents
+    .filter(resident => resident.alive !== false)
+    .map(resident => ({ resident, info: highestNewResidentMilestone(resident, simulation) }))
+    .filter(entry => entry.info)
+    .sort((a, b) => b.info.milestone - a.info.milestone || b.info.metric - a.info.metric || a.resident.id.localeCompare(b.resident.id));
+  if (!candidates.length) return null;
+  return queueAttackFromMilestone(simulation, candidates[0].resident, candidates[0].info);
+}
+
+function casualtyChanceFromDefenseRatio(ratio) {
+  if (ratio >= 1.25) return 0;
+  if (ratio >= 1.10) return 0.002;
+  if (ratio >= 1.00) return 0.008;
+  if (ratio >= 0.88) return 0.025;
+  if (ratio >= 0.76) return 0.065;
+  if (ratio >= 0.62) return 0.12;
+  return 0.22;
+}
+
+function resolveCityAttackWave(simulation, city, wave, effects) {
+  const preview = cityDefensePreview(simulation, city, wave);
+  const ratio = preview.defenseRatio || 0;
+  const casualtyChance = casualtyChanceFromDefenseRatio(ratio);
+  const lostResidentIds = [];
+  const wounded = [];
+
+  for (const resident of [...simulation.residents].filter(candidate => candidate.alive !== false).sort((a, b) => a.id.localeCompare(b.id))) {
+    const roll = unit(resident.seed, `city-wave-casualty:${wave.id}`);
+    if (roll < casualtyChance) {
+      resident.alive = false;
+      lostResidentIds.push(resident.id);
+      simulation.fallenResidents.push({
+        id: resident.id,
+        name: resident.name,
+        tick: simulation.tick,
+        cause: 'city-attack-wave',
+        waveId: wave.id,
+        triggerMilestone: wave.triggerMilestone,
+        skills: cloneJson(resident.skills),
+        relationships: Object.keys(resident.relationships).length,
+        recoveredItems: {},
+        lostItems: {},
+        truthBoundary: 'death-was-an-explicit-city-defense-outcome-not-aging-or-passive-mortality'
+      });
+      continue;
+    }
+
+    if (ratio < 1.15) {
+      const maxDamage = Math.max(2, Math.round((1.15 - ratio) * 32));
+      const damage = Math.floor(unit(resident.seed, `city-wave-damage:${wave.id}`) * maxDamage);
+      if (damage > 0) {
+        resident.vitality = Math.max(1, resident.vitality - damage);
+        wounded.push({ residentId: resident.id, damage });
+      }
+    }
+  }
+
+  simulation.residents = simulation.residents.filter(resident => resident.alive !== false);
+
+  const integrityLoss = ratio >= 1
+    ? Math.max(0, (1 - ratio) * 0.05)
+    : Math.min(0.45, (1 - ratio) * 0.38);
+  simulation.cityIntegrity = clamp(simulation.cityIntegrity - integrityLoss);
+  simulation.economy.maintenanceBacklog += Math.max(0, 1 - ratio) * (1 + completedProjectSet(city).size * 0.12);
+  simulation.economy.security = clamp(simulation.economy.security - Math.max(0.02, (1 - ratio) * 0.12));
+
+  const cityFallen =
+    simulation.residents.length === 0
+    || (
+      simulation.cityIntegrity <= 0.18
+      && ratio < 0.62
+      && preview.foundationDefense < wave.attackPower * 0.18
+    );
+
+  if (cityFallen) {
+    simulation.cityStatus = 'fallen';
+    simulation.growthState = 'fallen';
+    for (const resident of simulation.residents) resident.defenseRecall = false;
+  } else {
+    simulation.cityStatus = 'active';
+    for (const resident of simulation.residents) resident.defenseRecall = false;
+  }
+
+  wave.status = cityFallen ? 'city-fallen' : 'resolved';
+  wave.resolution = {
+    resolvedTick: simulation.tick,
+    preview,
+    casualtyChance,
+    lostResidentIds,
+    wounded,
+    integrityLoss: Number(integrityLoss.toFixed(4)),
+    cityIntegrityAfter: Number(simulation.cityIntegrity.toFixed(4)),
+    cityFallen
+  };
+  simulation.attackHistory.push(cloneJson(wave));
+  while (simulation.attackHistory.length > 80) simulation.attackHistory.shift();
+
+  effects.attackWaveResolutions.push({
+    waveId: wave.id,
+    lostResidentIds: [...lostResidentIds],
+    cityFallen,
+    defenseRatio: ratio
+  });
+  return wave.resolution;
+}
+
+function resolveDueAttackWaves(simulation, city, effects) {
+  const due = simulation.attackWaves
+    .filter(wave => wave.status === 'warning' && wave.dueTick <= simulation.tick)
+    .sort((a, b) => a.dueTick - b.dueTick || a.id.localeCompare(b.id));
+  for (const wave of due) resolveCityAttackWave(simulation, city, wave, effects);
+}
+
+
 function normalizedAdventurePolicy(raw = {}) {
   const maxRisk = String(raw.maxRisk || 'safe');
   const focus = String(raw.focus || 'mixed');
@@ -508,6 +736,7 @@ export function setCityResidentAdventurePolicy(simulation, residentId, policy = 
 
 function availableActionSet(city, simulation, resident) {
   const complete = completedProjectSet(city);
+  if (simulation.cityStatus === 'fallen') return ['rest', 'forage'];
   if (simulation.growthState === 'equilibrium') {
     return ['rest', 'eat', 'socialize', 'help-neighbor', 'forage'];
   }
@@ -531,6 +760,15 @@ function availableActionSet(city, simulation, resident) {
     if (risk && autonomousVitalityReady(resident, risk) && !packageBlocks) actions.add('adventure');
   }
   if (simulation.economy.infrastructureCondition < 0.22) actions.delete('craft');
+
+  const wave = activePendingWave(simulation);
+  if (wave) {
+    actions.delete('adventure');
+    actions.delete('explore');
+    actions.add('patrol');
+    resident.defenseRecall = true;
+  }
+
   return [...actions];
 }
 
@@ -604,6 +842,14 @@ function candidateScore(city, simulation, culture, resident, action, tick) {
   if (action === 'maintain-city') {
     score += t.industry * 0.48 + t.tradition * 0.25 + t.empathy * 0.16;
     score += Math.min(0.45, simulation.economy.maintenanceBacklog * 0.08);
+  }
+
+  if (activePendingWave(simulation)) {
+    if (action === 'patrol') score += 0.70;
+    if (action === 'maintain-city') score += 0.55;
+    if (action === 'rest' && resident.vitality < 82) score += 0.42;
+    if (action === 'share-surplus') score += 0.18;
+    if (action === 'adventure' || action === 'explore') score -= 2;
   }
 
   if (
@@ -1198,7 +1444,13 @@ export function createCityVillagerSimulation({
     nextInformalSerial: 1,
     nextAdventureSerial: 1,
     nextPartySerial: 1,
+    nextAttackWaveSerial: 1,
+    cityPowerMilestonesTriggered: [],
     growthState: 'equilibrium',
+    cityStatus: 'active',
+    cityIntegrity: 1,
+    attackWaves: [],
+    attackHistory: [],
     interactionCount: 0,
     awakenedAtTick: null,
     lastInteractionReason: null,
@@ -1247,12 +1499,18 @@ export function advanceCityVillagerSimulation(simulation, city, {
   if (!Number.isInteger(hoursPerTick) || hoursPerTick < 1 || hoursPerTick > 24) throw new RangeError('hoursPerTick must be an integer from 1 through 24');
 
   const receipts = [];
-  const effects = { sharedItemDeltas: {}, sharedItemConsumes: {} };
+  const effects = {
+    sharedItemDeltas: {},
+    sharedItemConsumes: {},
+    attackWaveWarnings: [],
+    attackWaveResolutions: []
+  };
   const availableCityItems = { ...(city.sharedItems || {}) };
 
   for (let step = 0; step < ticks; step++) {
     simulation.tick += 1;
     simulation.elapsedHours += hoursPerTick;
+    resolveDueAttackWaves(simulation, city, effects);
     updateEconomyPressure(simulation, city);
     const culture = cultureFromActionCounts(simulation.actionCounts, Math.max(1, simulation.tick * Math.max(1, simulation.residents.length)));
 
@@ -1316,6 +1574,17 @@ export function advanceCityVillagerSimulation(simulation, city, {
     simulation.residents = simulation.residents.filter(resident => resident.alive !== false);
     proposalSupportTick(simulation);
 
+    const warning = detectResidentPowerMilestones(simulation);
+    if (warning) {
+      effects.attackWaveWarnings.push({
+        waveId: warning.id,
+        dueTick: warning.dueTick,
+        attackPower: warning.attackPower,
+        triggerResidentId: warning.triggerResidentId,
+        triggerMilestone: warning.triggerMilestone
+      });
+    }
+
     const capacity = populationCapacity(city);
     const wellbeing = populationWellbeing(simulation.residents);
     if (
@@ -1375,6 +1644,8 @@ export function snapshotCityVillagerSimulation(simulation, city) {
       capability: residentCapability(resident, simulation),
       adventurePolicy: resident.adventurePolicy,
       adventureHistory: resident.adventureHistory,
+      powerMilestonesTriggered: resident.powerMilestonesTriggered,
+      defenseRecall: resident.defenseRecall,
       wealth: resident.wealth,
       discoveries: resident.discoveries,
       proposalIds: resident.proposalIds,
@@ -1399,6 +1670,13 @@ export function snapshotCityVillagerSimulation(simulation, city) {
     elapsedHours: simulation.elapsedHours,
     revision: simulation.revision,
     growthState: simulation.growthState,
+    cityStatus: simulation.cityStatus,
+    cityIntegrity: Number(simulation.cityIntegrity.toFixed(4)),
+    attackWaves: simulation.attackWaves,
+    attackHistory: simulation.attackHistory,
+    cityPowerMilestonesTriggered: simulation.cityPowerMilestonesTriggered,
+    activeAttackWave: activePendingWave(simulation),
+    defensePreview: cityDefensePreview(simulation, city),
     interactionCount: simulation.interactionCount,
     awakenedAtTick: simulation.awakenedAtTick,
     lastInteractionReason: simulation.lastInteractionReason,
@@ -1421,6 +1699,6 @@ export function snapshotCityVillagerSimulation(simulation, city) {
     residents,
     serviceNpcs: serviceNpcsForCity(city),
     truthBoundary:
-      'A never-interacted city begins in equilibrium: residents stay alive/social and the city does not autonomously snowball population, skills, discoveries or infrastructure. Interaction awakens open-ended growth. Human-session survivors can persist as autonomous residents with their exact earned equipment/skills. Survivor explorers keep stronger session gear; if the configured explorer package would be stronger, they stay useful in town until that real package is available, equip it from canonical city inventory, then may adventure. Multiple ready session survivors can group. Autonomous residents use conservative vitality gates and resting heals them; death only comes from explicit gameplay outcomes, never aging/passive time.'
+      'A never-interacted city begins in equilibrium and does not snowball. After interaction, any resident origin/controller can trigger visible city-attack pressure by crossing resident-power milestones. Incoming attack power is locked from aggregate living resident power only; buildings never increase the wave. Residents are recalled during warning. Current resident defense plus maintained city projects/supplies/security form the defense, with the foundation strictly additive. Repeated neglected defenses can wound/kill residents and erode city integrity until the city falls. Death only comes from explicit gameplay outcomes, never aging/passive time.'
   }));
 }

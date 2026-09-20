@@ -277,6 +277,72 @@ Group membership:
 
 This means city population can grow not only through baseline simulation conditions, but also from actual human/machine sessions that survived long enough to become part of the world.
 
+## Resident-power attack pressure
+
+City attacks now use the resident population itself as the scaling metric.
+
+The important rule is asymmetric on purpose:
+
+- **incoming wave power = aggregate living resident power only** at warning time;
+- buildings, walls, roads, supplies, maintenance and other foundation systems **never increase the incoming wave**;
+- the city foundation only adds defensive leverage.
+
+Any resident origin can trigger the next un-crossed city-wide power milestone:
+
+- simulation-born resident;
+- retained human-session survivor;
+- machine-controlled resident using the same capability contract.
+
+The current milestone bands are:
+
+`22 → 30 → 40 → 52 → 66`
+
+The first resident to cross a new band schedules one attack warning for the city. Other residents later crossing that already-used band do not spam duplicate waves. Higher bands can still trigger later.
+
+A warning currently lasts **12 simulation ticks = 48 world hours**.
+
+At warning time the wave locks:
+
+- triggering resident;
+- triggering milestone;
+- aggregate living resident power;
+- resident count.
+
+That attack power then stays fixed. Building a Bastion after the warning cannot make the current attackers magically stronger.
+
+During the warning:
+
+- autonomous exploration/adventure is disabled;
+- residents are marked for defense recall;
+- patrol becomes available even without a formal Watch Post;
+- patrol, maintenance, healing/rest and useful sharing become more attractive;
+- the UI shows locked wave power and the city's live defense preview.
+
+### Foundation advantage
+
+Unprepared residents convert only part of their raw population power into organized city defense. The rest has to come from the foundation.
+
+Additive defense currently comes from maintained/supplied systems such as:
+
+- Watch Post
+- Palisade
+- Bastion
+- Storehouse
+- Field Kitchen
+- Road Yard
+- Guild Hall
+- Waterworks
+- Council Hall
+- food reserve
+- security
+- infrastructure condition
+
+Thus two cities with identical residents receive the **same attack**, while the better-built city can have a dramatically better defense ratio.
+
+Good preparation can reduce resident losses to zero. Weak preparation can cause wounds, resident deaths, maintenance damage and city-integrity loss. Repeated failed defenses can eventually leave a city fallen, which stops normal growth until a future recovery system exists.
+
+The threat therefore answers the character-rush problem directly: growing powerful residents without growing the place they depend on increases what the world can throw at them, while investing in the foundation is the only way to turn that resident power into safe long-term civilization strength.
+
 ## Clean active surface
 
 The browser game layer remains only:
@@ -346,6 +412,11 @@ The RPG-specific suite verifies:
 - stronger-session-gear versus stronger-explorer-package comparison;
 - canonical city-inventory consumption when survivor package upgrades become available;
 - chained session-survivor expedition grouping;
+- city-wide resident-power milestone attack scheduling;
+- identical wave power for identical residents regardless of foundation strength;
+- additive foundation defense only;
+- visible 48-hour warning and explorer recall;
+- deterministic wave casualties/integrity damage and journal replay;
 - deterministic host journal replay;
 - human/machine participant parity;
 - the clean no-RTS active browser boundary.

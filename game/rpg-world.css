@@ -294,3 +294,26 @@ button.danger { border-color: rgba(233,191,152,.35); color: #ffe2ca; }
   color: #b9c9bb;
   font-size: 9px;
 }
+
+.threat-panel {
+  margin-top: 7px;
+  border: 1px solid rgba(223,239,225,.10);
+  background: rgba(0,0,0,.12);
+  border-radius: 11px;
+  padding: 9px;
+}
+.threat-panel.warning { border-color: rgba(233,191,152,.45); }
+.threat-panel.fallen { border-color: rgba(233,150,150,.45); }
+.threat-head,
+.threat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.threat-head strong { font-size: 11px; }
+.threat-head span,
+.threat-row { color: var(--muted); font-size: 9px; }
+.threat-rows { display: grid; gap: 4px; margin-top: 7px; }
+.threat-row b { color: var(--ink); font-weight: 650; }
+.threat-note { margin-top: 7px; color: #c5d0c6; font-size: 9px; line-height: 1.35; }

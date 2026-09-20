@@ -525,10 +525,10 @@ export class PersistentRpgWorld {
         return Object.freeze({ accepted: false, reason: 'rpg-life-already-closed', revision: this.revision });
       }
       const city = this.city(payload.cityId || this.defaultCityId, { worldHour });
-      this.awakenCity(city, 'safe-life-departure');
       const experience = normalizeXp(payload.experience || {});
       const items = normalizeItems(payload.items || {});
       const contributedXp = sumValues(experience);
+      this.awakenCity(city, 'safe-life-departure');
       for (const domain of RPG_XP_DOMAINS) {
         city.domainXp[domain] += experience[domain];
         city.unassignedXp[domain] += experience[domain];
@@ -608,8 +608,8 @@ export class PersistentRpgWorld {
     } else if (eventType === 'rpg.city.explorer.package.changed') {
       const city = this.city(payload.cityId || this.defaultCityId, { create: false });
       if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
-      this.awakenCity(city, 'explorer-package-configured');
       const configured = configureCityExplorerPackage(city.villagerSimulation, payload.equipment || {});
+      this.awakenCity(city, 'explorer-package-configured');
       result = {
         kind: 'city-explorer-package-changed',
         cityId: city.id,
@@ -618,12 +618,12 @@ export class PersistentRpgWorld {
       };
     } else if (eventType === 'rpg.city.path.changed') {
       const city = this.city(payload.cityId || this.defaultCityId, { worldHour });
-      this.awakenCity(city, 'city-path-changed');
       const nextPath = normalizeCityPath(payload.path);
       const previousPath = city.path;
       if (nextPath === previousPath) {
         return Object.freeze({ accepted: false, reason: 'rpg-city-path-unchanged', revision: this.revision });
       }
+      this.awakenCity(city, 'city-path-changed');
       city.path = nextPath;
       city.pathRevision += 1;
       city.pathHistory.push({
@@ -676,7 +676,6 @@ export class PersistentRpgWorld {
     } else if (eventType === 'rpg.city.project.contributed') {
       const city = this.city(payload.cityId || this.defaultCityId, { create: false });
       if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
-      this.awakenCity(city, 'city-project-contributed');
       const projectId = nonEmpty(payload.projectId, 'payload.projectId');
       const definition = cityProjectDefinition(projectId);
       if (!definition) return Object.freeze({ accepted: false, reason: 'rpg-city-project-not-found', projectId, revision: this.revision });
@@ -684,6 +683,7 @@ export class PersistentRpgWorld {
       const items = normalizeItems(payload.items || {});
       const validation = validateProjectFunding(city, definition, xp, items);
       if (!validation.accepted) return Object.freeze({ ...validation, projectId, revision: this.revision });
+      this.awakenCity(city, 'city-project-contributed');
 
       const beforeEmergence = describeCityEmergence({ projects: city.projects, path: city.path });
       const progress = city.projects[projectId];
@@ -748,7 +748,6 @@ export class PersistentRpgWorld {
     } else if (eventType === 'rpg.city.villager.geared') {
       const city = this.city(payload.cityId || this.defaultCityId, { create: false });
       if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
-      this.awakenCity(city, 'villager-geared');
       const residentId = nonEmpty(payload.residentId, 'payload.residentId');
       const itemId = nonEmpty(payload.itemId, 'payload.itemId');
       if ((city.sharedItems[itemId] || 0) < 1) {
@@ -764,6 +763,7 @@ export class PersistentRpgWorld {
 
       const geared = gearCityResident(city.villagerSimulation, residentId, itemId);
       if (!geared.accepted) return Object.freeze({ ...geared, revision: this.revision });
+      this.awakenCity(city, 'villager-geared');
 
       city.sharedItems[itemId] -= 1;
       if (city.sharedItems[itemId] === 0) delete city.sharedItems[itemId];
@@ -784,7 +784,6 @@ export class PersistentRpgWorld {
     } else if (eventType === 'rpg.city.villager.adventure.policy.changed') {
       const city = this.city(payload.cityId || this.defaultCityId, { create: false });
       if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
-      this.awakenCity(city, 'villager-adventure-policy-changed');
       const residentId = nonEmpty(payload.residentId, 'payload.residentId');
       const policy = setCityResidentAdventurePolicy(city.villagerSimulation, residentId, {
         enabled: payload.enabled,
@@ -792,6 +791,7 @@ export class PersistentRpgWorld {
         focus: payload.focus
       });
       if (!policy.accepted) return Object.freeze({ ...policy, revision: this.revision });
+      this.awakenCity(city, 'villager-adventure-policy-changed');
       result = {
         kind: 'city-villager-adventure-policy-changed',
         cityId: city.id,

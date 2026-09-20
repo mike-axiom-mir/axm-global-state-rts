@@ -73,6 +73,63 @@ Examples:
 
 The renderer still uses deliberately simple procedural primitives. These are state proofs, not final art.
 
+## Villagers are simulated people
+
+Ordinary villagers are not fixed profession slots and are not scripted quest actors.
+
+Each resident has deterministic but different:
+
+- personality traits: curiosity, sociability, industry, risk tolerance, empathy, ambition, tradition and thrift;
+- changing needs: energy, hunger, belonging, purpose and safety;
+- skills that grow from actual behavior;
+- sparse relationships with affinity, trust and familiarity;
+- a bounded rolling memory of recent actions/outcomes;
+- position in the city;
+- an action history and evolving wellbeing.
+
+Every four-hour simulation tick, each ordinary resident scores the actions currently possible in the city. The score combines:
+
+- current needs;
+- individual traits;
+- learned skill;
+- existing relationships;
+- city development path;
+- emergent city culture from prior resident behavior;
+- unlocked infrastructure/opportunities;
+- bounded deterministic variation keyed to resident + tick + action.
+
+That last term makes choices non-uniform without making replay nondeterministic. The same world state and journal reproduce exactly the same decisions. Different residents and different city histories produce different action distributions.
+
+City direction is a **bias**, not an order. A Forge city makes crafting more attractive, but villagers still rest, socialize, explore, help each other, trade or study when their own state makes those choices stronger.
+
+Residents can currently choose among:
+
+- rest
+- eat
+- socialize
+- help a neighbor
+- gather
+- craft
+- grow food
+- trade
+- study
+- patrol
+- explore
+- maintain the city
+
+Infrastructure determines which of the specialist opportunities actually exist. No Workshop means no normal workshop-craft opportunity; no Market means no trade workplace; no Archive means no study workplace; and so on.
+
+The population can also grow deterministically when wellbeing and city capacity permit. City stage controls capacity.
+
+Only deliberately declared **service NPCs** are fixed:
+
+- Storekeeper after Market Square
+- Records/quest keeper after Archive or Council Hall
+
+Those are stable UI/service anchors, not simulated villagers. Ordinary residents retain autonomous growth.
+
+The clean renderer now shows simulated residents at the places their chosen actions took them. Service NPCs are visually separate and anchored to their service building.
+
 ## Clean active surface
 
 The browser game layer remains only:
@@ -124,6 +181,10 @@ The RPG-specific suite verifies:
 - project-driven possibility unlocks;
 - map-span changes from infrastructure;
 - later-life supply/carry support;
+- deterministic autonomous villager choice;
+- resident trait/need/skill/relationship/memory growth;
+- city-path influence without hard scripting;
+- fixed service-NPC boundary for store/quest interfaces;
 - deterministic host journal replay;
 - human/machine participant parity;
 - the clean no-RTS active browser boundary.

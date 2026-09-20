@@ -45,6 +45,11 @@ submit('rpg-project-hearth-1', 'rpg.city.project.contributed', {
   xp: { survival: 40, craft: 20 },
   items: { timber: 2, stone: 2 }
 });
+submit('rpg-city-day-1', 'rpg.city.sim.advanced', {
+  worldHour: 15,
+  cityId: 'first-city',
+  ticks: 6
+});
 submit('rpg-path-1', 'rpg.city.path.changed', {
   worldHour: 15,
   cityId: 'first-city',
@@ -52,7 +57,7 @@ submit('rpg-path-1', 'rpg.city.path.changed', {
   reason: 'expand-safe-routes'
 });
 submit('rpg-depart-2', 'rpg.life.departed', {
-  worldHour: 17,
+  worldHour: 18,
   lifeId: 'tester-life-2',
   cityId: 'first-city',
   placeId: 'first-city',
@@ -64,7 +69,7 @@ submit('rpg-depart-2', 'rpg.life.departed', {
 
 const beforeRestart = authority.rpgSnapshot();
 const city = beforeRestart.cities.find(entry => entry.id === 'first-city');
-assert.equal(beforeRestart.revision, 5);
+assert.equal(beforeRestart.revision, 6);
 assert.equal(beforeRestart.legacy.departures, 2);
 assert.equal(city.totalXp, 370);
 assert.equal(city.pathXp.balanced, 240);
@@ -74,12 +79,15 @@ assert.equal(city.skillRanks.exploration, 2);
 assert.equal(city.stage, 'camp');
 assert.equal(city.completedProjectCount, 1);
 assert.equal(city.possibilities.includes('rest-point'), true);
+assert.equal(city.villagers.tick, 6);
+assert.equal(city.villagers.residentCount >= 3, true);
+assert.equal(city.villagers.residents.every(resident => resident.memories.length > 0), true);
 assert.equal(city.unassignedXp.survival, 70);
 assert.equal(city.unassignedXp.craft, 20);
 
 const replayed = createHostedSharedStateAuthority({ store, clock: () => 2000 });
 assert.deepEqual(replayed.rpgSnapshot(), beforeRestart);
 assert.equal(replayed.verifyPersistedJournal().matchesLive, true);
-assert.equal(replayed.meta().revision, 5);
+assert.equal(replayed.meta().revision, 6);
 
 console.log('persistent RPG hosted replay selftest passed');

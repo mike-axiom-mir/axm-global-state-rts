@@ -293,6 +293,54 @@ function projectLandmark(project) {
   return root;
 }
 
+function residentMesh(resident) {
+  const root = new THREE.Group();
+  const action = String(resident.currentAction || 'rest');
+  const actionColor = {
+    rest: 0x8d9a92,
+    eat: 0xb19768,
+    socialize: 0xb47e8d,
+    'help-neighbor': 0x9c8bc0,
+    gather: 0x81704e,
+    craft: 0x8b8177,
+    'grow-food': 0x66845a,
+    trade: 0xb59458,
+    study: 0x687ea3,
+    patrol: 0x7b7770,
+    explore: 0x5e8c86,
+    'maintain-city': 0x766b5f
+  }[action] || 0x8b8b83;
+  const body = cylinder(0.75, 0.92, 2.5, actionColor, 10);
+  body.position.y = 1.25;
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.68, 12, 8),
+    material(0xc8a88d, 0.78, 0)
+  );
+  head.position.y = 3.05;
+  root.add(body, head);
+  root.userData.villagerId = resident.id;
+  root.userData.villagerName = resident.name;
+  root.userData.currentAction = action;
+  return root;
+}
+
+function serviceNpcMesh(service) {
+  const root = new THREE.Group();
+  const body = cylinder(0.9, 1.05, 2.8, service.serviceType === 'store' ? 0x9b7846 : 0x6f6f98, 10);
+  body.position.y = 1.4;
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.72, 12, 8),
+    material(0xd0ad91, 0.78, 0)
+  );
+  head.position.y = 3.25;
+  const sign = box(2.8, 1.1, 0.35, service.serviceType === 'store' ? 0xc19b59 : 0x8e8eb6);
+  sign.position.set(0, 4.6, 0);
+  root.add(body, head, sign);
+  root.userData.serviceNpcId = service.id;
+  root.userData.serviceType = service.serviceType;
+  return root;
+}
+
 function worldMarkerMesh(kind) {
   if (kind === 'waystone') return box(3, 14, 3, 0xc9c4b5);
   if (kind === 'cache') return box(5, 3, 4, 0x9e8157);
@@ -525,6 +573,25 @@ export class PersistentRpgRenderer {
       cityGroup.add(landmark);
     }
 
+    for (const resident of city.villagers?.residents || []) {
+      const person = residentMesh(resident);
+      person.position.set(
+        Number(resident.xM) || 0,
+        this.#heightAt(Number(resident.xM) || 0, Number(resident.zM) || 0) - cityY,
+        Number(resident.zM) || 0
+      );
+      cityGroup.add(person);
+    }
+
+    for (const service of city.villagers?.serviceNpcs || []) {
+      const project = (city.projects || []).find(candidate => candidate.id === service.anchoredProjectId);
+      const x = Number(project?.mapEffect?.xM) || 0;
+      const z = Number(project?.mapEffect?.zM) || 0;
+      const person = serviceNpcMesh(service);
+      person.position.set(x + 6, this.#heightAt(x + 6, z + 3) - cityY, z + 3);
+      cityGroup.add(person);
+    }
+
     this.cityRoot.add(cityGroup);
   }
 
@@ -559,6 +626,7 @@ export class PersistentRpgRenderer {
         distanceM: this.localDistance,
         localMapSpanM: this.desiredLocalSpanM,
         cityStage: this.citySnapshot?.stage || 'seed-camp',
+        residentCount: this.citySnapshot?.villagers?.residentCount || 0,
         inheritedRtsPresentation: false
       })
     });

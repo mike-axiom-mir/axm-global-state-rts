@@ -33,6 +33,9 @@ const possibilities = document.getElementById('possibilities');
 const worldHistory = document.getElementById('worldHistory');
 const memoryCount = document.getElementById('memoryCount');
 const poolHint = document.getElementById('poolHint');
+const villagerSummary = document.getElementById('villagerSummary');
+const villagers = document.getElementById('villagers');
+const serviceNpcs = document.getElementById('serviceNpcs');
 
 function storageGet(key) {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -167,6 +170,7 @@ function friendlyEvent(command) {
     case 'rpg.city.path.changed': return `${p.cityId} direction → ${p.path}`;
     case 'rpg.city.pool.withdrawn': return `shared item taken from ${p.cityId}`;
     case 'rpg.city.project.contributed': return `funded ${p.projectId}`;
+    case 'rpg.city.sim.advanced': return `city lived ${Number(p.ticks || 1) * 4} more hours`;
     default: return command.eventType;
   }
 }
@@ -305,6 +309,50 @@ function renderProjects(city) {
   }
 }
 
+function strongestTrait(resident) {
+  return Object.entries(resident.traits || {})
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || 'unknown';
+}
+
+function strongestSkill(resident) {
+  return Object.entries(resident.skills || {})
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] || ['none', 0];
+}
+
+function renderVillagers(city) {
+  const sim = city.villagers;
+  villagerSummary.textContent =
+    `${sim.residentCount}/${sim.capacity} autonomous residents · `
+    + `wellbeing ${Math.round(sim.averageWellbeing * 100)}% · tick ${sim.tick}. `
+    + 'Needs, personality, relationships, learned skills, city direction and deterministic variation shape what they choose next.';
+
+  villagers.replaceChildren();
+  const shown = [...sim.residents]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .slice(0, 14);
+
+  for (const resident of shown) {
+    const [skill, skillXp] = strongestSkill(resident);
+    const relationCount = Object.keys(resident.relationships || {}).length;
+    const lastMemory = resident.memories?.[resident.memories.length - 1] || null;
+    const card = document.createElement('div');
+    card.className = 'villager-card';
+    card.innerHTML =
+      `<div class="villager-top"><strong>${resident.name}</strong><span>${titleCase(resident.currentAction)}</span></div>`
+      + `<div class="villager-meta"><span>strong trait: ${strongestTrait(resident)}</span><span>${skill} ${skillXp} · ${relationCount} ties</span></div>`
+      + `<div class="villager-memory">${lastMemory ? `last: ${titleCase(lastMemory.action)}${lastMemory.partnerId ? ' with someone' : ''}` : 'new resident'}</div>`;
+    villagers.appendChild(card);
+  }
+
+  serviceNpcs.replaceChildren();
+  for (const service of sim.serviceNpcs || []) {
+    const chip = document.createElement('span');
+    chip.className = 'service-chip';
+    chip.textContent = `${service.name} · fixed ${service.serviceType} NPC`;
+    serviceNpcs.appendChild(chip);
+  }
+}
+
 function renderCity(city) {
   cityName.textContent = titleCase(city.id);
   cityRank.textContent = `Rank ${city.cityRank}`;
@@ -325,6 +373,7 @@ function renderCity(city) {
   }
 
   renderProjects(city);
+  renderVillagers(city);
 
   sharedPool.replaceChildren();
   const items = Object.entries(city.sharedItems);
@@ -560,6 +609,27 @@ document.getElementById('leaveArtifactAction').addEventListener('click', () => {
   life.gainExperience('craft', 5);
   renderAll();
   setStatus(`${label} now exists physically in the persistent world.`);
+});
+
+document.getElementById('advanceCityDay').addEventListener('click', () => {
+  const before = citySnapshot()?.villagers;
+  const result = applyWorldEvent('rpg.city.sim.advanced', {
+    cityId: CITY_ID,
+    placeId: CITY_ID,
+    xM: 0,
+    zM: 0,
+    ticks: 6
+  }, 'city-day');
+
+  if (!result.accepted) return setStatus(`City simulation rejected: ${result.reason}`);
+  renderAll();
+  const after = result.result.city.villagers;
+  const populationText = after.residentCount !== before.residentCount
+    ? ` Population changed from ${before.residentCount} to ${after.residentCount}.`
+    : '';
+  setStatus(
+    `The city lived another deterministic day. ${after.residentCount} residents chose their own actions from current needs/opportunities; average wellbeing ${Math.round(after.averageWellbeing * 100)}%.${populationText}`
+  );
 });
 
 document.getElementById('changePath').addEventListener('click', () => {

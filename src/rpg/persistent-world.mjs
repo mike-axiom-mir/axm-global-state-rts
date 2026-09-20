@@ -1,4 +1,9 @@
 import {
+  createCityVillagerSimulation,
+  advanceCityVillagerSimulation,
+  snapshotCityVillagerSimulation
+} from './city/villager-simulation.mjs';
+import {
   CITY_EMERGENCE_STAGES,
   CITY_PROJECT_DEFINITIONS,
   cityProjectDefinition,
@@ -39,7 +44,8 @@ export const RPG_WORLD_EVENT_TYPES = Object.freeze([
   'rpg.life.departed',
   'rpg.city.path.changed',
   'rpg.city.pool.withdrawn',
-  'rpg.city.project.contributed'
+  'rpg.city.project.contributed',
+  'rpg.city.sim.advanced'
 ]);
 
 function nonEmpty(value, label) {
@@ -164,7 +170,7 @@ function freshProjectState() {
   );
 }
 
-function makeCity(cityId, { worldHour = 0, path = 'balanced' } = {}) {
+function makeCity(cityId, { worldHour = 0, path = 'balanced', worldSeed = 'axm-persistent-rpg-v0' } = {}) {
   const normalizedPath = normalizeCityPath(path);
   return {
     id: nonEmpty(cityId, 'cityId'),
@@ -185,7 +191,11 @@ function makeCity(cityId, { worldHour = 0, path = 'balanced' } = {}) {
     departures: [],
     withdrawals: [],
     projectContributions: [],
-    contributors: []
+    contributors: [],
+    villagerSimulation: createCityVillagerSimulation({
+      cityId: nonEmpty(cityId, 'cityId'),
+      worldSeed
+    })
   };
 }
 
@@ -236,11 +246,26 @@ function projectProjection(city, definition) {
   });
 }
 
+function citySimulationContext(city) {
+  const emergence = describeCityEmergence({ projects: city.projects, path: city.path });
+  const projects = CITY_PROJECT_DEFINITIONS.map(definition => projectProjection(city, definition));
+  return freezeJson({
+    id: city.id,
+    path: city.path,
+    stage: emergence.stage,
+    projects,
+    possibilities: emergence.possibilities,
+    worldEffects: emergence.worldEffects
+  });
+}
+
 function cityProjection(city) {
   const skillRanks = Object.fromEntries(RPG_XP_DOMAINS.map(domain => [domain, rankFromXp(city.domainXp[domain] || 0)]));
   const pathRanks = Object.fromEntries(RPG_CITY_PATHS.map(path => [path, rankFromXp(city.pathXp[path] || 0)]));
   const emergence = describeCityEmergence({ projects: city.projects, path: city.path });
   const projects = CITY_PROJECT_DEFINITIONS.map(definition => projectProjection(city, definition));
+  const simulationContext = citySimulationContext(city);
+  const villagers = snapshotCityVillagerSimulation(city.villagerSimulation, simulationContext);
   return freezeJson({
     id: city.id,
     path: city.path,
@@ -262,6 +287,7 @@ function cityProjection(city) {
     availableProjectCount: projects.filter(project => project.status === 'available').length,
     possibilities: emergence.possibilities,
     worldEffects: emergence.worldEffects,
+    villagers,
     emergence: {
       stage: emergence.stage,
       completedProjectCount: emergence.completedProjectCount,
@@ -277,10 +303,9 @@ function cityProjection(city) {
     departures: city.departures,
     withdrawals: city.withdrawals,
     truthBoundary:
-      'Shared domain XP is cumulative knowledge and is not spent away. Each safe departure also creates equal unassigned development XP. Project funding consumes only that unassigned development XP plus real shared materials. Completed projects deterministically alter city stage, possibilities and map effects.'
+      'Shared domain XP is cumulative knowledge and is not spent away. Safe departure creates equal unassigned development XP. Project funding consumes only that development budget plus real shared materials. Ordinary villagers are deterministic autonomous simulations whose choices grow from needs, traits, relationships, skills, city context and bounded deterministic variation; service shop/quest NPCs remain fixed interfaces.'
   });
 }
-
 function validateProjectFunding(city, definition, xp, items) {
   const progress = city.projects[definition.id];
   const availability = describeProjectAvailability(definition, { projects: city.projects, path: city.path });
@@ -343,7 +368,11 @@ export class PersistentRpgWorld {
     this.waystones = new Map();
     this.artifacts = new Map();
     this.cities = new Map();
-    this.cities.set(this.defaultCityId, makeCity(this.defaultCityId, { worldHour: 0, path: this.defaultCityPath }));
+    this.cities.set(this.defaultCityId, makeCity(this.defaultCityId, {
+      worldHour: 0,
+      path: this.defaultCityPath,
+      worldSeed: this.worldSeed
+    }));
     this.lifeEnds = [];
     this.lifeDepartures = [];
     this.journal = [];
@@ -357,7 +386,7 @@ export class PersistentRpgWorld {
     const id = nonEmpty(cityId, 'cityId');
     let city = this.cities.get(id) || null;
     if (!city && create) {
-      city = makeCity(id, { worldHour, path: this.defaultCityPath });
+      city = makeCity(id, { worldHour, path: this.defaultCityPath, worldSeed: this.worldSeed });
       this.cities.set(id, city);
     }
     return city;
@@ -633,6 +662,25 @@ export class PersistentRpgWorld {
         stageChanged: beforeEmergence.stage !== afterEmergence.stage,
         unlocked: completedNow ? definition.unlocks : [],
         mapEffect: completedNow ? definition.mapEffect : null,
+        city: cityProjection(city)
+      };
+    } else if (eventType === 'rpg.city.sim.advanced') {
+      const city = this.city(payload.cityId || this.defaultCityId, { create: false });
+      if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
+      const ticks = nonNegativeInteger(payload.ticks ?? 1, 'payload.ticks');
+      if (ticks < 1 || ticks > 84) return Object.freeze({ accepted: false, reason: 'rpg-city-sim-ticks-out-of-range', revision: this.revision });
+      const simulation = advanceCityVillagerSimulation(
+        city.villagerSimulation,
+        citySimulationContext(city),
+        { ticks, hoursPerTick: 4 }
+      );
+      result = {
+        kind: 'city-sim-advanced',
+        cityId: city.id,
+        ticks,
+        elapsedHours: simulation.elapsedHours,
+        residentCount: simulation.snapshot.residentCount,
+        averageWellbeing: simulation.snapshot.averageWellbeing,
         city: cityProjection(city)
       };
     }

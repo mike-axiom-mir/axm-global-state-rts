@@ -178,3 +178,34 @@ button.danger { border-color: rgba(233,191,152,.35); color: #ffe2ca; }
   .pool, .skills { grid-template-columns: 1fr; }
   .action-dock button { min-width: 70px; padding: 7px; font-size: 10px; }
 }
+
+.summary.compact { margin-top: 6px; }
+.villagers { display: grid; gap: 6px; margin-top: 7px; }
+.villager-card {
+  border: 1px solid rgba(223,239,225,.09);
+  background: rgba(0,0,0,.12);
+  border-radius: 10px;
+  padding: 8px;
+}
+.villager-card .villager-top,
+.villager-card .villager-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.villager-card .villager-top strong { font-size: 11px; }
+.villager-card .villager-top span,
+.villager-card .villager-meta { color: var(--muted); font-size: 9px; }
+.villager-card .villager-meta { margin-top: 4px; align-items: flex-start; }
+.villager-card .villager-memory { margin-top: 4px; color: #c4d0c5; font-size: 9px; }
+.service-npcs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.service-chip {
+  border: 1px solid rgba(233,191,152,.2);
+  background: rgba(233,191,152,.055);
+  border-radius: 999px;
+  padding: 5px 7px;
+  color: #ead8c8;
+  font-size: 9px;
+}
+.mini-action { padding: 5px 7px; font-size: 9px; }

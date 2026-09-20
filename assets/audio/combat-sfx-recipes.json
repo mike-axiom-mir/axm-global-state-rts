@@ -1,0 +1,192 @@
+{
+  "audio_fabric_commit": "19246a121791e546defeb7d83743cc7f755826d3",
+  "cues": {
+    "combat-defeat": {
+      "atom": {
+        "duration_ms": 260,
+        "effects": [
+          {
+            "amount": 1.2,
+            "type": "drive"
+          },
+          {
+            "cutoff_hz": 1000,
+            "type": "lowpass"
+          }
+        ],
+        "envelope": {
+          "attack_ms": 3,
+          "decay_ms": 60,
+          "release_ms": 100,
+          "sustain_level": 0.5
+        },
+        "id": "rts-combat-defeat-v1",
+        "sample_rate": 8000,
+        "schema": "axm.audio-atom/v1",
+        "source": {
+          "frequency_end_hz": 90,
+          "frequency_hz": 240,
+          "noise_mix": 0.1,
+          "seed": 99,
+          "waveform": "triangle"
+        }
+      },
+      "gain": 0.22,
+      "schema": "axm.audio-cue/v1"
+    },
+    "combat-engage": {
+      "atom": {
+        "duration_ms": 160,
+        "effects": [
+          {
+            "cutoff_hz": 1200,
+            "type": "lowpass"
+          },
+          {
+            "amount": 1.4,
+            "type": "drive"
+          }
+        ],
+        "envelope": {
+          "attack_ms": 1,
+          "decay_ms": 45,
+          "release_ms": 60,
+          "sustain_level": 0.4
+        },
+        "id": "rts-combat-engage-v1",
+        "sample_rate": 8000,
+        "schema": "axm.audio-atom/v1",
+        "source": {
+          "frequency_end_hz": 95,
+          "frequency_hz": 150,
+          "noise_mix": 0.15,
+          "seed": 1201,
+          "waveform": "square"
+        }
+      },
+      "gain": 0.24,
+      "schema": "axm.audio-cue/v1"
+    },
+    "combat-exchange": {
+      "atom": {
+        "duration_ms": 110,
+        "effects": [
+          {
+            "cutoff_hz": 1800,
+            "type": "lowpass"
+          },
+          {
+            "amount": 1.8,
+            "type": "drive"
+          },
+          {
+            "amount": 0.75,
+            "type": "gain"
+          }
+        ],
+        "envelope": {
+          "attack_ms": 1,
+          "decay_ms": 25,
+          "release_ms": 45,
+          "sustain_level": 0.35
+        },
+        "id": "rts-combat-exchange-v1",
+        "sample_rate": 8000,
+        "schema": "axm.audio-atom/v1",
+        "source": {
+          "seed": 4201,
+          "waveform": "noise"
+        }
+      },
+      "gain": 0.26,
+      "schema": "axm.audio-cue/v1"
+    },
+    "combat-menu-open": {
+      "atom": {
+        "duration_ms": 80,
+        "effects": [
+          {
+            "cutoff_hz": 2600,
+            "type": "lowpass"
+          }
+        ],
+        "envelope": {
+          "attack_ms": 2,
+          "decay_ms": 20,
+          "release_ms": 20,
+          "sustain_level": 0.55
+        },
+        "id": "rts-combat-menu-open-v1",
+        "sample_rate": 8000,
+        "schema": "axm.audio-atom/v1",
+        "source": {
+          "frequency_end_hz": 880,
+          "frequency_hz": 620,
+          "seed": 11,
+          "waveform": "sine"
+        }
+      },
+      "gain": 0.22,
+      "schema": "axm.audio-cue/v1"
+    },
+    "combat-retreat": {
+      "atom": {
+        "duration_ms": 120,
+        "effects": [
+          {
+            "cutoff_hz": 2200,
+            "type": "lowpass"
+          }
+        ],
+        "envelope": {
+          "attack_ms": 2,
+          "decay_ms": 25,
+          "release_ms": 45,
+          "sustain_level": 0.5
+        },
+        "id": "rts-combat-retreat-v1",
+        "sample_rate": 8000,
+        "schema": "axm.audio-atom/v1",
+        "source": {
+          "frequency_end_hz": 220,
+          "frequency_hz": 440,
+          "seed": 23,
+          "waveform": "sine"
+        }
+      },
+      "gain": 0.18,
+      "schema": "axm.audio-cue/v1"
+    },
+    "combat-victory": {
+      "atom": {
+        "duration_ms": 220,
+        "effects": [
+          {
+            "cutoff_hz": 2500,
+            "type": "lowpass"
+          }
+        ],
+        "envelope": {
+          "attack_ms": 4,
+          "decay_ms": 50,
+          "release_ms": 80,
+          "sustain_level": 0.65
+        },
+        "id": "rts-combat-victory-v1",
+        "sample_rate": 8000,
+        "schema": "axm.audio-atom/v1",
+        "source": {
+          "frequency_end_hz": 840,
+          "frequency_hz": 420,
+          "noise_mix": 0.04,
+          "seed": 77,
+          "waveform": "triangle"
+        }
+      },
+      "gain": 0.24,
+      "schema": "axm.audio-cue/v1"
+    }
+  },
+  "schema": "axm.global-state-rts.audio-cue-map/v1",
+  "truth_boundary": "Product-owned cue recipes use Audio Fabric contracts. Recipe validity and deterministic render evidence do not prove listening quality."
+}

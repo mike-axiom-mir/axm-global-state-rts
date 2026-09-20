@@ -1,10 +1,10 @@
 {
   "audio_fabric_commit": "19246a121791e546defeb7d83743cc7f755826d3",
   "cues": {
-    "combat-defeat": "./generated/combat-defeat.json",
-    "combat-exchange": "./generated/combat-exchange.json",
-    "combat-menu-open": "./generated/combat-menu-open.json",
-    "combat-victory": "./generated/combat-victory.json"
+    "combat-defeat": "./combat-defeat.json",
+    "combat-exchange": "./combat-exchange.json",
+    "combat-menu-open": "./combat-menu-open.json",
+    "combat-victory": "./combat-victory.json"
   },
   "schema": "axm.global-state-rts.audio-fabric-pack/v1",
   "truth_boundary": "Generated from Audio Fabric recipe contracts. Hash/signal evidence does not prove listening quality."

@@ -1,0 +1,58 @@
+name: Local combat mix policy
+
+on:
+  pull_request:
+    paths:
+      - 'assets/audio/local-combat-mix-project.json'
+      - 'assets/audio/local-combat-mix-scenes.json'
+      - 'game/audio-fabric-pack-player.mjs'
+      - 'game/combat-proving-ground.mjs'
+      - 'src/presentation/local-combat-mix.mjs'
+      - 'scripts/verify-local-combat-mix.mjs'
+      - 'tests/browser/local-combat-proving-ground.spec.js'
+      - '.github/workflows/local-combat-mix.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout RTS candidate
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned Sound Mixer
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-sound-mixer
+          ref: 8dc36bda6f24ec727e38b161db04df0909972cf5
+          path: .deps/axm-sound-mixer
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify exact Sound Mixer pin
+        run: test "$(git -C .deps/axm-sound-mixer rev-parse HEAD)" = "8dc36bda6f24ec727e38b161db04df0909972cf5"
+
+      - name: Re-run pinned Sound Mixer tests
+        run: npm --prefix .deps/axm-sound-mixer test
+
+      - name: Verify canonical project and product mix scenes
+        run: node scripts/verify-local-combat-mix.mjs
+
+      - name: Syntax-check product integration
+        run: |
+          node --check src/presentation/local-combat-mix.mjs
+          node --check game/audio-fabric-pack-player.mjs
+          node --check game/combat-proving-ground.mjs
+          node --check scripts/verify-local-combat-mix.mjs
+          node --check tests/browser/local-combat-proving-ground.spec.js
+
+      - name: Preserve mix verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-combat-mix-verification
+          path: /tmp/axm-rts-combat-mix
+          if-no-files-found: warn

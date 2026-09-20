@@ -1,0 +1,34 @@
+{
+  "maps": {
+    "base_color": {
+      "bytes": 2612,
+      "file": "textures/dark_iron/base_color.png",
+      "sha256": "2f6f02579570961877f989425682c724ea512a23979c893478f5f19dcfacef12"
+    },
+    "normal": {
+      "bytes": 4433,
+      "file": "textures/dark_iron/normal.png",
+      "sha256": "fbe955f62c2afd17ec267eb405b4ca94f65e0cc9a1339482309f37071ad5a92b"
+    },
+    "orm": {
+      "bytes": 290,
+      "file": "textures/dark_iron/orm.png",
+      "sha256": "4d593b5cbf25ce886fc053ff8d7c2c5d1d5986b03e41ed56edb0a460f6bc3077"
+    }
+  },
+  "spec": {
+    "base_color": [
+      50,
+      55,
+      53
+    ],
+    "emissive": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "metallic": 0.82,
+    "roughness": 0.37,
+    "wear": 0.38
+  }
+}

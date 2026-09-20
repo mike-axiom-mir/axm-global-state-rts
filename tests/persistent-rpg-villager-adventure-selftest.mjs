@@ -98,13 +98,25 @@ const passive = advanceCityVillagerSimulation(disabled, city, { ticks: 84, hours
 assert.equal(passive.fallenResidents.length, 0, 'time passing must never kill residents by aging/passive mortality');
 assert.equal(passive.residents.length >= 1, true);
 
-let fatalExample = null;
-for (let index = 0; index < 80 && !fatalExample; index++) {
+let earlyDeaths = 0;
+for (let index = 0; index < 80; index++) {
   const sim = prepare(`fatal-search-${index}`);
   const result = advanceCityVillagerSimulation(sim, city, { ticks: 84, hoursPerTick: 4 }).snapshot;
+  earlyDeaths += result.fallenResidents.length;
+}
+assert.equal(
+  earlyDeaths,
+  0,
+  'the first bounded strong-explorer corpus should remain death-free; autonomous adventure death must not be routine'
+);
+
+let fatalExample = null;
+for (let index = 80; index < 2080 && !fatalExample; index++) {
+  const sim = prepare(`fatal-search-${index}`);
+  const result = advanceCityVillagerSimulation(sim, city, { ticks: 24, hoursPerTick: 4 }).snapshot;
   if (result.fallenResidents.length) fatalExample = result.fallenResidents[0];
 }
-assert.ok(fatalExample, 'bounded deterministic seed set should exercise an actual adventure death path');
+assert.ok(fatalExample, 'a much larger deterministic corpus must still exercise the unlucky adventure-death path');
 assert.equal(fatalExample.cause, 'adventure');
 assert.match(fatalExample.truthBoundary, /not-aging-or-passive-mortality/);
 

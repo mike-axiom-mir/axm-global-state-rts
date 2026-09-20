@@ -19,6 +19,7 @@ export class AudioFabricPackPlayer {
     this.enabled = false;
     this.context = null;
     this.packPromise = null;
+    this.entryPromises = new Map();
     this.decoded = new Map();
     this.lastCueId = null;
     this.lastFailure = null;
@@ -50,6 +51,27 @@ export class AudioFabricPackPlayer {
     return this.packPromise;
   }
 
+  async #loadEntry(cueId) {
+    if (!this.entryPromises.has(cueId)) {
+      this.entryPromises.set(cueId, this.#loadPack().then(async pack => {
+        const relative = pack.cues[cueId];
+        if (typeof relative !== 'string' || !relative) throw new Error(`audio cue missing: ${cueId}`);
+        const url = new URL(relative, new URL(this.packUrl, document.baseURI));
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`audio cue fetch failed: ${cueId}:${response.status}`);
+        const entry = await response.json();
+        if (entry?.schema !== 'axm.global-state-rts.audio-fabric-cue/v1' || entry.id !== cueId) {
+          throw new Error(`unexpected audio cue artifact: ${cueId}`);
+        }
+        if (entry.audio_fabric_commit !== pack.audio_fabric_commit) {
+          throw new Error(`audio cue fabric pin mismatch: ${cueId}`);
+        }
+        return entry;
+      }));
+    }
+    return this.entryPromises.get(cueId);
+  }
+
   async unlock() {
     this.enabled = true;
     if (!this.context) this.context = this.contextFactory();
@@ -68,9 +90,8 @@ export class AudioFabricPackPlayer {
 
   async #bufferFor(cueId) {
     if (this.decoded.has(cueId)) return this.decoded.get(cueId);
-    const pack = await this.#loadPack();
-    const entry = pack.cues[cueId];
-    if (!entry?.wav_base64) throw new Error(`audio cue missing: ${cueId}`);
+    const entry = await this.#loadEntry(cueId);
+    if (!entry?.wav_base64) throw new Error(`audio cue bytes missing: ${cueId}`);
     const buffer = await this.context.decodeAudioData(decodeBase64(entry.wav_base64).slice(0));
     this.decoded.set(cueId, buffer);
     return buffer;

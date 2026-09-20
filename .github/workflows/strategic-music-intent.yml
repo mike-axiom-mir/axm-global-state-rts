@@ -1,0 +1,64 @@
+name: Strategic adaptive music intent
+
+on:
+  pull_request:
+    paths:
+      - 'assets/music/**'
+      - 'game/strategic-music-intent-runtime.mjs'
+      - 'game/index.html'
+      - 'src/presentation/strategic-music-intent.mjs'
+      - 'scripts/verify-strategic-music-project.py'
+      - 'tests/strategic-music-intent-selftest.mjs'
+      - '.github/workflows/strategic-music-intent.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout RTS candidate
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned Music Maker
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-music-maker
+          ref: 6257e2763cac3e64822867ce325e844a0f03cfd3
+          path: .deps/axm-music-maker
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Verify exact Music Maker pin
+        run: test "$(git -C .deps/axm-music-maker rev-parse HEAD)" = "6257e2763cac3e64822867ce325e844a0f03cfd3"
+
+      - name: Validate editable score and transition receipts
+        run: |
+          rm -rf /tmp/axm-rts-strategic-music
+          mkdir -p /tmp/axm-rts-strategic-music
+          python scripts/verify-strategic-music-project.py \
+            --music-maker-path .deps/axm-music-maker \
+            --receipt-out /tmp/axm-rts-strategic-music/verification.json
+
+      - name: Verify RTS state-to-music intent mapping
+        run: node tests/strategic-music-intent-selftest.mjs
+
+      - name: Syntax-check browser integration
+        run: |
+          node --check src/presentation/strategic-music-intent.mjs
+          node --check game/strategic-music-intent-runtime.mjs
+
+      - name: Preserve verification receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: strategic-music-intent-evidence
+          path: /tmp/axm-rts-strategic-music
+          if-no-files-found: warn

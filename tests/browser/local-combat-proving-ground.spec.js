@@ -26,7 +26,7 @@ async function tapGamepadButton(page, index) {
   await setGamepadButton(page, index, false);
 }
 
-test('LOCAL combat proving ground routes selected-party combat through existing controller admission and reconciles casualties', async ({ page }) => {
+test('LOCAL combat proving ground routes selected-party combat and opt-in Audio Fabric cues through real Chromium', async ({ page }) => {
   const failures = captureRuntimeFailures(page);
   await page.addInitScript(() => {
     const gamepad = {
@@ -46,14 +46,21 @@ test('LOCAL combat proving ground routes selected-party combat through existing 
   await expect(page.locator('#hostileMeta')).toContainText('4/4 contact Crew remain');
   await expect(page.locator('#partyTitle')).toContainText('Crew 1 · 8 Crew');
 
+  await page.locator('#audioToggle').click();
+  await expect(page.locator('#audioToggle')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#audioStatus')).toContainText('Audio enabled');
+
   await tapGamepadButton(page, 13);
   await expect(page.locator('#status')).toContainText('Combat menu');
   await expect(page.locator('#stats')).toContainText('OPEN');
+  await expect.poll(async () => page.evaluate(() => window.__AXM_LOCAL_COMBAT_PROVING_GROUND__.snapshot().audio.lastCueId)).toBe('combat-menu-open');
+  await expect.poll(async () => page.evaluate(() => window.__AXM_LOCAL_COMBAT_PROVING_GROUND__.snapshot().audio.decodedCueIds)).toContain('combat-menu-open');
 
   await tapGamepadButton(page, 0);
   let snapshot = await page.evaluate(() => window.__AXM_LOCAL_COMBAT_PROVING_GROUND__.snapshot());
   expect(snapshot.combat.encounter?.receipts?.length || 0).toBeGreaterThan(0);
   expect(snapshot.combat.engagedLocalCrewIds.length).toBeGreaterThan(0);
+  await expect.poll(async () => page.evaluate(() => window.__AXM_LOCAL_COMBAT_PROVING_GROUND__.snapshot().audio.lastCueId)).toBe('combat-exchange');
 
   for (let attempt = 0; attempt < 24 && !snapshot.combat.contact.cleared; attempt += 1) {
     await tapGamepadButton(page, 0);
@@ -69,6 +76,7 @@ test('LOCAL combat proving ground routes selected-party combat through existing 
   }
   await expect(page.locator('#hostileMeta')).toContainText('0/4 contact Crew remain');
   await expect(page.locator('#status')).toContainText('Contact cleared');
+  await expect.poll(async () => page.evaluate(() => window.__AXM_LOCAL_COMBAT_PROVING_GROUND__.snapshot().audio.lastCueId)).toBe('combat-victory');
 
   await tapGamepadButton(page, 1);
   await expect(page.locator('#stats')).toContainText('closed');

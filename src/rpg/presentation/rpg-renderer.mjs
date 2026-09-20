@@ -324,6 +324,33 @@ function residentMesh(resident) {
   return root;
 }
 
+function informalWorkMesh(work) {
+  if (work.kind === 'footpath') {
+    const mesh = box(18, 0.22, 2.8, 0x6d6251);
+    mesh.rotation.y = 0.35;
+    return mesh;
+  }
+  if (work.kind === 'market-stall') {
+    const root = new THREE.Group();
+    addAt(root, box(5.5, 3.5, 4.5, 0x8c6848), 0, 1.75, 0);
+    addAt(root, box(6.5, 0.5, 5.5, 0xb18a5b), 0, 4, 0);
+    return root;
+  }
+  if (work.kind === 'garden-plot') {
+    const root = new THREE.Group();
+    for (let i = -1; i <= 1; i++) addAt(root, box(2.5, 0.35, 8, 0x547047), i * 3.2, 0.18, 0);
+    return root;
+  }
+  if (work.kind === 'workbench') {
+    const root = new THREE.Group();
+    addAt(root, box(5.5, 0.7, 2.6, 0x745c43), 0, 2.2, 0);
+    addAt(root, box(0.6, 3.8, 0.6, 0x5f4b38), -2.1, 0.5, -0.8);
+    addAt(root, box(0.6, 3.8, 0.6, 0x5f4b38), 2.1, 0.5, -0.8);
+    return root;
+  }
+  return box(3, 1, 3, 0x777268);
+}
+
 function serviceNpcMesh(service) {
   const root = new THREE.Group();
   const body = cylinder(0.9, 1.05, 2.8, service.serviceType === 'store' ? 0x9b7846 : 0x6f6f98, 10);
@@ -592,6 +619,16 @@ export class PersistentRpgRenderer {
       cityGroup.add(person);
     }
 
+    for (const work of city.villagers?.informalWorks || []) {
+      const x = Number(work.xM) || 0;
+      const z = Number(work.zM) || 0;
+      const mesh = informalWorkMesh(work);
+      mesh.position.set(x, this.#heightAt(x, z) - cityY, z);
+      mesh.userData.informalWorkId = work.id;
+      mesh.userData.informalWorkKind = work.kind;
+      cityGroup.add(mesh);
+    }
+
     this.cityRoot.add(cityGroup);
   }
 
@@ -627,6 +664,8 @@ export class PersistentRpgRenderer {
         localMapSpanM: this.desiredLocalSpanM,
         cityStage: this.citySnapshot?.stage || 'seed-camp',
         residentCount: this.citySnapshot?.villagers?.residentCount || 0,
+        informalWorkCount: this.citySnapshot?.villagers?.informalWorks?.length || 0,
+        infrastructureCondition: this.citySnapshot?.villagers?.economy?.infrastructureCondition ?? 1,
         inheritedRtsPresentation: false
       })
     });

@@ -209,3 +209,34 @@ button.danger { border-color: rgba(233,191,152,.35); color: #ffe2ca; }
   font-size: 9px;
 }
 .mini-action { padding: 5px 7px; font-size: 9px; }
+
+.economy-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 7px;
+}
+.economy-card {
+  border: 1px solid rgba(223,239,225,.09);
+  background: rgba(0,0,0,.12);
+  border-radius: 10px;
+  padding: 8px;
+  font-size: 9px;
+  color: var(--muted);
+}
+.economy-card strong { display: block; color: var(--ink); font-size: 11px; margin-bottom: 2px; }
+.economy-card.pressure { border-color: rgba(233,191,152,.26); }
+.resident-events { display: grid; gap: 5px; margin-top: 7px; }
+.resident-event {
+  border: 1px solid rgba(223,239,225,.08);
+  background: rgba(0,0,0,.10);
+  border-radius: 9px;
+  padding: 7px 8px;
+  font-size: 9px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.resident-event strong { color: var(--ink); }
+.resident-event.proposal { border-color: rgba(183,229,188,.16); }
+.resident-event.discovery { border-color: rgba(140,172,211,.18); }
+.resident-event.informal { border-color: rgba(198,166,113,.18); }

@@ -303,7 +303,7 @@ function cityProjection(city) {
     departures: city.departures,
     withdrawals: city.withdrawals,
     truthBoundary:
-      'Shared domain XP is cumulative knowledge and is not spent away. Safe departure creates equal unassigned development XP. Project funding consumes only that development budget plus real shared materials. Ordinary villagers are deterministic autonomous simulations whose choices grow from needs, traits, relationships, skills, city context and bounded deterministic variation; service shop/quest NPCs remain fixed interfaces.'
+      'Shared domain XP is cumulative knowledge and is not spent away. Safe departure creates equal unassigned development XP. Project funding consumes only that development budget plus real shared materials. Ordinary villagers are deterministic autonomous simulations whose choices grow from needs, traits, relationships, skills, city context and bounded deterministic variation. Their personal production/possessions, communal food pressure, maintenance condition, discoveries, informal works and advisory proposals persist inside city state; voluntarily shared material enters the same canonical city item pool used by projects. Service shop/quest NPCs remain fixed interfaces.'
   });
 }
 function validateProjectFunding(city, definition, xp, items) {
@@ -674,6 +674,9 @@ export class PersistentRpgWorld {
         citySimulationContext(city),
         { ticks, hoursPerTick: 4 }
       );
+      for (const [itemId, count] of Object.entries(simulation.effects?.sharedItemDeltas || {})) {
+        if (count > 0) city.sharedItems[itemId] = (city.sharedItems[itemId] || 0) + count;
+      }
       result = {
         kind: 'city-sim-advanced',
         cityId: city.id,
@@ -681,6 +684,10 @@ export class PersistentRpgWorld {
         elapsedHours: simulation.elapsedHours,
         residentCount: simulation.snapshot.residentCount,
         averageWellbeing: simulation.snapshot.averageWellbeing,
+        sharedItemDeltas: simulation.effects?.sharedItemDeltas || {},
+        discoveryCount: simulation.snapshot.discoveries.length,
+        proposalCount: simulation.snapshot.proposals.length,
+        informalWorkCount: simulation.snapshot.informalWorks.length,
         city: cityProjection(city)
       };
     }

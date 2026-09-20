@@ -36,6 +36,10 @@ const poolHint = document.getElementById('poolHint');
 const villagerSummary = document.getElementById('villagerSummary');
 const villagers = document.getElementById('villagers');
 const serviceNpcs = document.getElementById('serviceNpcs');
+const residentEconomy = document.getElementById('residentEconomy');
+const residentProposals = document.getElementById('residentProposals');
+const residentDiscoveries = document.getElementById('residentDiscoveries');
+const informalWorks = document.getElementById('informalWorks');
 
 function storageGet(key) {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -319,6 +323,85 @@ function strongestSkill(resident) {
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0] || ['none', 0];
 }
 
+function renderResidentEconomy(city) {
+  const sim = city.villagers;
+  const economy = sim.economy;
+  const foodPressure = economy.foodReserve < sim.residentCount;
+  const maintenancePressure = economy.infrastructureCondition < 0.45;
+  residentEconomy.replaceChildren();
+
+  const rows = [
+    ['Food reserve', economy.foodReserve.toFixed(1), `${economy.foodProduced} produced`, foodPressure],
+    ['Infrastructure', `${Math.round(economy.infrastructureCondition * 100)}%`, `backlog ${economy.maintenanceBacklog.toFixed(2)}`, maintenancePressure],
+    ['Security', `${Math.round(economy.security * 100)}%`, 'patrols improve it', economy.security < 0.35],
+    ['Trade activity', economy.tradeValue, 'resident-created value', false]
+  ];
+
+  for (const [label, value, note, pressure] of rows) {
+    const card = document.createElement('div');
+    card.className = `economy-card${pressure ? ' pressure' : ''}`;
+    card.innerHTML = `<strong>${label}: ${value}</strong><span>${note}</span>`;
+    residentEconomy.appendChild(card);
+  }
+}
+
+function renderResidentEvents(city) {
+  const sim = city.villagers;
+
+  residentProposals.replaceChildren();
+  const proposals = [...(sim.proposals || [])]
+    .sort((a, b) => b.support - a.support || b.tick - a.tick)
+    .slice(0, 8);
+  if (!proposals.length) {
+    const empty = document.createElement('div');
+    empty.className = 'resident-event proposal';
+    empty.textContent = 'No resident has formed a strong project proposal yet.';
+    residentProposals.appendChild(empty);
+  } else {
+    for (const proposal of proposals) {
+      const resident = sim.residents.find(candidate => candidate.id === proposal.proposerId);
+      const row = document.createElement('div');
+      row.className = 'resident-event proposal';
+      row.innerHTML = `<strong>${resident?.name || proposal.proposerId} proposes ${titleCase(proposal.projectId)}</strong><br>${proposal.reason} · support ${proposal.support}/${sim.residentCount}`;
+      residentProposals.appendChild(row);
+    }
+  }
+
+  residentDiscoveries.replaceChildren();
+  const discoveries = [...(sim.discoveries || [])].slice(-8).reverse();
+  if (!discoveries.length) {
+    const empty = document.createElement('div');
+    empty.className = 'resident-event discovery';
+    empty.textContent = 'No resident discovery yet.';
+    residentDiscoveries.appendChild(empty);
+  } else {
+    for (const discovery of discoveries) {
+      const resident = sim.residents.find(candidate => candidate.id === discovery.residentId);
+      const row = document.createElement('div');
+      row.className = 'resident-event discovery';
+      row.innerHTML = `<strong>${titleCase(discovery.type)}</strong> by ${resident?.name || discovery.residentId} while ${discovery.action} · near ${Math.round(discovery.xM)},${Math.round(discovery.zM)}`;
+      residentDiscoveries.appendChild(row);
+    }
+  }
+
+  informalWorks.replaceChildren();
+  const works = [...(sim.informalWorks || [])].slice(-8).reverse();
+  if (!works.length) {
+    const empty = document.createElement('div');
+    empty.className = 'resident-event informal';
+    empty.textContent = 'No informal resident-built work yet.';
+    informalWorks.appendChild(empty);
+  } else {
+    for (const work of works) {
+      const resident = sim.residents.find(candidate => candidate.id === work.residentId);
+      const row = document.createElement('div');
+      row.className = 'resident-event informal';
+      row.innerHTML = `<strong>${titleCase(work.kind)}</strong> emerged from ${resident?.name || work.residentId}'s repeated behavior · ${Math.round(work.xM)},${Math.round(work.zM)}`;
+      informalWorks.appendChild(row);
+    }
+  }
+}
+
 function renderVillagers(city) {
   const sim = city.villagers;
   villagerSummary.textContent =
@@ -337,10 +420,14 @@ function renderVillagers(city) {
     const lastMemory = resident.memories?.[resident.memories.length - 1] || null;
     const card = document.createElement('div');
     card.className = 'villager-card';
+    const possessionText = Object.entries(resident.possessions || {})
+      .map(([itemId, count]) => `${itemId}×${count}`)
+      .join(', ') || 'none';
     card.innerHTML =
       `<div class="villager-top"><strong>${resident.name}</strong><span>${titleCase(resident.currentAction)}</span></div>`
       + `<div class="villager-meta"><span>strong trait: ${strongestTrait(resident)}</span><span>${skill} ${skillXp} · ${relationCount} ties</span></div>`
-      + `<div class="villager-memory">${lastMemory ? `last: ${titleCase(lastMemory.action)}${lastMemory.partnerId ? ' with someone' : ''}` : 'new resident'}</div>`;
+      + `<div class="villager-meta"><span>possessions: ${possessionText}</span><span>wealth ${resident.wealth}</span></div>`
+      + `<div class="villager-memory">${lastMemory ? `last: ${titleCase(lastMemory.action)}${lastMemory.output ? ' · produced/used something' : ''}${lastMemory.partnerId ? ' with someone' : ''}` : 'new resident'}</div>`;
     villagers.appendChild(card);
   }
 
@@ -374,6 +461,8 @@ function renderCity(city) {
 
   renderProjects(city);
   renderVillagers(city);
+  renderResidentEconomy(city);
+  renderResidentEvents(city);
 
   sharedPool.replaceChildren();
   const items = Object.entries(city.sharedItems);
@@ -627,8 +716,12 @@ document.getElementById('advanceCityDay').addEventListener('click', () => {
   const populationText = after.residentCount !== before.residentCount
     ? ` Population changed from ${before.residentCount} to ${after.residentCount}.`
     : '';
+  const deltas = Object.entries(result.result.sharedItemDeltas || {});
+  const sharedText = deltas.length
+    ? ` Shared to city pool: ${deltas.map(([id, count]) => `${id}×${count}`).join(', ')}.`
+    : '';
   setStatus(
-    `The city lived another deterministic day. ${after.residentCount} residents chose their own actions from current needs/opportunities; average wellbeing ${Math.round(after.averageWellbeing * 100)}%.${populationText}`
+    `The city lived another deterministic day. ${after.residentCount} residents chose their own actions; wellbeing ${Math.round(after.averageWellbeing * 100)}%, food ${after.economy.foodReserve.toFixed(1)}, infrastructure ${Math.round(after.economy.infrastructureCondition * 100)}%.${populationText}${sharedText}`
   );
 });
 

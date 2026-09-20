@@ -130,6 +130,50 @@ Those are stable UI/service anchors, not simulated villagers. Ordinary residents
 
 The clean renderer now shows simulated residents at the places their chosen actions took them. Service NPCs are visually separate and anchored to their service building.
 
+## Resident economy, shortages, discoveries and proposals
+
+Villager simulation now produces consequences instead of only behavior labels.
+
+Ordinary residents can now:
+
+- gather timber, stone, fiber and ore into **personal possessions**;
+- decide to share surplus into the canonical city material pool;
+- craft personal goods/tools from what they carry;
+- produce communal food;
+- trade personal goods and accumulate individual wealth;
+- patrol to improve local security;
+- maintain the city and reduce maintenance backlog;
+- suffer from communal food shortages;
+- live inside infrastructure that can drift into poor condition if nobody maintains it;
+- make deterministic local discoveries;
+- create small informal works from repeated behavior;
+- form advisory project proposals based on skills and lived experience.
+
+Informal works currently include:
+
+- footpaths from repeated exploration;
+- market stalls from repeated trading;
+- garden plots from repeated food-growing;
+- workbenches from repeated crafting.
+
+Those are deliberately smaller than official city projects. Residents can create them autonomously because they represent local lived behavior, not a constitutional city-wide investment.
+
+Resident proposals are also deliberately **advisory only**. A villager can propose a Workshop, Foundry, Archive, Palisade, Granary, road infrastructure and other official projects, and other residents can develop support for that proposal. The proposal does not spend shared materials, allocate development XP, switch city path or complete a project. Shared/project authority remains separate.
+
+The city simulation now tracks:
+
+- communal food reserve and cumulative food production;
+- resident-created trade value;
+- maintenance backlog and maintenance work;
+- aggregate infrastructure condition;
+- local security;
+- food-pressure and maintenance-shortage counters;
+- resident discoveries;
+- open proposals and resident support;
+- informal resident works.
+
+When a resident voluntarily shares physical material, the deterministic simulation returns that as a city effect and the persistent-world authority puts it into the exact same canonical `sharedItems` pool used by official city projects.
+
 ## Clean active surface
 
 The browser game layer remains only:
@@ -185,6 +229,10 @@ The RPG-specific suite verifies:
 - resident trait/need/skill/relationship/memory growth;
 - city-path influence without hard scripting;
 - fixed service-NPC boundary for store/quest interfaces;
+- personal villager possessions and voluntary surplus sharing;
+- food production/shortage and maintenance-pressure state;
+- local discoveries and informal resident works;
+- advisory resident project proposals that cannot auto-spend city resources;
 - deterministic host journal replay;
 - human/machine participant parity;
 - the clean no-RTS active browser boundary.

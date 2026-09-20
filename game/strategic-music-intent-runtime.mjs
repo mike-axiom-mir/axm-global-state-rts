@@ -4,6 +4,7 @@ import {
 } from '../src/presentation/strategic-music-intent.mjs';
 
 const EVENT_NAME = 'axm:strategic-music-intent';
+const MUSIC_MAKER_INITIAL_STATE = 'exploration';
 const latestBySeat = new Map();
 const stateBySeat = new Map();
 
@@ -40,8 +41,9 @@ function updateSeat(rts, strategic, seatId) {
     worldPressure: inputs.strategic.worldPressure,
     combat: inputs.combat
   });
-  const previousState = stateBySeat.has(seatId) ? stateBySeat.get(seatId) : null;
-  if (previousState === intent.state && latestBySeat.has(seatId)) return latestBySeat.get(seatId);
+  const firstObservation = !stateBySeat.has(seatId);
+  const previousState = firstObservation ? MUSIC_MAKER_INITIAL_STATE : stateBySeat.get(seatId);
+  if (!firstObservation && previousState === intent.state && latestBySeat.has(seatId)) return latestBySeat.get(seatId);
 
   const request = createStrategicMusicRequest({
     seatId,

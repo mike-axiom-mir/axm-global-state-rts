@@ -34,11 +34,19 @@ submit('rpg-depart-1', 'rpg.life.departed', {
   placeId: 'first-city',
   xM: 0,
   zM: 0,
-  experience: { exploration: 120, survival: 80 },
-  items: { rope: 2, lantern: 1 }
+  experience: { exploration: 120, survival: 80, craft: 40 },
+  items: { rope: 2, lantern: 1, timber: 2, stone: 2 }
+});
+submit('rpg-project-hearth-1', 'rpg.city.project.contributed', {
+  worldHour: 14,
+  cityId: 'first-city',
+  projectId: 'hearth-circle',
+  contributionId: 'hosted-hearth-1',
+  xp: { survival: 40, craft: 20 },
+  items: { timber: 2, stone: 2 }
 });
 submit('rpg-path-1', 'rpg.city.path.changed', {
-  worldHour: 14,
+  worldHour: 15,
   cityId: 'first-city',
   path: 'frontier',
   reason: 'expand-safe-routes'
@@ -56,17 +64,22 @@ submit('rpg-depart-2', 'rpg.life.departed', {
 
 const beforeRestart = authority.rpgSnapshot();
 const city = beforeRestart.cities.find(entry => entry.id === 'first-city');
-assert.equal(beforeRestart.revision, 4);
+assert.equal(beforeRestart.revision, 5);
 assert.equal(beforeRestart.legacy.departures, 2);
-assert.equal(city.totalXp, 330);
-assert.equal(city.pathXp.balanced, 200);
+assert.equal(city.totalXp, 370);
+assert.equal(city.pathXp.balanced, 240);
 assert.equal(city.pathXp.frontier, 130);
 assert.equal(city.sharedItems.rope, 3);
 assert.equal(city.skillRanks.exploration, 2);
+assert.equal(city.stage, 'camp');
+assert.equal(city.completedProjectCount, 1);
+assert.equal(city.possibilities.includes('rest-point'), true);
+assert.equal(city.unassignedXp.survival, 70);
+assert.equal(city.unassignedXp.craft, 20);
 
 const replayed = createHostedSharedStateAuthority({ store, clock: () => 2000 });
 assert.deepEqual(replayed.rpgSnapshot(), beforeRestart);
 assert.equal(replayed.verifyPersistedJournal().matchesLive, true);
-assert.equal(replayed.meta().revision, 4);
+assert.equal(replayed.meta().revision, 5);
 
 console.log('persistent RPG hosted replay selftest passed');

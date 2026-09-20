@@ -6,10 +6,11 @@ import {
 } from '../src/rpg/persistent-world.mjs';
 import { createRpgCharacterLife } from '../src/rpg/character-life.mjs';
 
-const WORLD_STORAGE_KEY = 'axm.persistent-rpg.browser-world-journal/v0.2';
+const WORLD_STORAGE_KEY = 'axm.persistent-rpg.browser-world-journal/v0.3';
 const LIFE_COUNTER_KEY = 'axm.persistent-rpg.browser-life-counter/v0.1';
 const ACTOR_ID = 'browser-player';
 const CITY_ID = 'first-city';
+const MATERIAL_TYPES = Object.freeze(['timber', 'stone', 'fiber', 'ore']);
 
 const viewport = document.getElementById('viewport');
 const status = document.getElementById('status');
@@ -20,12 +21,18 @@ const lifeItems = document.getElementById('lifeItems');
 const modeLabel = document.getElementById('modeLabel');
 const cityName = document.getElementById('cityName');
 const cityRank = document.getElementById('cityRank');
+const cityStage = document.getElementById('cityStage');
 const cityPath = document.getElementById('cityPath');
 const citySummary = document.getElementById('citySummary');
 const sharedPool = document.getElementById('sharedPool');
 const citySkills = document.getElementById('citySkills');
+const developmentXp = document.getElementById('developmentXp');
+const cityProjects = document.getElementById('cityProjects');
+const projectCount = document.getElementById('projectCount');
+const possibilities = document.getElementById('possibilities');
 const worldHistory = document.getElementById('worldHistory');
 const memoryCount = document.getElementById('memoryCount');
+const poolHint = document.getElementById('poolHint');
 
 function storageGet(key) {
   try { return localStorage.getItem(key); } catch { return null; }
@@ -159,6 +166,7 @@ function friendlyEvent(command) {
     case 'rpg.life.ended': return `${p.lifeId} died without city transfer`;
     case 'rpg.city.path.changed': return `${p.cityId} direction → ${p.path}`;
     case 'rpg.city.pool.withdrawn': return `shared item taken from ${p.cityId}`;
+    case 'rpg.city.project.contributed': return `funded ${p.projectId}`;
     default: return command.eventType;
   }
 }
@@ -192,20 +200,141 @@ function renderHistory(snapshot) {
   });
 }
 
+function titleCase(value) {
+  return String(value || '').replaceAll('-', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function formatMissing(record) {
+  const entries = Object.entries(record || {}).filter(([, value]) => Number(value) > 0);
+  return entries.length ? entries.map(([key, value]) => `${key} ${value}`).join(' · ') : 'done';
+}
+
+function canFundXp(city, project) {
+  if (project.status !== 'available') return false;
+  return Object.entries(project.missingXp || {}).some(([domain, missing]) =>
+    missing > 0 && (city.unassignedXp?.[domain] || 0) > 0
+  );
+}
+
+function canFundItem(city, project) {
+  if (project.status !== 'available') return false;
+  return Object.entries(project.missingItems || {}).some(([itemId, missing]) =>
+    missing > 0 && (city.sharedItems?.[itemId] || 0) > 0
+  );
+}
+
+function renderProjects(city) {
+  cityProjects.replaceChildren();
+  projectCount.textContent = `${city.completedProjectCount} complete · ${city.availableProjectCount} available`;
+
+  const priority = {
+    available: 0,
+    complete: 1,
+    'blocked-path': 2,
+    'blocked-prerequisites': 3
+  };
+  const ordered = [...city.projects].sort((a, b) =>
+    (priority[a.status] ?? 9) - (priority[b.status] ?? 9)
+    || a.name.localeCompare(b.name)
+  );
+
+  for (const project of ordered) {
+    const card = document.createElement('div');
+    card.className = `project-card ${project.complete ? 'complete' : project.status === 'available' ? '' : 'blocked'}`;
+
+    const statusLabel = project.complete
+      ? 'complete'
+      : project.status === 'available'
+        ? project.requiredPath ? `${project.requiredPath} path` : project.category
+        : project.blockedReason || project.status;
+
+    const head = document.createElement('div');
+    head.className = 'project-head';
+    head.innerHTML = `<strong>${project.name}</strong><span>${statusLabel}</span>`;
+    card.appendChild(head);
+
+    const progress = document.createElement('div');
+    progress.className = 'project-progress';
+    progress.innerHTML =
+      `<span>XP: ${formatMissing(project.missingXp)}</span>`
+      + `<span>materials: ${formatMissing(project.missingItems)}</span>`;
+    card.appendChild(progress);
+
+    const unlock = document.createElement('div');
+    unlock.className = 'project-unlock';
+    unlock.textContent = project.complete
+      ? `Unlocked: ${project.unlocks.join(', ') || 'physical city growth'}`
+      : `Will unlock: ${project.unlocks.join(', ') || 'map growth'}`;
+    card.appendChild(unlock);
+
+    if (project.status === 'available' && !project.complete) {
+      const actions = document.createElement('div');
+      actions.className = 'project-actions';
+
+      for (const [domain, missing] of Object.entries(project.missingXp || {})) {
+        if (missing <= 0) continue;
+        const available = city.unassignedXp?.[domain] || 0;
+        const amount = Math.min(50, missing, available);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.fundProjectXp = project.id;
+        button.dataset.domain = domain;
+        button.dataset.amount = String(amount);
+        button.disabled = amount <= 0;
+        button.textContent = available > 0 ? `${domain} +${amount}` : `${domain} needed`;
+        actions.appendChild(button);
+      }
+
+      for (const [itemId, missing] of Object.entries(project.missingItems || {})) {
+        if (missing <= 0) continue;
+        const available = city.sharedItems?.[itemId] || 0;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.fundProjectItem = project.id;
+        button.dataset.itemId = itemId;
+        button.dataset.amount = '1';
+        button.disabled = available <= 0;
+        button.textContent = available > 0 ? `${itemId} +1` : `${itemId} needed`;
+        actions.appendChild(button);
+      }
+
+      card.appendChild(actions);
+    }
+
+    cityProjects.appendChild(card);
+  }
+}
+
 function renderCity(city) {
-  cityName.textContent = city.id.replaceAll('-', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+  cityName.textContent = titleCase(city.id);
   cityRank.textContent = `Rank ${city.cityRank}`;
+  cityStage.textContent = titleCase(city.stage);
   cityPath.value = city.path;
+
   citySummary.textContent =
-    `${city.totalXp} shared XP · active ${city.path} rank ${city.activePathRank} · `
-    + `${city.departureCount} safe departures. Old path progress remains stored when direction changes.`;
+    `${city.totalXp} cumulative city XP · ${city.unassignedXpTotal} development XP ready · `
+    + `${city.completedProjectCount} projects · local world span ${Math.round(city.worldEffects.localMapSpanM)}m. `
+    + `The city changes stage from what is actually built, not from a manual level-up.`;
+
+  developmentXp.replaceChildren();
+  for (const domain of RPG_XP_DOMAINS) {
+    const item = document.createElement('div');
+    item.className = 'skill-item';
+    item.innerHTML = `<strong>${domain} · ${city.unassignedXp[domain]}</strong><span>unassigned development XP</span>`;
+    developmentXp.appendChild(item);
+  }
+
+  renderProjects(city);
 
   sharedPool.replaceChildren();
   const items = Object.entries(city.sharedItems);
+  const withdrawalUnlocked = city.possibilities.includes('shared-withdrawal');
+  poolHint.textContent = withdrawalUnlocked ? 'tap to take one · or fund projects' : 'storehouse unlocks taking items back out';
+
   if (!items.length) {
     const empty = document.createElement('div');
     empty.className = 'pool-item';
-    empty.innerHTML = '<strong>Empty</strong><span>safe departures can fill this</span>';
+    empty.innerHTML = '<strong>Empty</strong><span>safe departures fill the pool</span>';
     sharedPool.appendChild(empty);
   } else {
     for (const [itemId, count] of items) {
@@ -213,7 +342,8 @@ function renderCity(city) {
       item.type = 'button';
       item.className = 'pool-item';
       item.dataset.withdrawItem = itemId;
-      item.innerHTML = `<strong>${itemId} × ${count}</strong><span>take one</span>`;
+      item.disabled = !withdrawalUnlocked;
+      item.innerHTML = `<strong>${itemId} × ${count}</strong><span>${withdrawalUnlocked ? 'take one' : 'city use only until Storehouse'}</span>`;
       sharedPool.appendChild(item);
     }
   }
@@ -222,8 +352,16 @@ function renderCity(city) {
   for (const domain of RPG_XP_DOMAINS) {
     const item = document.createElement('div');
     item.className = 'skill-item';
-    item.innerHTML = `<strong>${domain} · ${city.skillRanks[domain]}</strong><span>${city.domainXp[domain]} XP</span>`;
+    item.innerHTML = `<strong>${domain} · rank ${city.skillRanks[domain]}</strong><span>${city.domainXp[domain]} permanent shared XP</span>`;
     citySkills.appendChild(item);
+  }
+
+  possibilities.replaceChildren();
+  for (const possibility of city.possibilities) {
+    const chip = document.createElement('span');
+    chip.className = 'possibility';
+    chip.textContent = titleCase(possibility);
+    possibilities.appendChild(chip);
   }
 }
 
@@ -236,7 +374,7 @@ function renderAll() {
   worldRevision.textContent = String(snapshot.revision);
   lifeIdEl.textContent = lifeSnapshot.lifeId;
   lifeXp.textContent = String(lifeXpTotal());
-  lifeItems.textContent = String(lifeItemTotal());
+  lifeItems.textContent = `${lifeItemTotal()}/${lifeSnapshot.effectiveCarrySlots}`;
   modeLabel.textContent = renderer.getMode() === 'local' ? 'LOCAL WORLD' : 'GLOBE';
 
   if (city) renderCity(city);
@@ -246,7 +384,85 @@ function renderAll() {
 function startNextLife(prefix) {
   life = makeLife();
   renderAll();
-  setStatus(`${prefix} New life ${life.lifeId} enters the same world with city support only.`);
+  setStatus(`${prefix} New life ${life.lifeId} enters the same ${citySnapshot()?.stage || 'city'} with inherited city support only.`);
+}
+
+function deterministicMaterialAtCursor() {
+  const view = renderer.describeView();
+  const sample = renderer.currentSurfaceSample();
+  const xCell = Math.floor((view.local.cursorXM || 0) / 140);
+  const zCell = Math.floor((view.local.cursorZM || 0) / 140);
+  const biome = String(sample.planet?.biome || 'unknown');
+  const hash = Math.abs((xCell * 31 + zCell * 17 + biome.length * 13) | 0);
+  const preferred = {
+    temperate_forest: ['timber', 'fiber'],
+    rainforest: ['timber', 'fiber'],
+    taiga: ['timber', 'ore'],
+    grassland: ['fiber', 'stone'],
+    savanna: ['fiber', 'stone'],
+    desert: ['stone', 'ore'],
+    alpine: ['ore', 'stone'],
+    tundra: ['stone', 'fiber'],
+    coast: ['stone', 'fiber']
+  }[biome] || MATERIAL_TYPES;
+  const pool = [...preferred, ...MATERIAL_TYPES];
+  return Object.freeze({
+    itemId: pool[hash % pool.length],
+    biome,
+    elevationM: sample.planet?.elevationM || 0
+  });
+}
+
+function fundProjectXp(projectId, domain, amount) {
+  const value = Number(amount);
+  if (!projectId || !domain || !Number.isInteger(value) || value <= 0) return;
+  const result = applyWorldEvent('rpg.city.project.contributed', {
+    cityId: CITY_ID,
+    placeId: CITY_ID,
+    xM: 0,
+    zM: 0,
+    projectId,
+    contributionId: `project-xp:${world.revision + 1}`,
+    xp: { [domain]: value },
+    items: {}
+  }, 'project-xp');
+
+  if (!result.accepted) return setStatus(`Project funding rejected: ${result.reason}`);
+  renderAll();
+  if (result.result.completedNow) {
+    const stageText = result.result.stageChanged
+      ? ` City emerged into ${titleCase(result.result.stageAfter)}.`
+      : '';
+    setStatus(`${titleCase(projectId)} completed. Map effect applied; unlocked ${result.result.unlocked.join(', ') || 'physical growth'}.${stageText}`);
+  } else {
+    setStatus(`Allocated ${value} ${domain} development XP to ${titleCase(projectId)}.`);
+  }
+}
+
+function fundProjectItem(projectId, itemId, amount) {
+  const value = Number(amount);
+  if (!projectId || !itemId || !Number.isInteger(value) || value <= 0) return;
+  const result = applyWorldEvent('rpg.city.project.contributed', {
+    cityId: CITY_ID,
+    placeId: CITY_ID,
+    xM: 0,
+    zM: 0,
+    projectId,
+    contributionId: `project-item:${world.revision + 1}`,
+    xp: {},
+    items: { [itemId]: value }
+  }, 'project-item');
+
+  if (!result.accepted) return setStatus(`Project funding rejected: ${result.reason}`);
+  renderAll();
+  if (result.result.completedNow) {
+    const stageText = result.result.stageChanged
+      ? ` City emerged into ${titleCase(result.result.stageAfter)}.`
+      : '';
+    setStatus(`${titleCase(projectId)} completed. Its structure/effect now exists in the world.${stageText}`);
+  } else {
+    setStatus(`Allocated ${value} ${itemId} from the shared city pool to ${titleCase(projectId)}.`);
+  }
 }
 
 for (const path of RPG_CITY_PATHS) {
@@ -260,7 +476,7 @@ document.getElementById('toggleMode').addEventListener('click', () => {
   renderer.toggleMode();
   renderAll();
   setStatus(renderer.getMode() === 'local'
-    ? 'Local Foundation surface loaded. No RTS fixtures are present.'
+    ? `Local world loaded. The current city is physically rendered as a ${titleCase(citySnapshot()?.stage)}.`
     : 'Globe view.');
 });
 
@@ -282,16 +498,21 @@ document.getElementById('exploreAction').addEventListener('click', () => {
 
   if (!result.accepted) return setStatus(`Explore rejected: ${result.reason}`);
   renderAll();
-  setStatus(`20 temporary XP gained. The world now remembers a ${result.result.tier} here.`);
+  setStatus(`20 temporary XP gained. Repeated travel left a persistent ${result.result.tier} here.`);
 });
 
 document.getElementById('salvageAction').addEventListener('click', () => {
   if (!localLocationRequired()) return;
+  const found = deterministicMaterialAtCursor();
+  const added = life.addItem(found.itemId, 1);
+  if (added === false) {
+    setStatus(`Carry limit reached (${life.snapshot().effectiveCarrySlots}). Return/leave safely or use an item first.`);
+    return;
+  }
   life.gainExperience('craft', 12);
   life.gainExperience('survival', 3);
-  life.addItem('salvaged-material', 1);
   renderAll();
-  setStatus('Recovered one salvaged-material. It remains temporary until safe departure.');
+  setStatus(`Gathered 1 ${found.itemId} from this ${found.biome} area. It can become city infrastructure after safe departure.`);
 });
 
 document.getElementById('studyAction').addEventListener('click', () => {
@@ -310,32 +531,35 @@ document.getElementById('studyAction').addEventListener('click', () => {
 
   if (!result.accepted) return setStatus(`Study rejected: ${result.reason}`);
   renderAll();
-  setStatus('The world keeps the observation immediately; your life XP is still temporary.');
+  setStatus('The world keeps the observation immediately; your life XP becomes city development only if you leave safely.');
 });
 
 document.getElementById('leaveArtifactAction').addEventListener('click', () => {
   const location = localLocationRequired();
   if (!location) return;
-  if (!life.removeItem('salvaged-material', 1)) {
-    setStatus('Carry a salvaged-material first.');
+  const carried = Object.entries(life.snapshot().items).find(([, count]) => count > 0);
+  if (!carried) {
+    setStatus('Carry a material first.');
     return;
   }
+  const [materialId] = carried;
+  if (!life.removeItem(materialId, 1)) return;
 
   const label = `Field Relic ${world.revision + 1}`;
   const result = applyWorldEvent('rpg.artifact.left', {
     ...location,
     artifactId: `artifact:${world.revision + 1}`,
     label,
-    material: 'salvaged-material'
+    material: materialId
   }, 'artifact');
 
   if (!result.accepted) {
-    life.addItem('salvaged-material', 1);
+    life.addItem(materialId, 1);
     return setStatus(`Artifact rejected: ${result.reason}`);
   }
   life.gainExperience('craft', 5);
   renderAll();
-  setStatus(`${label} now exists in the persistent world.`);
+  setStatus(`${label} now exists physically in the persistent world.`);
 });
 
 document.getElementById('changePath').addEventListener('click', () => {
@@ -354,12 +578,28 @@ document.getElementById('changePath').addEventListener('click', () => {
 
   if (!result.accepted) return setStatus(`Path change rejected: ${result.reason}`);
   renderAll();
-  setStatus(`Future contributions now advance ${result.result.path}; prior ${result.result.previousPath} progress was preserved.`);
+  setStatus(`City direction changed to ${result.result.path}. Path-specific projects changed; earlier project/path progress remains intact.`);
+});
+
+cityProjects.addEventListener('click', event => {
+  const xpButton = event.target.closest('[data-fund-project-xp]');
+  if (xpButton) {
+    fundProjectXp(xpButton.dataset.fundProjectXp, xpButton.dataset.domain, xpButton.dataset.amount);
+    return;
+  }
+  const itemButton = event.target.closest('[data-fund-project-item]');
+  if (itemButton) {
+    fundProjectItem(itemButton.dataset.fundProjectItem, itemButton.dataset.itemId, itemButton.dataset.amount);
+  }
 });
 
 sharedPool.addEventListener('click', event => {
   const button = event.target.closest('[data-withdraw-item]');
-  if (!button) return;
+  if (!button || button.disabled) return;
+  if (life.itemCount() >= life.snapshot().effectiveCarrySlots) {
+    setStatus(`Carry limit reached (${life.snapshot().effectiveCarrySlots}). The city keeps the item.`);
+    return;
+  }
   const itemId = button.dataset.withdrawItem;
   const result = applyWorldEvent('rpg.city.pool.withdrawn', {
     cityId: CITY_ID,
@@ -374,7 +614,7 @@ sharedPool.addEventListener('click', event => {
   if (!result.accepted) return setStatus(`Withdrawal rejected: ${result.reason}`);
   life.addItem(itemId, 1);
   renderAll();
-  setStatus(`This life took one ${itemId} left by the shared city history.`);
+  setStatus(`This life took one ${itemId} from the shared storehouse.`);
 });
 
 document.getElementById('departAction').addEventListener('click', () => {
@@ -389,7 +629,9 @@ document.getElementById('departAction').addEventListener('click', () => {
   if (!result.accepted) return setStatus(`Departure rejected: ${result.reason}`);
   const itemCount = Object.values(contribution.items).reduce((sum, value) => sum + value, 0);
   life.depart();
-  startNextLife(`Safe departure transferred ${result.result.contributedXp} XP and ${itemCount} items into ${CITY_ID}.`);
+  startNextLife(
+    `Safe departure transferred ${result.result.contributedXp} XP into both permanent city knowledge and the development budget, plus ${itemCount} carried materials/items.`
+  );
 });
 
 document.getElementById('deathAction').addEventListener('click', () => {

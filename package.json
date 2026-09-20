@@ -1,17 +1,18 @@
 {
   "name": "axm-persistent-world-rpg",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node scripts/serve.mjs",
-    "test": "npm run test:rpg-core && npm run test:rpg-hosted && npm run test:rpg-participant && npm run test:rpg-clean-boundary && npm run test:rpg-spatial && npm run test:rpg-shell",
+    "test": "npm run test:rpg-core && npm run test:rpg-city && npm run test:rpg-hosted && npm run test:rpg-participant && npm run test:rpg-clean-boundary && npm run test:rpg-spatial && npm run test:rpg-shell",
     "test:rpg-core": "node tests/persistent-rpg-world-selftest.mjs",
+    "test:rpg-city": "node tests/persistent-rpg-city-emergence-selftest.mjs",
     "test:rpg-hosted": "node tests/persistent-rpg-hosted-selftest.mjs",
     "test:rpg-participant": "node tests/persistent-rpg-participant-selftest.mjs",
     "test:rpg-clean-boundary": "node tests/persistent-rpg-clean-boundary-selftest.mjs",
     "test:rpg-spatial": "node tests/spatial-selftest.mjs",
-    "test:rpg-shell": "node --check src/rpg/persistent-world.mjs && node --check src/rpg/character-life.mjs && node --check src/rpg/world/rpg-region.mjs && node --check src/rpg/world/rpg-foundation-sampler.mjs && node --check src/rpg/presentation/rpg-renderer.mjs && node --check src/hosted/shared-state-authority.mjs && node --check src/hosted/world-session-authority.mjs && node --check src/hosted/world-http-api.mjs && node --check src/session/world-seat-binding.mjs && node --check src/session/world-browser-client.mjs && node --check game/rpg-world.mjs"
+    "test:rpg-shell": "node --check src/rpg/city/city-emergence.mjs && node --check src/rpg/persistent-world.mjs && node --check src/rpg/character-life.mjs && node --check src/rpg/world/rpg-region.mjs && node --check src/rpg/world/rpg-foundation-sampler.mjs && node --check src/rpg/presentation/rpg-renderer.mjs && node --check src/hosted/shared-state-authority.mjs && node --check src/hosted/world-session-authority.mjs && node --check src/hosted/world-http-api.mjs && node --check src/session/world-seat-binding.mjs && node --check src/session/world-browser-client.mjs && node --check game/rpg-world.mjs && node --check tests/persistent-rpg-city-emergence-selftest.mjs"
   },
   "engines": {
     "node": ">=20"

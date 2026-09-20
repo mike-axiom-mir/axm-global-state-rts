@@ -13,7 +13,7 @@
 
     <header class="topbar">
       <div>
-        <span class="eyebrow">CLEAN RPG RESTART · FOUNDATION PLANET</span>
+        <span class="eyebrow">EMERGENT CITY · FOUNDATION PLANET</span>
         <strong>Persistent World</strong>
       </div>
       <div class="top-stats">
@@ -26,7 +26,7 @@
     <section class="action-dock" aria-label="Current life actions">
       <button id="toggleMode" type="button">Globe / local</button>
       <button id="exploreAction" type="button">Explore</button>
-      <button id="salvageAction" type="button">Salvage</button>
+      <button id="salvageAction" type="button">Gather material</button>
       <button id="studyAction" type="button">Study</button>
       <button id="leaveArtifactAction" type="button">Leave artifact</button>
       <button id="departAction" class="safe" type="button">Leave safely</button>
@@ -36,15 +36,18 @@
     <aside class="ledger">
       <div class="ledger-head">
         <div>
-          <span class="eyebrow">WORLD, NOT ACCOUNT</span>
+          <span class="eyebrow">CITY EMERGES FROM SHARED CHOICES</span>
           <h1 id="cityName">First City</h1>
         </div>
-        <span id="cityRank" class="rank">Rank 0</span>
+        <div class="city-badges">
+          <span id="cityStage" class="rank">Seed camp</span>
+          <span id="cityRank" class="rank">Rank 0</span>
+        </div>
       </div>
 
       <div class="life-line">
         <span>temporary XP <b id="lifeXp">0</b></span>
-        <span>carried items <b id="lifeItems">0</b></span>
+        <span>carried <b id="lifeItems">0</b></span>
       </div>
 
       <label class="path-control">
@@ -58,13 +61,28 @@
       <p id="citySummary" class="summary"></p>
 
       <section>
-        <div class="section-title"><strong>Shared pool</strong><span>tap to take one</span></div>
+        <div class="section-title"><strong>Development XP</strong><span>choose where shared learning becomes infrastructure</span></div>
+        <div id="developmentXp" class="skills"></div>
+      </section>
+
+      <section>
+        <div class="section-title"><strong>Emerging projects</strong><span id="projectCount">0 complete</span></div>
+        <div id="cityProjects" class="projects"></div>
+      </section>
+
+      <section>
+        <div class="section-title"><strong>Shared materials / items</strong><span id="poolHint">city pool</span></div>
         <div id="sharedPool" class="pool"></div>
       </section>
 
       <section>
-        <div class="section-title"><strong>City skills</strong><span>inherited support</span></div>
+        <div class="section-title"><strong>City skills</strong><span>knowledge never gets spent away</span></div>
         <div id="citySkills" class="skills"></div>
+      </section>
+
+      <section>
+        <div class="section-title"><strong>Unlocked possibilities</strong><span>projects change rules</span></div>
+        <div id="possibilities" class="possibilities"></div>
       </section>
 
       <section>
@@ -72,8 +90,8 @@
         <div id="worldHistory" class="history"></div>
       </section>
 
-      <p id="status" class="status" aria-live="polite">Clean RPG world loaded.</p>
-      <p class="truth">This branch no longer loads the RTS game shell, RTS units, RTS buildings, strategic overlays or post-apocalyptic presentation. It keeps Foundation Planet, spatial conversion and persistent authority underneath. Current rendering is a fresh RPG debug surface, not final art.</p>
+      <p id="status" class="status" aria-live="polite">Emergent city system loaded.</p>
+      <p class="truth">Safe departure adds cumulative city knowledge, equal unassigned development XP, and real carried materials. Funding a project spends development XP/materials but does not erase learned city skill. Completed projects can change the visible settlement, usable local map span, starting supplies, carry support and available actions.</p>
     </aside>
 
     <div class="controls">WASD view · arrows cursor · Q/E zoom · M globe/local</div>

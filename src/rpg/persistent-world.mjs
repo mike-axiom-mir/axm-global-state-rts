@@ -1,4 +1,14 @@
-export const PERSISTENT_RPG_WORLD_SCHEMA = 'axm.persistent-rpg.world/v0.2';
+import {
+  CITY_EMERGENCE_STAGES,
+  CITY_PROJECT_DEFINITIONS,
+  cityProjectDefinition,
+  createCityProjectProgress,
+  describeCityEmergence,
+  describeProjectAvailability,
+  projectCompletion
+} from './city/city-emergence.mjs';
+
+export const PERSISTENT_RPG_WORLD_SCHEMA = 'axm.persistent-rpg.world/v0.3';
 
 export const RPG_CITY_PATHS = Object.freeze([
   'balanced',
@@ -28,7 +38,8 @@ export const RPG_WORLD_EVENT_TYPES = Object.freeze([
   'rpg.life.ended',
   'rpg.life.departed',
   'rpg.city.path.changed',
-  'rpg.city.pool.withdrawn'
+  'rpg.city.pool.withdrawn',
+  'rpg.city.project.contributed'
 ]);
 
 function nonEmpty(value, label) {
@@ -101,6 +112,17 @@ function normalizeXp(raw = {}) {
   ));
 }
 
+function normalizeXpAllocation(raw = {}) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new TypeError('xp allocation must be an object');
+  const result = {};
+  for (const [domain, amount] of Object.entries(raw)) {
+    if (!RPG_XP_DOMAINS.includes(domain)) throw new RangeError(`unsupported experience domain: ${domain}`);
+    const value = nonNegativeInteger(amount, `xp.${domain}`);
+    if (value > 0) result[domain] = value;
+  }
+  return Object.freeze(result);
+}
+
 function normalizeItems(raw = {}) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new TypeError('items must be an object');
   const entries = Object.entries(raw)
@@ -136,6 +158,12 @@ function normalizeCommand(raw) {
   });
 }
 
+function freshProjectState() {
+  return Object.fromEntries(
+    CITY_PROJECT_DEFINITIONS.map(definition => [definition.id, createCityProjectProgress(definition.id)])
+  );
+}
+
 function makeCity(cityId, { worldHour = 0, path = 'balanced' } = {}) {
   const normalizedPath = normalizeCityPath(path);
   return {
@@ -149,11 +177,14 @@ function makeCity(cityId, { worldHour = 0, path = 'balanced' } = {}) {
       reason: 'initial-city-path'
     }],
     domainXp: Object.fromEntries(RPG_XP_DOMAINS.map(domain => [domain, 0])),
+    unassignedXp: Object.fromEntries(RPG_XP_DOMAINS.map(domain => [domain, 0])),
     pathXp: Object.fromEntries(RPG_CITY_PATHS.map(pathId => [pathId, 0])),
     totalXp: 0,
     sharedItems: {},
+    projects: freshProjectState(),
     departures: [],
     withdrawals: [],
+    projectContributions: [],
     contributors: []
   };
 }
@@ -166,7 +197,9 @@ function addItems(pool, items) {
 
 function withdrawItems(pool, items) {
   for (const [itemId, count] of Object.entries(items)) {
-    if ((pool[itemId] || 0) < count) return Object.freeze({ accepted: false, itemId, available: pool[itemId] || 0, requested: count });
+    if ((pool[itemId] || 0) < count) {
+      return Object.freeze({ accepted: false, itemId, available: pool[itemId] || 0, requested: count });
+    }
   }
   for (const [itemId, count] of Object.entries(items)) {
     pool[itemId] -= count;
@@ -175,29 +208,117 @@ function withdrawItems(pool, items) {
   return Object.freeze({ accepted: true });
 }
 
+function projectProjection(city, definition) {
+  const progress = city.projects[definition.id];
+  const completion = projectCompletion(definition, progress);
+  const availability = describeProjectAvailability(definition, { projects: city.projects, path: city.path });
+  return freezeJson({
+    id: definition.id,
+    name: definition.name,
+    category: definition.category,
+    requiredPath: definition.requiredPath,
+    prerequisites: definition.prerequisites,
+    requirements: definition.requirements,
+    unlocks: definition.unlocks,
+    mapEffect: definition.mapEffect,
+    status: availability.status,
+    blockedReason: availability.reason,
+    investedXp: { ...progress.investedXp },
+    investedItems: { ...progress.investedItems },
+    missingXp: completion.missingXp,
+    missingItems: completion.missingItems,
+    xpRemaining: completion.xpRemaining,
+    itemsRemaining: completion.itemsRemaining,
+    complete: completion.complete,
+    completedAtWorldHour: progress.completedAtWorldHour,
+    completedBy: progress.completedBy,
+    contributionCount: progress.contributions.length
+  });
+}
+
 function cityProjection(city) {
   const skillRanks = Object.fromEntries(RPG_XP_DOMAINS.map(domain => [domain, rankFromXp(city.domainXp[domain] || 0)]));
   const pathRanks = Object.fromEntries(RPG_CITY_PATHS.map(path => [path, rankFromXp(city.pathXp[path] || 0)]));
+  const emergence = describeCityEmergence({ projects: city.projects, path: city.path });
+  const projects = CITY_PROJECT_DEFINITIONS.map(definition => projectProjection(city, definition));
   return freezeJson({
     id: city.id,
     path: city.path,
     pathRevision: city.pathRevision,
     cityRank: rankFromXp(city.totalXp),
+    stage: emergence.stage,
+    stageIndex: emergence.stageIndex,
     totalXp: city.totalXp,
     domainXp: city.domainXp,
+    unassignedXp: city.unassignedXp,
+    unassignedXpTotal: sumValues(city.unassignedXp),
     skillRanks,
     pathXp: city.pathXp,
     pathRanks,
     activePathRank: pathRanks[city.path],
     sharedItems: Object.fromEntries(Object.entries(city.sharedItems).sort(([a], [b]) => a.localeCompare(b))),
+    projects,
+    completedProjectCount: emergence.completedProjectCount,
+    availableProjectCount: projects.filter(project => project.status === 'available').length,
+    possibilities: emergence.possibilities,
+    worldEffects: emergence.worldEffects,
+    emergence: {
+      stage: emergence.stage,
+      completedProjectCount: emergence.completedProjectCount,
+      categoryCount: emergence.categoryCount,
+      hallmarkCount: emergence.hallmarkCount,
+      investedProjectXp: emergence.investedProjectXp
+    },
     departureCount: city.departures.length,
     withdrawalCount: city.withdrawals.length,
+    projectContributionCount: city.projectContributions.length,
     contributors: [...city.contributors].sort(),
     pathHistory: city.pathHistory,
     departures: city.departures,
     withdrawals: city.withdrawals,
-    truthBoundary: 'XP is shared civilization history, not an account currency. City/skill/path ranks are deterministic derived views at 100 XP per rank.'
+    truthBoundary:
+      'Shared domain XP is cumulative knowledge and is not spent away. Each safe departure also creates equal unassigned development XP. Project funding consumes only that unassigned development XP plus real shared materials. Completed projects deterministically alter city stage, possibilities and map effects.'
   });
+}
+
+function validateProjectFunding(city, definition, xp, items) {
+  const progress = city.projects[definition.id];
+  const availability = describeProjectAvailability(definition, { projects: city.projects, path: city.path });
+  if (availability.status !== 'available') {
+    return Object.freeze({ accepted: false, reason: `rpg-city-project-${availability.status}`, message: availability.reason });
+  }
+
+  const completion = projectCompletion(definition, progress);
+  if (completion.complete) return Object.freeze({ accepted: false, reason: 'rpg-city-project-already-complete' });
+  if (Object.keys(xp).length === 0 && Object.keys(items).length === 0) {
+    return Object.freeze({ accepted: false, reason: 'rpg-city-project-contribution-empty' });
+  }
+
+  for (const [domain, amount] of Object.entries(xp)) {
+    if (!(domain in definition.requirements.xp)) {
+      return Object.freeze({ accepted: false, reason: 'rpg-city-project-xp-domain-not-required', domain });
+    }
+    if (amount > (completion.missingXp[domain] || 0)) {
+      return Object.freeze({ accepted: false, reason: 'rpg-city-project-xp-overfund', domain, requested: amount, missing: completion.missingXp[domain] || 0 });
+    }
+    if (amount > (city.unassignedXp[domain] || 0)) {
+      return Object.freeze({ accepted: false, reason: 'rpg-city-project-xp-insufficient', domain, requested: amount, available: city.unassignedXp[domain] || 0 });
+    }
+  }
+
+  for (const [itemId, count] of Object.entries(items)) {
+    if (!(itemId in definition.requirements.items)) {
+      return Object.freeze({ accepted: false, reason: 'rpg-city-project-item-not-required', itemId });
+    }
+    if (count > (completion.missingItems[itemId] || 0)) {
+      return Object.freeze({ accepted: false, reason: 'rpg-city-project-item-overfund', itemId, requested: count, missing: completion.missingItems[itemId] || 0 });
+    }
+    if (count > (city.sharedItems[itemId] || 0)) {
+      return Object.freeze({ accepted: false, reason: 'rpg-city-project-item-insufficient', itemId, requested: count, available: city.sharedItems[itemId] || 0 });
+    }
+  }
+
+  return Object.freeze({ accepted: true });
 }
 
 export class PersistentRpgWorld {
@@ -355,7 +476,10 @@ export class PersistentRpgWorld {
       const experience = normalizeXp(payload.experience || {});
       const items = normalizeItems(payload.items || {});
       const contributedXp = sumValues(experience);
-      for (const domain of RPG_XP_DOMAINS) city.domainXp[domain] += experience[domain];
+      for (const domain of RPG_XP_DOMAINS) {
+        city.domainXp[domain] += experience[domain];
+        city.unassignedXp[domain] += experience[domain];
+      }
       city.totalXp += contributedXp;
       city.pathXp[city.path] += contributedXp;
       addItems(city.sharedItems, items);
@@ -380,6 +504,7 @@ export class PersistentRpgWorld {
         lifeId,
         cityId: city.id,
         contributedXp,
+        developmentXpAdded: contributedXp,
         pathAtDeparture: city.path,
         city: cityProjection(city)
       };
@@ -403,6 +528,15 @@ export class PersistentRpgWorld {
     } else if (eventType === 'rpg.city.pool.withdrawn') {
       const city = this.city(payload.cityId || this.defaultCityId, { create: false });
       if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
+      const emergence = describeCityEmergence({ projects: city.projects, path: city.path });
+      if (!emergence.possibilities.includes('shared-withdrawal')) {
+        return Object.freeze({
+          accepted: false,
+          reason: 'rpg-city-shared-withdrawal-locked',
+          requiredProject: 'storehouse',
+          revision: this.revision
+        });
+      }
       const items = normalizeItems(payload.items || {});
       if (Object.keys(items).length === 0) return Object.freeze({ accepted: false, reason: 'rpg-withdrawal-empty', revision: this.revision });
       const withdrawal = withdrawItems(city.sharedItems, items);
@@ -430,6 +564,77 @@ export class PersistentRpgWorld {
       }
       city.withdrawals.push(entry);
       result = { kind: 'city-pool-withdrawn', cityId: city.id, withdrawalId: entry.id, items, city: cityProjection(city) };
+    } else if (eventType === 'rpg.city.project.contributed') {
+      const city = this.city(payload.cityId || this.defaultCityId, { create: false });
+      if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
+      const projectId = nonEmpty(payload.projectId, 'payload.projectId');
+      const definition = cityProjectDefinition(projectId);
+      if (!definition) return Object.freeze({ accepted: false, reason: 'rpg-city-project-not-found', projectId, revision: this.revision });
+      const xp = normalizeXpAllocation(payload.xp || {});
+      const items = normalizeItems(payload.items || {});
+      const validation = validateProjectFunding(city, definition, xp, items);
+      if (!validation.accepted) return Object.freeze({ ...validation, projectId, revision: this.revision });
+
+      const beforeEmergence = describeCityEmergence({ projects: city.projects, path: city.path });
+      const progress = city.projects[projectId];
+
+      for (const [domain, amount] of Object.entries(xp)) {
+        city.unassignedXp[domain] -= amount;
+        progress.investedXp[domain] = (progress.investedXp[domain] || 0) + amount;
+      }
+      for (const [itemId, count] of Object.entries(items)) {
+        city.sharedItems[itemId] -= count;
+        if (city.sharedItems[itemId] === 0) delete city.sharedItems[itemId];
+        progress.investedItems[itemId] = (progress.investedItems[itemId] || 0) + count;
+      }
+
+      const contribution = {
+        id: nonEmpty(payload.contributionId || `${projectId}:${worldHour}:${actorId}`, 'payload.contributionId'),
+        projectId,
+        actorId,
+        worldHour,
+        xp,
+        items
+      };
+      if (city.projectContributions.some(existing => existing.id === contribution.id)) {
+        for (const [domain, amount] of Object.entries(xp)) {
+          city.unassignedXp[domain] += amount;
+          progress.investedXp[domain] -= amount;
+          if (progress.investedXp[domain] === 0) delete progress.investedXp[domain];
+        }
+        for (const [itemId, count] of Object.entries(items)) {
+          city.sharedItems[itemId] = (city.sharedItems[itemId] || 0) + count;
+          progress.investedItems[itemId] -= count;
+          if (progress.investedItems[itemId] === 0) delete progress.investedItems[itemId];
+        }
+        return Object.freeze({ accepted: false, reason: 'rpg-city-project-contribution-id-exists', revision: this.revision });
+      }
+
+      progress.contributions.push(contribution);
+      city.projectContributions.push(contribution);
+      addContributor(city, actorId);
+
+      const completion = projectCompletion(definition, progress);
+      let completedNow = false;
+      if (completion.complete && progress.completedAtWorldHour === null) {
+        progress.completedAtWorldHour = worldHour;
+        progress.completedBy = actorId;
+        completedNow = true;
+      }
+
+      const afterEmergence = describeCityEmergence({ projects: city.projects, path: city.path });
+      result = {
+        kind: 'city-project-contributed',
+        cityId: city.id,
+        projectId,
+        completedNow,
+        stageBefore: beforeEmergence.stage,
+        stageAfter: afterEmergence.stage,
+        stageChanged: beforeEmergence.stage !== afterEmergence.stage,
+        unlocked: completedNow ? definition.unlocks : [],
+        mapEffect: completedNow ? definition.mapEffect : null,
+        city: cityProjection(city)
+      };
     }
 
     this.commandIds.add(command.commandId);
@@ -445,6 +650,7 @@ export class PersistentRpgWorld {
   snapshot() {
     return freezeJson({
       schema: PERSISTENT_RPG_WORLD_SCHEMA,
+      cityEmergenceStages: CITY_EMERGENCE_STAGES,
       worldId: this.worldId,
       worldSeed: this.worldSeed,
       revision: this.revision,
@@ -470,7 +676,8 @@ export class PersistentRpgWorld {
         .map(cityProjection),
       endedLives: this.lifeEnds.map(entry => freezeJson(cloneJson(entry))),
       departedLives: this.lifeDepartures.map(entry => freezeJson(cloneJson(entry))),
-      truthBoundary: 'Voluntary departure transfers declared life XP/items into the selected city pool. Death does not automatically transfer them. City path changes redirect future contributed XP to a different retained path bucket; old path progress is not erased.'
+      truthBoundary:
+        'Voluntary departure transfers declared life XP/items into the selected city and creates equal unassigned development XP. Development XP and pooled materials can then be deliberately assigned to deterministic city projects. Projects can alter stage, possibilities and rendered map effects. Death does not automatically transfer life-local XP/items.'
     });
   }
 }

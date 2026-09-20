@@ -42,12 +42,14 @@ life1.depart();
 
 let city = world.snapshot().cities.find(entry => entry.id === 'valley-city');
 assert.equal(city.totalXp, 200);
+assert.equal(city.unassignedXpTotal, 200);
 assert.equal(city.skillRanks.craft, 1);
 assert.equal(city.skillRanks.exploration, 0);
 assert.equal(city.path, 'balanced');
 assert.equal(city.pathXp.balanced, 200);
 assert.equal(city.sharedItems['iron-knife'], 1);
 assert.equal(city.sharedItems['herb-bundle'], 2);
+assert.equal(city.stage, 'seed-camp');
 
 const pathChange = world.applyCommand({
   commandId: 'path-forge',
@@ -63,6 +65,7 @@ const life2 = createRpgCharacterLife({
   citySupport: world.snapshot().cities.find(entry => entry.id === 'valley-city')
 });
 assert.equal(life2.snapshot().citySupport.skills.craft, 1);
+assert.equal(life2.snapshot().citySupport.stage, 'seed-camp');
 assert.equal(life2.snapshot().persistentAccountPowerGain, 0);
 life2.gainExperience('craft', 110);
 life2.addItem('scrap-plate', 3);
@@ -77,27 +80,27 @@ life2.depart();
 
 city = world.snapshot().cities.find(entry => entry.id === 'valley-city');
 assert.equal(city.totalXp, 310);
+assert.equal(city.unassignedXpTotal, 310);
 assert.equal(city.skillRanks.craft, 2);
 assert.equal(city.pathXp.balanced, 200);
 assert.equal(city.pathXp.forge, 110);
 assert.equal(city.activePathRank, 1);
 
-const withdraw = world.applyCommand({
-  commandId: 'withdraw-1',
+const lockedWithdraw = world.applyCommand({
+  commandId: 'withdraw-locked-1',
   eventType: 'rpg.city.pool.withdrawn',
   actorId: 'player-c',
   payload: {
     worldHour: 8,
     cityId: 'valley-city',
-    withdrawalId: 'withdrawal-1',
-    items: { 'iron-knife': 1, 'scrap-plate': 2 },
+    withdrawalId: 'withdrawal-locked-1',
+    items: { 'iron-knife': 1 },
     purpose: 'equip-new-expedition'
   }
 });
-assert.equal(withdraw.accepted, true);
-city = world.snapshot().cities.find(entry => entry.id === 'valley-city');
-assert.equal(city.sharedItems['iron-knife'], undefined);
-assert.equal(city.sharedItems['scrap-plate'], 1);
+assert.equal(lockedWithdraw.accepted, false);
+assert.equal(lockedWithdraw.reason, 'rpg-city-shared-withdrawal-locked');
+assert.equal(lockedWithdraw.requiredProject, 'storehouse');
 
 const dyingLife = createRpgCharacterLife({ actorId: 'player-d', lifeId: 'life-death', startingItems: { 'rare-map': 1 } });
 dyingLife.gainExperience('lore', 500);

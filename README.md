@@ -1,60 +1,97 @@
 # AXM Persistent World RPG
 
-Status: **EXPERIMENTAL — CLEAN RPG RESTART**
+Status: **EXPERIMENTAL — EMERGENT CITY RUNG**
 
-This branch began as a copy of `axm-global-state-rts` because that project already had useful Foundation Planet, state, website, spatial, input and persistence machinery.
+This branch is a clean RPG restart built on the existing AXM Foundation Planet and reusable deterministic/host state machinery.
 
-The active RTS game and presentation layer has now been removed from this branch.
+The active rule remains:
 
-## Active rule
+> **Players are temporary. The world and its cities inherit what players safely leave behind.**
 
-**Players are temporary. The world and its cities inherit what players safely leave behind.**
+## City emergence
 
-A life may gain temporary XP and carry items. Safe departure can transfer those into a shared city. Death does not magically bank them. Cities keep domain XP, shared inventory, overall rank and retained development-path XP.
+The city no longer grows from a single abstract level bar.
 
-Current city directions:
+Safe departure contributes:
 
-- balanced
-- frontier
-- forge
-- harvest
-- defense
-- trade
-- lore
+- cumulative shared skill XP;
+- an equal amount of unassigned **development XP**;
+- the carried physical materials/items.
 
-Changing direction affects future contributions. Previous path progress is retained rather than erased.
+Shared skill XP is knowledge and is never spent away. Development XP is deliberately allocated into city projects. Physical materials are consumed by those projects.
 
-## Clean visual boundary
+Projects can be partially funded across many lives. Progress survives path changes.
 
-The active browser surface now consists only of:
+The first project fabric includes:
+
+- Hearth Circle
+- Storehouse
+- Trailhead
+- Field Kitchen
+- Workshop
+- Archive
+- Watch Post
+- Community Gardens
+- Market Square
+- Road Yard
+- Palisade
+- Guild Hall
+- Waterworks
+- Council Hall
+- Frontier Lodge
+- Foundry
+- Granary
+- Bastion
+- Caravanserai
+- Great Archive
+- Commons Forum
+
+The final seven are path-specific landmarks. Their progress remains if the city changes direction and can continue when that path becomes active again.
+
+## Emergent stages
+
+Stages are derived from what has actually been completed, not chosen directly:
+
+`seed-camp → camp → hamlet → village → town → city → regional-city`
+
+Later stages require combinations of completed projects, category diversity, invested project XP and eventually multiple path hallmarks. A city therefore records its real history of choices rather than climbing one universal tech tree.
+
+## Projects change the world
+
+Completed projects now affect both rules and presentation.
+
+Examples:
+
+- **Storehouse** unlocks taking shared items back out of the communal pool.
+- **Field Kitchen / Gardens / Granary** improve starting supply support for later lives.
+- **Storehouse / Guild Hall** increase later-life carry support.
+- **Road Yard / Frontier Lodge** expand the usable local map span.
+- **Road Yard** adds visible roads.
+- **Palisade / Bastion** add visible fortification rings.
+- Workshops, archives, markets, gardens, halls, waterworks and path landmarks appear as persistent structures on the local Foundation surface.
+- City stage itself increases the number and footprint of ordinary settlement structures.
+
+The renderer still uses deliberately simple procedural primitives. These are state proofs, not final art.
+
+## Clean active surface
+
+The browser game layer remains only:
 
 - `game/index.html`
 - `game/rpg-world.css`
 - `game/rpg-world.mjs`
 
-The RPG renderer is new:
+The clean RPG renderer lives at:
 
 - `src/rpg/presentation/rpg-renderer.mjs`
 - `src/rpg/world/rpg-region.mjs`
 - `src/rpg/world/rpg-foundation-sampler.mjs`
 
-It samples the existing Foundation Planet directly. It does **not** load the donor RTS renderer, RTS local scene, Crew, buildings, combat presentation, strategic overlays, Creation Machine RTS asset adoption, or post-apocalyptic style.
+City emergence logic lives at:
 
-## Capabilities deliberately retained underneath
+- `src/rpg/city/city-emergence.mjs`
 
-The branch still retains reusable donor infrastructure while capability extraction continues:
-
-- pinned Foundation Planet submodule;
-- global globe sampling;
-- local/global spatial-frame conversion;
-- hosted hash-chained world journal;
-- world participants and equal human/machine action admission;
-- browser/host API seams;
-- deterministic RPG world replay;
-- persistent city inheritance;
-- existing server/bootstrap machinery.
-
-Dormant donor source under older `src/` areas remains available as rollback/reference until each useful capability is either adopted into the RPG namespace or proven unnecessary. It is not part of the active RPG browser path.
+The active RPG does not load the donor RTS units, buildings, combat shell, strategic overlays or post-apocalyptic presentation.
 
 ## Run
 
@@ -64,7 +101,7 @@ git checkout game/persistent-rpg-world-20260920
 npm start
 ```
 
-Open:
+Then open:
 
 ```
 http://127.0.0.1:4174/game/
@@ -76,19 +113,23 @@ http://127.0.0.1:4174/game/
 npm test
 ```
 
-The branch-specific gates verify:
+The RPG-specific suite verifies:
 
-- world progression without account-power progression;
-- safe-departure city XP/item inheritance;
-- retained city path progress;
-- deterministic hosted hash-journal replay;
+- world progression without private account-power carryover;
+- safe-departure inheritance;
+- development XP/material project funding;
+- project prerequisites and path locks;
+- retained partial project progress across path changes;
+- automatic city-stage emergence;
+- project-driven possibility unlocks;
+- map-span changes from infrastructure;
+- later-life supply/carry support;
+- deterministic host journal replay;
 - human/machine participant parity;
-- spatial-frame capability;
-- active browser boundary contains no RTS game/presentation files;
-- syntax of the clean RPG renderer and host seams.
+- the clean no-RTS active browser boundary.
 
 ## Truth boundary
 
-This is a clean architectural restart, not a finished RPG.
+This is the first deep city-emergence system, not a finished civilization simulator.
 
-The globe and local Foundation surface are real rendered inputs from the existing planet model. The local RPG terrain renderer is intentionally simple and new. NPC ecology, individual character movement/animation, final city visuals, combat, quests, economy, multiplayer synchronization, world-scale local streaming, final materials and visual acceptance remain future work.
+Population, NPC occupations, construction time, material refinement, maintenance, decay, city migration, multiple independent cities, political ownership, actual trade simulation, ecology-driven agriculture, procedural architecture quality, multiplayer deployment and final game balance remain future work.

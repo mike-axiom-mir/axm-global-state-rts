@@ -1,0 +1,40 @@
+{
+  "schema": "axm.sound-mix-project/v1",
+  "id": "global-state-rts-local-combat-mix",
+  "title": "Global State RTS — LOCAL Combat Mix",
+  "sampleRate": 48000,
+  "tracks": [
+    {
+      "schema": "axm.audio-track/v1",
+      "id": "sfx",
+      "name": "SFX",
+      "gain": 0.88,
+      "pan": 0,
+      "mute": false,
+      "solo": false,
+      "placements": []
+    },
+    {
+      "schema": "axm.audio-track/v1",
+      "id": "music",
+      "name": "Music",
+      "gain": 0.68,
+      "pan": 0,
+      "mute": false,
+      "solo": false,
+      "placements": []
+    },
+    {
+      "schema": "axm.audio-track/v1",
+      "id": "voice",
+      "name": "Voice",
+      "gain": 0.95,
+      "pan": 0,
+      "mute": false,
+      "solo": false,
+      "placements": []
+    }
+  ],
+  "automation": [],
+  "revision": 3
+}

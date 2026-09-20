@@ -1,6 +1,7 @@
 import { createAudioFabricPackPlayer } from './audio-fabric-pack-player.mjs';
 import { GamepadSeatRouter } from '../src/input/gamepad-seat-router.mjs';
 import { cueForLocalCombatResult } from '../src/presentation/local-combat-audio.mjs';
+import { resolveLocalCombatMix, validateLocalCombatMixPolicy } from '../src/presentation/local-combat-mix.mjs';
 import { createLocalRoster } from '../src/session/seat-contract.mjs';
 import { LocalSeatRuntime } from '../src/session/local-seat-runtime.mjs';
 import { createLocalCivilizationGameplay } from '../src/sim/local-civilization-gameplay.mjs';
@@ -9,12 +10,17 @@ import { createLocalPartyGameplay } from '../src/sim/local-party-gameplay.mjs';
 import { createLocalRegionSimulation } from '../src/sim/local-region-sim.mjs';
 import { createStarterRegion } from '../src/world/starter-region.mjs';
 
+const MIX_PROJECT_URL = '../assets/audio/local-combat-mix-project.json';
+const MIX_SCENES_URL = '../assets/audio/local-combat-mix-scenes.json';
 const seatId = 'seat-1';
 const simulation = createLocalRegionSimulation(createStarterRegion(seatId));
 const party = createLocalPartyGameplay(simulation.snapshot().crew.map(crew => crew.id));
 const civilization = createLocalCivilizationGameplay(simulation, { seatId });
 const combat = createLocalCombatGameplay({ seatId, simulation, partyGameplay: party, civilizationGameplay: civilization });
 const audio = createAudioFabricPackPlayer();
+let mixPromise = null;
+let lastMix = null;
+let mixFailure = null;
 
 const roster = createLocalRoster({ seatKinds: ['human'], teams: ['coop'] });
 const runtime = new LocalSeatRuntime({ roster });
@@ -63,14 +69,53 @@ function applyAdmittedAction(event) {
   return Object.freeze({ handled: false, accepted: false, reason: 'action-not-used-by-combat-proving-ground' });
 }
 
+async function loadCombatMix() {
+  if (!mixPromise) {
+    mixPromise = Promise.all([
+      fetch(MIX_PROJECT_URL).then(response => {
+        if (!response.ok) throw new Error(`mix project fetch failed: ${response.status}`);
+        return response.json();
+      }),
+      fetch(MIX_SCENES_URL).then(response => {
+        if (!response.ok) throw new Error(`mix scenes fetch failed: ${response.status}`);
+        return response.json();
+      })
+    ]).then(([project, policy]) => {
+      validateLocalCombatMixPolicy(project, policy);
+      mixFailure = null;
+      return Object.freeze({ project, policy });
+    }).catch(error => {
+      mixFailure = String(error?.message || error);
+      throw error;
+    });
+  }
+  return mixPromise;
+}
+
 function refreshAudioUi(message = null) {
   const snapshot = audio.snapshot();
   audioToggle.textContent = `Combat audio: ${snapshot.enabled ? 'on' : 'off'}`;
   audioToggle.setAttribute('aria-pressed', snapshot.enabled ? 'true' : 'false');
   if (message) audioStatus.textContent = message;
+  else if (mixFailure) audioStatus.textContent = `Mix fallback · ${mixFailure}`;
   else if (snapshot.lastFailure) audioStatus.textContent = `Audio fallback · ${snapshot.lastFailure}`;
-  else if (snapshot.enabled) audioStatus.textContent = 'Audio enabled · pre-rendered AXM Audio Fabric combat cues.';
+  else if (snapshot.enabled && lastMix) audioStatus.textContent = `Audio enabled · ${lastMix.sceneId} mix · SFX ${lastMix.buses.sfx.gain.toFixed(2)} · ${snapshot.activeVoiceCount}/${lastMix.maxVoices} voices.`;
+  else if (snapshot.enabled) audioStatus.textContent = 'Audio enabled · Sound Mixer project ready for product cue routing.';
   else audioStatus.textContent = 'Audio is opt-in and has no combat authority.';
+}
+
+async function enableAudio() {
+  const result = await audio.unlock();
+  if (!result.enabled) return result;
+  try {
+    await loadCombatMix();
+    refreshAudioUi('Audio enabled · Sound Mixer project loaded; SFX/music/voice buses are inspectable product state.');
+    return result;
+  } catch (error) {
+    audio.disable();
+    refreshAudioUi(`Audio disabled · mix policy unavailable: ${String(error?.message || error)}`);
+    return Object.freeze({ enabled: false, reason: mixFailure });
+  }
 }
 
 async function toggleAudio() {
@@ -79,16 +124,38 @@ async function toggleAudio() {
     refreshAudioUi('Audio disabled.');
     return;
   }
-  const result = await audio.unlock();
-  refreshAudioUi(result.enabled ? 'Audio enabled · pre-rendered AXM Audio Fabric combat cues.' : `Audio unavailable · ${result.reason || result.state}`);
+  await enableAudio();
 }
 
-function playCombatAudio(result, outcome) {
+async function playCombatAudio(result, outcome) {
   const cueId = cueForLocalCombatResult(result, outcome);
-  if (!cueId) return;
-  void audio.play(cueId).then(playback => {
-    if (!playback.played && playback.reason !== 'disabled') refreshAudioUi(`Audio fallback · ${playback.reason}`);
-  });
+  if (!cueId || !audio.snapshot().enabled) return;
+  try {
+    const { project, policy } = await loadCombatMix();
+    const mix = resolveLocalCombatMix(project, policy, cueId);
+    lastMix = mix;
+    const sfx = mix.buses.sfx;
+    if (!sfx.audible || sfx.gain <= 0) {
+      refreshAudioUi(`Mix ${mix.sceneId} · SFX bus muted by canonical Sound Mixer state.`);
+      return;
+    }
+    const playback = await audio.play(cueId, {
+      gain: sfx.gain,
+      pan: sfx.pan,
+      priority: mix.priority,
+      maxVoices: mix.maxVoices
+    });
+    if (!playback.played && playback.reason !== 'disabled' && playback.reason !== 'voice-budget') {
+      refreshAudioUi(`Audio fallback · ${playback.reason}`);
+      return;
+    }
+    refreshAudioUi(playback.played
+      ? `Mix ${mix.sceneId} · SFX ${sfx.gain.toFixed(2)} · priority ${mix.priority} · ${audio.snapshot().activeVoiceCount}/${mix.maxVoices} voices.`
+      : `Mix ${mix.sceneId} · ${cueId} dropped by ${mix.maxVoices}-voice priority budget.`);
+  } catch (error) {
+    mixFailure = String(error?.message || error);
+    refreshAudioUi(`Mix fallback · ${mixFailure}`);
+  }
 }
 
 function submitAction(actionId, sourceKind = 'keyboard-pointer', timestampMs = performance.now()) {
@@ -103,7 +170,7 @@ function submitAction(actionId, sourceKind = 'keyboard-pointer', timestampMs = p
     if (result.accepted) status.textContent = outcome?.message || `${actionId} accepted`;
     else if (result.handled) status.textContent = outcome?.message || `${actionId} rejected · ${result.reason}`;
     else status.textContent = `${actionId} is not used on this proving surface.`;
-    playCombatAudio(result, outcome);
+    void playCombatAudio(result, outcome);
     render();
     return Object.freeze({ admitted, command: result });
   } catch (error) {
@@ -194,7 +261,7 @@ function frame(now) {
       const result = applyAdmittedAction(admitted.event);
       const outcome = combat.snapshot().lastOutcome;
       status.textContent = result.accepted ? (outcome?.message || `${admitted.event.actionId} accepted`) : (outcome?.message || result.reason || 'rejected');
-      playCombatAudio(result, outcome);
+      void playCombatAudio(result, outcome);
       render();
     }
   }
@@ -203,9 +270,17 @@ function frame(now) {
 
 Object.defineProperty(window, '__AXM_LOCAL_COMBAT_PROVING_GROUND__', {
   value: Object.freeze({
-    snapshot: () => Object.freeze({ simulation: simulation.snapshot(), party: party.snapshot(), civilization: civilization.snapshot(), combat: combat.snapshot(), audio: audio.snapshot() }),
+    snapshot: () => Object.freeze({
+      simulation: simulation.snapshot(),
+      party: party.snapshot(),
+      civilization: civilization.snapshot(),
+      combat: combat.snapshot(),
+      audio: audio.snapshot(),
+      mix: lastMix,
+      mixFailure
+    }),
     submitAction: actionId => submitAction(actionId, 'keyboard-pointer', performance.now()),
-    enableAudio: () => audio.unlock(),
+    enableAudio,
     disableAudio: () => audio.disable()
   }),
   configurable: false

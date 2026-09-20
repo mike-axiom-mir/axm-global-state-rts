@@ -1,5 +1,16 @@
 import { CITY_PROJECT_INDEX } from './city-emergence.mjs';
 import {
+  CITY_PRODUCT_DEFINITIONS,
+  CITY_PRODUCT_SCHEMA,
+  cityProductCount,
+  configureCityProductTargets,
+  consumeCityProduct,
+  createCityProductState,
+  produceCityProducts
+} from './city-products.mjs';
+import { createRpgRegion } from '../world/rpg-region.mjs';
+import { sampleRpgLocalSurface } from '../world/rpg-foundation-sampler.mjs';
+import {
   RPG_ADVENTURE_FOCI,
   RPG_ADVENTURE_RISKS,
   RPG_EQUIPMENT_SLOTS,
@@ -14,7 +25,7 @@ import {
   strongestAllowedRpgAdventureRisk
 } from '../character-capability.mjs';
 
-export const CITY_VILLAGER_SIM_SCHEMA = 'axm.persistent-rpg.city-villager-sim/v0.5';
+export const CITY_VILLAGER_SIM_SCHEMA = 'axm.persistent-rpg.city-villager-sim/v0.6';
 export const CITY_VILLAGER_SCHEMA = 'axm.persistent-rpg.villager/v0.4';
 
 export const VILLAGER_SKILLS = Object.freeze([
@@ -47,6 +58,22 @@ export const VILLAGER_ACTIONS = Object.freeze([
 ]);
 
 const MATERIALS = Object.freeze(['timber', 'stone', 'fiber', 'ore']);
+
+const RESOURCE_REGION = createRpgRegion();
+const RESOURCE_CELL_SIZE_M = 180;
+const RESOURCE_GATHER_RADIUS_M = 125;
+
+const BIOME_RESOURCE_TABLE = Object.freeze({
+  coast: Object.freeze(['stone', 'fiber', 'stone']),
+  desert: Object.freeze(['stone', 'ore', 'stone']),
+  savanna: Object.freeze(['fiber', 'stone', 'fiber']),
+  grassland: Object.freeze(['fiber', 'stone', 'fiber']),
+  temperate_forest: Object.freeze(['timber', 'fiber', 'timber']),
+  rainforest: Object.freeze(['timber', 'fiber', 'timber']),
+  taiga: Object.freeze(['timber', 'ore', 'timber']),
+  tundra: Object.freeze(['stone', 'fiber', 'ore']),
+  alpine: Object.freeze(['ore', 'stone', 'ore'])
+});
 
 export const DEFAULT_EXPLORER_PACKAGE = Object.freeze({
   weapon: 'iron-knife',
@@ -185,6 +212,172 @@ function freezeJson(value) {
   if (value === null || value === undefined || typeof value !== 'object') return value;
   if (Array.isArray(value)) return Object.freeze(value.map(freezeJson));
   return Object.freeze(Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, freezeJson(entry)])));
+}
+
+function resourceCell(xM, zM) {
+  const gx = Math.floor(Number(xM || 0) / RESOURCE_CELL_SIZE_M);
+  const gz = Math.floor(Number(zM || 0) / RESOURCE_CELL_SIZE_M);
+  return Object.freeze({
+    gx,
+    gz,
+    key: `${gx}:${gz}`,
+    centerXM: gx * RESOURCE_CELL_SIZE_M + RESOURCE_CELL_SIZE_M / 2,
+    centerZM: gz * RESOURCE_CELL_SIZE_M + RESOURCE_CELL_SIZE_M / 2
+  });
+}
+
+function resourceSurfaceAt(xM, zM) {
+  return sampleRpgLocalSurface(RESOURCE_REGION.frame, Number(xM), Number(zM), {
+    enforceOperationalRadius: false
+  });
+}
+
+function resourceMaterialForCell(simulation, cell, biome) {
+  const table = BIOME_RESOURCE_TABLE[biome] || MATERIALS;
+  return table[Math.floor(unit(simulation.worldSeed, `resource-material:${cell.key}:${biome}`) * table.length) % table.length];
+}
+
+function resourceCellProductive(simulation, cell, biome) {
+  if (['deep_ocean', 'ocean', 'ice'].includes(biome)) return false;
+  const threshold =
+    ['alpine', 'taiga', 'temperate_forest', 'rainforest'].includes(biome) ? 0.46 :
+    ['desert', 'tundra'].includes(biome) ? 0.38 :
+    0.34;
+  return unit(simulation.worldSeed, `resource-bearing:${cell.key}:${biome}`) < threshold;
+}
+
+export function prospectCityResourceSite(simulation, {
+  xM = 0,
+  zM = 0,
+  discoveredBy = 'unknown',
+  tick = simulation?.tick ?? 0
+} = {}) {
+  if (!simulation || simulation.schema !== CITY_VILLAGER_SIM_SCHEMA) throw new TypeError('city villager simulation required');
+  const cell = resourceCell(xM, zM);
+  const existing = simulation.prospectedCells[cell.key];
+  if (existing) {
+    const site = existing.siteId
+      ? simulation.resourceSites.find(candidate => candidate.id === existing.siteId) || null
+      : null;
+    return Object.freeze({
+      accepted: true,
+      reused: true,
+      productive: Boolean(site),
+      site: site ? freezeJson(cloneJson(site)) : null,
+      cell: freezeJson(cloneJson(existing))
+    });
+  }
+
+  const surface = resourceSurfaceAt(cell.centerXM, cell.centerZM);
+  const biome = String(surface.planet?.biome || 'unknown');
+  const productive = resourceCellProductive(simulation, cell, biome);
+  let site = null;
+
+  if (productive) {
+    const quality = 1 + Math.floor(unit(simulation.worldSeed, `resource-quality:${cell.key}`) * 3);
+    const materialId = resourceMaterialForCell(simulation, cell, biome);
+    const remaining = 2 + quality * 2 + Math.floor(unit(simulation.worldSeed, `resource-yield:${cell.key}`) * 3);
+    const offsetX = (unit(simulation.worldSeed, `resource-x:${cell.key}`) - 0.5) * RESOURCE_CELL_SIZE_M * 0.55;
+    const offsetZ = (unit(simulation.worldSeed, `resource-z:${cell.key}`) - 0.5) * RESOURCE_CELL_SIZE_M * 0.55;
+    site = {
+      id: `${simulation.cityId}:resource:${cell.key}`,
+      cellKey: cell.key,
+      materialId,
+      biome,
+      quality,
+      remaining,
+      initialYield: remaining,
+      xM: Number((cell.centerXM + offsetX).toFixed(2)),
+      zM: Number((cell.centerZM + offsetZ).toFixed(2)),
+      discoveredTick: Number(tick),
+      discoveredBy: String(discoveredBy),
+      depletedTick: null
+    };
+    simulation.resourceSites.push(site);
+  }
+
+  simulation.prospectedCells[cell.key] = {
+    key: cell.key,
+    gx: cell.gx,
+    gz: cell.gz,
+    centerXM: cell.centerXM,
+    centerZM: cell.centerZM,
+    biome,
+    productive,
+    siteId: site?.id || null,
+    prospectedTick: Number(tick),
+    prospectedBy: String(discoveredBy)
+  };
+  simulation.revision += 1;
+
+  return Object.freeze({
+    accepted: true,
+    reused: false,
+    productive,
+    site: site ? freezeJson(cloneJson(site)) : null,
+    cell: freezeJson(cloneJson(simulation.prospectedCells[cell.key]))
+  });
+}
+
+function nearestActiveResourceSite(simulation, xM, zM, maxDistanceM = RESOURCE_GATHER_RADIUS_M) {
+  const px = Number(xM || 0);
+  const pz = Number(zM || 0);
+  return simulation.resourceSites
+    .filter(site => site.remaining > 0)
+    .map(site => ({
+      site,
+      distance: Math.hypot(Number(site.xM) - px, Number(site.zM) - pz)
+    }))
+    .filter(entry => entry.distance <= maxDistanceM)
+    .sort((a, b) => a.distance - b.distance || b.site.quality - a.site.quality || a.site.id.localeCompare(b.site.id))[0] || null;
+}
+
+export function gatherCityResourceSite(simulation, {
+  xM = 0,
+  zM = 0,
+  gathererId = 'unknown',
+  tick = simulation?.tick ?? 0,
+  maxDistanceM = RESOURCE_GATHER_RADIUS_M
+} = {}) {
+  if (!simulation || simulation.schema !== CITY_VILLAGER_SIM_SCHEMA) throw new TypeError('city villager simulation required');
+  const nearest = nearestActiveResourceSite(simulation, xM, zM, maxDistanceM);
+  if (!nearest) {
+    return Object.freeze({ accepted: false, reason: 'no-active-resource-site-nearby' });
+  }
+  const site = nearest.site;
+  site.remaining -= 1;
+  if (site.remaining <= 0) {
+    site.remaining = 0;
+    site.depletedTick = Number(tick);
+  }
+  simulation.resourceGatherHistory.push({
+    tick: Number(tick),
+    siteId: site.id,
+    gathererId: String(gathererId),
+    materialId: site.materialId,
+    remainingAfter: site.remaining
+  });
+  while (simulation.resourceGatherHistory.length > 96) simulation.resourceGatherHistory.shift();
+  simulation.revision += 1;
+  return Object.freeze({
+    accepted: true,
+    siteId: site.id,
+    itemId: site.materialId,
+    count: 1,
+    quality: site.quality,
+    remaining: site.remaining,
+    depleted: site.remaining === 0
+  });
+}
+
+export function setCityProductionTargets(simulation, targets = {}) {
+  if (!simulation || simulation.schema !== CITY_VILLAGER_SIM_SCHEMA) throw new TypeError('city villager simulation required');
+  configureCityProductTargets(simulation.products, targets);
+  simulation.revision += 1;
+  return Object.freeze({
+    accepted: true,
+    products: freezeJson(cloneJson(simulation.products))
+  });
 }
 
 function emptySkills() {
@@ -513,14 +706,24 @@ function cityDefensePreview(simulation, city, wave = activePendingWave(simulatio
   const maintenance = clamp(simulation.economy.infrastructureCondition);
   const security = clamp(simulation.economy.security);
   const foodSupport = Math.min(4, simulation.economy.foodReserve / Math.max(1, simulation.residents.length * 3));
-  const foundationDefense = projectBonusRaw * (0.45 + maintenance * 0.55) * (0.82 + security * 0.18) + foodSupport;
-  const totalDefense = residentDefense + foundationDefense;
   const attackPower = Number(wave?.attackPower || 0);
+  const availableReserve = cityProductCount(simulation.products, 'defense-reserve');
+  const reserveUnits = attackPower > 0
+    ? Math.min(availableReserve, Math.max(1, Math.ceil(attackPower / 35)))
+    : Math.min(availableReserve, 4);
+  const defenseReserveBonus = reserveUnits * 10;
+  const foundationDefense =
+    projectBonusRaw * (0.45 + maintenance * 0.55) * (0.82 + security * 0.18)
+    + foodSupport
+    + defenseReserveBonus;
+  const totalDefense = residentDefense + foundationDefense;
   return Object.freeze({
     residentPower: Number(residentPower.toFixed(3)),
     residentDefense: Number(residentDefense.toFixed(3)),
     foundationDefense: Number(foundationDefense.toFixed(3)),
     projectDefenseRaw: projectBonusRaw,
+    defenseReserveUnits: reserveUnits,
+    defenseReserveBonus,
     infrastructureCondition: Number(maintenance.toFixed(4)),
     security: Number(security.toFixed(4)),
     totalDefense: Number(totalDefense.toFixed(3)),
@@ -594,6 +797,16 @@ function casualtyChanceFromDefenseRatio(ratio) {
 
 function resolveCityAttackWave(simulation, city, wave, effects) {
   const preview = cityDefensePreview(simulation, city, wave);
+  const reserveUnitsUsed = Number(preview.defenseReserveUnits || 0);
+  if (
+    reserveUnitsUsed > 0
+    && consumeCityProduct(simulation.products, 'defense-reserve', reserveUnitsUsed, {
+      tick: simulation.tick,
+      reason: `city-defense:${wave.id}`
+    })
+  ) {
+    effects.productConsumes['defense-reserve'] = (effects.productConsumes['defense-reserve'] || 0) + reserveUnitsUsed;
+  }
   const ratio = preview.defenseRatio || 0;
   const casualtyChance = casualtyChanceFromDefenseRatio(ratio);
   const lostResidentIds = [];
@@ -661,6 +874,7 @@ function resolveCityAttackWave(simulation, city, wave, effects) {
     resolvedTick: simulation.tick,
     preview,
     casualtyChance,
+    defenseReserveUnitsUsed: reserveUnitsUsed,
     lostResidentIds,
     wounded,
     integrityLoss: Number(integrityLoss.toFixed(4)),
@@ -925,32 +1139,52 @@ function deterministicMaterial(resident, tick) {
 }
 
 function adventureLoot(simulation, resident, risk, tick, successTier) {
-  const riskDef = rpgAdventureRiskDefinition(risk);
-  const countBase = Math.max(1, Math.round(riskDef.lootScale + (successTier === 'success' ? 1 : 0)));
-  const count = successTier === 'failure' ? 0 : countBase;
-  const items = {};
-  for (let index = 0; index < count; index++) {
-    const itemId = MATERIALS[Math.floor(unit(resident.seed, `adventure-loot:${tick}:${index}`) * MATERIALS.length) % MATERIALS.length];
-    items[itemId] = (items[itemId] || 0) + 1;
-  }
-  if (
-    successTier === 'success'
-    && risk !== 'safe'
-    && unit(resident.seed, `adventure-gear:${tick}`) > 0.78
-  ) {
-    const itemId = risk === 'bold'
-      ? pick(resident.seed, `adventure-gear-kind:${tick}`, ['field-weapon', 'reinforced-armor', 'field-pack'])
-      : pick(resident.seed, `adventure-gear-kind:${tick}`, ['iron-knife', 'scrap-plate', 'field-pack']);
-    items[itemId] = (items[itemId] || 0) + 1;
-  }
-  return items;
+  if (successTier !== 'success' || risk === 'safe') return {};
+  const chance = risk === 'bold' ? 0.22 : 0.12;
+  if (unit(resident.seed, `adventure-gear:${tick}`) >= chance) return {};
+  const itemId = risk === 'bold'
+    ? pick(resident.seed, `adventure-gear-kind:${tick}`, ['field-weapon', 'reinforced-armor', 'field-pack', 'rare-map'])
+    : pick(resident.seed, `adventure-gear-kind:${tick}`, ['iron-knife', 'scrap-plate', 'field-pack', 'lantern']);
+  return { [itemId]: 1 };
 }
-
 function resolveResidentAdventure(simulation, city, resident, tick, effects, party = null) {
   const capability = residentCapability(resident, simulation);
   const risk = strongestAllowedRpgAdventureRisk(capability, resident.adventurePolicy.maxRisk);
   if (!risk) return { attempted: false, reason: 'not-adventure-ready', capability };
 
+  const travelRationUsed = consumeCityProduct(simulation.products, 'travel-ration', 1, {
+    tick,
+    reason: `adventure:${resident.id}`
+  });
+  if (travelRationUsed) {
+    effects.productConsumes['travel-ration'] = (effects.productConsumes['travel-ration'] || 0) + 1;
+  }
+
+  let deployedScoutCache = null;
+  if (
+    risk !== 'safe'
+    && simulation.scoutCaches.length < 16
+    && cityProductCount(simulation.products, 'scout-cache') > 0
+    && unit(resident.seed, `deploy-scout-cache:${tick}`) < 0.58
+    && consumeCityProduct(simulation.products, 'scout-cache', 1, {
+      tick,
+      reason: `scout-cache:${resident.id}`
+    })
+  ) {
+    effects.productConsumes['scout-cache'] = (effects.productConsumes['scout-cache'] || 0) + 1;
+    const angle = unit(resident.seed, `scout-cache-angle:${tick}`) * Math.PI * 2;
+    const radius = 320 + unit(resident.seed, `scout-cache-radius:${tick}`) * Math.max(360, Number(city.worldEffects?.localMapSpanM || 2600) * 0.38);
+    deployedScoutCache = {
+      id: `${simulation.cityId}:scout-cache-${simulation.scoutCaches.length + 1}`,
+      tick,
+      residentId: resident.id,
+      xM: Number((Math.cos(angle) * radius).toFixed(2)),
+      zM: Number((Math.sin(angle) * radius).toFixed(2))
+    };
+    simulation.scoutCaches.push(deployedScoutCache);
+  }
+
+  const existingCacheSupport = Math.min(4, simulation.scoutCaches.length * 0.45);
   const riskDef = rpgAdventureRiskDefinition(risk);
   const readiness = describeRpgAdventureReadiness(capability, risk);
   const challenge = riskDef.challenge + (unit(resident.seed, `adventure-challenge:${tick}`) - 0.5) * 20;
@@ -959,6 +1193,9 @@ function resolveResidentAdventure(simulation, city, resident, tick, effects, par
     + resident.traits.risk * 4
     + resident.traits.curiosity * 2
     + (partySize - 1) * 4
+    + (travelRationUsed ? 3 : 0)
+    + existingCacheSupport
+    + (deployedScoutCache ? 2.5 : 0)
     + (unit(resident.seed, `adventure-performance:${tick}`) - 0.5) * 12;
   const margin = performance - challenge;
   const successTier = margin >= 0 ? 'success' : margin >= -10 ? 'partial' : 'failure';
@@ -977,6 +1214,8 @@ function resolveResidentAdventure(simulation, city, resident, tick, effects, par
     * Math.max(0.18, 1 - capability.defense / 70)
     * Math.max(0.18, 1 - capability.survival / 70)
     * (successTier === 'failure' ? 1.25 : successTier === 'partial' ? 0.40 : 0.08)
+    * (travelRationUsed ? 0.78 : 1)
+    * Math.max(0.72, 1 - existingCacheSupport * 0.04)
     / (1 + (partySize - 1) * 0.65);
   const fatal = resident.vitality <= 0
     || unit(resident.seed, `adventure-fatal:${tick}`) < fatalChance;
@@ -1024,6 +1263,10 @@ function resolveResidentAdventure(simulation, city, resident, tick, effects, par
     damage,
     fatal,
     loot: { ...loot },
+    productsUsed: {
+      travelRation: Boolean(travelRationUsed),
+      scoutCache: deployedScoutCache?.id || null
+    },
     cityItems,
     personalItems,
     capability: {
@@ -1055,6 +1298,16 @@ function resolveResidentAdventure(simulation, city, resident, tick, effects, par
     while (resident.discoveries.length > 12) resident.discoveries.shift();
     while (simulation.discoveries.length > 64) simulation.discoveries.shift();
     record.discoveryId = discovery.id;
+
+    const prospectAngle = unit(resident.seed, `adventure-resource-angle:${tick}`) * Math.PI * 2;
+    const prospectRadius = 360 + unit(resident.seed, `adventure-resource-radius:${tick}`) * Math.max(420, Number(city.worldEffects?.localMapSpanM || 2600) * 0.42);
+    const prospect = prospectCityResourceSite(simulation, {
+      xM: Math.cos(prospectAngle) * prospectRadius,
+      zM: Math.sin(prospectAngle) * prospectRadius,
+      discoveredBy: resident.id,
+      tick
+    });
+    if (prospect.productive && prospect.site) record.resourceSiteDiscovered = prospect.site.id;
   }
 
   if (fatal) {
@@ -1221,11 +1474,52 @@ function applyActionEconomy(simulation, city, resident, action, tick, effects, p
   }
 
   if (action === 'gather') {
-    const itemId = deterministicMaterial(resident, tick);
-    const bonus = resident.skills.gathering >= 80 && unit(resident.seed, `gather-bonus:${tick}`) > 0.55 ? 1 : 0;
-    const count = 1 + bonus;
-    addPossession(resident, itemId, count);
-    output = { itemId, count, destination: 'personal' };
+    let site = simulation.resourceSites
+      .filter(candidate => candidate.remaining > 0)
+      .sort((a, b) => b.quality - a.quality || a.id.localeCompare(b.id))[0] || null;
+
+    if (!site) {
+      const angle = unit(resident.seed, `prospect-angle:${tick}`) * Math.PI * 2;
+      const radius = 220 + unit(resident.seed, `prospect-radius:${tick}`) * Math.max(220, Number(city.worldEffects?.localMapSpanM || 2600) * 0.34);
+      const prospect = prospectCityResourceSite(simulation, {
+        xM: Math.cos(angle) * radius,
+        zM: Math.sin(angle) * radius,
+        discoveredBy: resident.id,
+        tick
+      });
+      site = prospect.site || null;
+      if (!site) {
+        output = {
+          found: false,
+          prospecting: true,
+          reason: 'prospected-cell-had-no-resource-site'
+        };
+      }
+    }
+
+    if (site) {
+      const gathered = gatherCityResourceSite(simulation, {
+        xM: site.xM,
+        zM: site.zM,
+        gathererId: resident.id,
+        tick
+      });
+      if (gathered.accepted) {
+        resident.xM = site.xM;
+        resident.zM = site.zM;
+        addPossession(resident, gathered.itemId, gathered.count);
+        output = {
+          found: true,
+          itemId: gathered.itemId,
+          count: gathered.count,
+          siteId: gathered.siteId,
+          biome: site.biome,
+          quality: site.quality,
+          remaining: gathered.remaining,
+          destination: 'personal'
+        };
+      }
+    }
   }
 
   if (action === 'share-surplus') {
@@ -1255,12 +1549,14 @@ function applyActionEconomy(simulation, city, resident, action, tick, effects, p
   }
 
   if (action === 'trade') {
-    const itemId = firstPossession(resident, ['crafted-good', 'crafted-tool', ...MATERIALS]);
+    const itemId = firstPossession(resident, ['crafted-tool', 'crafted-good']);
     if (itemId && removePossession(resident, itemId, 1)) {
-      const value = itemId === 'crafted-tool' ? 4 : itemId === 'crafted-good' ? 3 : 1;
+      const value = itemId === 'crafted-tool' ? 2 : 1;
       resident.wealth += value;
       simulation.economy.tradeValue += value;
-      output = { sold: itemId, value };
+      output = { sold: itemId, value, currencySource: 'crafted-surplus-only' };
+    } else {
+      output = { sold: null, value: 0, reason: 'raw-materials-are-not-automatic-cash' };
     }
   }
 
@@ -1268,6 +1564,24 @@ function applyActionEconomy(simulation, city, resident, action, tick, effects, p
     const gain = 0.018 + resident.skills.defense / 20000;
     simulation.economy.security = clamp(simulation.economy.security + gain);
     output = { securityGain: Number(gain.toFixed(4)) };
+  }
+
+  if (action === 'explore' && unit(resident.seed, `explore-prospect:${tick}`) < 0.34) {
+    const prospect = prospectCityResourceSite(simulation, {
+      xM: resident.xM,
+      zM: resident.zM,
+      discoveredBy: resident.id,
+      tick
+    });
+    if (prospect.productive && prospect.site) {
+      output = {
+        ...(output || {}),
+        resourceSiteDiscovered: prospect.site.id,
+        materialId: prospect.site.materialId,
+        biome: prospect.site.biome,
+        quality: prospect.site.quality
+      };
+    }
   }
 
   if (action === 'adventure') {
@@ -1462,6 +1776,11 @@ export function createCityVillagerSimulation({
       revision: 0
     },
     expeditionGroups: [],
+    products: createCityProductState(),
+    resourceSites: [],
+    prospectedCells: {},
+    resourceGatherHistory: [],
+    scoutCaches: [],
     residents,
     actionCounts: {},
     births: [],
@@ -1502,6 +1821,8 @@ export function advanceCityVillagerSimulation(simulation, city, {
   const effects = {
     sharedItemDeltas: {},
     sharedItemConsumes: {},
+    productReceipts: [],
+    productConsumes: {},
     attackWaveWarnings: [],
     attackWaveResolutions: []
   };
@@ -1572,6 +1893,44 @@ export function advanceCityVillagerSimulation(simulation, city, {
     }
 
     simulation.residents = simulation.residents.filter(resident => resident.alive !== false);
+
+    if (simulation.tick % 6 === 0 && simulation.growthState === 'awakened' && simulation.cityStatus !== 'fallen') {
+      const completedProjects = (city.projects || []).filter(project => project.complete).map(project => project.id);
+      const capacity = Math.max(1, Math.min(4, 1 + Math.floor(simulation.residents.length / 8)));
+      const production = produceCityProducts(simulation.products, {
+        completedProjects,
+        foodReserve: simulation.economy.foodReserve,
+        availableItems: availableCityItems,
+        tick: simulation.tick,
+        capacity
+      });
+      simulation.economy.foodReserve = production.foodReserve;
+      for (const [itemId, count] of Object.entries(production.itemConsumes || {})) {
+        effects.sharedItemConsumes[itemId] = (effects.sharedItemConsumes[itemId] || 0) + count;
+      }
+      effects.productReceipts.push(...production.receipts);
+    }
+
+    for (const resident of simulation.residents) {
+      if (
+        resident.vitality <= 58
+        && cityProductCount(simulation.products, 'recovery-kit') > 0
+        && consumeCityProduct(simulation.products, 'recovery-kit', 1, { tick: simulation.tick, reason: `recover:${resident.id}` })
+      ) {
+        resident.vitality = Math.min(100, resident.vitality + 28);
+        effects.productConsumes['recovery-kit'] = (effects.productConsumes['recovery-kit'] || 0) + 1;
+      }
+    }
+
+    if (
+      simulation.economy.maintenanceBacklog >= 1
+      && cityProductCount(simulation.products, 'field-repair-kit') > 0
+      && consumeCityProduct(simulation.products, 'field-repair-kit', 1, { tick: simulation.tick, reason: 'automatic-maintenance-repair' })
+    ) {
+      simulation.economy.maintenanceBacklog = Math.max(0, simulation.economy.maintenanceBacklog - 1.25);
+      effects.productConsumes['field-repair-kit'] = (effects.productConsumes['field-repair-kit'] || 0) + 1;
+    }
+
     proposalSupportTick(simulation);
 
     const warning = detectResidentPowerMilestones(simulation);
@@ -1684,6 +2043,11 @@ export function snapshotCityVillagerSimulation(simulation, city) {
     retainedSurvivors: simulation.retainedSurvivors,
     explorerPackage: simulation.explorerPackage,
     expeditionGroups: simulation.expeditionGroups,
+    products: simulation.products,
+    resourceSites: simulation.resourceSites,
+    prospectedCells: simulation.prospectedCells,
+    resourceGatherHistory: simulation.resourceGatherHistory,
+    scoutCaches: simulation.scoutCaches,
     residentCount: residents.length,
     capacity: populationCapacity(city),
     averageWellbeing: Number(populationWellbeing(simulation.residents).toFixed(4)),
@@ -1699,6 +2063,6 @@ export function snapshotCityVillagerSimulation(simulation, city) {
     residents,
     serviceNpcs: serviceNpcsForCity(city),
     truthBoundary:
-      'A never-interacted city begins in equilibrium and does not snowball. After interaction, any resident origin/controller can trigger visible city-attack pressure by crossing resident-power milestones. Incoming attack power is locked from aggregate living resident power only; buildings never increase the wave. Residents are recalled during warning. Current resident defense plus maintained city projects/supplies/security form the defense, with the foundation strictly additive. Repeated neglected defenses can wound/kill residents and erode city integrity until the city falls. Death only comes from explicit gameplay outcomes, never aging/passive time.'
+      'A never-interacted city begins in equilibrium and does not snowball. Scarce raw materials now come from deterministic finite Foundation-map resource sites: prospecting a cell fixes its result, biome biases the material, and sites deplete. Routine city production automatically converts only real pooled materials/food into a small useful product set according to standing stock targets. Raw materials do not automatically become cash. Products support recovery, maintenance, defense and expeditions without adding per-item crafting chores. Attack power still comes only from living-resident power; the foundation remains additive defense.'
   }));
 }

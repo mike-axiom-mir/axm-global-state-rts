@@ -324,6 +324,44 @@ function residentMesh(resident) {
   return root;
 }
 
+function resourceSiteMesh(site) {
+  const root = new THREE.Group();
+  const color = {
+    timber: 0x6f5a3f,
+    stone: 0x797975,
+    fiber: 0x6f8755,
+    ore: 0x665f59
+  }[site.materialId] || 0x777268;
+  for (let index = 0; index < 3; index++) {
+    const piece = site.materialId === 'timber'
+      ? cylinder(0.9, 1.1, 5 + index, color, 8)
+      : new THREE.Mesh(
+          new THREE.DodecahedronGeometry(1.6 + index * 0.35, 0),
+          material(color, 0.86, site.materialId === 'ore' ? 0.16 : 0.01)
+        );
+    piece.position.set((index - 1) * 2.4, site.materialId === 'timber' ? 2.4 : 1.2, (index % 2) * 1.8);
+    if (site.materialId === 'timber') piece.rotation.z = Math.PI / 2.6;
+    root.add(piece);
+  }
+  root.userData.resourceSiteId = site.id;
+  root.userData.materialId = site.materialId;
+  root.userData.remaining = site.remaining;
+  return root;
+}
+
+function scoutCacheMesh(cache) {
+  const root = new THREE.Group();
+  const crate = box(4.5, 2.5, 3.5, 0x776145);
+  crate.position.y = 1.25;
+  const marker = cylinder(0.35, 0.4, 7, 0x6a695d, 8);
+  marker.position.set(2.6, 3.5, 0);
+  const flag = box(3.4, 1.5, 0.2, 0x8d8164);
+  flag.position.set(4, 6.2, 0);
+  root.add(crate, marker, flag);
+  root.userData.scoutCacheId = cache.id;
+  return root;
+}
+
 function informalWorkMesh(work) {
   if (work.kind === 'footpath') {
     const mesh = box(18, 0.22, 2.8, 0x6d6251);
@@ -629,6 +667,23 @@ export class PersistentRpgRenderer {
       cityGroup.add(mesh);
     }
 
+    for (const site of city.villagers?.resourceSites || []) {
+      const x = Number(site.xM) || 0;
+      const z = Number(site.zM) || 0;
+      const mesh = resourceSiteMesh(site);
+      mesh.position.set(x, this.#heightAt(x, z) - cityY, z);
+      if (site.remaining <= 0) mesh.scale.setScalar(0.55);
+      cityGroup.add(mesh);
+    }
+
+    for (const cache of city.villagers?.scoutCaches || []) {
+      const x = Number(cache.xM) || 0;
+      const z = Number(cache.zM) || 0;
+      const mesh = scoutCacheMesh(cache);
+      mesh.position.set(x, this.#heightAt(x, z) - cityY, z);
+      cityGroup.add(mesh);
+    }
+
     this.cityRoot.add(cityGroup);
   }
 
@@ -665,6 +720,8 @@ export class PersistentRpgRenderer {
         cityStage: this.citySnapshot?.stage || 'seed-camp',
         residentCount: this.citySnapshot?.villagers?.residentCount || 0,
         informalWorkCount: this.citySnapshot?.villagers?.informalWorks?.length || 0,
+        resourceSiteCount: this.citySnapshot?.villagers?.resourceSites?.length || 0,
+        scoutCacheCount: this.citySnapshot?.villagers?.scoutCaches?.length || 0,
         infrastructureCondition: this.citySnapshot?.villagers?.economy?.infrastructureCondition ?? 1,
         inheritedRtsPresentation: false
       })

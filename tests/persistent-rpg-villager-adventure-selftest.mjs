@@ -87,10 +87,13 @@ assert.equal(
   true
 );
 assert.equal(
-  Object.values(runA.effects.sharedItemDeltas).reduce((sum, value) => sum + value, 0) > 0
+  runA.snapshot.resourceSites.length > 0
+    || runA.snapshot.discoveries.length > 0
+    || runA.snapshot.scoutCaches.length > 0
+    || Object.values(runA.effects.sharedItemDeltas).reduce((sum, value) => sum + value, 0) > 0
     || runA.snapshot.fallenResidents.length > 0,
   true,
-  'city-focused adventure should either return real loot or carry real loss'
+  'city-focused adventure should create meaningful world information/support, rare gear, or real loss—not filler material drops'
 );
 
 const disabled = prepare('no-passive-death-seed', { policy: false });

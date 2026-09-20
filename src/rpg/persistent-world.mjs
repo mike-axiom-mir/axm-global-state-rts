@@ -6,7 +6,10 @@ import {
   setCityResidentAdventurePolicy,
   awakenCityVillagerSimulation,
   configureCityExplorerPackage,
-  retainSessionSurvivor
+  retainSessionSurvivor,
+  prospectCityResourceSite,
+  gatherCityResourceSite,
+  setCityProductionTargets
 } from './city/villager-simulation.mjs';
 import {
   CITY_EMERGENCE_STAGES,
@@ -18,7 +21,7 @@ import {
   projectCompletion
 } from './city/city-emergence.mjs';
 
-export const PERSISTENT_RPG_WORLD_SCHEMA = 'axm.persistent-rpg.world/v0.5';
+export const PERSISTENT_RPG_WORLD_SCHEMA = 'axm.persistent-rpg.world/v0.6';
 
 export const RPG_CITY_PATHS = Object.freeze([
   'balanced',
@@ -50,6 +53,9 @@ export const RPG_WORLD_EVENT_TYPES = Object.freeze([
   'rpg.life.session.retained',
   'rpg.city.interacted',
   'rpg.city.explorer.package.changed',
+  'rpg.city.production.targets.changed',
+  'rpg.city.resource.prospected',
+  'rpg.city.resource.gathered',
   'rpg.city.path.changed',
   'rpg.city.pool.withdrawn',
   'rpg.city.project.contributed',
@@ -616,6 +622,53 @@ export class PersistentRpgWorld {
         explorerPackage: configured.explorerPackage,
         city: cityProjection(city)
       };
+    } else if (eventType === 'rpg.city.production.targets.changed') {
+      const city = this.city(payload.cityId || this.defaultCityId, { create: false });
+      if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
+      const configured = setCityProductionTargets(city.villagerSimulation, payload.targets || {});
+      this.awakenCity(city, 'city-production-targets-changed');
+      result = {
+        kind: 'city-production-targets-changed',
+        cityId: city.id,
+        products: configured.products,
+        city: cityProjection(city)
+      };
+    } else if (eventType === 'rpg.city.resource.prospected') {
+      const city = this.city(payload.cityId || this.defaultCityId, { create: false });
+      if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
+      const prospect = prospectCityResourceSite(city.villagerSimulation, {
+        xM: location.xM,
+        zM: location.zM,
+        discoveredBy: actorId,
+        tick: city.villagerSimulation.tick
+      });
+      this.awakenCity(city, 'map-resource-prospected');
+      result = {
+        kind: 'city-resource-prospected',
+        cityId: city.id,
+        productive: prospect.productive,
+        reused: prospect.reused,
+        site: prospect.site,
+        cell: prospect.cell,
+        city: cityProjection(city)
+      };
+    } else if (eventType === 'rpg.city.resource.gathered') {
+      const city = this.city(payload.cityId || this.defaultCityId, { create: false });
+      if (!city) return Object.freeze({ accepted: false, reason: 'rpg-city-not-found', revision: this.revision });
+      const gathered = gatherCityResourceSite(city.villagerSimulation, {
+        xM: location.xM,
+        zM: location.zM,
+        gathererId: actorId,
+        tick: city.villagerSimulation.tick
+      });
+      if (!gathered.accepted) return Object.freeze({ ...gathered, revision: this.revision });
+      this.awakenCity(city, 'map-resource-gathered');
+      result = {
+        kind: 'city-resource-gathered',
+        cityId: city.id,
+        ...gathered,
+        city: cityProjection(city)
+      };
     } else if (eventType === 'rpg.city.path.changed') {
       const city = this.city(payload.cityId || this.defaultCityId, { worldHour });
       const nextPath = normalizeCityPath(payload.path);
@@ -827,6 +880,8 @@ export class PersistentRpgWorld {
         averageWellbeing: simulation.snapshot.averageWellbeing,
         sharedItemDeltas: simulation.effects?.sharedItemDeltas || {},
         sharedItemConsumes: simulation.effects?.sharedItemConsumes || {},
+        productReceipts: simulation.effects?.productReceipts || [],
+        productConsumes: simulation.effects?.productConsumes || {},
         discoveryCount: simulation.snapshot.discoveries.length,
         proposalCount: simulation.snapshot.proposals.length,
         informalWorkCount: simulation.snapshot.informalWorks.length,
@@ -878,7 +933,7 @@ export class PersistentRpgWorld {
       departedLives: this.lifeDepartures.map(entry => freezeJson(cloneJson(entry))),
       retainedLives: this.lifeRetentions.map(entry => freezeJson(cloneJson(entry))),
       truthBoundary:
-        'Untouched cities begin in a living equilibrium and do not autonomously snowball. Interaction awakens open-ended growth. A session that ends below the survivor threshold can still use ordinary safe departure; a sufficiently progressed living session can instead persist as an autonomous resident, keeping its exact personal gear/skills rather than double-banking them into the city. Explorer packages, survivor parties and autonomous adventures remain deterministic/journaled. Death comes only from explicit gameplay outcomes, never aging/passive time.'
+        'Untouched cities begin in equilibrium and do not snowball. Map resources are canonical finite sites discovered by deterministic prospecting on the Foundation surface; barren cells do not reroll, and gathering depletes sites. The city auto-produces only a small useful product set from real pooled materials/food according to standing targets. Human and autonomous residents share the same resource/product state. Cash is not generated by raw-material drops. Session-survivors, explorer packages, city attacks and all resource/product mutations remain journal-replayable.'
     });
   }
 }

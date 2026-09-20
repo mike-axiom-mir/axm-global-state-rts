@@ -11,12 +11,12 @@ import {
   rpgEquipmentDefinition,
   rpgEquipmentQuality
 } from '../src/rpg/character-capability.mjs';
+import { CITY_PRODUCT_DEFINITIONS } from '../src/rpg/city/city-products.mjs';
 
 const WORLD_STORAGE_KEY = 'axm.persistent-rpg.browser-world-journal/v0.3';
 const LIFE_COUNTER_KEY = 'axm.persistent-rpg.browser-life-counter/v0.1';
 const ACTOR_ID = 'browser-player';
 const CITY_ID = 'first-city';
-const MATERIAL_TYPES = Object.freeze(['timber', 'stone', 'fiber', 'ore']);
 
 const viewport = document.getElementById('viewport');
 const status = document.getElementById('status');
@@ -44,6 +44,9 @@ const villagers = document.getElementById('villagers');
 const serviceNpcs = document.getElementById('serviceNpcs');
 const lifeCapability = document.getElementById('lifeCapability');
 const residentEconomy = document.getElementById('residentEconomy');
+const cityProducts = document.getElementById('cityProducts');
+const saveProductionTargets = document.getElementById('saveProductionTargets');
+const resourceSites = document.getElementById('resourceSites');
 const cityThreat = document.getElementById('cityThreat');
 const residentProposals = document.getElementById('residentProposals');
 const residentDiscoveries = document.getElementById('residentDiscoveries');
@@ -203,6 +206,9 @@ function friendlyEvent(command) {
     case 'rpg.city.path.changed': return `${p.cityId} direction → ${p.path}`;
     case 'rpg.city.pool.withdrawn': return `shared item taken from ${p.cityId}`;
     case 'rpg.city.project.contributed': return `funded ${p.projectId}`;
+    case 'rpg.city.production.targets.changed': return 'city production targets changed';
+    case 'rpg.city.resource.prospected': return 'map cell prospected';
+    case 'rpg.city.resource.gathered': return 'material gathered from map site';
     case 'rpg.city.sim.advanced': return `city lived ${Number(p.ticks || 1) * 4} more hours`;
     default: return command.eventType;
   }
@@ -499,6 +505,83 @@ function renderCityThreat(city) {
     + `<div class="threat-note">Explorers are recalled. Current state is <strong>${readiness}</strong>. Repairing, fortifying and keeping supplies/security healthy improves defense without increasing this already-locked wave.</div>`;
 }
 
+function recipeText(definition) {
+  const parts = [];
+  for (const [itemId, count] of Object.entries(definition.rawItems || {})) parts.push(`${itemId}×${count}`);
+  for (const [productId, count] of Object.entries(definition.productInputs || {})) parts.push(`${productId}×${count}`);
+  if (definition.foodCost) parts.push(`food×${definition.foodCost}`);
+  return parts.length ? parts.join(' + ') : 'no inputs';
+}
+
+function renderCityProducts(city) {
+  cityProducts.replaceChildren();
+  const state = city.villagers.products;
+  for (const definition of CITY_PRODUCT_DEFINITIONS) {
+    const stock = Number(state?.stock?.[definition.id] || 0);
+    const target = Number(state?.targets?.[definition.id] || 0);
+    const card = document.createElement('div');
+    card.className = 'product-card';
+
+    const head = document.createElement('div');
+    head.className = 'product-head';
+    head.innerHTML = `<strong>${definition.name}</strong><span>stock ${stock} / target ${target}</span>`;
+    card.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'product-body';
+    body.textContent = `${definition.purpose} Recipe: ${recipeText(definition)}.`;
+    card.appendChild(body);
+
+    const controls = document.createElement('div');
+    controls.className = 'product-controls';
+    const label = document.createElement('span');
+    label.textContent = 'Standing target';
+    const select = document.createElement('select');
+    select.dataset.productTarget = definition.id;
+    for (let value = 0; value <= 12; value++) {
+      const option = document.createElement('option');
+      option.value = String(value);
+      option.textContent = String(value);
+      select.appendChild(option);
+    }
+    select.value = String(target);
+    controls.append(label, select);
+    card.appendChild(controls);
+    cityProducts.appendChild(card);
+  }
+}
+
+function selectedProductionTargets() {
+  return Object.fromEntries(
+    [...cityProducts.querySelectorAll('[data-product-target]')]
+      .map(select => [select.dataset.productTarget, Number(select.value)])
+  );
+}
+
+function renderResourceSites(city) {
+  resourceSites.replaceChildren();
+  const sites = [...(city.villagers.resourceSites || [])]
+    .sort((a, b) => (b.remaining > 0) - (a.remaining > 0) || b.quality - a.quality || a.id.localeCompare(b.id))
+    .slice(0, 12);
+
+  if (!sites.length) {
+    const row = document.createElement('div');
+    row.className = 'resident-event';
+    row.textContent = 'No resource site discovered yet. Move around the local map and prospect.';
+    resourceSites.appendChild(row);
+    return;
+  }
+
+  for (const site of sites) {
+    const row = document.createElement('div');
+    row.className = `resident-event ${site.remaining > 0 ? 'resource-active' : 'resource-depleted'}`;
+    row.innerHTML =
+      `<strong>${titleCase(site.materialId)} · q${site.quality}</strong> · ${titleCase(site.biome)} · `
+      + `${site.remaining}/${site.initialYield} remaining · ${Math.round(site.xM)},${Math.round(site.zM)}`;
+    resourceSites.appendChild(row);
+  }
+}
+
 function renderResidentEconomy(city) {
   const sim = city.villagers;
   const economy = sim.economy;
@@ -674,6 +757,8 @@ function renderCity(city) {
   renderExplorerPackage(city);
   renderCityThreat(city);
   renderResidentEconomy(city);
+  renderCityProducts(city);
+  renderResourceSites(city);
   renderResidentEvents(city);
 
   sharedPool.replaceChildren();
@@ -741,32 +826,6 @@ function startNextLife(prefix) {
   setStatus(`${prefix} New life ${life.lifeId} enters the same ${citySnapshot()?.stage || 'city'} with inherited city support only.`);
 }
 
-function deterministicMaterialAtCursor() {
-  const view = renderer.describeView();
-  const sample = renderer.currentSurfaceSample();
-  const xCell = Math.floor((view.local.cursorXM || 0) / 140);
-  const zCell = Math.floor((view.local.cursorZM || 0) / 140);
-  const biome = String(sample.planet?.biome || 'unknown');
-  const hash = Math.abs((xCell * 31 + zCell * 17 + biome.length * 13) | 0);
-  const preferred = {
-    temperate_forest: ['timber', 'fiber'],
-    rainforest: ['timber', 'fiber'],
-    taiga: ['timber', 'ore'],
-    grassland: ['fiber', 'stone'],
-    savanna: ['fiber', 'stone'],
-    desert: ['stone', 'ore'],
-    alpine: ['ore', 'stone'],
-    tundra: ['stone', 'fiber'],
-    coast: ['stone', 'fiber']
-  }[biome] || MATERIAL_TYPES;
-  const pool = [...preferred, ...MATERIAL_TYPES];
-  return Object.freeze({
-    itemId: pool[hash % pool.length],
-    biome,
-    elevationM: sample.planet?.elevationM || 0
-  });
-}
-
 function fundProjectXp(projectId, domain, amount) {
   const value = Number(amount);
   if (!projectId || !domain || !Number.isInteger(value) || value <= 0) return;
@@ -826,6 +885,19 @@ for (const path of RPG_CITY_PATHS) {
   cityPath.appendChild(option);
 }
 
+saveProductionTargets.addEventListener('click', () => {
+  const result = applyWorldEvent('rpg.city.production.targets.changed', {
+    cityId: CITY_ID,
+    placeId: CITY_ID,
+    xM: 0,
+    zM: 0,
+    targets: selectedProductionTargets()
+  }, 'production-targets');
+  if (!result.accepted) return setStatus(`Production targets rejected: ${result.reason}`);
+  renderAll();
+  setStatus('Standing stock targets saved. The city will only convert real food/materials toward these useful products.');
+});
+
 saveExplorerPackage.addEventListener('click', () => {
   const result = applyWorldEvent('rpg.city.explorer.package.changed', {
     cityId: CITY_ID,
@@ -878,19 +950,59 @@ document.getElementById('exploreAction').addEventListener('click', () => {
 });
 
 document.getElementById('salvageAction').addEventListener('click', () => {
-  if (!localLocationRequired()) return;
-  const found = deterministicMaterialAtCursor();
-  const added = life.addItem(found.itemId, 1);
-  if (added === false) {
-    setStatus(`Carry limit reached (${life.snapshot().effectiveCarrySlots}). Return/leave safely or use an item first.`);
-    return;
+  const location = localLocationRequired();
+  if (!location) return;
+  const lifeSnapshot = life.snapshot();
+  if (life.itemCount() >= lifeSnapshot.effectiveCarrySlots) {
+    return setStatus(`Carry limit reached (${lifeSnapshot.effectiveCarrySlots}).`);
   }
-  life.gainExperience('craft', 12);
-  life.gainExperience('survival', 3);
-  renderAll();
-  setStatus(`Gathered 1 ${found.itemId} from this ${found.biome} area. It can become city infrastructure after safe departure.`);
-});
 
+  const city = citySnapshot();
+  const nearest = (city?.villagers?.resourceSites || [])
+    .filter(site => site.remaining > 0)
+    .map(site => ({
+      site,
+      distance: Math.hypot(Number(site.xM) - location.xM, Number(site.zM) - location.zM)
+    }))
+    .filter(entry => entry.distance <= 125)
+    .sort((a, b) => a.distance - b.distance || b.site.quality - a.site.quality)[0] || null;
+
+  if (nearest) {
+    const result = applyWorldEvent('rpg.city.resource.gathered', {
+      cityId: CITY_ID,
+      ...location
+    }, 'resource-gather');
+    if (!result.accepted) return setStatus(`Gather rejected: ${result.reason}`);
+    const added = life.addItem(result.result.itemId, result.result.count);
+    if (added === false) return setStatus('The site changed but this life could not carry the gathered material.');
+    life.gainExperience('survival', 4);
+    life.gainExperience('craft', 2);
+    renderAll();
+    return setStatus(
+      `Gathered ${result.result.itemId} from ${result.result.siteId}. ${result.result.remaining} finite yield remains.`
+    );
+  }
+
+  const result = applyWorldEvent('rpg.city.resource.prospected', {
+    cityId: CITY_ID,
+    ...location
+  }, 'resource-prospect');
+  if (!result.accepted) return setStatus(`Prospecting rejected: ${result.reason}`);
+
+  life.gainExperience('exploration', result.result.productive ? 8 : 2);
+  life.gainExperience('survival', result.result.productive ? 3 : 1);
+  if (result.result.productive && result.result.site) life.discover();
+  renderAll();
+
+  if (result.result.productive && result.result.site) {
+    const site = result.result.site;
+    setStatus(
+      `Found a finite ${site.materialId} site in ${titleCase(site.biome)} terrain (q${site.quality}, ${site.remaining} yield). Move near its marker and gather.`
+    );
+  } else {
+    setStatus('This map cell is barren for useful raw material. Its result is now fixed—move and prospect somewhere else.');
+  }
+});
 document.getElementById('studyAction').addEventListener('click', () => {
   const location = localLocationRequired();
   if (!location) return;
@@ -958,8 +1070,10 @@ document.getElementById('advanceCityDay').addEventListener('click', () => {
   const sharedText = deltas.length
     ? ` Shared to city pool: ${deltas.map(([id, count]) => `${id}×${count}`).join(', ')}.`
     : '';
+  const produced = (result.result.productReceipts || []).map(entry => entry.productId);
+  const productText = produced.length ? ` Produced: ${produced.join(', ')}.` : '';
   setStatus(
-    `The city lived another deterministic day. ${after.residentCount} residents chose their own actions; wellbeing ${Math.round(after.averageWellbeing * 100)}%, food ${after.economy.foodReserve.toFixed(1)}, infrastructure ${Math.round(after.economy.infrastructureCondition * 100)}%.${populationText}${sharedText}`
+    `The city lived another deterministic day. ${after.residentCount} residents chose their own actions; wellbeing ${Math.round(after.averageWellbeing * 100)}%, food ${after.economy.foodReserve.toFixed(1)}, infrastructure ${Math.round(after.economy.infrastructureCondition * 100)}%.${populationText}${sharedText}${productText}`
   );
 });
 

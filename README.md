@@ -343,6 +343,70 @@ Good preparation can reduce resident losses to zero. Weak preparation can cause 
 
 The threat therefore answers the character-rush problem directly: growing powerful residents without growing the place they depend on increases what the world can throw at them, while investing in the foundation is the only way to turn that resident power into safe long-term civilization strength.
 
+## Scarce map resources and low-noise city products
+
+Raw materials no longer need to behave like generic RPG confetti.
+
+The active resource rule is now:
+
+**Foundation map → prospect cell → finite resource site → gather material → city pool/personal inventory → useful product or project**
+
+Resource prospecting is deterministic and persistent:
+
+- the local map is divided into 180 m resource cells;
+- the actual Foundation biome biases which material can exist there;
+- ocean/ice cells do not become useful raw-material deposits;
+- a cell is deterministically productive or barren;
+- prospecting fixes that result permanently;
+- repeatedly clicking a barren cell cannot reroll it;
+- productive sites have quality and finite yield;
+- gathering removes one real unit and can permanently deplete the site;
+- discovered sites and deployed Scout Caches appear physically on the local map.
+
+Current biome tendencies include:
+
+- temperate forest / rainforest → timber + fiber;
+- taiga → timber + ore;
+- grassland / savanna → fiber + stone;
+- desert → stone + ore;
+- alpine → ore + stone;
+- tundra → stone / fiber / ore;
+- coast → stone + fiber.
+
+Autonomous residents use the same site state. If they have no known usable resource site they must prospect rather than generating timber/stone/ore from an abstract gather action.
+
+### First useful product set
+
+The city intentionally starts with only five routine products:
+
+- **Travel Ration** — expedition support; produced from real communal food.
+- **Recovery Kit** — automatically used on badly wounded residents.
+- **Field Repair Kit** — automatically reduces maintenance backlog.
+- **Defense Reserve** — prepared construction/metal components consumed during city attacks for extra foundation defense.
+- **Scout Cache** — expedition supply deployed into the world; persistent caches improve later expedition support.
+
+These use **standing stock targets** rather than manual per-unit crafting. The user can set a desired target from 0–12; routine city production only attempts to refill toward that number.
+
+Production cannot conjure ingredients:
+
+- facilities must actually exist;
+- food costs come out of communal food reserve;
+- timber / stone / fiber / ore come out of canonical shared city inventory;
+- product inputs such as Travel Rations are actually consumed;
+- production emits receipts for verification.
+
+The current recipes deliberately stay small and meaningful:
+
+- Travel Ration: 2 food.
+- Recovery Kit: 1 fiber + 1 food.
+- Field Repair Kit: 1 fiber + 1 ore.
+- Defense Reserve: 1 timber + 1 stone + 1 ore.
+- Scout Cache: 1 fiber + 1 Travel Ration.
+
+Adventure material filler has also been reduced. Expeditions no longer spray generic timber/stone/ore as loot. They can discover resource sites, deploy Scout Caches, produce knowledge/history, occasionally find meaningful equipment, or suffer real loss. Bulk material still comes from the map.
+
+Resident trade also no longer converts raw materials directly into easy money. Currency/wealth only grows from actually crafted surplus in the current prototype. A full external trade/currency economy remains future work rather than pretending raw drops are free cash.
+
 ## Clean active surface
 
 The browser game layer remains only:
@@ -417,6 +481,12 @@ The RPG-specific suite verifies:
 - additive foundation defense only;
 - visible 48-hour warning and explorer recall;
 - deterministic wave casualties/integrity damage and journal replay;
+- deterministic biome-biased resource prospecting;
+- barren-cell no-reroll behavior and finite site depletion;
+- canonical human/autonomous gathering from the same sites;
+- standing-target useful-product production with real input consumption;
+- automatic ration/recovery/repair/defense/cache product usage;
+- no generic raw-material adventure loot and no automatic raw-material cash conversion;
 - deterministic host journal replay;
 - human/machine participant parity;
 - the clean no-RTS active browser boundary.
@@ -425,4 +495,4 @@ The RPG-specific suite verifies:
 
 This is the first deep city-emergence system, not a finished civilization simulator.
 
-Population, NPC occupations, construction time, material refinement, maintenance, decay, city migration, multiple independent cities, political ownership, actual trade simulation, ecology-driven agriculture, procedural architecture quality, multiplayer deployment and final game balance remain future work.
+Population scaling beyond the current resident fabric, deeper occupations, construction time, item-instance provenance, city migration, multiple independent cities, political ownership, full external trade/currency simulation, ecology-driven agriculture yields, procedural architecture quality, multiplayer deployment and final game balance remain future work.

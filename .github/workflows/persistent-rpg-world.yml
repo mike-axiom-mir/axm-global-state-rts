@@ -37,3 +37,6 @@ jobs:
 
       - name: Hosted hash-journal replay
         run: npm run test:rpg-hosted
+
+      - name: Human and machine participant parity
+        run: npm run test:rpg-participant

@@ -1,0 +1,141 @@
+name: LOCAL combat rifle ability
+
+on:
+  pull_request:
+    paths:
+      - 'game/combat-proving-ground.html'
+      - 'game/local-combat-rifle-ability-player.mjs'
+      - 'src/presentation/local-combat-rifle-ability.mjs'
+      - 'tests/local-combat-rifle-ability-selftest.mjs'
+      - 'tests/browser/local-combat-rifle-ability.spec.js'
+      - '.github/workflows/local-combat-rifle-ability.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-product-ability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out RTS candidate and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check out pinned Gameplay Ability Fabric
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-gameplay-ability-fabric
+          ref: a75843f907e57656e8893349b9f01a2631122a08
+          path: .deps/axm-gameplay-ability-fabric
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Verify exact Ability Fabric pin and its suite
+        run: |
+          test "$(git -C .deps/axm-gameplay-ability-fabric rev-parse HEAD)" = "a75843f907e57656e8893349b9f01a2631122a08"
+          npm --prefix .deps/axm-gameplay-ability-fabric test
+
+      - name: Verify product action through real Ability Fabric
+        run: |
+          mkdir -p test-results
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { writeFile } from 'node:fs/promises';
+          import {
+            activeWindowEventsAt,
+            compileTimeline,
+            createAbilityPackage,
+            validateAbility
+          } from './.deps/axm-gameplay-ability-fabric/src/api.mjs';
+          import { LOCAL_RIFLE_EXCHANGE_ABILITY } from './src/presentation/local-combat-rifle-ability.mjs';
+          import { LOCAL_RIFLE_EXCHANGE_CLIP } from './src/presentation/local-combat-rifle-motion.mjs';
+
+          assert.equal(validateAbility(LOCAL_RIFLE_EXCHANGE_ABILITY), true);
+          assert.equal(LOCAL_RIFLE_EXCHANGE_ABILITY.duration, LOCAL_RIFLE_EXCHANGE_CLIP.duration);
+          assert.deepEqual(LOCAL_RIFLE_EXCHANGE_ABILITY.phases, LOCAL_RIFLE_EXCHANGE_CLIP.phases);
+
+          const timeline = compileTimeline(LOCAL_RIFLE_EXCHANGE_ABILITY);
+          const fireRequest = timeline.find(event => event.id === 'formation-fire-request');
+          const vfxRequest = timeline.find(event => event.id === 'rifle-muzzle-tracer-request');
+          assert.equal(fireRequest.time, 0.12);
+          assert.equal(vfxRequest.time, 0.12);
+          assert.equal(vfxRequest.contactClaim, false);
+
+          const activeGameplay = activeWindowEventsAt(LOCAL_RIFLE_EXCHANGE_ABILITY, 0.12, { types: 'gameplay' });
+          assert.equal(activeGameplay.length, 1);
+          assert.equal(activeGameplay[0].id, 'formation-fire-window');
+          assert.equal(activeGameplay[0].time, 0.1);
+          assert.equal(activeGameplay[0].endTime, 0.16);
+
+          const metadata = {
+            product: 'axm-global-state-rts',
+            sourceCombatAuthority: 'existing-local-combat-gameplay',
+            role: 'selected-party-local-combat-action-binding',
+            collisionConnected: false,
+            consequenceApplicationConnected: false
+          };
+          const first = createAbilityPackage(LOCAL_RIFLE_EXCHANGE_ABILITY, metadata);
+          const second = createAbilityPackage(LOCAL_RIFLE_EXCHANGE_ABILITY, metadata);
+          assert.equal(first.receipt.sha256, second.receipt.sha256);
+          assert.equal(first.authority.durableWorldStateOwner, false);
+          assert.equal(first.authority.emitsRequestsOnly, true);
+
+          await writeFile('test-results/local-combat-rifle-ability-package.json', JSON.stringify(first, null, 2) + '\n');
+          console.log(JSON.stringify({
+            ok: true,
+            abilityId: first.ability.id,
+            packageSha256: first.receipt.sha256,
+            fireWindowSeconds: [0.1, 0.16],
+            fireTimeSeconds: 0.12,
+            animationClipId: 'rts-local-rifle-exchange-recoil-v1',
+            collisionConnected: false,
+            consequenceApplicationConnected: false
+          }, null, 2));
+          NODE
+
+      - name: Run product Ability binding checks
+        run: |
+          node tests/local-combat-rifle-ability-selftest.mjs
+          node --check src/presentation/local-combat-rifle-ability.mjs
+          node --check game/local-combat-rifle-ability-player.mjs
+          node --check tests/browser/local-combat-rifle-ability.spec.js
+
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start local browser shell
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-rifle-ability.log 2>&1 &
+          echo $! > /tmp/axm-global-state-rts-rifle-ability.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/combat-proving-ground.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-rifle-ability.log
+          exit 1
+
+      - name: Exercise accepted exchange, retreat and rejection in Chromium
+        run: npx playwright test tests/browser/local-combat-rifle-ability.spec.js --reporter=line
+
+      - name: Preserve Ability/browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-local-combat-rifle-ability
+          path: |
+            test-results/local-combat-rifle-ability-package.json
+            test-results/global-state-rts-local-combat-rifle-ability.png
+            /tmp/axm-global-state-rts-rifle-ability.log
+          if-no-files-found: warn
+          retention-days: 14

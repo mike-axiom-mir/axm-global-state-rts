@@ -1,4 +1,5 @@
 import { activeLocalRegionSimulation } from '../sim/local-region-sim.mjs';
+import { RPG_WORLD_EVENT_TYPES } from '../rpg/persistent-world.mjs';
 
 export const WORLD_SEAT_BINDING_SCHEMA = 'axm.global-state-rts.world-seat-binding/v0.2';
 export const WORLD_SEAT_HANDOFF_SCHEMA = 'axm.global-state-rts.world-seat-handoff/v0.1';
@@ -8,7 +9,8 @@ export const WORLD_RUN_LOCAL_BOOTSTRAP_SCHEMA = 'axm.global-state-rts.world-run-
 const WORLD_EVENT_TYPES = Object.freeze([
   'territory.claim',
   'city.provoke',
-  'run.closed'
+  'run.closed',
+  ...RPG_WORLD_EVENT_TYPES
 ]);
 
 function nonEmpty(value, label) {

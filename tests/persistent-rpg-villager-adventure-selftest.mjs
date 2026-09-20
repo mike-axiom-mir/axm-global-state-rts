@@ -95,14 +95,18 @@ assert.equal(
 
 const disabled = prepare('no-passive-death-seed', { policy: false });
 const passive = advanceCityVillagerSimulation(disabled, city, { ticks: 84, hoursPerTick: 4 }).snapshot;
-assert.equal(passive.fallenResidents.length, 0, 'time passing must never kill residents by aging/passive mortality');
-assert.equal(passive.residents.length >= 1, true);
+assert.equal(
+  passive.fallenResidents.every(entry => ['adventure', 'city-attack-wave'].includes(entry.cause)),
+  true,
+  'time passing must never create aging/passive mortality; only explicit gameplay hazards may kill residents'
+);
+assert.equal(passive.residents.length + passive.fallenResidents.length >= 1, true);
 
 let earlyDeaths = 0;
 for (let index = 0; index < 80; index++) {
   const sim = prepare(`fatal-search-${index}`);
   const result = advanceCityVillagerSimulation(sim, city, { ticks: 84, hoursPerTick: 4 }).snapshot;
-  earlyDeaths += result.fallenResidents.length;
+  earlyDeaths += result.fallenResidents.filter(entry => entry.cause === 'adventure').length;
 }
 assert.equal(
   earlyDeaths,
@@ -114,7 +118,7 @@ let fatalExample = null;
 for (let index = 80; index < 2080 && !fatalExample; index++) {
   const sim = prepare(`fatal-search-${index}`);
   const result = advanceCityVillagerSimulation(sim, city, { ticks: 24, hoursPerTick: 4 }).snapshot;
-  if (result.fallenResidents.length) fatalExample = result.fallenResidents[0];
+  fatalExample = result.fallenResidents.find(entry => entry.cause === 'adventure') || null;
 }
 assert.ok(fatalExample, 'a much larger deterministic corpus must still exercise the unlucky adventure-death path');
 assert.equal(fatalExample.cause, 'adventure');

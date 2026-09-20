@@ -27,31 +27,46 @@ submit('rpg-walk-1', 'rpg.trail.walked', {
   zM: 20,
   distanceM: 80
 });
-submit('rpg-waystone-1', 'rpg.waystone.built', {
+submit('rpg-depart-1', 'rpg.life.departed', {
   worldHour: 13,
-  waystoneId: 'north-pass-stone',
-  placeId: 'starter-valley',
-  xM: 18,
-  zM: 31,
-  label: 'North Pass'
-});
-submit('rpg-life-end-1', 'rpg.life.ended', {
-  worldHour: 18,
   lifeId: 'tester-life-1',
-  placeId: 'starter-valley',
-  xM: 44,
-  zM: 50,
-  cause: 'cold'
+  cityId: 'first-city',
+  placeId: 'first-city',
+  xM: 0,
+  zM: 0,
+  experience: { exploration: 120, survival: 80 },
+  items: { rope: 2, lantern: 1 }
+});
+submit('rpg-path-1', 'rpg.city.path.changed', {
+  worldHour: 14,
+  cityId: 'first-city',
+  path: 'frontier',
+  reason: 'expand-safe-routes'
+});
+submit('rpg-depart-2', 'rpg.life.departed', {
+  worldHour: 17,
+  lifeId: 'tester-life-2',
+  cityId: 'first-city',
+  placeId: 'first-city',
+  xM: 0,
+  zM: 0,
+  experience: { exploration: 100, survival: 30 },
+  items: { rope: 1 }
 });
 
 const beforeRestart = authority.rpgSnapshot();
-assert.equal(beforeRestart.revision, 3);
-assert.equal(beforeRestart.legacy.endedLives, 1);
-assert.equal(beforeRestart.legacy.waystoneCount, 1);
+const city = beforeRestart.cities.find(entry => entry.id === 'first-city');
+assert.equal(beforeRestart.revision, 4);
+assert.equal(beforeRestart.legacy.departures, 2);
+assert.equal(city.totalXp, 330);
+assert.equal(city.pathXp.balanced, 200);
+assert.equal(city.pathXp.frontier, 130);
+assert.equal(city.sharedItems.rope, 3);
+assert.equal(city.skillRanks.exploration, 2);
 
 const replayed = createHostedSharedStateAuthority({ store, clock: () => 2000 });
 assert.deepEqual(replayed.rpgSnapshot(), beforeRestart);
 assert.equal(replayed.verifyPersistedJournal().matchesLive, true);
-assert.equal(replayed.meta().revision, 3);
+assert.equal(replayed.meta().revision, 4);
 
 console.log('persistent RPG hosted replay selftest passed');

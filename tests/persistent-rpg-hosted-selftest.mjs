@@ -81,7 +81,18 @@ assert.equal(city.completedProjectCount, 1);
 assert.equal(city.possibilities.includes('rest-point'), true);
 assert.equal(city.villagers.tick, 6);
 assert.equal(city.villagers.residentCount >= 3, true);
-assert.equal(city.villagers.residents.every(resident => resident.memories.length > 0), true);
+assert.equal(
+  city.villagers.residents
+    .filter(resident => resident.bornTick < city.villagers.tick)
+    .every(resident => resident.memories.length > 0),
+  true
+);
+assert.equal(
+  city.villagers.residents
+    .filter(resident => resident.bornTick === city.villagers.tick)
+    .every(resident => resident.memories.length === 0),
+  true
+);
 assert.equal(city.unassignedXp.survival, 70);
 assert.equal(city.unassignedXp.craft, 20);
 

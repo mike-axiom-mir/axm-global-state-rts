@@ -9,6 +9,7 @@ on:
       - 'src/presentation/local-combat-audio.mjs'
       - 'scripts/render-combat-sfx-pack.py'
       - 'tests/local-combat-audio-selftest.mjs'
+      - 'tests/browser/local-combat-proving-ground.spec.js'
       - '.github/workflows/local-combat-audio.yml'
   workflow_dispatch:
 
@@ -57,6 +58,7 @@ jobs:
         run: |
           node --check game/audio-fabric-pack-player.mjs
           node --check game/combat-proving-ground.mjs
+          node --check tests/browser/local-combat-proving-ground.spec.js
           node --check src/presentation/local-combat-audio.mjs
 
       - name: Preserve rendered candidate evidence

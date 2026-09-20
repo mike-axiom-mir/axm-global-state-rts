@@ -1,0 +1,95 @@
+name: LOCAL combat rifle motion
+
+on:
+  pull_request:
+    paths:
+      - 'game/combat-proving-ground.html'
+      - 'game/local-combat-rifle-motion-player.mjs'
+      - 'src/presentation/local-combat-rifle-motion.mjs'
+      - 'tests/local-combat-rifle-motion-selftest.mjs'
+      - 'tests/browser/local-combat-rifle-motion.spec.js'
+      - '.github/workflows/local-combat-rifle-motion.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-product-motion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out RTS candidate and pinned Planet
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check out pinned Animation Fabric
+        uses: actions/checkout@v4
+        with:
+          repository: mike-axiom-mir/axm-animation-fabric
+          ref: 8f507995ae4a88ae901515c76dcf060fbd4eff26
+          path: .deps/axm-animation-fabric
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Verify exact Animation Fabric pin and its suite
+        run: |
+          test "$(git -C .deps/axm-animation-fabric rev-parse HEAD)" = "8f507995ae4a88ae901515c76dcf060fbd4eff26"
+          npm --prefix .deps/axm-animation-fabric test
+
+      - name: Verify product clip through real Animation Fabric validator
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { validateClip, sampleClip, eventsBetween } from './.deps/axm-animation-fabric/src/index.mjs';
+          import { LOCAL_RIFLE_EXCHANGE_CLIP } from './src/presentation/local-combat-rifle-motion.mjs';
+          assert.equal(validateClip(LOCAL_RIFLE_EXCHANGE_CLIP), true);
+          const fire = sampleClip(LOCAL_RIFLE_EXCHANGE_CLIP, 0.12);
+          assert.deepEqual(fire.phases, ['fire']);
+          assert.equal(fire.values['formation.recoil'], 1);
+          assert.deepEqual(eventsBetween(LOCAL_RIFLE_EXCHANGE_CLIP, 0, 0.12), [{ time: 0.12, id: 'rifle-fire' }]);
+          NODE
+
+      - name: Run product motion contract checks
+        run: |
+          node tests/local-combat-rifle-motion-selftest.mjs
+          node --check src/presentation/local-combat-rifle-motion.mjs
+          node --check game/local-combat-rifle-motion-player.mjs
+          node --check tests/browser/local-combat-rifle-motion.spec.js
+
+      - name: Install pinned Playwright test runner
+        run: npm install --no-save @playwright/test@1.55.0
+
+      - name: Install Chromium runtime
+        run: npx playwright install --with-deps chromium
+
+      - name: Start local browser shell
+        run: |
+          node scripts/serve.mjs > /tmp/axm-global-state-rts-rifle-motion.log 2>&1 &
+          echo $! > /tmp/axm-global-state-rts-rifle-motion.pid
+          for i in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4174/game/combat-proving-ground.html > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/axm-global-state-rts-rifle-motion.log
+          exit 1
+
+      - name: Exercise accepted exchange and retreat in Chromium
+        run: npx playwright test tests/browser/local-combat-rifle-motion.spec.js --reporter=line
+
+      - name: Preserve browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: global-state-rts-local-combat-rifle-motion
+          path: |
+            test-results/global-state-rts-local-combat-rifle-motion.png
+            /tmp/axm-global-state-rts-rifle-motion.log
+          if-no-files-found: warn
+          retention-days: 14

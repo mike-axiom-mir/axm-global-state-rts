@@ -1,3 +1,5 @@
+import './strategic-music-intent-runtime.mjs';
+
 const root = document.getElementById('gameplaySurface');
 
 if (!root) throw new Error('missing #gameplaySurface mount for strategic surface');

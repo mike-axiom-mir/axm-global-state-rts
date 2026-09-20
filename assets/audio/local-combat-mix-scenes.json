@@ -1,0 +1,54 @@
+{
+  "schema": "axm.global-state-rts.sound-mix-scenes/v1",
+  "sound_mixer_commit": "8dc36bda6f24ec727e38b161db04df0909972cf5",
+  "project_id": "global-state-rts-local-combat-mix",
+  "max_voices": 4,
+  "scenes": {
+    "default": {
+      "buses": {
+        "sfx": 1,
+        "music": 1,
+        "voice": 1
+      }
+    },
+    "command": {
+      "buses": {
+        "sfx": 0.72,
+        "music": 0.72,
+        "voice": 1
+      }
+    },
+    "combat": {
+      "buses": {
+        "sfx": 1,
+        "music": 0.52,
+        "voice": 1
+      }
+    },
+    "result": {
+      "buses": {
+        "sfx": 1.08,
+        "music": 0.38,
+        "voice": 1
+      }
+    }
+  },
+  "cue_policy": {
+    "combat-menu-open": {
+      "scene": "command",
+      "priority": 20
+    },
+    "combat-exchange": {
+      "scene": "combat",
+      "priority": 60
+    },
+    "combat-victory": {
+      "scene": "result",
+      "priority": 100
+    },
+    "combat-defeat": {
+      "scene": "result",
+      "priority": 100
+    }
+  }
+}

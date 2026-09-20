@@ -12,6 +12,16 @@ function defaultContextFactory() {
   return Context ? new Context() : null;
 }
 
+function normalizeVoiceLimit(value) {
+  if (!Number.isInteger(value)) return 8;
+  return Math.max(1, Math.min(32, value));
+}
+
+function normalizePriority(value) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(1000, Number(value)));
+}
+
 export class AudioFabricPackPlayer {
   constructor({ packUrl = DEFAULT_PACK_URL, contextFactory = defaultContextFactory } = {}) {
     this.packUrl = packUrl;
@@ -21,18 +31,29 @@ export class AudioFabricPackPlayer {
     this.packPromise = null;
     this.entryPromises = new Map();
     this.decoded = new Map();
+    this.activeVoices = new Map();
+    this.voiceSequence = 0;
     this.lastCueId = null;
     this.lastFailure = null;
+    this.lastVoiceLimit = null;
+    this.maxObservedVoices = 0;
   }
 
   snapshot() {
+    const voices = [...this.activeVoices.values()]
+      .map(({ id, cueId, priority, startedAt }) => Object.freeze({ id, cueId, priority, startedAt }))
+      .sort((a, b) => a.priority - b.priority || a.startedAt - b.startedAt || a.id - b.id);
     return Object.freeze({
       enabled: this.enabled,
       contextState: this.context?.state || 'not-created',
       decodedCueIds: Object.freeze([...this.decoded.keys()].sort()),
+      activeVoiceCount: voices.length,
+      activeVoices: Object.freeze(voices),
+      lastVoiceLimit: this.lastVoiceLimit,
+      maxObservedVoices: this.maxObservedVoices,
       lastCueId: this.lastCueId,
       lastFailure: this.lastFailure,
-      truthBoundary: 'plays pre-rendered Audio Fabric WAV bytes only; browser playback success does not prove listening quality, mix quality, latency, or game feel'
+      truthBoundary: 'plays pre-rendered Audio Fabric WAV bytes through a bounded product playback adapter; playback and voice-budget success do not prove listening quality, mix quality, latency, or game feel'
     });
   }
 
@@ -85,6 +106,10 @@ export class AudioFabricPackPlayer {
 
   disable() {
     this.enabled = false;
+    for (const voice of this.activeVoices.values()) {
+      try { voice.source.stop(); } catch {}
+    }
+    this.activeVoices.clear();
     return this.snapshot();
   }
 
@@ -97,15 +122,37 @@ export class AudioFabricPackPlayer {
     return buffer;
   }
 
-  async play(cueId, { gain = 1, pan = 0 } = {}) {
+  #admitVoice(cueId, priority, maxVoices) {
+    if (this.activeVoices.size < maxVoices) return Object.freeze({ admitted: true, preempted: null });
+    const lowest = [...this.activeVoices.values()]
+      .sort((a, b) => a.priority - b.priority || a.startedAt - b.startedAt || a.id - b.id)[0];
+    if (!lowest || priority <= lowest.priority) {
+      return Object.freeze({ admitted: false, reason: 'voice-budget', preempted: null });
+    }
+    this.activeVoices.delete(lowest.id);
+    try { lowest.source.stop(); } catch {}
+    return Object.freeze({ admitted: true, preempted: lowest.cueId });
+  }
+
+  async play(cueId, { gain = 1, pan = 0, priority = 0, maxVoices = 8 } = {}) {
     if (!cueId) return Object.freeze({ played: false, reason: 'no-cue' });
     if (!this.enabled) return Object.freeze({ played: false, reason: 'disabled' });
     if (!this.context) await this.unlock();
     if (!this.context || this.context.state === 'closed') return Object.freeze({ played: false, reason: 'web-audio-unavailable' });
     if (this.context.state === 'suspended') await this.context.resume();
 
+    const voiceLimit = normalizeVoiceLimit(maxVoices);
+    const cuePriority = normalizePriority(priority);
+    this.lastVoiceLimit = voiceLimit;
+
     try {
       const buffer = await this.#bufferFor(cueId);
+      const admission = this.#admitVoice(cueId, cuePriority, voiceLimit);
+      if (!admission.admitted) {
+        this.lastFailure = null;
+        return Object.freeze({ played: false, reason: admission.reason, cueId, priority: cuePriority, maxVoices: voiceLimit });
+      }
+
       const source = this.context.createBufferSource();
       const gainNode = this.context.createGain();
       gainNode.gain.value = Math.max(0, Number.isFinite(gain) ? Number(gain) : 1);
@@ -120,10 +167,16 @@ export class AudioFabricPackPlayer {
         tail = panner;
       }
       tail.connect(this.context.destination);
+
+      const id = ++this.voiceSequence;
+      const voice = { id, cueId, priority: cuePriority, startedAt: this.context.currentTime, source };
+      this.activeVoices.set(id, voice);
+      source.onended = () => this.activeVoices.delete(id);
       source.start();
+      this.maxObservedVoices = Math.max(this.maxObservedVoices, this.activeVoices.size);
       this.lastCueId = cueId;
       this.lastFailure = null;
-      return Object.freeze({ played: true, cueId });
+      return Object.freeze({ played: true, cueId, priority: cuePriority, maxVoices: voiceLimit, preemptedCueId: admission.preempted });
     } catch (error) {
       this.lastFailure = String(error?.message || error);
       return Object.freeze({ played: false, reason: this.lastFailure, cueId });
